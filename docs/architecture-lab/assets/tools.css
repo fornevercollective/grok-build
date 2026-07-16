@@ -120,9 +120,9 @@ body.mode-docs #panel-docs {
   background: linear-gradient(180deg, #0a0c12 0%, #07080c 100%);
   border-bottom: 1px solid var(--border);
   box-shadow: inset 0 1px 0 rgba(110, 203, 255, 0.06);
-  /* Dominant center band when open */
-  max-height: min(62vh, 560px);
-  min-height: min(42vh, 320px);
+  /* Dominant center band when open — room for 3 columns */
+  max-height: min(72vh, 720px);
+  min-height: min(48vh, 380px);
 }
 
 body.multi-term-open .multi-term {
@@ -224,18 +224,47 @@ body.multi-term-open .tool-panel.active {
 
 .multi-term-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* Default: true 3-column shell row (α · β · γ). Extra panes wrap under. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
   flex: 1;
   min-height: 0;
   overflow: auto;
+  align-content: start;
+}
+
+/* When more than 3 panes, still prefer 3 columns so shells stay side-by-side */
+.multi-term-grid.mt-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.multi-term-grid.mt-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.multi-term-grid.mt-cols-auto {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+@media (max-width: 960px) {
+  .multi-term-grid,
+  .multi-term-grid.mt-cols-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1200px) {
+  .multi-term-grid.mt-cols-auto {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .mt-pane {
   display: flex;
   flex-direction: column;
-  min-height: 160px;
-  max-height: 320px;
+  min-height: 180px;
+  max-height: none;
+  height: min(36vh, 340px);
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #05060a;
@@ -243,14 +272,27 @@ body.multi-term-open .tool-panel.active {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Shell roles — color rim so three columns read as α/β/γ at a glance */
+.mt-pane[data-id="plan"] {
+  border-color: rgba(110, 203, 255, 0.28);
+}
+.mt-pane[data-id="build"] {
+  border-color: rgba(167, 139, 250, 0.3);
+}
+.mt-pane[data-id="verify"] {
+  border-color: rgba(74, 222, 128, 0.28);
+}
+
 .mt-pane.active {
-  border-color: rgba(110, 203, 255, 0.35);
-  box-shadow: 0 0 0 1px rgba(110, 203, 255, 0.12);
+  border-color: rgba(110, 203, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(110, 203, 255, 0.18);
 }
 
 .mt-pane.hidden {
   display: none;
 }
+
+
 
 .mt-pane-head {
   display: flex;

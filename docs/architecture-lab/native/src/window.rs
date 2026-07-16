@@ -36,7 +36,9 @@ impl Role {
 
 struct WinPair {
     window: Window,
-    webview: wry::WebView,
+    /// Lazy for chat/stream: first-launch crash on some Macs when 3 WKWebViews
+    /// navigate + inject large init scripts concurrently (NSString/ObjC abort).
+    webview: Option<wry::WebView>,
     role: Role,
     /// Stable entry URL for safe reload (avoids evaluate_script → CFString crash).
     entry_url: String,
@@ -56,41 +58,61 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
     bus.attach_proxy(proxy.clone());
     let _menu_ids = menu::install_menu(proxy.clone());
 
+    // First-launch safety: only build the lab WKWebView up front.
+    // Chat/stream windows exist (for layout/dock) but attach WebViews on first show.
+    // Concurrent triple WK navigation + large init scripts has aborted on cold Macs
+    // with: NSString initWithBytes:length:encoding: (panic in ObjC, cannot unwind).
+    let eager = std::env::var("LAB_NATIVE_EAGER")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
     let mut windows: HashMap<WindowId, WinPair> = HashMap::new();
 
     // ── Lab window (frameless float — same chrome language as chat) ──
     let lab = build_lab_window(&event_loop, float)?;
     center_window(&lab);
     let lab_id = lab.id();
-    let lab_url = if float {
-        format!("{url}#/00-overview")
+    // Keep entry URL ASCII-safe (fragment applied after base load via SPA hash).
+    let lab_url = url.trim_end_matches('/').to_string() + "/";
+    let lab_entry = if float {
+        format!("{lab_url}#/00-overview")
     } else {
-        url.to_string()
+        lab_url.clone()
     };
-    let lab_wv = build_webview(&lab, &lab_url, &lab_init_script(), Role::Lab, proxy.clone())?;
+    let lab_wv = build_webview(
+        &lab,
+        &lab_entry,
+        &lab_init_script(),
+        Role::Lab,
+        proxy.clone(),
+    )?;
     windows.insert(
         lab_id,
         WinPair {
             window: lab,
-            webview: lab_wv,
+            webview: Some(lab_wv),
             role: Role::Lab,
-            entry_url: lab_url.clone(),
+            entry_url: lab_entry.clone(),
         },
     );
 
-    // ── Chat window — created but hidden; open independently ──
+    // ── Chat window shell — webview lazy unless LAB_NATIVE_EAGER=1 ──
     let chat = build_chat_window(&event_loop)?;
     place_chat_window(&chat);
     chat.set_visible(false);
     let chat_id = chat.id();
-    let chat_url = format!("{url}chat.html");
-    let chat_wv = build_webview(
-        &chat,
-        &chat_url,
-        &chat_init_script(),
-        Role::Chat,
-        proxy.clone(),
-    )?;
+    let chat_url = format!("{lab_url}chat.html");
+    let chat_wv = if eager {
+        Some(build_webview(
+            &chat,
+            &chat_url,
+            &chat_init_script(),
+            Role::Chat,
+            proxy.clone(),
+        )?)
+    } else {
+        None
+    };
     windows.insert(
         chat_id,
         WinPair {
@@ -103,19 +125,23 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
     bus.set_chat_visible(false);
     bus.set_chat_docked(true);
 
-    // ── Stream feed window — independent; can dock left of lab ──
+    // ── Stream shell — webview lazy unless LAB_NATIVE_EAGER=1 ──
     let stream = build_stream_window(&event_loop)?;
     place_stream_window(&stream);
     stream.set_visible(false);
     let stream_id = stream.id();
-    let stream_url = format!("{url}stream.html");
-    let stream_wv = build_webview(
-        &stream,
-        &stream_url,
-        &stream_init_script(),
-        Role::Stream,
-        proxy.clone(),
-    )?;
+    let stream_url = format!("{lab_url}stream.html");
+    let stream_wv = if eager {
+        Some(build_webview(
+            &stream,
+            &stream_url,
+            &stream_init_script(),
+            Role::Stream,
+            proxy.clone(),
+        )?)
+    } else {
+        None
+    };
     windows.insert(
         stream_id,
         WinPair {
@@ -139,14 +165,17 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
     }
 
     tracing::info!(
-        %lab_url,
+        lab_url = %lab_entry,
         %chat_url,
         %stream_url,
         float,
-        "triple webviews up (lab + chat + stream · dock/undock)"
+        eager,
+        "lab webview up · chat/stream {}",
+        if eager { "eager" } else { "lazy-on-show" }
     );
 
     let bus_loop = bus.clone();
+    let proxy_loop = proxy.clone();
     let mut layout = LayoutState {
         chat_docked: true,
         stream_docked: true,
@@ -158,10 +187,31 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         match event {
             Event::NewEvents(StartCause::Init) => {}
             Event::UserEvent(cmd) => {
-                if let Err(e) =
-                    apply_cmd(&cmd, &mut windows, &bus_loop, &mut layout, control_flow)
-                {
-                    bus_loop.push_error(e, "control");
+                // Menu / HTTP control must never panic across AppKit.
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    apply_cmd(
+                        &cmd,
+                        &mut windows,
+                        &bus_loop,
+                        &mut layout,
+                        control_flow,
+                        &proxy_loop,
+                    )
+                }));
+                match result {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => bus_loop.push_error(e, "control"),
+                    Err(payload) => {
+                        let msg = if let Some(s) = payload.downcast_ref::<&str>() {
+                            (*s).to_string()
+                        } else if let Some(s) = payload.downcast_ref::<String>() {
+                            s.clone()
+                        } else {
+                            "control panic".into()
+                        };
+                        eprintln!("[window] control panic caught: {msg}");
+                        bus_loop.push_error(msg, "control-panic");
+                    }
                 }
             }
             Event::WindowEvent {
@@ -222,6 +272,7 @@ fn build_lab_window(
         (1280.0, 860.0, 800.0, 560.0)
     };
 
+    // ASCII-only titles — avoid rare NSString edge cases with punctuation glyphs.
     let mut wb = WindowBuilder::new()
         .with_title("Grok Build Lab")
         .with_decorations(false)
@@ -251,7 +302,7 @@ fn build_lab_window(
 
 fn build_chat_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
     let mut wb = WindowBuilder::new()
-        .with_title("Grok Build Lab · Chat")
+        .with_title("Grok Build Lab - Chat")
         .with_decorations(false)
         .with_always_on_top(true)
         .with_resizable(true)
@@ -278,7 +329,7 @@ fn build_chat_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Res
 
 fn build_stream_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
     let mut wb = WindowBuilder::new()
-        .with_title("Grok Build Lab · Stream")
+        .with_title("Grok Build Lab - Stream")
         .with_decorations(false)
         .with_always_on_top(false)
         .with_resizable(true)
@@ -463,25 +514,66 @@ fn handle_ipc(body: &str, target: WinTarget, proxy: &EventLoopProxy<ControlCmd>)
     }
 }
 
+/// Attach WKWebView on first use (chat/stream). Lab is always eager.
+fn ensure_webview(
+    pair: &mut WinPair,
+    proxy: &EventLoopProxy<ControlCmd>,
+) -> Result<(), String> {
+    if pair.webview.is_some() {
+        return Ok(());
+    }
+    let init = match pair.role {
+        Role::Lab => lab_init_script(),
+        Role::Chat => chat_init_script(),
+        Role::Stream => stream_init_script(),
+    };
+    let url = pair.entry_url.clone();
+    if url.is_empty() {
+        return Err("empty entry_url".into());
+    }
+    // Guard: only ASCII-printable for the load URL (path is always http localhost).
+    if !url.bytes().all(|b| b.is_ascii_graphic() || b == b'/' || b == b':' || b == b'#' || b == b'?' || b == b'&' || b == b'=' || b == b'.' || b == b'-' || b == b'_' || b == b'%') {
+        return Err(format!("refusing non-ASCII entry_url: {url}"));
+    }
+    tracing::info!(role = ?pair.role, %url, "lazy-attaching webview");
+    let wv = build_webview(&pair.window, &url, &init, pair.role, proxy.clone())
+        .map_err(|e| format!("build webview: {e:#}"))?;
+    pair.webview = Some(wv);
+    Ok(())
+}
+
 /// Safe webview JS eval — never pass empty; swallow WK errors without panic.
 fn safe_eval(webview: &wry::WebView, script: &str) -> Result<(), String> {
     if script.is_empty() {
         return Err("empty script".into());
     }
+    // Avoid pathological scripts that have crashed WK/NSString on some Macs.
+    if script.len() > 512_000 {
+        return Err("script too large".into());
+    }
+    if script.bytes().any(|b| b == 0) {
+        return Err("script contains NUL".into());
+    }
     // catch_unwind won't catch ObjC SIGSEGV, but Result covers Rust-side failures.
-    webview
-        .evaluate_script(script)
-        .map_err(|e| format!("{e}"))
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        webview.evaluate_script(script)
+    }));
+    match r {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(e)) => Err(format!("{e}")),
+        Err(_) => Err("evaluate_script panicked".into()),
+    }
 }
 
 /// Reload via load_url (stable) instead of location.reload() evaluate_script.
 fn safe_reload(pair: &WinPair) -> Result<(), String> {
+    let Some(webview) = pair.webview.as_ref() else {
+        return Err("webview not attached yet".into());
+    };
     let base = if !pair.entry_url.is_empty() {
         pair.entry_url.clone()
     } else {
-        pair.webview
-            .url()
-            .map_err(|e| format!("url: {e}"))?
+        webview.url().map_err(|e| format!("url: {e}"))?
     };
     if base.is_empty() {
         return Err("no url to reload".into());
@@ -499,7 +591,7 @@ fn safe_reload(pair: &WinPair) -> Result<(), String> {
         let sep = if base.contains('?') { '&' } else { '?' };
         format!("{base}{sep}_r={bust}")
     };
-    pair.webview
+    webview
         .load_url(&reload_url)
         .map_err(|e| format!("load_url: {e}"))
 }
@@ -613,7 +705,7 @@ document.addEventListener("DOMContentLoaded", function(){{
         '<button type="button" class="lnb-tl max" data-ipc="maximize" title="Zoom"></button>' +
       '</div>' +
       '<span class="lnb-dot"></span>' +
-      '<span class="lnb-title">Grok Build Lab</span>' +
+      '<span class="lnb-title">Grok Build Lab</span>' + // ASCII title
       '<span class="lnb-sp"></span>' +
       '<button type="button" class="lnb-btn primary" data-c="show_chat" data-no-drag title="Open chat (Cmd+2)">Chat</button>' +
       '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream feed (Cmd+3)">Stream</button>' +
@@ -944,6 +1036,7 @@ fn apply_cmd(
     bus: &ControlBus,
     layout: &mut LayoutState,
     control_flow: &mut ControlFlow,
+    proxy: &EventLoopProxy<ControlCmd>,
 ) -> Result<(), String> {
     match cmd {
         ControlCmd::Ping => Ok(()),
@@ -952,8 +1045,10 @@ fn apply_cmd(
             Ok(())
         }
         ControlCmd::ShowChat | ControlCmd::FocusChat => {
-            for p in windows.values() {
+            // Attach WKWebView only when first shown (first-launch safety).
+            for p in windows.values_mut() {
                 if p.role == Role::Chat {
+                    ensure_webview(p, proxy)?;
                     p.window.set_visible(true);
                     p.window.set_focus();
                     bus.set_chat_visible(true);
@@ -970,8 +1065,9 @@ fn apply_cmd(
             // Undock for free float when opening "independently"
             layout.chat_docked = false;
             bus.set_chat_docked(false);
-            for p in windows.values() {
+            for p in windows.values_mut() {
                 if p.role == Role::Chat {
+                    ensure_webview(p, proxy)?;
                     p.window.set_visible(true);
                     p.window.set_always_on_top(true);
                     p.window.set_focus();
@@ -991,14 +1087,29 @@ fn apply_cmd(
         }
         ControlCmd::ToggleChat => {
             if bus.chat_visible() {
-                apply_cmd(&ControlCmd::HideChat, windows, bus, layout, control_flow)
+                apply_cmd(
+                    &ControlCmd::HideChat,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
             } else {
-                apply_cmd(&ControlCmd::ShowChat, windows, bus, layout, control_flow)
+                apply_cmd(
+                    &ControlCmd::ShowChat,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
             }
         }
         ControlCmd::ShowStream | ControlCmd::FocusStream => {
-            for p in windows.values() {
+            for p in windows.values_mut() {
                 if p.role == Role::Stream {
+                    ensure_webview(p, proxy)?;
                     p.window.set_visible(true);
                     p.window.set_focus();
                     bus.set_stream_visible(true);
@@ -1022,9 +1133,23 @@ fn apply_cmd(
         }
         ControlCmd::ToggleStream => {
             if bus.stream_visible() {
-                apply_cmd(&ControlCmd::HideStream, windows, bus, layout, control_flow)
+                apply_cmd(
+                    &ControlCmd::HideStream,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
             } else {
-                apply_cmd(&ControlCmd::ShowStream, windows, bus, layout, control_flow)
+                apply_cmd(
+                    &ControlCmd::ShowStream,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
             }
         }
         ControlCmd::Dock { target } => {
@@ -1032,8 +1157,9 @@ fn apply_cmd(
                 WinTarget::Chat => {
                     layout.chat_docked = true;
                     bus.set_chat_docked(true);
-                    for p in windows.values() {
+                    for p in windows.values_mut() {
                         if p.role == Role::Chat {
+                            ensure_webview(p, proxy)?;
                             p.window.set_visible(true);
                             bus.set_chat_visible(true);
                         }
@@ -1042,8 +1168,9 @@ fn apply_cmd(
                 WinTarget::Stream => {
                     layout.stream_docked = true;
                     bus.set_stream_docked(true);
-                    for p in windows.values() {
+                    for p in windows.values_mut() {
                         if p.role == Role::Stream {
+                            ensure_webview(p, proxy)?;
                             p.window.set_visible(true);
                             bus.set_stream_visible(true);
                         }
@@ -1096,6 +1223,7 @@ fn apply_cmd(
                     bus,
                     layout,
                     control_flow,
+                    proxy,
                 )
             } else {
                 apply_cmd(
@@ -1104,6 +1232,7 @@ fn apply_cmd(
                     bus,
                     layout,
                     control_flow,
+                    proxy,
                 )
             }
         }
@@ -1112,13 +1241,15 @@ fn apply_cmd(
             layout.stream_docked = true;
             bus.set_chat_docked(true);
             bus.set_stream_docked(true);
-            for p in windows.values() {
+            for p in windows.values_mut() {
                 match p.role {
                     Role::Chat => {
+                        ensure_webview(p, proxy)?;
                         p.window.set_visible(true);
                         bus.set_chat_visible(true);
                     }
                     Role::Stream => {
+                        ensure_webview(p, proxy)?;
                         p.window.set_visible(true);
                         bus.set_stream_visible(true);
                     }
@@ -1173,12 +1304,22 @@ fn apply_cmd(
             Ok(())
         }
         ControlCmd::Close { target } => match target {
-            WinTarget::Chat => {
-                apply_cmd(&ControlCmd::HideChat, windows, bus, layout, control_flow)
-            }
-            WinTarget::Stream => {
-                apply_cmd(&ControlCmd::HideStream, windows, bus, layout, control_flow)
-            }
+            WinTarget::Chat => apply_cmd(
+                &ControlCmd::HideChat,
+                windows,
+                bus,
+                layout,
+                control_flow,
+                proxy,
+            ),
+            WinTarget::Stream => apply_cmd(
+                &ControlCmd::HideStream,
+                windows,
+                bus,
+                layout,
+                control_flow,
+                proxy,
+            ),
             WinTarget::Lab | WinTarget::All => {
                 *control_flow = ControlFlow::Exit;
                 Ok(())
@@ -1206,12 +1347,29 @@ fn apply_cmd(
             if script.is_empty() {
                 return Err("empty script".into());
             }
-            for_target(windows, *target, |p| {
-                // Prefer visible windows; still allow hidden for agent control.
-                if let Err(e) = safe_eval(&p.webview, script) {
-                    bus.push_error(format!("eval failed: {e}"), "eval");
+            let ids: Vec<WindowId> = windows
+                .values()
+                .filter(|p| match target {
+                    WinTarget::All => true,
+                    WinTarget::Lab => p.role == Role::Lab,
+                    WinTarget::Chat => p.role == Role::Chat,
+                    WinTarget::Stream => p.role == Role::Stream,
+                })
+                .map(|p| p.window.id())
+                .collect();
+            for id in ids {
+                if let Some(p) = windows.get_mut(&id) {
+                    if p.webview.is_none() {
+                        // Don't force-attach just for eval on never-shown satellites.
+                        continue;
+                    }
+                    if let Some(wv) = p.webview.as_ref() {
+                        if let Err(e) = safe_eval(wv, script) {
+                            bus.push_error(format!("eval failed: {e}"), "eval");
+                        }
+                    }
                 }
-            });
+            }
             Ok(())
         }
         ControlCmd::ShowError { message } => {
@@ -1224,10 +1382,12 @@ fn apply_cmd(
                 "try{{window.LabDesktop&&LabDesktop.showError&&LabDesktop.showError('{esc}');\
                  window.LabChat&&LabChat.showError&&LabChat.showError('{esc}');}}catch(e){{}}"
             );
-            // Only toast on visible surfaces to avoid WK null crashes on hidden webviews
+            // Only toast on visible surfaces with an attached webview
             for p in windows.values() {
                 if p.window.is_visible() {
-                    let _ = safe_eval(&p.webview, &js);
+                    if let Some(wv) = p.webview.as_ref() {
+                        let _ = safe_eval(wv, &js);
+                    }
                 }
             }
             Ok(())
@@ -1247,7 +1407,14 @@ fn apply_cmd(
                 .map(|p| p.window.id())
                 .collect();
             for id in ids {
-                if let Some(p) = windows.get(&id) {
+                if let Some(p) = windows.get_mut(&id) {
+                    // Refresh of never-shown satellite: attach then load.
+                    if p.webview.is_none() && matches!(p.role, Role::Chat | Role::Stream) {
+                        if let Err(e) = ensure_webview(p, proxy) {
+                            bus.push_error(format!("refresh attach {:?}: {e}", p.role), "refresh");
+                            continue;
+                        }
+                    }
                     if let Err(e) = safe_reload(p) {
                         bus.push_error(format!("refresh {:?}: {e}", p.role), "refresh");
                     }
@@ -1284,16 +1451,20 @@ fn apply_cmd(
             let mut ran = false;
             for p in windows.values() {
                 if p.role == Role::Lab && p.window.is_visible() {
-                    let _ = safe_eval(&p.webview, js);
-                    ran = true;
-                    break;
+                    if let Some(wv) = p.webview.as_ref() {
+                        let _ = safe_eval(wv, js);
+                        ran = true;
+                        break;
+                    }
                 }
             }
             if !ran {
                 for p in windows.values() {
                     if p.window.is_visible() {
-                        let _ = safe_eval(&p.webview, js);
-                        break;
+                        if let Some(wv) = p.webview.as_ref() {
+                            let _ = safe_eval(wv, js);
+                            break;
+                        }
                     }
                 }
             }

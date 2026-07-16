@@ -31,7 +31,8 @@
     <link rel="stylesheet" href="assets/style.css?v=cli3" />
     <link rel="stylesheet" href="assets/walkie-dock.css?v=wave3" />
     <link rel="stylesheet" href="assets/video-feed.css?v=sb2" />
-    <link rel="stylesheet" href="assets/tools.css?v=hist4" />
+    <link rel="stylesheet" href="assets/tools.css?v=mt3" />
+    <link rel="stylesheet" href="assets/ship-deck.css?v=ship1" />
     <link rel="stylesheet" href="assets/walkthrough.css?v=wt4" />
     <link rel="stylesheet" href="assets/mobile-pwa.css" />
     <script
@@ -47,7 +48,8 @@
     <script src="assets/video-feed.js?v=sb3" defer></script>
     <script src="assets/walkie-dock.js?v=wave3" defer></script>
     <script src="assets/grok-listen.js?v=wave3" defer></script>
-    <script src="assets/tools.js?v=hist6" defer></script>
+    <script src="assets/tools.js?v=mt3" defer></script>
+    <script src="assets/ship-deck.js?v=ship3" defer></script>
     <script src="assets/mesh-collab.js" defer></script>
     <script src="assets/mobile-pwa.js" defer></script>
     <script src="assets/lab-update.js?v=pages1" defer></script>
@@ -389,6 +391,7 @@
         <!-- App-level tabs -->
         <nav class="app-tabs" aria-label="Workspace">
           <button type="button" class="app-tab active" data-mode="docs">Docs</button>
+          <button type="button" class="app-tab" data-mode="ship">Ship</button>
           <button type="button" class="app-tab" data-mode="notes">Notes</button>
           <button type="button" class="app-tab" data-mode="table">Table</button>
           <button type="button" class="app-tab" data-mode="xdesk">X desk</button>
@@ -570,15 +573,16 @@
               <span class="pill" id="multi-term-status">idle</span>
             </div>
             <div class="multi-term-actions">
+              <button type="button" class="btn-mini primary" id="btn-mt-cols-3" title="Force 3 columns · α | β | γ">3 cols</button>
               <button type="button" class="btn-mini" id="btn-mt-add">+ Pane</button>
               <button type="button" class="btn-mini" id="btn-mt-refresh">Refresh all</button>
               <button type="button" class="btn-mini primary" id="btn-mt-open-grok">Open Grok</button>
-              <button type="button" class="btn-mini primary" id="btn-mt-open-term">Open Grok Terminal</button>
+              <button type="button" class="btn-mini primary" id="btn-mt-open-term" title="Spawn triple shells in Terminal.app">Open Grok Terminal</button>
               <button type="button" class="btn-mini" id="btn-mt-close" title="Close multi-terminal">✕</button>
             </div>
           </div>
-          <div class="multi-term-tabs" id="multi-term-tabs" role="tablist"></div>
-          <div class="multi-term-grid" id="multi-term-grid"></div>
+          <div class="multi-term-tabs" id="multi-term-tabs" role="tablist" aria-label="Focus pane"></div>
+          <div class="multi-term-grid mt-cols-3" id="multi-term-grid" data-cols="3"></div>
         </section>
 
         <!-- Docs panel -->
@@ -758,6 +762,102 @@
               <code class="rtmp-cmd" id="rtmp-cmd"></code>
             </div>
           </div>
+        </section>
+
+        <!-- Ship deck · plan · skills · plugins · Q&A · subagents (x.ai/cli) -->
+        <section class="tool-panel" data-mode="ship" id="panel-ship">
+          <div class="tool-head">
+            <h2>Ship</h2>
+            <span class="spacer"></span>
+            <span style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim)">plan · skills · plugins · Q&amp;A · models · brand</span>
+          </div>
+          <div class="ship-layout">
+            <div class="ship-hero">
+              <div>
+                <h2>Everything you need to ship</h2>
+                <p>
+                  Interactive map of Grok Build capabilities from
+                  <a href="https://x.ai/cli" target="_blank" rel="noopener">x.ai/cli</a>
+                  — plan before code, parallel subagents, reusable skills, plugins, hooks, MCP, and more.
+                </p>
+              </div>
+              <div class="ship-hero-actions">
+                <button type="button" class="btn-mini primary" id="ship-open-doc">Full matrix</button>
+                <button type="button" class="btn-mini" id="ship-open-official">Official xAI</button>
+                <button type="button" class="btn-mini" id="ship-open-cli">x.ai/cli</button>
+                <button type="button" class="btn-mini" id="ship-validate">Health</button>
+              </div>
+            </div>
+
+            <div class="ship-section">
+              <h3>Capability grid <span class="ship-meta">click to pin · x.ai/cli + official surfaces</span></h3>
+              <div class="ship-features" id="ship-features"></div>
+            </div>
+
+            <div class="ship-grid-2">
+              <div class="ship-section">
+                <h3>Plan mode <span class="ship-meta" id="ship-plan-status" data-status="draft">draft</span></h3>
+                <div class="ship-section-actions">
+                  <button type="button" class="btn-mini primary" id="ship-plan-approve">Approve [a]</button>
+                  <button type="button" class="btn-mini" id="ship-plan-revise">Request changes [s]</button>
+                  <button type="button" class="btn-mini" id="ship-plan-quit">Quit [q]</button>
+                  <button type="button" class="btn-mini" id="ship-plan-reset">Reset</button>
+                </div>
+                <ol class="ship-plan-steps" id="ship-plan-steps"></ol>
+              </div>
+
+              <div class="ship-section">
+                <h3>Q&amp;A <span class="ship-meta" id="ship-qa-progress">0 / 3 answered</span></h3>
+                <div class="ship-section-actions">
+                  <button type="button" class="btn-mini" id="ship-qa-clear">Clear answers</button>
+                </div>
+                <div class="ship-qa" id="ship-qa"></div>
+              </div>
+            </div>
+
+            <div class="ship-grid-2">
+              <div class="ship-section">
+                <h3>Skills</h3>
+                <div class="ship-skills" id="ship-skills"></div>
+              </div>
+              <div class="ship-section">
+                <h3>Plugins</h3>
+                <div class="ship-plugins" id="ship-plugins"></div>
+              </div>
+            </div>
+
+            <div class="ship-section">
+              <h3>Subagents <span class="ship-meta">demo fan-out · real spawn in TUI</span></h3>
+              <div class="ship-section-actions">
+                <button type="button" class="btn-mini primary" id="ship-sub-run">Run parallel</button>
+                <button type="button" class="btn-mini" id="ship-sub-reset">Reset</button>
+              </div>
+              <div class="ship-subs" id="ship-subs"></div>
+            </div>
+
+            <!-- Triple shell bus: α plan · β build · γ verify -->
+            <div class="ship-section">
+              <h3>Triple shell <span class="ship-meta" id="ship-shells-meta">α plan · β build · γ verify · looped handoffs</span></h3>
+              <p style="margin:0 0 0.55rem;font-size:0.72rem;color:var(--text-dim);line-height:1.4;max-width:70ch">
+                Lab control plane spins <strong>three concurrent Grok shells</strong> that hand activities in a loop.
+                Upstream crates (tools · workspace · sandbox · worktree · …) load <em>inside</em> each <code>grok</code> process — the lab does not fork the pager.
+              </p>
+              <div class="ship-section-actions">
+                <button type="button" class="btn-mini primary" id="ship-shells-spawn">Spawn triple</button>
+                <button type="button" class="btn-mini" id="ship-shells-hop-pb">Plan → Build</button>
+                <button type="button" class="btn-mini" id="ship-shells-hop-bv">Build → Verify</button>
+                <button type="button" class="btn-mini" id="ship-shells-hop-vb">Verify → Build</button>
+                <button type="button" class="btn-mini" id="ship-shells-hop-vp">Verify → Plan</button>
+                <button type="button" class="btn-mini" id="ship-shells-refresh">Refresh</button>
+                <button type="button" class="btn-mini" id="ship-shells-reset">Reset bus</button>
+                <button type="button" class="btn-mini" id="ship-shells-doc">Docs</button>
+              </div>
+              <div class="ship-subs" id="ship-shells-cards"></div>
+              <ol class="ship-plan-steps" id="ship-shells-queue" style="margin-top:0.65rem"></ol>
+              <pre class="ship-pre" id="ship-shells-recipe" hidden></pre>
+            </div>
+          </div>
+          <div class="ship-flash" id="ship-flash" role="status" aria-live="polite"></div>
         </section>
 
         <!-- Version history · timeline + right inspect/search/ask -->

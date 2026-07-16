@@ -5,6 +5,7 @@ Tabs across the top of the Grok Build Lab:
 | Tab | Purpose |
 |-----|---------|
 | **Docs** | Markdown architecture map (this site) |
+| **Ship** | x.ai/cli surface: plan · skills · plugins · Q&A · subagents rehearsal |
 | **Notes** | Notebook cells (MD + JS) · funnel run · right Inspect/Search/Ask |
 | **Table** | Editable data pad · CSV/JSON · section rearrange |
 | **X desk** | Articles · code · discussions table |
@@ -54,7 +55,13 @@ Ports burst.html tools:
 
 Open the lab on two devices/tabs → **Join mesh** on both → pins go live when the other peer is seen.
 
-Deep links: `#/tool/terminal` · `#/tool/broadcast` · `#/tool/history`
+Deep links: `#/tool/ship` · `#/tool/terminal` · `#/tool/broadcast` · `#/tool/history`
+
+## Ship tab storage
+
+`lab.ship.v1` — Q&A answers · plan status · subagent demo state · pinned capabilities.
+
+Chat text turns: `lab.chat.turns.v1` (chat window).
 
 ## History scrub (mueee-style)
 

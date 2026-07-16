@@ -439,6 +439,122 @@
         color: #52525b;
         text-align: center;
       }
+      /* Text compose — robust path when mic denied / silent ops */
+      .chat-compose {
+        width: min(340px, 94%);
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.5rem 0.55rem;
+        border-radius: 12px;
+        background: rgba(14, 16, 22, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .chat-compose-row {
+        display: flex;
+        gap: 0.35rem;
+        align-items: flex-end;
+      }
+      .chat-compose textarea {
+        flex: 1;
+        min-height: 2.4rem;
+        max-height: 6.5rem;
+        resize: vertical;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #0a0c10;
+        color: #e8eaed;
+        font-family: "IBM Plex Sans", system-ui, sans-serif;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        padding: 0.4rem 0.5rem;
+        outline: none;
+      }
+      .chat-compose textarea:focus {
+        border-color: rgba(110, 203, 255, 0.45);
+        box-shadow: 0 0 0 1px rgba(110, 203, 255, 0.15);
+      }
+      .chat-compose textarea::placeholder {
+        color: #52525b;
+      }
+      .chat-compose .send {
+        appearance: none;
+        border: 1px solid rgba(110, 203, 255, 0.4);
+        background: rgba(110, 203, 255, 0.12);
+        color: #6ecbff;
+        border-radius: 8px;
+        min-width: 3rem;
+        height: 2.4rem;
+        padding: 0 0.55rem;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .chat-compose .send:hover {
+        background: rgba(110, 203, 255, 0.2);
+      }
+      .chat-compose .send:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .chat-compose-hints {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+      }
+      .chat-compose-hints button {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #101218;
+        color: #9aa3b5;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.55rem;
+        padding: 0.18rem 0.4rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .chat-compose-hints button:hover {
+        color: #6ecbff;
+        border-color: rgba(110, 203, 255, 0.3);
+      }
+      .chat-turns {
+        width: min(340px, 94%);
+        flex: 0 1 auto;
+        max-height: 22vh;
+        overflow: auto;
+        list-style: none;
+        margin: 0;
+        padding: 0.35rem 0.45rem;
+        border-radius: 10px;
+        background: rgba(8, 10, 15, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.58rem;
+        color: #9aa3b5;
+        display: none;
+      }
+      .chat-turns.has-items {
+        display: block;
+      }
+      .chat-turns li {
+        padding: 0.2rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        line-height: 1.35;
+        word-break: break-word;
+      }
+      .chat-turns li:last-child {
+        border-bottom: 0;
+      }
+      .chat-turns .role {
+        color: #6ecbff;
+        margin-right: 0.3rem;
+      }
+      .chat-turns .role.lab {
+        color: #4ade80;
+      }
       .chat-error {
         position: fixed;
         left: 50%;
@@ -542,7 +658,28 @@
         <div class="voice-action-row" id="voice-action-row" hidden></div>
         <ul class="voice-turns" id="voice-turns"></ul>
       </div>
-      <p class="chat-meta">POST /api/control · SpaceXAI</p>
+
+      <div class="chat-compose" id="chat-compose">
+        <div class="chat-compose-row">
+          <textarea
+            id="chat-input"
+            rows="2"
+            maxlength="2000"
+            placeholder="Message Grok · plan · ship · summon · docs…"
+            aria-label="Chat message"
+          ></textarea>
+          <button type="button" class="send" id="chat-send" title="Send (Enter)">Send</button>
+        </div>
+        <div class="chat-compose-hints" aria-label="Quick prompts">
+          <button type="button" data-prompt="open ship">Ship</button>
+          <button type="button" data-prompt="open plan">Plan</button>
+          <button type="button" data-prompt="hey grok">Summon</button>
+          <button type="button" data-prompt="open history">History</button>
+          <button type="button" data-prompt="open notes">Notes</button>
+        </div>
+      </div>
+      <ul class="chat-turns" id="chat-turns" aria-live="polite"></ul>
+      <p class="chat-meta">text + voice · /api/control · SpaceXAI</p>
     </main>
 
     <div class="chat-error" id="chat-error" role="alert"></div>
@@ -658,14 +795,182 @@
       }
       setInterval(pollErrors, 2500);
 
+      const TURNS_KEY = "lab.chat.turns.v1";
+      const turnsEl = document.getElementById("chat-turns");
+      const inputEl = document.getElementById("chat-input");
+      const sendBtn = document.getElementById("chat-send");
+
+      function loadTurns() {
+        try {
+          return JSON.parse(localStorage.getItem(TURNS_KEY) || "[]");
+        } catch {
+          return [];
+        }
+      }
+
+      function saveTurns(list) {
+        try {
+          localStorage.setItem(TURNS_KEY, JSON.stringify(list.slice(-40)));
+        } catch (_) {}
+      }
+
+      function renderTurns() {
+        if (!turnsEl) return;
+        const list = loadTurns();
+        turnsEl.innerHTML = list
+          .map(function (t) {
+            const role = t.role === "lab" ? "lab" : "you";
+            const label = role === "lab" ? "lab" : "you";
+            return (
+              "<li><span class=\"role " +
+              role +
+              "\">" +
+              label +
+              "</span>" +
+              escapeChat(t.text) +
+              "</li>"
+            );
+          })
+          .join("");
+        turnsEl.classList.toggle("has-items", list.length > 0);
+        turnsEl.scrollTop = turnsEl.scrollHeight;
+      }
+
+      function escapeChat(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function pushTurn(role, text) {
+        const list = loadTurns();
+        list.push({ role: role, text: text, t: Date.now() });
+        saveTurns(list);
+        renderTurns();
+      }
+
+      function setIntent(text, cls) {
+        const el = document.getElementById("voice-intent");
+        if (!el) return;
+        el.textContent = text;
+        el.className = "voice-intent " + (cls || "");
+      }
+
+      function setHeard(text) {
+        const el = document.getElementById("voice-heard");
+        if (el) el.textContent = text;
+      }
+
+      /**
+       * Local intent router for text (mirrors voice keywords; works offline).
+       * Real multi-turn LLM lives in the grok TUI — lab routes ops intents fast.
+       */
+      function routeText(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return;
+        pushTurn("you", t);
+        setHeard(t);
+        const low = t.toLowerCase();
+        let reply = "Got it. For full agent tools use the Grok TUI (`grok`).";
+        let intent = "message";
+
+        function openTool(mode) {
+          try {
+            if (window.opener && !window.opener.closed) {
+              window.opener.location.hash = "#/tool/" + mode;
+              window.opener.LabTools?.setMode?.(mode);
+            }
+          } catch (_) {}
+          control("focus_lab");
+        }
+
+        if (
+          /\b(open|show)\s+ship\b/.test(low) ||
+          /\bship\s+deck\b/.test(low) ||
+          /\b(open|show)\s+plan(\s+mode)?\b/.test(low) ||
+          /\b(open|show)\s+(skills?|plugins?|subagents?)\b/.test(low)
+        ) {
+          intent = "ship";
+          reply = "Opening Ship deck · plan · skills · plugins · Q&A · subagents";
+          openTool("ship");
+        } else if (/\b(hey\s+)?grok\b/.test(low) || /\bsummon\b/.test(low)) {
+          intent = "summon";
+          reply = "Summoning Grok workspace (multi-term)";
+          fetch("/api/summon-grok", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phrase: t }),
+          }).catch(function () {});
+          control("focus_lab");
+        } else if (/\bhistory\b/.test(low)) {
+          intent = "history";
+          reply = "Opening History";
+          openTool("history");
+        } else if (/\bnotes?\b/.test(low)) {
+          intent = "notes";
+          reply = "Opening Notes";
+          openTool("notes");
+        } else if (/\b(help|what can you)\b/.test(low)) {
+          intent = "help";
+          reply =
+            "Try: open ship · open plan · hey grok · open history · open notes · or hold the orb to talk.";
+        } else if (/\b(status|health)\b/.test(low)) {
+          intent = "health";
+          reply = "Checking lab health…";
+          fetch("/api/health", { cache: "no-store" })
+            .then(function (r) {
+              return r.json().then(function (j) {
+                pushTurn("lab", r.ok ? "Health OK · " + (j.status || "up") : "Health failed");
+              });
+            })
+            .catch(function () {
+              pushTurn("lab", "No /api/health (static Pages?) — run ./serve.sh for ops APIs");
+            });
+        }
+
+        setIntent(intent + " · " + reply, intent === "message" ? "miss" : "hit");
+        pushTurn("lab", reply);
+      }
+
+      function sendChat() {
+        if (!inputEl) return;
+        const t = inputEl.value.trim();
+        if (!t) return;
+        inputEl.value = "";
+        routeText(t);
+      }
+
+      sendBtn?.addEventListener("click", function (e) {
+        e.preventDefault();
+        sendChat();
+      });
+      inputEl?.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendChat();
+        }
+      });
+      document.querySelectorAll(".chat-compose-hints [data-prompt]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const p = btn.getAttribute("data-prompt") || "";
+          if (inputEl) inputEl.value = p;
+          sendChat();
+        });
+      });
+      renderTurns();
+
       window.LabChat = {
         control: control,
         showError: showErr,
         listen: () => document.getElementById("btn-listen")?.click(),
+        send: routeText,
+        turns: loadTurns,
       };
     </script>
     <script src="assets/walkie-dock.js?v=wave3" defer></script>
-    <script src="assets/grok-listen.js?v=wave3" defer></script>
+    <script src="assets/grok-listen.js?v=wave4" defer></script>
     <script src="assets/voice-spheres.js?v=v3" defer></script>
   </body>
 </html>

@@ -10,3 +10,4 @@ native/Grok Build Lab.app/
 **/Grok Build Lab.app/
 *.log
 .DS_Store
+.lab-shells.json

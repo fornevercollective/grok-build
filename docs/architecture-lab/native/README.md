@@ -109,7 +109,28 @@ Icon: `icons/AppIcon.icns` — unaltered Grok mark + rainbow aura chrome (brand-
 | **Window** | Lab (⌘1) · Open Chat (⌘2) · Open Stream (⌘3) · Link / Unlink · Hide satellites |
 | **Help** | Check for Updates… (Pages `version.json` vs local) |
 
-Refresh uses `load_url` + per-window `entry_url` (safe across triple webviews).
+Refresh uses `load_url` + per-window `entry_url` (safe across webviews).
+
+### First-launch crash (macOS) — fixed
+
+Symptom on cold Mac Mini / first run after build:
+
+```text
+triple webviews up …
+thread 'main' panicked at …/objc2-foundation…/string.rs:
+failed initializing object with -initWithBytes:length:encoding:
+panic in a function that cannot unwind
+Abort trap: 6
+```
+
+**Cause class:** concurrent creation of **three** WKWebViews + large init scripts right as AppKit/WebKit starts. `NSString::from_str` then panics inside an ObjC callback (cannot unwind → abort).
+
+**Mitigation (default):** only the **lab** webview is built at startup. **Chat** and **stream** attach their WKWebViews on first show (Cmd+2 / Cmd+3 / control API). Control handlers are also `catch_unwind`-wrapped.
+
+```bash
+# restore old “all three up front” behavior if needed
+LAB_NATIVE_EAGER=1 ./launch.sh float
+```
 
 ### Control API (agents / Grok / scripts)
 

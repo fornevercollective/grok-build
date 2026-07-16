@@ -12,7 +12,9 @@ Lab copies (URL-safe names, **artwork unchanged**):
 docs/architecture-lab/assets/brand/
 ```
 
-**Guidelines:** [x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines) (Feb 14, 2025)
+**Guidelines:** [x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines) (Feb 14, 2025)  
+**Full iterate page:** [Official xAI · legal · models · use cases](#/18-official-xai) (subprocessors · models · use cases)  
+**Logo pack:** [SpaceXAI_Grok_Assets.zip](https://data.x.ai/logos/SpaceXAI_Grok_Assets.zip)
 
 ---
 

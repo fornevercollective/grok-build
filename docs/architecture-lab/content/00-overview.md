@@ -29,7 +29,10 @@ This lab maps its architecture, extension surfaces, plugin ideas, and how to lev
 ## Quick links
 
 - [System architecture](#/01-architecture)
-- [Plugin catalog](#/05-plugin-catalog)
+- [**Ship everything · x.ai/cli matrix**](#/17-ship-everything) — plan · skills · plugins · Q&A · subagents
+- [**Triple shell · looped handoffs**](#/21-triple-shell) — α plan · β build · γ verify + upstream crates
+- [**Official xAI · legal · models · use cases**](#/18-official-xai) — subprocessors · brand · pricing · use-case map
+- [Plugin catalog](#/05-plugin-catalog) — **lab-ship** + gy-glyph-pins
 - [Leverage further](#/07-leverage)
 - [**Lab shells · native vs Electron**](#/15-lab-shells) — speed, footprint, control API
 - [GrokYtalkY companion](#/10-gy-companion)
@@ -37,6 +40,8 @@ This lab maps its architecture, extension surfaces, plugin ideas, and how to lev
 - [**Dev build · versions · forks · compliance**](#/14-dev-build-and-forks)
 - [**X / xAI · HackerOne bounty**](#/16-hackerone-x) — rewards, scope, our prize scorecard
 - [Riffing on docs](#/99-contributing-docs)
+
+**Interactive:** open the **Ship** tab (`#/tool/ship`) or say “open ship”.
 
 ## Brand note · SpaceXAI family
 

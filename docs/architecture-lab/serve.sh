@@ -13,6 +13,8 @@ echo "  Grok Build Lab"
 echo "  http://${HOST}:${PORT}"
 echo "  Pages: https://fornevercollective.github.io/grok-build/  (auto-deploy on push)"
 echo "  APIs: /api/health · /api/processes · /api/git-log · /api/summon-grok · /api/mitigate"
+echo "        /api/shells · handoff · advance · spawn · reset  (triple shell bus)"
+echo "        /api/pty/open · write · poll · resize · close  (in-browser interactive PTYs)"
 echo "        /api/voices · /api/tts  (SpaceXAI Grok Voice spheres)"
 echo "        /api/media/tools · resolve · stop · ffplay · hls/*  (yt-dlp · ffmpeg · blank · gy)"
 echo ""
@@ -23,7 +25,7 @@ if [[ -z "${LAB_DESKTOP:-}" ]] && command -v open >/dev/null 2>&1; then
 fi
 
 exec python3 - "$HOST" "$PORT" "$ROOT" <<'PY'
-import json, os, re, shutil, subprocess, sys, time, tempfile, threading, uuid, mimetypes
+import base64, fcntl, json, os, pty, re, select, shutil, struct, subprocess, sys, tempfile, termios, threading, time, uuid, mimetypes
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, quote
@@ -35,6 +37,321 @@ REPO = (ROOT / "../..").resolve()  # grok-build root
 GY_REPO = Path.home() / "Projects" / "GrokYtalkY"
 LOG_BUF = []  # in-memory event log
 MAX_LOG = 400
+
+# ── Interactive PTY hub (browser multi-term · localhost only) ─────
+PTY_LOCK = threading.Lock()
+PTY_SESSIONS = {}  # id -> PtySession
+PTY_MAX_BUF = 2_000_000  # ~2MB ring per session
+
+
+class PtySession:
+    """One interactive pseudo-terminal (bash or grok) for an in-browser column."""
+
+    def __init__(self, sid, profile, cols=100, rows=28, cwd=None):
+        self.id = sid
+        self.profile = profile
+        self.cols = max(40, int(cols))
+        self.rows = max(10, int(rows))
+        self.cwd = str(cwd or REPO)
+        self.buf = bytearray()
+        self.lock = threading.Lock()
+        self.alive = True
+        self.started_at = time.time()
+        self.master_fd = None
+        self.pid = None
+        self.cmd = []
+        self._open()
+
+    def _env(self):
+        env = os.environ.copy()
+        env["TERM"] = "xterm-256color"
+        env["COLORTERM"] = "truecolor"
+        env["LAB_SHELL"] = self.id
+        env["LAB_PROFILE"] = self.profile
+        env["GROK_BIN"] = find_grok() or env.get("GROK_BIN", "")
+        # force line discipline friendly
+        env.setdefault("LANG", "en_US.UTF-8")
+        return env
+
+    def _cmd_for_profile(self):
+        grok = find_grok()
+        shell = os.environ.get("SHELL") or "/bin/zsh"
+        if not Path(shell).is_file():
+            shell = "/bin/bash"
+        if self.profile == "grok" and grok:
+            # Interactive TUI — best effort inside PTY
+            return [grok]
+        if self.profile == "build" and grok:
+            # Login shell with banner + grok on PATH; user drives interact/deploy
+            banner = (
+                f"echo 'β BUILD · {self.cwd}'; "
+                f"echo 'Interact: type commands · Deploy: lab-deploy or grok -p …'; "
+                f"echo 'Upstream: tools · workspace · worktree · ptyctl'; "
+                f"export PS1='β build ❯ '; exec {shell} -i"
+            )
+            return [shell, "-lc", banner]
+        if self.profile == "verify" and grok:
+            banner = (
+                f"echo 'γ VERIFY · sandbox-friendly shell'; "
+                f"echo 'Run tests: cargo test / npm test · grok -p for review'; "
+                f"export PS1='γ verify ❯ '; exec {shell} -i"
+            )
+            return [shell, "-lc", banner]
+        if self.profile == "plan":
+            banner = (
+                f"echo 'α PLAN · read/explore shell (prefer no product writes)'; "
+                f"echo 'grok → interactive · grok -p \"…\" for headless plan'; "
+                f"export PS1='α plan ❯ '; exec {shell} -i"
+            )
+            return [shell, "-lc", banner]
+        # default bash/zsh interact
+        return [shell, "-i"]
+
+    def _open(self):
+        self.cmd = self._cmd_for_profile()
+        master, slave = pty.openpty()
+        self._set_winsize(master, self.rows, self.cols)
+        try:
+            self.pid = os.fork()
+        except OSError as e:
+            os.close(master)
+            os.close(slave)
+            raise RuntimeError(f"fork failed: {e}") from e
+        if self.pid == 0:
+            # child
+            try:
+                os.setsid()
+                os.dup2(slave, 0)
+                os.dup2(slave, 1)
+                os.dup2(slave, 2)
+                if slave > 2:
+                    os.close(slave)
+                os.close(master)
+                os.chdir(self.cwd)
+                os.execvpe(self.cmd[0], self.cmd, self._env())
+            except Exception:
+                os._exit(127)
+        # parent
+        os.close(slave)
+        flags = fcntl.fcntl(master, fcntl.F_GETFL)
+        fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        self.master_fd = master
+        t = threading.Thread(target=self._reader, name=f"pty-{self.id}", daemon=True)
+        t.start()
+        self._append(f"\r\n\x1b[90m[lab-pty]\x1b[0m session \x1b[36m{self.id}\x1b[0m profile=\x1b[33m{self.profile}\x1b[0m\r\n".encode())
+        self._append(f"\x1b[90m[lab-pty]\x1b[0m cwd={self.cwd}\r\n".encode())
+        self._append(f"\x1b[90m[lab-pty]\x1b[0m cmd={' '.join(self.cmd)}\r\n\r\n".encode())
+
+    @staticmethod
+    def _set_winsize(fd, rows, cols):
+        try:
+            fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+        except Exception:
+            pass
+
+    def _append(self, data: bytes):
+        if not data:
+            return
+        with self.lock:
+            self.buf.extend(data)
+            if len(self.buf) > PTY_MAX_BUF:
+                # drop oldest
+                drop = len(self.buf) - PTY_MAX_BUF
+                del self.buf[:drop]
+
+    def _reader(self):
+        while self.alive:
+            try:
+                if self.pid and os.waitpid(self.pid, os.WNOHANG)[0] != 0:
+                    self.alive = False
+                    self._append(b"\r\n\x1b[31m[lab-pty] process exited\x1b[0m\r\n")
+                    break
+            except ChildProcessError:
+                self.alive = False
+                break
+            try:
+                r, _, _ = select.select([self.master_fd], [], [], 0.15)
+            except Exception:
+                break
+            if not r:
+                continue
+            try:
+                chunk = os.read(self.master_fd, 8192)
+            except OSError:
+                self.alive = False
+                break
+            if not chunk:
+                self.alive = False
+                break
+            self._append(chunk)
+        self.alive = False
+
+    def write(self, data: bytes):
+        if not self.alive or self.master_fd is None:
+            raise RuntimeError("session not alive")
+        if not data:
+            return 0
+        return os.write(self.master_fd, data)
+
+    def read_since(self, offset: int):
+        with self.lock:
+            offset = max(0, min(int(offset), len(self.buf)))
+            data = bytes(self.buf[offset:])
+            return data, len(self.buf), self.alive
+
+    def resize(self, cols, rows):
+        self.cols = max(40, int(cols))
+        self.rows = max(10, int(rows))
+        if self.master_fd is not None:
+            self._set_winsize(self.master_fd, self.rows, self.cols)
+
+    def close(self):
+        self.alive = False
+        try:
+            if self.pid:
+                try:
+                    os.killpg(self.pid, 15)
+                except Exception:
+                    try:
+                        os.kill(self.pid, 15)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        try:
+            if self.master_fd is not None:
+                os.close(self.master_fd)
+        except Exception:
+            pass
+        self.master_fd = None
+
+    def info(self):
+        with self.lock:
+            blen = len(self.buf)
+        return {
+            "id": self.id,
+            "profile": self.profile,
+            "alive": self.alive,
+            "pid": self.pid,
+            "cols": self.cols,
+            "rows": self.rows,
+            "cwd": self.cwd,
+            "cmd": self.cmd,
+            "buf_len": blen,
+            "uptime_s": round(time.time() - self.started_at, 1),
+        }
+
+
+def pty_open(sid, profile="bash", cols=100, rows=28, cwd=None):
+    sid = str(sid or "").strip() or "plan"
+    if not re.match(r"^[a-zA-Z0-9_-]{1,32}$", sid):
+        return {"ok": False, "error": "invalid session id"}
+    profile = str(profile or "bash").lower()
+    if profile not in ("bash", "plan", "build", "verify", "grok", "shell"):
+        profile = "bash"
+    if profile == "shell":
+        profile = "bash"
+    with PTY_LOCK:
+        old = PTY_SESSIONS.get(sid)
+        if old:
+            try:
+                old.close()
+            except Exception:
+                pass
+        try:
+            sess = PtySession(sid, profile, cols=cols, rows=rows, cwd=cwd or REPO)
+        except Exception as e:
+            log_event("error", f"pty open failed: {e}", sid=sid)
+            return {"ok": False, "error": str(e)}
+        PTY_SESSIONS[sid] = sess
+    log_event("info", "pty opened", sid=sid, profile=profile)
+    return {"ok": True, "session": sess.info()}
+
+
+def pty_write(sid, data_text=None, data_b64=None):
+    with PTY_LOCK:
+        sess = PTY_SESSIONS.get(sid)
+    if not sess:
+        return {"ok": False, "error": "no session"}
+    raw = b""
+    if data_b64:
+        try:
+            raw = base64.b64decode(data_b64)
+        except Exception as e:
+            return {"ok": False, "error": f"b64: {e}"}
+    elif data_text is not None:
+        raw = str(data_text).encode("utf-8", errors="replace")
+    try:
+        n = sess.write(raw)
+        return {"ok": True, "wrote": n}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def pty_poll(sid, offset=0):
+    with PTY_LOCK:
+        sess = PTY_SESSIONS.get(sid)
+    if not sess:
+        return {"ok": False, "error": "no session", "offset": 0, "alive": False, "data": ""}
+    data, new_off, alive = sess.read_since(offset)
+    return {
+        "ok": True,
+        "id": sid,
+        "offset": new_off,
+        "alive": alive,
+        "data": base64.b64encode(data).decode("ascii") if data else "",
+        "bytes": len(data),
+    }
+
+
+def pty_resize(sid, cols, rows):
+    with PTY_LOCK:
+        sess = PTY_SESSIONS.get(sid)
+    if not sess:
+        return {"ok": False, "error": "no session"}
+    sess.resize(cols, rows)
+    return {"ok": True, "session": sess.info()}
+
+
+def pty_close(sid):
+    with PTY_LOCK:
+        sess = PTY_SESSIONS.pop(sid, None)
+    if sess:
+        sess.close()
+        log_event("info", "pty closed", sid=sid)
+        return {"ok": True, "closed": sid}
+    return {"ok": True, "closed": None}
+
+
+def pty_list():
+    with PTY_LOCK:
+        items = [s.info() for s in PTY_SESSIONS.values()]
+    return {"ok": True, "sessions": items}
+
+
+def pty_deploy(sid, kind="status"):
+    """Send a one-shot interact/deploy helper command into a live PTY."""
+    with PTY_LOCK:
+        sess = PTY_SESSIONS.get(sid)
+    if not sess:
+        return {"ok": False, "error": "no session — open PTY first"}
+    recipes = {
+        "status": "echo '── lab deploy status ──'; date; git -C \"$PWD\" status -sb 2>/dev/null | head -30; echo; ls -la | head -20\n",
+        "test": "echo '── lab deploy test ──'; (test -f Cargo.toml && cargo test -q -- --nocapture 2>&1 | tail -40) || (test -f package.json && npm test 2>&1 | tail -40) || echo 'no Cargo.toml/package.json tests'\n",
+        "fmt": "echo '── lab deploy fmt ──'; (command -v cargo >/dev/null && cargo fmt --all 2>&1 | tail -20) || echo 'cargo fmt n/a'\n",
+        "plan": "echo '── headless plan (grok) ──'; GROK=$(command -v grok || command -v xai-grok-pager); if [ -n \"$GROK\" ]; then $GROK -p \"Summarize repo structure and propose next ship steps\" --max-turns 8; else echo 'grok not on PATH'; fi\n",
+        "handoff-build": "echo 'POST handoff plan→build'; curl -s -X POST http://127.0.0.1:%d/api/shells/handoff -H 'Content-Type: application/json' -d '{\"from\":\"plan\",\"to\":\"build\",\"summary\":\"deploy area handoff\"}'; echo\n"
+        % PORT,
+        "handoff-verify": "echo 'POST handoff build→verify'; curl -s -X POST http://127.0.0.1:%d/api/shells/handoff -H 'Content-Type: application/json' -d '{\"from\":\"build\",\"to\":\"verify\",\"summary\":\"ready for verify\"}'; echo\n"
+        % PORT,
+    }
+    cmd = recipes.get(str(kind), recipes["status"])
+    try:
+        sess.write(cmd.encode("utf-8"))
+        return {"ok": True, "sent": kind, "session": sess.info()}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 
 # ── Media (yt-dlp · ffmpeg · ffplay · blank · gy hub) ─────────
 HLS_ROOT = Path(tempfile.gettempdir()) / "architecture-lab-hls"
@@ -668,8 +985,336 @@ def serve_hls_file(handler, job_id: str, rel: str):
     handler.wfile.write(data)
 
 
-def summon_grok(phrase="", multi=True):
+# ── Triple shell activity bus (α plan · β build · γ verify) ─────────
+SHELLS_PATH = ROOT / ".lab-shells.json"
+SHELL_LOCK = threading.Lock()
+SHELL_IDS = ("plan", "build", "verify")
+SHELL_META = {
+    "plan": {
+        "label": "α Plan",
+        "role": "explore · plan mode · Q&A · no product writes",
+        "upstream": "explore/plan subagents · codebase tools · memory",
+        "lab": "chat · Ship plan",
+    },
+    "build": {
+        "label": "β Build",
+        "role": "implement · worktree · tools/workspace/hunks",
+        "upstream": "xai-grok-tools · workspace · hunk-tracker · fast-worktree · ptyctl",
+        "lab": "multi-term · summon grok",
+    },
+    "verify": {
+        "label": "γ Verify",
+        "role": "sandbox tests · review · ship gate",
+        "upstream": "xai-grok-sandbox · tools · hooks · lab-review",
+        "lab": "stream · terminal footer · History",
+    },
+}
+MAX_HANDOFF_LOOP = 5
+
+
+def default_shells_state():
+    return {
+        "ok": True,
+        "version": 1,
+        "max_loop": MAX_HANDOFF_LOOP,
+        "shells": {
+            sid: {
+                "id": sid,
+                **SHELL_META[sid],
+                "status": "idle",  # idle | running | blocked | done
+                "pid": None,
+                "last_activity": None,
+                "recipe": None,
+            }
+            for sid in SHELL_IDS
+        },
+        "queue": [],  # handoff activities
+        "active_id": None,
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+
+
+def load_shells_state():
+    with SHELL_LOCK:
+        if SHELLS_PATH.is_file():
+            try:
+                data = json.loads(SHELLS_PATH.read_text(encoding="utf-8"))
+                if isinstance(data, dict) and "shells" in data:
+                    return data
+            except Exception:
+                pass
+        return default_shells_state()
+
+
+def save_shells_state(state):
+    state["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    with SHELL_LOCK:
+        try:
+            SHELLS_PATH.write_text(
+                json.dumps(state, indent=2) + "\n", encoding="utf-8"
+            )
+        except Exception as e:
+            log_event("warn", f"shells state not persisted: {e}")
+    return state
+
+
+def shells_spawn_recipe(shell_id, task=""):
+    """Document how to spin the upstream crates for this shell (no pager fork)."""
+    task = (task or "your task").replace("\n", " ")[:500]
+    bin_path = find_grok() or "grok"
+    repo = str(REPO)
+    if shell_id == "plan":
+        return {
+            "shell": "plan",
+            "mode": "headless-or-tui",
+            "interactive": f"{bin_path}   # then /plan or Shift+Tab Plan",
+            "headless": (
+                f'{bin_path} -p "Explore and write an implementation plan for: {task}" '
+                f'--disallowed-tools "search_replace" --max-turns 40 --cwd "{repo}"'
+            ),
+            "crates": [
+                "xai-grok-tools (read/grep/list)",
+                "xai-codebase-graph (via tools)",
+                "xai-grok-memory",
+                "xai-grok-subagent-resolution (explore/plan)",
+            ],
+            "notes": "No product file writes. Approve plan before handoff to build.",
+        }
+    if shell_id == "build":
+        return {
+            "shell": "build",
+            "mode": "headless-or-tui",
+            "interactive": f"{bin_path} --cwd \"{repo}\"",
+            "headless": (
+                f'{bin_path} -p "Implement the approved plan. Prefer worktree isolation. Task: {task}" '
+                f'--cwd "{repo}" --max-turns 80'
+            ),
+            "crates": [
+                "xai-grok-tools",
+                "xai-grok-workspace",
+                "xai-hunk-tracker",
+                "xai-fast-worktree",
+                "ptyctl / panda-shell",
+            ],
+            "notes": "Only shell that should mutate product code. Use spawn_subagent isolation=worktree.",
+        }
+    # verify
+    return {
+        "shell": "verify",
+        "mode": "headless-sandbox",
+        "interactive": f"{bin_path} --cwd \"{repo}\"   # review + run tests",
+        "headless": (
+            f'{bin_path} -p "Run tests and review regressions. Do not expand scope. Context: {task}" '
+            f'--cwd "{repo}" --sandbox workspace-write --disallowed-tools "Agent" --max-turns 25'
+        ),
+        "crates": [
+            "xai-grok-sandbox",
+            "xai-grok-tools (test/shell)",
+            "xai-grok-hooks",
+            "xai-grok-workspace (status)",
+        ],
+        "notes": "Prefer no product edits. Fail → handoff back to build or plan.",
+    }
+
+
+def shells_handoff(from_s, to_s, summary="", payload=None, loop=None):
+    from_s = str(from_s or "").lower().strip()
+    to_s = str(to_s or "").lower().strip()
+    if from_s not in SHELL_IDS or to_s not in SHELL_IDS:
+        return {"ok": False, "error": "from/to must be plan|build|verify"}
+    if from_s == to_s:
+        return {"ok": False, "error": "from and to must differ"}
+    state = load_shells_state()
+    # loop from last activity or provided
+    last_loop = 0
+    if state["queue"]:
+        last_loop = int(state["queue"][-1].get("loop") or 0)
+    if loop is None:
+        # same direction again after fail bumps loop when returning backward
+        if (from_s, to_s) in (("verify", "build"), ("verify", "plan"), ("build", "plan")):
+            loop = last_loop + 1
+        else:
+            loop = last_loop
+    loop = int(loop)
+    if loop > int(state.get("max_loop") or MAX_HANDOFF_LOOP):
+        return {
+            "ok": False,
+            "error": f"max_loop {state.get('max_loop')} exceeded — force plan revise or reset",
+            "state": state,
+        }
+    act_id = f"act-{int(time.time())}-{len(state['queue'])+1}"
+    activity = {
+        "id": act_id,
+        "from": from_s,
+        "to": to_s,
+        "summary": str(summary or "")[:2000],
+        "payload": payload if isinstance(payload, dict) else {},
+        "status": "pending",
+        "loop": loop,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "recipe": shells_spawn_recipe(to_s, str(summary or "")),
+    }
+    state["queue"].append(activity)
+    state["active_id"] = act_id
+    state["shells"][from_s]["status"] = "done"
+    state["shells"][from_s]["last_activity"] = act_id
+    state["shells"][to_s]["status"] = "running"
+    state["shells"][to_s]["last_activity"] = act_id
+    state["shells"][to_s]["recipe"] = activity["recipe"]
+    save_shells_state(state)
+    log_event(
+        "info",
+        f"handoff {from_s}→{to_s}",
+        act=act_id,
+        loop=loop,
+        summary=activity["summary"][:120],
+    )
+    return {"ok": True, "activity": activity, "state": state}
+
+
+def shells_advance(act_id=None, status="done", next_to=None, summary=""):
+    state = load_shells_state()
+    if not state["queue"]:
+        return {"ok": False, "error": "empty queue", "state": state}
+    act = None
+    if act_id:
+        for a in state["queue"]:
+            if a.get("id") == act_id:
+                act = a
+                break
+    else:
+        act = state["queue"][-1]
+    if not act:
+        return {"ok": False, "error": "activity not found", "state": state}
+    act["status"] = status
+    act["advanced_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    to_s = act.get("to")
+    if to_s in state["shells"]:
+        state["shells"][to_s]["status"] = "done" if status == "done" else "blocked"
+    save_shells_state(state)
+    out = {"ok": True, "activity": act, "state": state}
+    if next_to and status == "done":
+        hop = shells_handoff(to_s, next_to, summary=summary or f"auto from {act.get('id')}")
+        out["next"] = hop
+        out["state"] = hop.get("state") or state
+    return out
+
+
+def shells_set_status(shell_id, status="idle", pid=None):
+    shell_id = str(shell_id or "").lower()
+    if shell_id not in SHELL_IDS:
+        return {"ok": False, "error": "unknown shell"}
+    state = load_shells_state()
+    state["shells"][shell_id]["status"] = str(status or "idle")
+    if pid is not None:
+        state["shells"][shell_id]["pid"] = pid
+    save_shells_state(state)
+    return {"ok": True, "state": state}
+
+
+def shells_reset():
+    state = default_shells_state()
+    save_shells_state(state)
+    log_event("info", "shells bus reset")
+    return state
+
+
+def summon_triple_shells(task=""):
+    """Open three Terminal panes documenting α/β/γ spawn recipes (macOS)."""
+    bin_path = find_grok()
+    if not bin_path:
+        return {
+            "ok": False,
+            "launched": False,
+            "message": "grok not found",
+            "mitigation": "install grok or set GROK_BIN",
+        }
+    state = load_shells_state()
+    recipes = {sid: shells_spawn_recipe(sid, task) for sid in SHELL_IDS}
+    for sid in SHELL_IDS:
+        state["shells"][sid]["status"] = "running"
+        state["shells"][sid]["recipe"] = recipes[sid]
+    save_shells_state(state)
+
+    def esc(s):
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    # Echo recipes + start interactive grok in first pane; other panes show ready cmds
+    plan_cmd = (
+        f"echo 'α PLAN shell · tools read-only · /plan'; "
+        f"echo '{esc(recipes['plan']['headless'][:200])}…'; "
+        f"exec {esc(bin_path)}"
+    )
+    build_cmd = (
+        f"echo 'β BUILD shell · tools/workspace/worktree'; "
+        f"echo 'Run headless when plan approved:'; "
+        f"echo '{esc(recipes['build']['headless'][:220])}…'; "
+        f"exec {esc(bin_path)}"
+    )
+    verify_cmd = (
+        f"echo 'γ VERIFY shell · sandbox · tests'; "
+        f"echo '{esc(recipes['verify']['headless'][:220])}…'; "
+        f"exec {esc(bin_path)}"
+    )
+    panes = [
+        {"id": "plan", "title": "α Plan", "kind": "shell", "cmd": recipes["plan"]["interactive"]},
+        {"id": "build", "title": "β Build", "kind": "shell", "cmd": recipes["build"]["interactive"]},
+        {"id": "verify", "title": "γ Verify", "kind": "shell", "cmd": recipes["verify"]["interactive"]},
+    ]
+    if sys.platform == "darwin" and shutil.which("osascript"):
+        script = f'''
+        tell application "Terminal"
+          activate
+          do script "{esc(plan_cmd)}"
+          set custom title of front window to "α Plan"
+          delay 0.3
+          do script "{esc(build_cmd)}"
+          set custom title of front window to "β Build"
+          delay 0.25
+          do script "{esc(verify_cmd)}"
+          set custom title of front window to "γ Verify"
+        end tell
+        '''
+        try:
+            subprocess.Popen(
+                ["osascript", "-e", script],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            log_event("info", "summoned triple shells", task=task[:80])
+            return {
+                "ok": True,
+                "launched": True,
+                "via": "Terminal.app-triple",
+                "panes": panes,
+                "recipes": recipes,
+                "state": state,
+            }
+        except Exception as e:
+            log_event("error", f"triple summon failed: {e}")
+            return {"ok": False, "launched": False, "message": str(e), "recipes": recipes}
+    # non-macOS: single detach + recipes
+    subprocess.Popen(
+        [bin_path],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    return {
+        "ok": True,
+        "launched": True,
+        "via": "detach-single",
+        "panes": panes[:1],
+        "recipes": recipes,
+        "state": state,
+        "message": "Opened one grok; use recipes for β/γ in other terminals",
+    }
+
+
+def summon_grok(phrase="", multi=True, triple=False):
     """Launch Grok; on macOS open multi Terminal panes (Grok + process watch + lab API)."""
+    if triple or (phrase and re.search(r"\b(triple|three shells|handoff)\b", phrase, re.I)):
+        return summon_triple_shells(phrase)
     bin_path = find_grok()
     if not bin_path:
         log_event("error", "summon failed: grok not found")
@@ -1166,7 +1811,25 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, git_log(limit, repo))
         if path == "/api/summon-grok":
             multi = (q.get("multi") or ["1"])[0] != "0"
-            return self._json(200, summon_grok("GET", multi=multi))
+            triple = (q.get("triple") or ["0"])[0] != "0"
+            return self._json(200, summon_grok("GET", multi=multi, triple=triple))
+        if path == "/api/shells":
+            return self._json(200, load_shells_state())
+        if path == "/api/shells/recipes":
+            task = (q.get("task") or [""])[0]
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "recipes": {sid: shells_spawn_recipe(sid, task) for sid in SHELL_IDS},
+                },
+            )
+        if path == "/api/pty/list":
+            return self._json(200, pty_list())
+        if path == "/api/pty/poll":
+            sid = (q.get("id") or ["plan"])[0]
+            off = int((q.get("offset") or ["0"])[0] or 0)
+            return self._json(200, pty_poll(sid, off))
         if path == "/api/mitigate":
             action = (q.get("action") or [""])[0]
             return self._json(200, mitigate(action))
@@ -1198,10 +1861,111 @@ class Handler(SimpleHTTPRequestHandler):
         data = self._read_json()
         if path == "/api/summon-grok":
             multi = data.get("multi", True)
+            triple = bool(data.get("triple") or data.get("shells") == "triple")
             return self._json(
                 200,
-                summon_grok(str(data.get("phrase") or ""), multi=bool(multi)),
+                summon_grok(
+                    str(data.get("phrase") or ""),
+                    multi=bool(multi),
+                    triple=triple,
+                ),
             )
+        if path == "/api/shells":
+            # update one shell status
+            sid = data.get("id") or data.get("shell")
+            if sid:
+                return self._json(
+                    200,
+                    shells_set_status(
+                        sid,
+                        status=str(data.get("status") or "idle"),
+                        pid=data.get("pid"),
+                    ),
+                )
+            return self._json(200, load_shells_state())
+        if path == "/api/shells/handoff":
+            return self._json(
+                200,
+                shells_handoff(
+                    data.get("from"),
+                    data.get("to"),
+                    summary=str(data.get("summary") or data.get("msg") or ""),
+                    payload=data.get("payload"),
+                    loop=data.get("loop"),
+                ),
+            )
+        if path == "/api/shells/advance":
+            return self._json(
+                200,
+                shells_advance(
+                    act_id=data.get("id") or data.get("act_id"),
+                    status=str(data.get("status") or "done"),
+                    next_to=data.get("next_to") or data.get("next"),
+                    summary=str(data.get("summary") or ""),
+                ),
+            )
+        if path == "/api/shells/spawn":
+            if data.get("triple") or data.get("mode") == "triple":
+                return self._json(
+                    200, summon_triple_shells(str(data.get("task") or data.get("phrase") or ""))
+                )
+            sid = str(data.get("shell") or data.get("id") or "plan")
+            recipe = shells_spawn_recipe(sid, str(data.get("task") or ""))
+            shells_set_status(sid, "running")
+            return self._json(200, {"ok": True, "recipe": recipe, "state": load_shells_state()})
+        if path == "/api/shells/reset":
+            return self._json(200, shells_reset())
+        if path == "/api/pty/open":
+            return self._json(
+                200,
+                pty_open(
+                    data.get("id") or data.get("shell") or "plan",
+                    profile=str(data.get("profile") or data.get("mode") or "plan"),
+                    cols=int(data.get("cols") or 100),
+                    rows=int(data.get("rows") or 28),
+                    cwd=data.get("cwd"),
+                ),
+            )
+        if path == "/api/pty/write":
+            return self._json(
+                200,
+                pty_write(
+                    str(data.get("id") or "plan"),
+                    data_text=data.get("data") if data.get("data") is not None else data.get("text"),
+                    data_b64=data.get("b64") or data.get("data_b64"),
+                ),
+            )
+        if path == "/api/pty/resize":
+            return self._json(
+                200,
+                pty_resize(
+                    str(data.get("id") or "plan"),
+                    cols=int(data.get("cols") or 80),
+                    rows=int(data.get("rows") or 24),
+                ),
+            )
+        if path == "/api/pty/close":
+            return self._json(200, pty_close(str(data.get("id") or "plan")))
+        if path == "/api/pty/deploy":
+            return self._json(
+                200,
+                pty_deploy(
+                    str(data.get("id") or data.get("shell") or "build"),
+                    kind=str(data.get("kind") or data.get("action") or "status"),
+                ),
+            )
+        if path == "/api/pty/open-triple":
+            # open α plan · β build · γ verify interactive PTYs
+            out = {}
+            for sid, prof in (("plan", "plan"), ("build", "build"), ("verify", "verify")):
+                out[sid] = pty_open(
+                    sid,
+                    profile=prof,
+                    cols=int(data.get("cols") or 90),
+                    rows=int(data.get("rows") or 26),
+                    cwd=data.get("cwd"),
+                )
+            return self._json(200, {"ok": True, "sessions": out})
         if path == "/api/mitigate":
             return self._json(200, mitigate(str(data.get("action") or "")))
         if path == "/api/events":

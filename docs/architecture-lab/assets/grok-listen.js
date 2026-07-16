@@ -233,6 +233,23 @@
       };
     }
 
+    if (
+      /\b(open|show)\s+ship\b/.test(t) ||
+      /\bship\s+deck\b/.test(t) ||
+      /\b(open|show)\s+plan(\s+mode)?\b/.test(t) ||
+      /\b(open|show)\s+(skills?|plugins?|subagents?|q\s*&\s*a|q and a)\b/.test(t)
+    ) {
+      return {
+        id: "ship",
+        label: "open Ship",
+        conf: 0.9,
+        run: () => {
+          location.hash = "#/tool/ship";
+          window.LabTools?.setMode?.("ship");
+        },
+      };
+    }
+
     if (/\b(open\s+)?history\b/.test(t)) {
       return {
         id: "history",
@@ -240,6 +257,7 @@
         conf: 0.88,
         run: () => {
           location.hash = "#/tool/history";
+          window.LabTools?.setMode?.("history");
         },
       };
     }
@@ -261,6 +279,23 @@
         label: "open multi-term",
         conf: 0.9,
         run: () => window.LabTools?.openMultiTerm?.() || window.dispatchEvent(new CustomEvent("lab:summon-grok", { detail: { phrase: raw } })),
+      };
+    }
+
+    if (/\b(triple\s+shells?|three\s+shells?|handoff\s+loop)\b/.test(t)) {
+      return {
+        id: "triple-shells",
+        label: "spawn triple shells",
+        conf: 0.92,
+        run: () => {
+          location.hash = "#/tool/ship";
+          window.LabTools?.setMode?.("ship");
+          fetch("/api/shells/spawn", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ triple: true, task: raw }),
+          }).catch(() => {});
+        },
       };
     }
 

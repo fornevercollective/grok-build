@@ -8,10 +8,26 @@ Compliance + install details: [Dev build · versions · forks](#/14-dev-build-an
 
 | Plugin | Bundle | Role | Guideline status |
 |--------|--------|------|------------------|
+| **lab-ship** | skills · commands · agents · hooks | Plan loop · Q&A · `/ship-check` · lab-explorer / lab-tester · SessionStart | In-tree under `docs/architecture-lab/plugin/lab-ship/`. Install + validate below. |
 | **gy-glyph-pins** | skills · commands · hooks | Multi-user mesh pins above Grok; `/glyph-pins`, `/with-grok` | Manifest valid (`grok plugin validate`). Enable in TUI if not listed. Source: **GrokYtalkY** (not monorepo). |
 | **cloudflare** | marketplace skills | Workers / CF platform (official marketplace) | Marketplace install path |
 
-Install path for GY:
+### lab-ship install
+
+```bash
+# from grok-build repo root
+ln -sfn "$(pwd)/docs/architecture-lab/plugin/lab-ship" ~/.grok/plugins/lab-ship
+grok plugin validate ~/.grok/plugins/lab-ship
+# TUI: Ctrl+L → Plugins → enable lab-ship
+```
+
+Skills: `plan-loop` · `lab-review` · `ship-checklist`  
+Commands: `/plan-loop` · `/ship-check`  
+Agents: `lab-explorer` · `lab-tester`
+
+Interactive lab UI: **Ship** tab (`#/tool/ship`) · doc [Ship everything](#/17-ship-everything).
+
+### GY install
 
 ```text
 ~/.grok/plugins/gy-glyph-pins
@@ -23,7 +39,7 @@ Install path for GY:
 #   grok plugin validate ~/.grok/plugins/gy-glyph-pins
 ```
 
-**Grok Build Lab is not a plugin.** It is a companion docs + float shell under `docs/architecture-lab/`.
+**Grok Build Lab is not a plugin.** It is a companion docs + float shell under `docs/architecture-lab/`. The **lab-ship** plugin is the installable Grok extension that pairs with the lab UI.
 
 ## Build next (high value)
 
@@ -34,7 +50,7 @@ Install path for GY:
 | **repo-ship** | skills · hooks | `/ship`; PostToolUse fmt/test |
 | **review-gate** | agents · hooks | Review subagent; Stop → ticket MCP |
 | **dojo-colossus** | skills · agents · MCP | Cluster jobs, GPU queue, log tail |
-| **design-loop** | skills · agents | `/design` + plan agent |
+| **design-loop** | skills · agents | `/design` + plan agent (pairs with plan-loop) |
 | **mcp-browser-lab** | `.mcp.json` | Playwright verify after UI edits |
 | **mcp-data** | `.mcp.json` | Postgres / Notion / Jira tools |
 | **lsp-rust-suite** | `.lsp.json` | rust-analyzer (+ gopls, …) |

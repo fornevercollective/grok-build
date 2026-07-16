@@ -1,6 +1,6 @@
 /**
- * Grok Build Lab tools: Terminal · Notes · Table · X desk · Broadcast · History
- * Inspired by mueee history/notes/pad-datatable + burst X Spaces/RTMP.
+ * Grok Build Lab tools: Ship · Terminal · Notes · Table · X desk · Broadcast · History
+ * Inspired by mueee history/notes/pad-datatable + burst X Spaces/RTMP + x.ai/cli ship surface.
  */
 (function () {
   "use strict";
@@ -29,13 +29,57 @@
     commitIdx: 0,
   };
 
-  /** Default center multi-terminal panes (Summon Grok workspace). */
+  /** Default center multi-terminal panes — three columns α | β | γ first. */
   function defaultMtPanes() {
     return [
-      { id: "grok", title: "Grok", kind: "grok", body: "idle — summon to launch" },
+      {
+        id: "plan",
+        title: "α Plan",
+        kind: "shell",
+        body:
+          "α PLAN · column 1\n" +
+          "explore / plan mode · no product writes\n" +
+          "crates: tools(read) · codebase-graph · memory · explore/plan subagents\n" +
+          "────────────────\n" +
+          "idle — Open Grok or Spawn triple",
+      },
+      {
+        id: "build",
+        title: "β Build",
+        kind: "shell",
+        body:
+          "β BUILD · column 2\n" +
+          "implement · worktree preferred\n" +
+          "crates: tools · workspace · hunk-tracker · fast-worktree · ptyctl\n" +
+          "────────────────\n" +
+          "idle — handoff from plan after approve",
+      },
+      {
+        id: "verify",
+        title: "γ Verify",
+        kind: "shell",
+        body:
+          "γ VERIFY · column 3\n" +
+          "sandbox tests · review · ship gate\n" +
+          "crates: sandbox · tools(test) · hooks\n" +
+          "────────────────\n" +
+          "idle — handoff from build when done",
+      },
       { id: "procs", title: "Processes", kind: "procs", body: "…" },
       { id: "events", title: "Events", kind: "events", body: "…" },
     ];
+  }
+
+  function setMtCols(n) {
+    const grid = $("multi-term-grid");
+    if (!grid) return;
+    grid.classList.remove("mt-cols-3", "mt-cols-2", "mt-cols-auto");
+    const mode = n === 2 ? "mt-cols-2" : n === "auto" ? "mt-cols-auto" : "mt-cols-3";
+    grid.classList.add(mode);
+    grid.dataset.cols = String(n === "auto" ? "auto" : n);
+    try {
+      localStorage.setItem("lab.mt.cols", String(n === "auto" ? "auto" : n));
+    } catch (_) {}
   }
 
   function $(id) {
@@ -97,6 +141,12 @@
     if (mode === "history") {
       // Lazy: only hit /api/git-log when History tab is selected
       refreshHistory();
+    }
+    if (mode === "ship") {
+      // Remount ship deck when tab is selected (cheap; state is in localStorage)
+      try {
+        window.LabShip?.refresh?.();
+      } catch (_) {}
     }
     location.hash =
       mode === "docs"
@@ -354,6 +404,28 @@
     tabs.innerHTML = "";
     grid.innerHTML = "";
 
+    // Restore column mode (default 3)
+    try {
+      const saved = localStorage.getItem("lab.mt.cols");
+      if (saved === "2") setMtCols(2);
+      else if (saved === "auto") setMtCols("auto");
+      else setMtCols(3);
+    } catch (_) {
+      setMtCols(3);
+    }
+
+    // Stable order: shells first (3 columns), then support panes
+    const order = ["plan", "build", "verify", "procs", "events"];
+    const sorted = state.mtPanes.slice().sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    state.mtPanes = sorted;
+    if (!state.mtActive || !state.mtPanes.find((p) => p.id === state.mtActive)) {
+      state.mtActive = "plan";
+    }
+
     state.mtPanes.forEach((p) => {
       const tab = document.createElement("button");
       tab.type = "button";
@@ -361,9 +433,9 @@
       tab.setAttribute("role", "tab");
       tab.dataset.id = p.id;
       tab.textContent = p.title;
+      tab.title = "Focus " + p.title + " (all columns stay visible)";
       tab.addEventListener("click", () => {
         state.mtActive = p.id;
-        // show all panes in grid; highlight active tab + pane
         document.querySelectorAll(".mt-tab").forEach((t) => {
           t.classList.toggle("active", t.dataset.id === p.id);
         });
@@ -461,7 +533,37 @@
         writeMtBody("events", "(no events yet)");
       }
 
-      // Grok pane — keep session text but refresh health line if idle
+      // Triple shell bus → three columns
+      try {
+        const shells = await api("/api/shells").catch(() => null);
+        if (shells && shells.shells) {
+          const q = shells.queue || [];
+          const last = q.length ? q[q.length - 1] : null;
+          ["plan", "build", "verify"].forEach((id) => {
+            const s = shells.shells[id];
+            if (!s) return;
+            const recipe = (s.recipe && (s.recipe.headless || s.recipe.interactive)) || "";
+            const hops = q
+              .filter((a) => a.to === id || a.from === id)
+              .slice(-3)
+              .map((a) => a.from + "→" + a.to + " [" + a.status + "] " + (a.summary || "").slice(0, 60));
+            const lines = [
+              s.label || id,
+              "status: " + (s.status || "idle"),
+              "role: " + (s.role || ""),
+              "upstream: " + (s.upstream || ""),
+              "lab: " + (s.lab || ""),
+              last && last.to === id ? "active hop: " + (last.summary || last.id) : "",
+              hops.length ? "── recent ──\n" + hops.join("\n") : "── no handoffs yet ──",
+              recipe ? "── recipe ──\n" + recipe.slice(0, 400) : "",
+              health ? "bin: " + (health.grok || "—") : "",
+            ].filter(Boolean);
+            writeMtBody(id, lines.join("\n"));
+          });
+        }
+      } catch (_) {}
+
+      // Legacy grok pane if present
       const grokPane = state.mtPanes.find((p) => p.id === "grok");
       if (grokPane && health && (!grokPane.body || grokPane.body.startsWith("idle"))) {
         writeMtBody(
@@ -474,8 +576,6 @@
             "\nrepo: " +
             (health.repo || "—")
         );
-      } else if (grokPane && health && grokPane.body && grokPane.body.includes("bin:")) {
-        // leave launch transcript; append live bin status on last line only if short
       }
     } catch (e) {
       writeMtBody("events", "refresh failed: " + e.message);
@@ -485,36 +585,51 @@
   async function summonGrokMulti(phrase) {
     setMtStatus("summoning…", "hot");
     openMultiTermUiOnly();
+    setMtCols(3);
     try {
+      // Prefer triple shells so α|β|γ map to three OS terminals + three web columns
       const r = await api("/api/summon-grok", {
         method: "POST",
-        body: JSON.stringify({ phrase: phrase || "ui", multi: true, source: "multi-term" }),
+        body: JSON.stringify({
+          phrase: phrase || "ui",
+          multi: true,
+          triple: true,
+          source: "multi-term",
+        }),
       });
       const panes = r.panes || [];
-      const lines = [
-        "[" + new Date().toLocaleTimeString() + "] summon",
+      const recipes = r.recipes || {};
+      const stamp = "[" + new Date().toLocaleTimeString() + "] summon";
+      const baseLines = [
+        stamp,
         "launched: " + !!r.launched,
         "via: " + (r.via || "—"),
-        "bin: " + (r.bin || "—"),
-        "phrase: " + (r.phrase || phrase || ""),
         r.message ? "msg: " + r.message : "",
         r.mitigation ? "mitigation: " + r.mitigation : "",
-        "",
-        "── terminal panes ──",
-      ]
-        .filter(Boolean)
-        .concat(
-          panes.length
-            ? panes.map((p) => "• " + p.title + " [" + p.kind + "] " + (p.cmd || ""))
-            : ["(no OS panes — in-lab multi-term only)"]
-        );
-      writeMtBody("grok", lines.join("\n"));
+      ].filter(Boolean);
 
-      // Ensure we have matching tabs if server returned named panes
+      ["plan", "build", "verify"].forEach((id) => {
+        const rec = recipes[id];
+        const paneInfo = panes.find((p) => p.id === id);
+        const lines = baseLines
+          .concat([
+            "",
+            "column: " + id,
+            paneInfo ? "os: " + (paneInfo.title || id) : "os: (use Open Grok Terminal)",
+            rec ? "interactive:\n" + rec.interactive : "",
+            rec ? "headless:\n" + (rec.headless || "").slice(0, 360) : "",
+            rec && rec.crates ? "crates:\n• " + rec.crates.join("\n• ") : "",
+            rec && rec.notes ? "notes: " + rec.notes : "",
+          ])
+          .filter(Boolean);
+        writeMtBody(id, lines.join("\n"));
+      });
+
       if (panes.length) {
         const ids = new Set(state.mtPanes.map((p) => p.id));
         panes.forEach((p) => {
-          if (!ids.has(p.id) && p.id !== "api") {
+          if (!ids.has(p.id) && !["api", "procs"].includes(p.id)) {
+            if (["plan", "build", "verify"].includes(p.id)) return;
             state.mtPanes.push({
               id: p.id,
               title: p.title || p.id,
@@ -524,25 +639,19 @@
             ids.add(p.id);
           }
         });
-        // Map server "api" watch into events pane note
-        const apiPane = panes.find((p) => p.id === "api");
-        if (apiPane) {
-          writeMtBody(
-            "events",
-            "(OS Lab API watch launched in Terminal.app)\n" + (apiPane.cmd || "")
-          );
-        }
         renderMultiTerm();
-        // re-apply bodies after re-render
         state.mtPanes.forEach((p) => writeMtBody(p.id, p.body));
       }
 
-      setMtStatus(r.launched ? "live · multi" : r.message || "check", r.launched ? "ok" : "warn");
+      setMtStatus(
+        r.launched ? "live · 3 shells" : r.message || "check",
+        r.launched ? "ok" : "warn"
+      );
       await api("/api/events", {
         method: "POST",
         body: JSON.stringify({
           level: "mitigate",
-          msg: "summon-grok multi → " + JSON.stringify({ launched: r.launched, via: r.via }),
+          msg: "summon triple → " + JSON.stringify({ launched: r.launched, via: r.via }),
           source: "ui-multi-term",
         }),
       }).catch(() => {});
@@ -550,7 +659,7 @@
       refreshMultiTerm();
     } catch (e) {
       writeMtBody(
-        "grok",
+        "plan",
         "summon failed: " + e.message + "\n\nmitigation: restart ./serve.sh from architecture-lab"
       );
       setMtStatus("error", "err");
@@ -1483,39 +1592,46 @@ gy space mute all`;
     $("btn-mit-grok")?.addEventListener("click", () =>
       openMultiTerm({ summon: true, phrase: "summon-grok" })
     );
-    $("btn-open-mt")?.addEventListener("click", () => openMultiTerm());
+    $("btn-open-mt")?.addEventListener("click", () => {
+      openMultiTerm();
+      setMtCols(3);
+    });
     $("btn-mt-close")?.addEventListener("click", closeMultiTerm);
     $("btn-mt-refresh")?.addEventListener("click", () => {
       refreshMultiTerm();
       refreshTerminal();
+    });
+    $("btn-mt-cols-3")?.addEventListener("click", () => {
+      setMtCols(3);
+      openMultiTermUiOnly();
+      setMtStatus("3 columns · α | β | γ", "ok");
     });
     $("btn-mt-add")?.addEventListener("click", addMtPane);
     $("btn-mt-open-grok")?.addEventListener("click", () =>
       openMultiTerm({ summon: true, phrase: "open-grok" })
     );
     $("btn-mt-open-term")?.addEventListener("click", () =>
-      openMultiTerm({ summon: true, phrase: "open-grok-terminal" })
+      openMultiTerm({ summon: true, phrase: "triple shells" })
     );
 
-    // Voice / Listen “hey grok” and any lab summon → center multi-term
+    // Voice / Listen “hey grok” and any lab summon → center multi-term (3 cols)
     window.addEventListener("lab:summon-grok", (ev) => {
       const phrase = (ev && ev.detail && ev.detail.phrase) || "hey-grok";
-      // UI open immediately; listen module also POSTs /api/summon-grok
       openMultiTermUiOnly();
+      setMtCols(3);
       setMtStatus("summoning…", "hot");
       writeMtBody(
-        "grok",
+        "plan",
         "[" +
           new Date().toLocaleTimeString() +
           "] lab:summon-grok\nphrase: " +
           phrase +
-          "\n(OS Terminal multi-panes via listen API · this grid is the in-lab workspace)"
+          "\n(3 columns α|β|γ · OS Terminal via Open Grok Terminal)"
       );
-      // refresh after listen API has a moment to respond
       setTimeout(() => {
         refreshMultiTerm();
         refreshTerminal();
-        setMtStatus("live · multi", "ok");
+        setMtStatus("live · 3 cols", "ok");
       }, 600);
     });
 

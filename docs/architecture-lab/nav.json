@@ -25,7 +25,9 @@
       "items": [
         { "id": "07-leverage", "label": "How to leverage further" },
         { "id": "08-decision-guide", "label": "Decision guide" },
-        { "id": "09-roadmap", "label": "Roadmap & riff backlog" }
+        { "id": "09-roadmap", "label": "Roadmap & riff backlog" },
+        { "id": "17-ship-everything", "label": "Ship everything · x.ai/cli" },
+        { "id": "21-triple-shell", "label": "Triple shell · handoffs" }
       ]
     },
     {
@@ -40,6 +42,7 @@
       "title": "Meta",
       "items": [
         { "id": "12-brand", "label": "SpaceXAI / Grok brand" },
+        { "id": "18-official-xai", "label": "Official xAI · legal · models · use cases" },
         { "id": "13-tools", "label": "Lab tools workspace" },
         { "id": "14-dev-build-and-forks", "label": "Dev build · versions · forks" },
         { "id": "16-hackerone-x", "label": "X / xAI · HackerOne bounty" },
