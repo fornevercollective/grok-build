@@ -92,7 +92,7 @@ Anything with an API → MCP server in a plugin, not a core crate:
 
 **Float app automation:** `POST /api/control` on the native shell (lab · chat · stream, dock/link, pin, eval JS, safe refresh). Full route + performance map: [Lab shells · native vs Electron](#/15-lab-shells).
 
-**Fork tools (patterns, not wholesale adopt):** [Fork leverage map](#/19-fork-leverage) — Gork privacy binary, GrokPtah Tauri desktop, grok-oss packaging/OpenRouter, agent-tui dual-install, open-grok provider design.
+**Fork tools (patterns, not wholesale adopt):** [Fork leverage map](#/19-fork-leverage) — **mweinbach/open-grok** (Codex path · dual `open-grok` install), Gork privacy binary, GrokPtah Tauri desktop, grok-oss packaging/OpenRouter, agent-tui dual-install, open-grok **org** multi-provider design.
 
 Fork / version / compliance map: [Dev build · versions · forks](#/14-dev-build-and-forks).
 

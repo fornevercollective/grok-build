@@ -2,8 +2,33 @@
 
 Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks)** (~1.8k total) for **leverage tools and surfaces** — not an endorsement. Upstream **does not accept external PRs**; community trees are independent Apache-2.0 experiments.
 
-> **Snapshot:** 2026-07-16 (GitHub API + READMEs / `FORK.md`). Re-check live repos before adopting code.  
+> **Snapshot:** 2026-07-16 (refreshed) · upstream tip `8adf901` · ~1.9k forks. Re-check live repos before adopting code.  
 > **Default path still wins:** plugins · skills · hooks · MCP · ACP without forking the pager — see [Extension surfaces](#/04-extension-surfaces) and [Leverage](#/07-leverage).
+
+---
+
+## Standout · Codex path (pivot)
+
+**Do not confuse these two:**
+
+| Project | Org / owner | Angle |
+|---------|-------------|--------|
+| **[mweinbach/open-grok](https://github.com/mweinbach/open-grok)** | personal | **Codex path** — ChatGPT OAuth, Code Mode, dual install as `open-grok` beside `grok` |
+| **[open-grok/open-grok](https://github.com/open-grok/open-grok)** | open-grok org | **Multi-provider design** dossier / Pi-style platform plan (runtime still maturing) |
+
+### mweinbach/open-grok — what to support
+
+| Surface | Notes |
+|---------|--------|
+| Binary | **`open-grok`** — installable **next to** official `grok` (no replace) |
+| Install (Apple Silicon) | `curl -fsSL https://github.com/mweinbach/open-grok/releases/latest/download/install.sh \| bash` |
+| Config / auth | Codex creds under `~/.opengrok/` (e.g. `codex-auth.json`); xAI path still available |
+| Code Mode | Persistent JS `exec`/`wait` runtime (Codex-style); tools also via `tools.*` |
+| Models | Live Codex catalog when signed in; Max/Ultra effort parity; compaction V2 |
+| Search | Provider-aware: xAI web/X tools vs OpenAI `web_search` |
+| Docs in-tree | `docs/code-mode-port.md` · `docs/codex-provider-port.md` |
+
+**Lab posture:** treat as a **parallel harness** for Codex workflows — not a monorepo merge target. Keep official Grok Build + Grok Build Lab for xAI path; point people at open-grok when they need Codex Code Mode. Cross-link from Ship / triple-shell discussions as “provider dual-stack pattern.”
 
 ---
 
@@ -11,8 +36,8 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 
 | Bucket | Reality |
 |--------|---------|
-| **Mirror forks** | Vast majority — stock README, no product delta |
-| **Productized forks** | Handful — telemetry off, desktop UI, packaging, multi-provider plans |
+| **Mirror forks** | Vast majority — stock README, no product delta (~1.9k total) |
+| **Productized forks** | Handful — Codex path, privacy, desktop UI, packaging, multi-provider plans |
 | **This lab** | [fornevercollective/grok-build](https://github.com/fornevercollective/grok-build) · **Grok Build Lab** companion under `docs/architecture-lab/` |
 
 **Rule of thumb:** steal **patterns and packaging**, not whole monorepos. Prefer small diffs and extension bus first.
@@ -23,10 +48,11 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 
 | Fork | ★ (approx) | Leverage type | What to take |
 |------|------------|---------------|--------------|
-| [thedavidweng/gork-build](https://github.com/thedavidweng/gork-build) | ~21 | Privacy distro | **VSCodium-style** `gork` binary: Mixpanel/`events` hard-off, no remote re-enable, no `x.ai/cli` auto-update |
+| [thedavidweng/gork-build](https://github.com/thedavidweng/gork-build) | ~22 | Privacy distro | **VSCodium-style** `gork` binary: Mixpanel/`events` hard-off, no remote re-enable, no `x.ai/cli` auto-update |
+| **[mweinbach/open-grok](https://github.com/mweinbach/open-grok)** | ~1 | **Codex path** | **`open-grok`**: ChatGPT OAuth, Code Mode, live Codex catalog, dual install beside `grok` |
+| [open-grok/open-grok](https://github.com/open-grok/open-grok) | ~2 | Multi-provider **design** | Architecture dossier + `goals/open-grok-provider-platform/` (Pi-style providers, YAML). Different from mweinbach Codex fork |
 | [chriscase/GrokPtah](https://github.com/chriscase/GrokPtah) | ~1 | **Desktop agent** | **Tauri 2 + React**: tool cards, permissions, plan mode, git, multi-tab PTY, MCP/plugins, chat search, `~/.grokptah` |
 | [Jane-o-O-o-O/grok-build-gui](https://github.com/Jane-o-O-o-O/grok-build-gui) | ~1 | **Electron desktop** | Desktop over native agent via **streaming-json** — workbench, settings, model picker |
-| [open-grok/open-grok](https://github.com/open-grok/open-grok) | ~2 | Multi-provider **design** | Architecture dossier + `goals/open-grok-provider-platform/` (Pi-style providers, YAML custom models). Runtime multi-provider **not fully shipped** |
 | [SurmountSystems/grok-oss](https://github.com/SurmountSystems/grok-oss) | ~1 | Community mainline | Accepts PRs; binary **`grok-oss`**; **OpenRouter** option; **AUR** + **Nix** + `sync-upstream.sh` |
 | [rossnoah/grok-build-no-telemetry](https://github.com/rossnoah/grok-build-no-telemetry) | ~1 | Patch series | Quilt-style patches + releases; strip product telemetry; keep optional **external OTEL** |
 | [jasonkneen/agent-tui](https://github.com/jasonkneen/agent-tui) | ~1 | Full rebrand | **`agent-tui`** binary · `~/.agent-tui` · docs which **wire contracts stay xAI-named** (auth headers, model ids) |
@@ -63,8 +89,9 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 
 | Tool / surface | Source | Use with Lab |
 |----------------|--------|--------------|
+| **Codex Code Mode + OAuth** | **mweinbach/open-grok** | Parallel install `open-grok`; dual-stack next to official `grok` |
 | OpenRouter Grok option | grok-oss | Extra model path when testing |
-| Multi-provider plan / facts | open-grok goals | Design reference — not a drop-in yet |
+| Multi-provider plan / facts | open-grok **org** goals | Design reference — not a drop-in yet |
 | Official Grok OAuth / API | upstream | Keep as first-class path |
 
 ### Upstream sync process

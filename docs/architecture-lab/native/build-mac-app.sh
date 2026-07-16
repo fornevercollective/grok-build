@@ -90,17 +90,26 @@ rsync -a \
   --exclude 'scripts' \
   "$LAB/" "$RES/lab/"
 
-# App icon: rainbow chat aura + official Grok mark (composed, mark unaltered)
+# App icon: rainbow chat aura + official Grok mark (composed, mark unaltered).
+# Always re-copy after rsync so Dock/Finder get a fresh .icns on every rebuild.
 ICON_SRC="$NATIVE/icons/AppIcon.icns"
 ICON_PNG="$NATIVE/icons/app-icon-1024.png"
-if [[ -f "$ICON_SRC" ]]; then
-  cp "$ICON_SRC" "$RES/AppIcon.icns"
+if [[ ! -f "$ICON_SRC" ]]; then
+  echo "WARN: missing $ICON_SRC — Dock icon may be blank" >&2
+else
+  cp -f "$ICON_SRC" "$RES/AppIcon.icns"
+  echo "  Icon: $RES/AppIcon.icns ($(wc -c < "$RES/AppIcon.icns" | tr -d ' ') bytes)"
 fi
 if [[ -f "$ICON_PNG" ]]; then
-  cp "$ICON_PNG" "$RES/icon.png"
+  cp -f "$ICON_PNG" "$RES/icon.png"
 elif [[ -f "$LAB/assets/brand/grok-logomark-dark.png" ]]; then
-  cp "$LAB/assets/brand/grok-logomark-dark.png" "$RES/icon.png"
+  cp -f "$LAB/assets/brand/grok-logomark-dark.png" "$RES/icon.png"
 fi
+
+# Bump CFBundleVersion each pack so LaunchServices refreshes icon association
+BUNDLE_VER="${LAB_BUNDLE_VERSION:-$(date +%Y%m%d%H%M)}"
+MARKETING_VER="$(grep -E '^version' "$NATIVE/Cargo.toml" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+MARKETING_VER="${MARKETING_VER:-0.3.11}"
 
 cat > "$APP_DIR/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -118,10 +127,12 @@ cat > "$APP_DIR/Contents/Info.plist" << PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.3.2</string>
+  <string>${MARKETING_VER}</string>
   <key>CFBundleVersion</key>
-  <string>6</string>
+  <string>${BUNDLE_VER}</string>
   <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+  <key>CFBundleIconName</key>
   <string>AppIcon</string>
   <key>LSMinimumSystemVersion</key>
   <string>12.0</string>
@@ -137,6 +148,12 @@ cat > "$APP_DIR/Contents/Info.plist" << PLIST
 </plist>
 PLIST
 echo -n "APPL????" > "$APP_DIR/Contents/PkgInfo"
+# Clear quarantine + re-register so Dock shows the new icon
+xattr -cr "$APP_DIR" 2>/dev/null || true
+touch "$APP_DIR" "$APP_DIR/Contents/Info.plist" 2>/dev/null || true
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+  -f "$APP_DIR" 2>/dev/null || true
+echo "  Bundle version: $MARKETING_VER ($BUNDLE_VER)"
 
 # Clear quarantine so double-click works without Gatekeeper bounce-kill
 xattr -cr "$APP_DIR" 2>/dev/null || true
