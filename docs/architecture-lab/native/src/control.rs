@@ -26,6 +26,11 @@ pub enum ControlCmd {
     HideAgent,
     FocusAgent,
     ToggleAgent,
+    /// Launch pad: View + Window menu control surface
+    ShowLaunch,
+    HideLaunch,
+    FocusLaunch,
+    ToggleLaunch,
     /// Dock / undock satellite windows relative to lab
     Dock { target: WinTarget },
     Undock { target: WinTarget },
@@ -85,6 +90,7 @@ pub enum WinTarget {
     Chat,
     Stream,
     Agent,
+    Launch,
     All,
 }
 
@@ -251,6 +257,10 @@ impl ControlRequest {
             "hide_agent" | "close_agent" => Ok(ControlCmd::HideAgent),
             "toggle_agent" => Ok(ControlCmd::ToggleAgent),
             "focus_agent" => Ok(ControlCmd::FocusAgent),
+            "show_launch" | "open_launch" | "launch" | "launch_pad" => Ok(ControlCmd::ShowLaunch),
+            "hide_launch" | "close_launch" => Ok(ControlCmd::HideLaunch),
+            "toggle_launch" => Ok(ControlCmd::ToggleLaunch),
+            "focus_launch" => Ok(ControlCmd::FocusLaunch),
             "dock" | "dock_window" => Ok(ControlCmd::Dock {
                 target: self.target,
             }),
@@ -340,6 +350,9 @@ impl ControlRequest {
             }),
             "refresh_agent" => Ok(ControlCmd::Refresh {
                 target: WinTarget::Agent,
+            }),
+            "refresh_launch" => Ok(ControlCmd::Refresh {
+                target: WinTarget::Launch,
             }),
             "refresh_all" => Ok(ControlCmd::Refresh {
                 target: WinTarget::All,

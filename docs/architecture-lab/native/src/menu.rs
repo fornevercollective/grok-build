@@ -69,11 +69,15 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
     );
     let refresh_chat = MenuItem::with_id("refresh_chat", "Refresh Chat", true, None);
     let refresh_stream = MenuItem::with_id("refresh_stream", "Refresh Stream", true, None);
+    let refresh_agent = MenuItem::with_id("refresh_agent", "Refresh Agent", true, None);
+    let refresh_launch = MenuItem::with_id("refresh_launch", "Refresh Launch Pad", true, None);
     let _ = view.append_items(&[
         &refresh_all,
         &refresh_lab,
         &refresh_chat,
         &refresh_stream,
+        &refresh_agent,
+        &refresh_launch,
         &PredefinedMenuItem::separator(),
         &PredefinedMenuItem::fullscreen(None),
     ]);
@@ -121,6 +125,15 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         )),
     );
     let unlink_all = MenuItem::with_id("unlink_all", "Unlink All (Undock)", true, None);
+    let open_launch = MenuItem::with_id(
+        "open_launch",
+        "Open Launch Pad",
+        true,
+        Some(Accelerator::new(
+            Some(Modifiers::META | Modifiers::SHIFT),
+            Code::KeyO,
+        )),
+    );
     let open_agent = MenuItem::with_id(
         "open_agent",
         "Open Agent Console",
@@ -132,19 +145,22 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
     );
     let open_panda = MenuItem::with_id(
         "open_panda",
-        "Open Panda Fleet (αβγ)",
+        "Open Multi-term (Panda / prompt)",
         true,
         Some(Accelerator::new(
             Some(Modifiers::META | Modifiers::SHIFT),
             Code::KeyP,
         )),
     );
+    let win_hide_agent = MenuItem::with_id("win_hide_agent", "Hide Agent Console", true, None);
+    let win_hide_launch = MenuItem::with_id("win_hide_launch", "Hide Launch Pad", true, None);
     let _ = win.append_items(&[
         &win_lab,
         &win_chat,
         &win_stream,
         &win_both,
         &PredefinedMenuItem::separator(),
+        &open_launch,
         &open_agent,
         &open_panda,
         &PredefinedMenuItem::separator(),
@@ -157,6 +173,8 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         &PredefinedMenuItem::separator(),
         &win_hide_chat,
         &win_hide_stream,
+        &win_hide_agent,
+        &win_hide_launch,
         &PredefinedMenuItem::separator(),
         &PredefinedMenuItem::minimize(None),
     ]);
@@ -226,6 +244,16 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
                 target: WinTarget::Stream,
             });
         }
+        "refresh_agent" => {
+            let _ = proxy.send_event(ControlCmd::Refresh {
+                target: WinTarget::Agent,
+            });
+        }
+        "refresh_launch" => {
+            let _ = proxy.send_event(ControlCmd::Refresh {
+                target: WinTarget::Launch,
+            });
+        }
         "win_lab" => {
             let _ = proxy.send_event(ControlCmd::FocusLab);
         }
@@ -239,12 +267,20 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
             let _ = proxy.send_event(ControlCmd::FocusLab);
             let _ = proxy.send_event(ControlCmd::ShowChat);
             let _ = proxy.send_event(ControlCmd::ShowStream);
+            let _ = proxy.send_event(ControlCmd::ShowAgent);
+            let _ = proxy.send_event(ControlCmd::ShowLaunch);
         }
         "win_hide_chat" => {
             let _ = proxy.send_event(ControlCmd::HideChat);
         }
         "win_hide_stream" => {
             let _ = proxy.send_event(ControlCmd::HideStream);
+        }
+        "win_hide_agent" => {
+            let _ = proxy.send_event(ControlCmd::HideAgent);
+        }
+        "win_hide_launch" => {
+            let _ = proxy.send_event(ControlCmd::HideLaunch);
         }
         "dock_chat" => {
             let _ = proxy.send_event(ControlCmd::Dock {
@@ -277,6 +313,9 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
         }
         "open_agent" => {
             let _ = proxy.send_event(ControlCmd::ShowAgent);
+        }
+        "open_launch" => {
+            let _ = proxy.send_event(ControlCmd::ShowLaunch);
         }
         "open_panda" => {
             // Spawn Panda off the menu thread — no window ControlCmd required.

@@ -1,0 +1,244 @@
+/* Launch Pad — View / Window control surface */
+
+:root {
+  --lp-bg: #09090b;
+  --lp-elev: #121216;
+  --lp-card: #0e0e12;
+  --lp-border: rgba(255, 255, 255, 0.08);
+  --lp-border-strong: rgba(255, 255, 255, 0.14);
+  --lp-text: #fafafa;
+  --lp-muted: #a1a1aa;
+  --lp-dim: #71717a;
+  --lp-accent: #38bdf8;
+  --lp-accent-soft: rgba(56, 189, 248, 0.12);
+  --lp-multi: #a78bfa;
+  --lp-multi-soft: rgba(167, 139, 250, 0.14);
+  --lp-radius: 12px;
+  --lp-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --lp-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body.lp-body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--lp-bg);
+  color: var(--lp-text);
+  font-family: var(--lp-font);
+}
+
+.lp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 42px;
+  padding: 0 0.65rem 0 0.75rem;
+  border-bottom: 1px solid var(--lp-border);
+  background: rgba(9, 9, 11, 0.92);
+  backdrop-filter: blur(14px);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.lp-lights {
+  display: flex;
+  gap: 7px;
+  margin-right: 4px;
+}
+
+.lp-tl {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+}
+.lp-tl.close {
+  background: #ff5f57;
+}
+.lp-tl.min {
+  background: #febc2e;
+}
+.lp-tl.max {
+  background: #28c840;
+}
+
+.lp-mark {
+  opacity: 0.9;
+}
+.lp-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.lp-pill {
+  font-family: var(--lp-mono);
+  font-size: 0.6rem;
+  color: var(--lp-muted);
+  border: 1px solid var(--lp-border);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+}
+.lp-pill.ok {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+.lp-pill.busy {
+  color: var(--lp-accent);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+.lp-pill.err {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+.lp-spacer {
+  flex: 1;
+}
+
+.lp-btn {
+  appearance: none;
+  border: 1px solid var(--lp-border);
+  background: var(--lp-elev);
+  color: var(--lp-muted);
+  border-radius: 8px;
+  height: 28px;
+  padding: 0 0.55rem;
+  font-size: 0.68rem;
+  font-family: var(--lp-mono);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lp-btn:hover {
+  color: var(--lp-text);
+  border-color: var(--lp-border-strong);
+}
+.lp-btn.primary {
+  color: var(--lp-accent);
+  border-color: rgba(56, 189, 248, 0.35);
+  background: var(--lp-accent-soft);
+}
+.lp-btn.accent {
+  color: var(--lp-multi);
+  border-color: rgba(167, 139, 250, 0.4);
+  background: var(--lp-multi-soft);
+}
+
+.lp-main {
+  height: calc(100% - 42px);
+  overflow: auto;
+  padding: 0.85rem 1rem 1.25rem;
+  background:
+    radial-gradient(ellipse 60% 35% at 15% 0%, rgba(56, 189, 248, 0.06), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 90% 10%, rgba(167, 139, 250, 0.05), transparent 50%),
+    var(--lp-bg);
+}
+
+.lp-lead {
+  margin: 0 0 0.9rem;
+  font-size: 0.78rem;
+  color: var(--lp-muted);
+  line-height: 1.45;
+  max-width: 52rem;
+}
+
+.lp-section {
+  margin-bottom: 1.1rem;
+}
+.lp-section h2 {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lp-dim);
+}
+.lp-section h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--lp-muted);
+}
+
+.lp-grid.open {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+.lp-card {
+  appearance: none;
+  text-align: left;
+  border: 1px solid var(--lp-border);
+  background: var(--lp-card);
+  border-radius: var(--lp-radius);
+  padding: 0.7rem 0.75rem;
+  cursor: pointer;
+  color: inherit;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: border-color 0.12s, background 0.12s;
+}
+.lp-card:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.06);
+}
+.lp-card.accent:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+  background: var(--lp-multi-soft);
+}
+.lp-card-k {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.lp-card.accent .lp-card-k {
+  color: var(--lp-multi);
+}
+.lp-card-d {
+  font-size: 0.65rem;
+  color: var(--lp-dim);
+  line-height: 1.3;
+}
+.lp-card[data-k]::after {
+  content: attr(data-k);
+  margin-top: auto;
+  font-family: var(--lp-mono);
+  font-size: 0.55rem;
+  color: var(--lp-dim);
+  opacity: 0.85;
+}
+
+.lp-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.lp-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+@media (max-width: 640px) {
+  .lp-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lp-hint {
+  margin: 0.65rem 0 0;
+  font-family: var(--lp-mono);
+  font-size: 0.62rem;
+  color: var(--lp-dim);
+  line-height: 1.4;
+}

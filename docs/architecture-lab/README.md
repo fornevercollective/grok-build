@@ -16,8 +16,8 @@ Works **locally** and on **GitHub Pages**. Open tabs auto-reload when a new depl
 | [content/06-plugin-anatomy.md](content/06-plugin-anatomy.md) | Plugin packaging rules |
 | [content/12-brand.md](content/12-brand.md) | SpaceXAI / Grok brand |
 
-**Lab version (package):** `0.3.1` · **Native crate:** `0.3.1` · **Pages clients:** git SHA in `version.json`  
-**Ship deck:** `#/tool/ship` · **Plugin pack:** `plugin/lab-ship/` · **Agent Console:** `agent.html` (center + αβγ) · **Matrix:** [content/17-ship-everything.md](content/17-ship-everything.md)
+**Lab version (package):** `0.3.2` · **Native crate:** `0.3.2` · **Pages clients:** git SHA in `version.json`  
+**Ship deck:** `#/tool/ship` · **Plugin pack:** `plugin/lab-ship/` · **Launch Pad:** `launch.html` · **Agent Console:** `agent.html` · **Multi-term:** Panda · **Matrix:** [content/17-ship-everything.md](content/17-ship-everything.md)
 
 ### Go / no-go before big pushes
 
@@ -94,10 +94,11 @@ docs/architecture-lab/          # historical path · product name = Grok Build L
   chat.html           # float chat · voice + text
   stream.html         # stream feed window
   agent.html          # Agent Console · center chat + α/β/γ feeds (agentcn scaffold)
+  launch.html         # Launch Pad · View + Window menu controls
   nav.json            # sidebar sections / page ids
   serve.sh            # local server + ops APIs
   version.json        # local placeholder; Pages overwrites with SHA
-  package.json        # lab semver 0.3.1 (not Grok CLI version)
+  package.json        # lab semver 0.3.2 (not Grok CLI version)
   plugin/lab-ship/    # installable Grok plugin (skills · agents · hooks)
   scripts/
     status-xai-check.sh       # status.x.ai go/no-go

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Build Lab · Launch Pad</title>
+    <meta
+      name="description"
+      content="Launch pad — View & Window menu controls, open Chat · Stream · Agent · Multi-term (Panda)"
+    />
+    <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/launch-pad.css?v=lp1" />
+  </head>
+  <body class="lp-body">
+    <header class="lp-chrome" data-drag-region="1">
+      <div class="lp-lights" data-no-drag>
+        <button type="button" class="lp-tl close" id="btn-close" title="Close"></button>
+        <button type="button" class="lp-tl min" id="btn-min" title="Minimize"></button>
+        <button type="button" class="lp-tl max" id="btn-max" title="Zoom"></button>
+      </div>
+      <img
+        class="lp-mark"
+        src="assets/brand/grok-logomark-light.svg"
+        width="20"
+        height="20"
+        alt=""
+      />
+      <strong class="lp-title">Launch Pad</strong>
+      <span class="lp-pill" id="lp-status">ready</span>
+      <span class="lp-spacer"></span>
+      <button type="button" class="lp-btn" id="btn-lab" data-no-drag title="Focus lab (⌘1)">
+        Lab
+      </button>
+      <button
+        type="button"
+        class="lp-btn primary"
+        id="btn-show-all"
+        data-no-drag
+        title="Show all windows (⌘0)"
+      >
+        Show all
+      </button>
+    </header>
+
+    <main class="lp-main">
+      <p class="lp-lead">
+        Same actions as native <strong>View</strong> + <strong>Window</strong> menus.
+        <strong>Multi-term</strong> is the Panda / prompt fleet (αβγ PTYs).
+      </p>
+
+      <!-- Quick open row — mirrors lab bar -->
+      <section class="lp-section" aria-label="Open surfaces">
+        <h2>Open</h2>
+        <div class="lp-grid open">
+          <button type="button" class="lp-card" data-action="focus_lab" data-k="⌘1">
+            <span class="lp-card-k">Lab</span>
+            <span class="lp-card-d">Docs workspace</span>
+          </button>
+          <button type="button" class="lp-card" data-action="show_chat" data-k="⌘2">
+            <span class="lp-card-k">Chat</span>
+            <span class="lp-card-d">Float chat</span>
+          </button>
+          <button type="button" class="lp-card" data-action="show_stream" data-k="⌘3">
+            <span class="lp-card-k">Stream</span>
+            <span class="lp-card-d">Event feed</span>
+          </button>
+          <button type="button" class="lp-card" data-action="show_agent" data-k="⌘⇧A">
+            <span class="lp-card-k">Agent</span>
+            <span class="lp-card-d">Center + αβγ feeds</span>
+          </button>
+          <button
+            type="button"
+            class="lp-card accent"
+            data-action="open_panda"
+            data-k="⌘⇧P"
+            title="Multi-term · Panda · prompt fleet"
+          >
+            <span class="lp-card-k">Multi-term</span>
+            <span class="lp-card-d">Panda · prompt · αβγ PTYs</span>
+          </button>
+          <button type="button" class="lp-card" data-action="link_all" data-k="⌘⇧L">
+            <span class="lp-card-k">Link all</span>
+            <span class="lp-card-d">Dock + show satellites</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- View menu -->
+      <section class="lp-section" aria-label="View menu">
+        <h2>View</h2>
+        <div class="lp-row">
+          <button type="button" class="lp-btn primary" data-action="refresh_all" data-k="⌘R">
+            Refresh all windows
+          </button>
+          <button type="button" class="lp-btn" data-action="refresh_lab" data-k="⌘⇧R">
+            Refresh Lab
+          </button>
+          <button type="button" class="lp-btn" data-action="refresh_chat">Refresh Chat</button>
+          <button type="button" class="lp-btn" data-action="refresh_stream">Refresh Stream</button>
+          <button type="button" class="lp-btn" data-action="refresh_agent">Refresh Agent</button>
+          <button type="button" class="lp-btn" data-action="refresh_launch">Refresh Launch</button>
+        </div>
+      </section>
+
+      <!-- Window menu -->
+      <section class="lp-section" aria-label="Window menu">
+        <h2>Window</h2>
+        <div class="lp-cols">
+          <div>
+            <h3>Show / hide</h3>
+            <div class="lp-row">
+              <button type="button" class="lp-btn" data-action="focus_lab">Lab workspace</button>
+              <button type="button" class="lp-btn" data-action="show_chat">Open Chat</button>
+              <button type="button" class="lp-btn" data-action="show_stream">Open Stream</button>
+              <button type="button" class="lp-btn" data-action="show_agent">Open Agent Console</button>
+              <button type="button" class="lp-btn accent" data-action="open_panda">
+                Multi-term (Panda)
+              </button>
+              <button type="button" class="lp-btn" data-action="show_all">Show all windows</button>
+              <button type="button" class="lp-btn" data-action="hide_chat">Hide Chat</button>
+              <button type="button" class="lp-btn" data-action="hide_stream">Hide Stream</button>
+              <button type="button" class="lp-btn" data-action="hide_agent">Hide Agent</button>
+            </div>
+          </div>
+          <div>
+            <h3>Dock / layout</h3>
+            <div class="lp-row">
+              <button type="button" class="lp-btn" data-action="dock_chat">Dock Chat to Lab</button>
+              <button type="button" class="lp-btn" data-action="undock_chat">Undock Chat</button>
+              <button type="button" class="lp-btn" data-action="dock_stream">
+                Dock Stream to Lab
+              </button>
+              <button type="button" class="lp-btn" data-action="undock_stream">Undock Stream</button>
+              <button type="button" class="lp-btn" data-action="link_all">
+                Link all (dock + show)
+              </button>
+              <button type="button" class="lp-btn" data-action="unlink_all">
+                Unlink all (undock)
+              </button>
+              <button type="button" class="lp-btn" data-action="center" data-target="lab">
+                Center Lab
+              </button>
+              <button type="button" class="lp-btn" data-action="pin" data-target="lab" data-on="true">
+                Pin Lab on top
+              </button>
+              <button type="button" class="lp-btn" data-action="unpin" data-target="lab">
+                Unpin Lab
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Help -->
+      <section class="lp-section" aria-label="Help">
+        <h2>Help</h2>
+        <div class="lp-row">
+          <button type="button" class="lp-btn" data-action="check_updates">
+            Check for Updates…
+          </button>
+          <button type="button" class="lp-btn" data-action="about">About Grok Build Lab</button>
+        </div>
+        <p class="lp-hint" id="lp-log">Ready · actions go through /api/control + /api/panda/open</p>
+      </section>
+    </main>
+
+    <script src="assets/launch-pad.js?v=lp1"></script>
+  </body>
+</html>

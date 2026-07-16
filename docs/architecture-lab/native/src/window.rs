@@ -1,4 +1,4 @@
-//! Multi native windows: Lab + Chat + Stream (each own WKWebView).
+//! Multi native windows: Lab + Chat + Stream + Agent + Launch (each own WKWebView).
 //! Dock/undock links satellites to the lab; SpaceXAI control bus + IPC drag.
 
 use crate::control::{ControlBus, ControlCmd, ResizeDir, WinTarget};
@@ -24,6 +24,8 @@ enum Role {
     Stream,
     /// agentcn-inspired console: center prompt + α/β/γ feeds
     Agent,
+    /// Launch pad: View + Window menu control surface
+    Launch,
 }
 
 impl Role {
@@ -33,6 +35,7 @@ impl Role {
             Role::Chat => WinTarget::Chat,
             Role::Stream => WinTarget::Stream,
             Role::Agent => WinTarget::Agent,
+            Role::Launch => WinTarget::Launch,
         }
     }
 }
@@ -184,6 +187,33 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         },
     );
 
+    // ── Launch pad — lazy webview (View + Window controls) ──
+    let launch = build_launch_window(&event_loop)?;
+    place_launch_window(&launch);
+    launch.set_visible(false);
+    let launch_id = launch.id();
+    let launch_url = format!("{lab_url}launch.html");
+    let launch_wv = if eager {
+        Some(build_webview(
+            &launch,
+            &launch_url,
+            &launch_init_script(),
+            Role::Launch,
+            proxy.clone(),
+        )?)
+    } else {
+        None
+    };
+    windows.insert(
+        launch_id,
+        WinPair {
+            window: launch,
+            webview: launch_wv,
+            role: Role::Launch,
+            entry_url: launch_url.clone(),
+        },
+    );
+
     // Initial dock snap positions (hidden until shown)
     {
         let mut layout = LayoutState {
@@ -199,9 +229,10 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         %chat_url,
         %stream_url,
         agent_url = %agent_url,
+        launch_url = %launch_url,
         float,
         eager,
-        "lab webview up · chat/stream/agent {}",
+        "lab webview up · chat/stream/agent/launch {}",
         if eager { "eager" } else { "lazy-on-show" }
     );
 
@@ -281,7 +312,7 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
                             pair.window.set_visible(false);
                             bus_loop.set_stream_visible(false);
                         }
-                        Role::Agent => {
+                        Role::Agent | Role::Launch => {
                             pair.window.set_visible(false);
                         }
                         Role::Lab => {
@@ -401,6 +432,47 @@ fn place_agent_window(window: &Window) {
     }
 }
 
+fn build_launch_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
+    // Compact launch pad — View + Window controls
+    let mut wb = WindowBuilder::new()
+        .with_title("Grok Build Lab - Launch Pad")
+        .with_decorations(false)
+        .with_always_on_top(true)
+        .with_resizable(true)
+        .with_transparent(true)
+        .with_inner_size(LogicalSize::new(520.0, 640.0))
+        .with_min_inner_size(LogicalSize::new(400.0, 480.0))
+        .with_visible(false);
+
+    #[cfg(target_os = "macos")]
+    {
+        use tao::platform::macos::WindowBuilderExtMacOS;
+        wb = wb
+            .with_titlebar_transparent(true)
+            .with_fullsize_content_view(true)
+            .with_title_hidden(true)
+            .with_has_shadow(true);
+    }
+
+    let win = wb.build(event_loop).context("build launch window")?;
+    #[cfg(target_os = "macos")]
+    crate::macos_style::apply_lab_window_shape(&win);
+    Ok(win)
+}
+
+fn place_launch_window(window: &Window) {
+    if let Some(m) = window.current_monitor() {
+        let screen = m.size();
+        let size = window.outer_size();
+        // Upper-right-ish so it doesn't cover lab center
+        let x = (screen.width as i32 - size.width as i32 - 40).max(24);
+        let y = 56i32;
+        window.set_outer_position(PhysicalPosition::new(x, y));
+    } else {
+        window.set_outer_position(LogicalPosition::new(100.0, 56.0));
+    }
+}
+
 fn agent_init_script() -> String {
     let chrome = float_chrome_js("agent");
     format!(
@@ -414,6 +486,26 @@ window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify(Object.assign({{ action: action, target: "agent" }}, extra || {{}}))
+    }}).then(function(r){{ return r.json(); }});
+  }}
+}});
+"##
+    )
+}
+
+fn launch_init_script() -> String {
+    let chrome = float_chrome_js("launch");
+    format!(
+        r##"
+{chrome}
+document.documentElement.classList.add("lab-native","lab-launch-surface");
+window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
+  isDesktop: true, isNative: true, isLaunchWindow: true, shell: "wry-launch", floatChrome: true,
+  control: function(action, extra){{
+    return fetch("/api/control", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify(Object.assign({{ action: action, target: "launch" }}, extra || {{}}))
     }}).then(function(r){{ return r.json(); }});
   }}
 }});
@@ -566,6 +658,18 @@ fn handle_ipc(body: &str, target: WinTarget, proxy: &EventLoopProxy<ControlCmd>)
         "focus_agent" => {
             let _ = proxy.send_event(ControlCmd::FocusAgent);
         }
+        "show_launch" | "open_launch" | "launch" | "launch_pad" => {
+            let _ = proxy.send_event(ControlCmd::ShowLaunch);
+        }
+        "hide_launch" | "close_launch" => {
+            let _ = proxy.send_event(ControlCmd::HideLaunch);
+        }
+        "toggle_launch" => {
+            let _ = proxy.send_event(ControlCmd::ToggleLaunch);
+        }
+        "focus_launch" => {
+            let _ = proxy.send_event(ControlCmd::FocusLaunch);
+        }
         "dock" | "dock_window" => {
             let _ = proxy.send_event(ControlCmd::Dock { target });
         }
@@ -633,6 +737,7 @@ fn ensure_webview(
         Role::Chat => chat_init_script(),
         Role::Stream => stream_init_script(),
         Role::Agent => agent_init_script(),
+        Role::Launch => launch_init_script(),
     };
     let url = pair.entry_url.clone();
     if url.is_empty() {
@@ -814,10 +919,11 @@ document.addEventListener("DOMContentLoaded", function(){{
       '<span class="lnb-dot"></span>' +
       '<span class="lnb-title">Grok Build Lab</span>' + // ASCII title
       '<span class="lnb-sp"></span>' +
+      '<button type="button" class="lnb-btn primary" data-c="open_launch" data-no-drag title="Launch pad · View + Window controls">Launch</button>' +
       '<button type="button" class="lnb-btn primary" data-c="show_chat" data-no-drag title="Open chat (Cmd+2)">Chat</button>' +
       '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream feed (Cmd+3)">Stream</button>' +
       '<button type="button" class="lnb-btn primary" data-c="open_agent" data-no-drag title="Agent console · center chat + αβγ feeds">Agent</button>' +
-      '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Open Panda fleet αβγ (Cmd+Shift+P)">Panda</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Multi-term · Panda prompt fleet αβγ (Cmd+Shift+P)">Multi</button>' +
       '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab">Link</button>' +
       '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock all satellites">Unlink</button>' +
       '<button type="button" class="lnb-btn" data-c="center" data-t="lab" data-no-drag title="Center">Ctr</button>' +
@@ -890,6 +996,14 @@ document.addEventListener("DOMContentLoaded", function(){{
             method: "POST",
             headers: {{ "Content-Type": "application/json" }},
             body: JSON.stringify({{ action: "show_agent" }})
+          }});
+          return;
+        }}
+        if (action === "open_launch" || action === "show_launch") {{
+          fetch("/api/control", {{
+            method: "POST",
+            headers: {{ "Content-Type": "application/json" }},
+            body: JSON.stringify({{ action: "show_launch" }})
           }});
           return;
         }}
@@ -1155,6 +1269,7 @@ fn for_target(windows: &mut HashMap<WindowId, WinPair>, target: WinTarget, mut f
             WinTarget::Chat => p.role == Role::Chat,
             WinTarget::Stream => p.role == Role::Stream,
             WinTarget::Agent => p.role == Role::Agent,
+            WinTarget::Launch => p.role == Role::Launch,
         };
         if hit {
             f(p);
@@ -1326,6 +1441,48 @@ fn apply_cmd(
                 )
             }
         }
+        ControlCmd::ShowLaunch | ControlCmd::FocusLaunch => {
+            for p in windows.values_mut() {
+                if p.role == Role::Launch {
+                    ensure_webview(p, proxy)?;
+                    p.window.set_visible(true);
+                    p.window.set_focus();
+                }
+            }
+            Ok(())
+        }
+        ControlCmd::HideLaunch => {
+            for p in windows.values() {
+                if p.role == Role::Launch {
+                    p.window.set_visible(false);
+                }
+            }
+            Ok(())
+        }
+        ControlCmd::ToggleLaunch => {
+            let visible = windows
+                .values()
+                .any(|p| p.role == Role::Launch && p.window.is_visible());
+            if visible {
+                apply_cmd(
+                    &ControlCmd::HideLaunch,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
+            } else {
+                apply_cmd(
+                    &ControlCmd::ShowLaunch,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
+            }
+        }
         ControlCmd::Dock { target } => {
             match target {
                 WinTarget::Chat => {
@@ -1356,8 +1513,8 @@ fn apply_cmd(
                     bus.set_chat_docked(true);
                     bus.set_stream_docked(true);
                 }
-                // Agent is a free-floating console (center+feeds), not a lab satellite.
-                WinTarget::Lab | WinTarget::Agent => {}
+                // Agent / Launch are free-floating, not lab satellites.
+                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => {}
             }
             layout.suppressing_move = true;
             snap_docked(windows, layout);
@@ -1380,7 +1537,7 @@ fn apply_cmd(
                     bus.set_chat_docked(false);
                     bus.set_stream_docked(false);
                 }
-                WinTarget::Lab | WinTarget::Agent => {}
+                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => {}
             }
             Ok(())
         }
@@ -1389,8 +1546,8 @@ fn apply_cmd(
                 WinTarget::Chat => layout.chat_docked,
                 WinTarget::Stream => layout.stream_docked,
                 WinTarget::All => layout.chat_docked && layout.stream_docked,
-                // Always "docked" (noop undock) so toggle leaves Agent alone.
-                WinTarget::Lab | WinTarget::Agent => true,
+                // Always "docked" (noop undock) so toggle leaves free-float alone.
+                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => true,
             };
             if docked {
                 apply_cmd(
@@ -1429,7 +1586,7 @@ fn apply_cmd(
                         p.window.set_visible(true);
                         bus.set_stream_visible(true);
                     }
-                    Role::Agent | Role::Lab => {
+                    Role::Agent | Role::Launch | Role::Lab => {
                         p.window.set_visible(true);
                     }
                 }
@@ -1504,6 +1661,14 @@ fn apply_cmd(
                 control_flow,
                 proxy,
             ),
+            WinTarget::Launch => apply_cmd(
+                &ControlCmd::HideLaunch,
+                windows,
+                bus,
+                layout,
+                control_flow,
+                proxy,
+            ),
             WinTarget::Lab | WinTarget::All => {
                 *control_flow = ControlFlow::Exit;
                 Ok(())
@@ -1539,6 +1704,7 @@ fn apply_cmd(
                     WinTarget::Chat => p.role == Role::Chat,
                     WinTarget::Stream => p.role == Role::Stream,
                     WinTarget::Agent => p.role == Role::Agent,
+                    WinTarget::Launch => p.role == Role::Launch,
                 })
                 .map(|p| p.window.id())
                 .collect();
@@ -1589,6 +1755,7 @@ fn apply_cmd(
                     WinTarget::Chat => p.role == Role::Chat,
                     WinTarget::Stream => p.role == Role::Stream,
                     WinTarget::Agent => p.role == Role::Agent,
+                    WinTarget::Launch => p.role == Role::Launch,
                 })
                 .map(|p| p.window.id())
                 .collect();
@@ -1596,7 +1763,10 @@ fn apply_cmd(
                 if let Some(p) = windows.get_mut(&id) {
                     // Refresh of never-shown satellite: attach then load.
                     if p.webview.is_none()
-                        && matches!(p.role, Role::Chat | Role::Stream | Role::Agent)
+                        && matches!(
+                            p.role,
+                            Role::Chat | Role::Stream | Role::Agent | Role::Launch
+                        )
                     {
                         if let Err(e) = ensure_webview(p, proxy) {
                             bus.push_error(format!("refresh attach {:?}: {e}", p.role), "refresh");

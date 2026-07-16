@@ -300,8 +300,8 @@
       pushMsg(
         "system",
         j.launched
-          ? "Panda fleet launching (αβγ PTYs)."
-          : "Panda: " + (j.message || j.mitigation || "failed")
+          ? "Multi-term (Panda) launching — prompt fleet αβγ PTYs."
+          : "Multi-term: " + (j.message || j.mitigation || "failed")
       );
       setStatus(j.launched ? "live" : "idle", j.launched ? "live" : "");
     });

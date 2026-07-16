@@ -8,9 +8,10 @@
 | Chat window | Same stack · independent frameless float (`chat.html`) |
 | Stream window | Same stack · live event feed (`stream.html`) |
 | **Agent Console** | Same stack · **center chat + α/β/γ feeds** (`agent.html`) — agentcn-inspired |
+| **Launch Pad** | Same stack · **View + Window menu controls** (`launch.html`) |
 | Embedded server | **axum** — static lab + `/api/*` + SpaceXAI **control bus** |
 | Menus | **muda** (View refresh · Window · Help / updates) |
-| Terminal | **ratatui** `--mode tui` (mugrok / grok-cli lineage) · **Panda** for multi-PTY fleet |
+| **Multi-term** | **Panda** prompt fleet (αβγ PTYs) · lab bar **Multi** · menu ⌘⇧P |
 
 Dojo/Colossus-shaped path: one Rust binary, system webview, no Chromium embed, no Node in the product process.
 
@@ -29,7 +30,7 @@ Dojo/Colossus-shaped path: one Rust binary, system webview, no Chromium embed, n
 | Pages / update check | lab `version.json` (git SHA) | Help → Check for Updates… |
 | Bundle id | `dev.fornevercollective.architecture-lab` | Local lab — not an xAI product |
 
-**Current baseline:** `0.3.1` (crate + marketing) — **Agent Console** (center + αβγ feeds) + **Open Panda** fleet + handoff bus.
+**Current baseline:** `0.3.2` (crate + marketing) — **Launch Pad** (View/Window controls) · **Agent Console** · **Multi-term (Panda)** · handoff bus.
 
 This crate is a **standalone Cargo workspace** (`[workspace]` in this folder) — it is **not** a member of the monorepo root workspace. That is intentional (isolation, faster lab iteration).
 
