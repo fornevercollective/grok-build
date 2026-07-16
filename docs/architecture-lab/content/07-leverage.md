@@ -86,10 +86,13 @@ Anything with an API → MCP server in a plugin, not a core crate:
 | GrokYtalkY | Pins, mesh, camera — plugin + tmux (**separate repo**) · [GY companion](#/10-gy-companion) |
 | Grok Build Lab shells | Native (tao/wry) product path vs Electron fallback · [Lab shells analysis](#/15-lab-shells) |
 | Grok Build Lab | Docs + native float shell under `docs/architecture-lab/` (not a core crate) |
+| Community Grok Build forks | Desktop hosts, privacy distros, packaging, multi-provider plans · [Fork leverage map](#/19-fork-leverage) |
 | ptyctl | Headless PTY (alacritty_terminal) |
 | Custom MCP | Language-agnostic tools |
 
 **Float app automation:** `POST /api/control` on the native shell (lab · chat · stream, dock/link, pin, eval JS, safe refresh). Full route + performance map: [Lab shells · native vs Electron](#/15-lab-shells).
+
+**Fork tools (patterns, not wholesale adopt):** [Fork leverage map](#/19-fork-leverage) — Gork privacy binary, GrokPtah Tauri desktop, grok-oss packaging/OpenRouter, agent-tui dual-install, open-grok provider design.
 
 Fork / version / compliance map: [Dev build · versions · forks](#/14-dev-build-and-forks).
 

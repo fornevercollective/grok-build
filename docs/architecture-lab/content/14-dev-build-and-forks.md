@@ -80,6 +80,8 @@ fornevercollective/GrokYtalkY   (separate repo)
 
 **Deep dive (footprint · cold start · `/api/control` · scorecard):** [Lab shells · native vs Electron](#/15-lab-shells) under Companions.
 
+**Community fork tools (desktop · privacy · packaging · providers):** [Fork leverage map](#/19-fork-leverage).
+
 ### status.x.ai go/no-go (big pushes)
 
 | Check | Command |
