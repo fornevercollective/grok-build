@@ -94,8 +94,31 @@
       });
     });
 
+    let docked = true;
+    let pinned = true; // launch defaults always-on-top in native
+
     $("btn-lab")?.addEventListener("click", () => control("focus_lab"));
     $("btn-show-all")?.addEventListener("click", () => control("show_all"));
+
+    $("btn-dock")?.addEventListener("click", () => {
+      docked = !docked;
+      if (docked) {
+        control("arrange");
+        $("btn-dock").textContent = "Undock";
+        log("Docked · arrange");
+      } else {
+        $("btn-dock").textContent = "Dock";
+        log("Undocked · free float");
+      }
+    });
+    if ($("btn-dock")) $("btn-dock").textContent = "Undock";
+
+    $("btn-pin")?.addEventListener("click", () => {
+      pinned = !pinned;
+      control(pinned ? "pin" : "unpin", { target: "launch", on: pinned });
+      if ($("btn-pin")) $("btn-pin").textContent = pinned ? "Unpin" : "Pin";
+    });
+    if ($("btn-pin")) $("btn-pin").textContent = "Unpin";
 
     $("btn-close")?.addEventListener("click", () => {
       control("hide_launch").catch(() => window.close());

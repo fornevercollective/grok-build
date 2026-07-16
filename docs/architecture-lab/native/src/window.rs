@@ -877,14 +877,26 @@ fn float_chrome_js(role: &str) -> String {
     }}
   }});
 
+  // Throttle edge cursor probes — full-document mousemove flooded the event loop
+  // and contributed to freezes/crashes with multiple WKWebViews.
+  var __labMoveAt = 0;
   document.addEventListener("mousemove", function(e){{
-    ipc("mousemove:" + e.clientX + "," + e.clientY);
+    var now = Date.now();
+    if (now - __labMoveAt < 40) return;
+    __labMoveAt = now;
+    var m = 10;
+    var w = window.innerWidth || 0;
+    var h = window.innerHeight || 0;
+    if (e.clientX > m && e.clientX < w - m && e.clientY > m && e.clientY < h - m) {{
+      return; // interior — no edge resize cursor needed
+    }}
+    try {{ ipc("mousemove:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
   }}, true);
 
   document.addEventListener("mousedown", function(e){{
     if (e.button !== 0) return;
     var t = e.target;
-    if (t && t.closest && t.closest("button, a, input, textarea, select, [data-no-drag]")) return;
+    if (t && t.closest && t.closest("button, a, input, textarea, select, pre, [data-no-drag], .ac-scroll, .ac-feed-body")) return;
     var dragEl = t && t.closest ? t.closest("[data-drag-region]") : null;
     if (dragEl) {{
       if (e.detail === 2) {{
@@ -895,7 +907,13 @@ fn float_chrome_js(role: &str) -> String {
       e.preventDefault();
       return;
     }}
-    ipc("edge_down:" + e.clientX + "," + e.clientY);
+    // Edge resize only near borders
+    var m = 8;
+    var w = window.innerWidth || 0;
+    var h = window.innerHeight || 0;
+    if (e.clientX <= m || e.clientX >= w - m || e.clientY <= m || e.clientY >= h - m) {{
+      try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
+    }}
   }}, true);
 
   document.addEventListener("touchstart", function(e){{
@@ -945,8 +963,8 @@ document.addEventListener("DOMContentLoaded", function(){{
       '<button type="button" class="lnb-btn primary" data-c="open_agent" data-no-drag title="Agent console · center chat + αβγ feeds">Agent</button>' +
       '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Multi-term · Panda prompt fleet αβγ (Cmd+Shift+P)">Multi</button>' +
       '<button type="button" class="lnb-btn primary" data-c="arrange" data-no-drag title="Smart arrange all visible windows">Arrange</button>' +
-      '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab flanks">Link</button>' +
-      '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock chat + stream (free float)">Unlink</button>' +
+      '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab flanks">Dock</button>' +
+      '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock chat + stream (free float)">Undock</button>' +
       '<button type="button" class="lnb-btn" data-c="center" data-t="lab" data-no-drag title="Center">Ctr</button>' +
       '<button type="button" class="lnb-btn" data-c="pin" data-t="lab" data-no-drag title="Always on top" id="lnb-pin">Pin</button>' +
       '<button type="button" class="lnb-btn" data-c="refresh" data-t="lab" data-no-drag title="Refresh">R</button>';
@@ -1376,22 +1394,76 @@ fn arrange_workspace(windows: &mut HashMap<WindowId, WinPair>, layout: &mut Layo
     }
 }
 
-/// After showing one surface: snap docks if needed, then light-arrange free windows.
+/// Place Agent / Launch near lab **without** resizing the lab (safer on show).
+/// Full tiling remains `arrange_workspace` / Arrange command only.
+fn place_free_satellites(windows: &mut HashMap<WindowId, WinPair>, _layout: &LayoutState) {
+    let Some(lab) = lab_pair(windows) else {
+        return;
+    };
+    let lab_pos = lab
+        .window
+        .outer_position()
+        .unwrap_or(PhysicalPosition::new(80, 60));
+    let lab_size = lab.window.outer_size();
+    let lx = lab_pos.x;
+    let ly = lab_pos.y;
+    let lw = lab_size.width as i32;
+    let lh = lab_size.height as i32;
+    let mon = lab.window.current_monitor();
+    let (screen_w, mon_x, mon_y) = if let Some(m) = mon {
+        let s = m.size();
+        let p = m.position();
+        (s.width as i32, p.x, p.y)
+    } else {
+        (1440, 0, 0)
+    };
+    let gap = DOCK_GAP;
+    let margin = 12i32;
+
+    if role_visible(windows, Role::Launch) {
+        let w = 480i32;
+        let x = (mon_x + screen_w - w - margin).max(mon_x + margin);
+        let y = mon_y + 48;
+        for p in windows.values() {
+            if p.role == Role::Launch && p.window.is_visible() {
+                // Only nudge if overlapping lab center — never force-resize.
+                let pos = p.window.outer_position().unwrap_or(PhysicalPosition::new(x, y));
+                let overlaps_lab = pos.x < lx + lw && pos.x + 200 > lx && pos.y < ly + lh;
+                if overlaps_lab {
+                    p.window.set_outer_position(PhysicalPosition::new(x, y));
+                }
+            }
+        }
+    }
+
+    if role_visible(windows, Role::Agent) {
+        let x = lx;
+        let y = ly + lh + gap;
+        for p in windows.values() {
+            if p.role == Role::Agent && p.window.is_visible() {
+                let pos = p.window.outer_position().unwrap_or(PhysicalPosition::new(x, y));
+                let overlaps_lab =
+                    pos.x < lx + lw && pos.x + 400 > lx && pos.y < ly + lh && pos.y + 200 > ly;
+                if overlaps_lab {
+                    p.window
+                        .set_outer_position(PhysicalPosition::new(x.max(mon_x + margin), y));
+                }
+            }
+        }
+    }
+}
+
+/// After showing one surface: **gentle** layout only.
+/// Never full-arrange (lab resize) on open — that path caused multi-window freezes/crashes.
 fn after_show_layout(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
     layout.suppressing_move = true;
-    // Prefer full arrange when 2+ satellites visible so nothing stacks on lab.
-    let n_sat = [Role::Chat, Role::Stream, Role::Agent, Role::Launch]
-        .iter()
-        .filter(|r| role_visible(windows, **r))
-        .count();
-    if n_sat >= 2 {
-        arrange_workspace(windows, layout);
-    } else {
+    // Visible docked chat/stream only — no phantom moves of hidden panes.
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         snap_docked(windows, layout);
-        // Still park single free-float (agent/launch) off lab center
-        if role_visible(windows, Role::Agent) || role_visible(windows, Role::Launch) {
-            arrange_workspace(windows, layout);
-        }
+        place_free_satellites(windows, layout);
+    }));
+    if r.is_err() {
+        tracing::error!("after_show_layout panic caught");
     }
     layout.suppressing_move = false;
 }
@@ -1821,8 +1893,13 @@ fn apply_cmd(
         }
         ControlCmd::Arrange => {
             layout.suppressing_move = true;
-            arrange_workspace(windows, layout);
+            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                arrange_workspace(windows, layout);
+            }));
             layout.suppressing_move = false;
+            if r.is_err() {
+                bus.push_error("arrange panic caught", "control");
+            }
             Ok(())
         }
         ControlCmd::FocusLab => {
@@ -1835,9 +1912,14 @@ fn apply_cmd(
             Ok(())
         }
         ControlCmd::SetAlwaysOnTop { target, on } => {
-            for_target(windows, *target, |p| {
-                p.window.set_always_on_top(*on);
-            });
+            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                for_target(windows, *target, |p| {
+                    p.window.set_always_on_top(*on);
+                });
+            }));
+            if r.is_err() {
+                bus.push_error("set_always_on_top panic", "control");
+            }
             Ok(())
         }
         ControlCmd::SetDecorations { target, on } => {

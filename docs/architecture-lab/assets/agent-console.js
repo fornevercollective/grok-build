@@ -13,6 +13,7 @@
   let activeTurn = null;
   let turnSeq = 0;
   let pinned = false;
+  let docked = true;
   let stickToBottom = true;
 
   function loadChat() {
@@ -556,10 +557,24 @@
       scrollToEnd(true);
     });
 
+    $("btn-dock")?.addEventListener("click", () => {
+      docked = !docked;
+      if (docked) {
+        // Snap into smart workspace (does not force-show others)
+        api("/api/control", { action: "arrange" }).catch(() => {});
+        $("btn-dock").textContent = "Undock";
+        toast("Docked · arranged");
+      } else {
+        $("btn-dock").textContent = "Dock";
+        toast("Undocked · free float");
+      }
+    });
+    if ($("btn-dock")) $("btn-dock").textContent = "Undock";
+
     $("btn-pin")?.addEventListener("click", () => {
       pinned = !pinned;
       control(pinned ? "pin" : "unpin", { target: "agent", on: pinned });
-      $("btn-pin").textContent = pinned ? "Unpin" : "Pin";
+      if ($("btn-pin")) $("btn-pin").textContent = pinned ? "Unpin" : "Pin";
     });
     $("btn-chat")?.addEventListener("click", () =>
       api("/api/control", { action: "show_chat" })

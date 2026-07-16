@@ -116,7 +116,22 @@ body.lp-body {
   border-color: rgba(248, 113, 113, 0.35);
 }
 .lp-spacer {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 6px;
+}
+.lp-chrome-acts {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 70%;
+  overflow-x: auto;
+  padding-right: 2px;
+  scrollbar-width: none;
+}
+.lp-chrome-acts::-webkit-scrollbar {
+  display: none;
 }
 
 .lp-btn {

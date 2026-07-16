@@ -843,12 +843,14 @@
         dockBtn.textContent = chatDocked ? "Undock" : "Dock";
       });
       if (dockBtn) dockBtn.textContent = "Undock";
-      let pinned = true;
-      document.getElementById("btn-pin")?.addEventListener("click", (e) => {
+      let pinned = true; // chat window defaults always-on-top
+      const pinBtn = document.getElementById("btn-pin");
+      if (pinBtn) pinBtn.textContent = "Unpin";
+      pinBtn?.addEventListener("click", (e) => {
         e.stopPropagation();
         pinned = !pinned;
         control(pinned ? "pin" : "unpin", { target: "chat", on: pinned });
-        document.getElementById("btn-pin").textContent = pinned ? "Pin" : "Unp";
+        pinBtn.textContent = pinned ? "Unpin" : "Pin";
       });
 
       // Sync status text into panel when siri updates

@@ -262,6 +262,7 @@
       <span class="spacer" data-drag-region="1"></span>
       <div class="acts" data-no-drag>
         <button type="button" class="act" id="btn-dock" title="Dock to lab">Dock</button>
+        <button type="button" class="act" id="btn-pin" title="Always on top">Pin</button>
         <button type="button" class="act" id="btn-lab" title="Show lab">Lab</button>
         <button type="button" class="act" id="btn-chat" title="Open chat">Chat</button>
       </div>
@@ -379,6 +380,14 @@
         dockBtn.textContent = "Undock";
         dockBtn.classList.add("on");
       }
+      let pinned = false;
+      const pinBtn = document.getElementById("btn-pin");
+      pinBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        pinned = !pinned;
+        control(pinned ? "pin" : "unpin", { target: "stream", on: pinned });
+        pinBtn.textContent = pinned ? "Unpin" : "Pin";
+      });
 
       window.LabStream = { control: control };
     </script>
