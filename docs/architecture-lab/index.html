@@ -28,10 +28,10 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="assets/style.css?v=cli2" />
+    <link rel="stylesheet" href="assets/style.css?v=cli3" />
     <link rel="stylesheet" href="assets/walkie-dock.css?v=wave3" />
     <link rel="stylesheet" href="assets/video-feed.css?v=sb2" />
-    <link rel="stylesheet" href="assets/tools.css?v=hist3" />
+    <link rel="stylesheet" href="assets/tools.css?v=hist4" />
     <link rel="stylesheet" href="assets/walkthrough.css?v=wt4" />
     <link rel="stylesheet" href="assets/mobile-pwa.css" />
     <script
@@ -42,17 +42,17 @@
       src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"
       defer
     ></script>
-    <script src="assets/app.js?v=wt1" defer></script>
-    <script src="assets/walkthrough.js?v=wt4" defer></script>
+    <script src="assets/app.js?v=wt2" defer></script>
+    <script src="assets/walkthrough.js?v=wt5" defer></script>
     <script src="assets/video-feed.js?v=sb3" defer></script>
     <script src="assets/walkie-dock.js?v=wave3" defer></script>
     <script src="assets/grok-listen.js?v=wave3" defer></script>
-    <script src="assets/tools.js?v=hist4" defer></script>
+    <script src="assets/tools.js?v=hist6" defer></script>
     <script src="assets/mesh-collab.js" defer></script>
     <script src="assets/mobile-pwa.js" defer></script>
     <script src="assets/lab-update.js?v=pages1" defer></script>
   </head>
-  <body class="mode-docs pins-idle">
+  <body class="mode-docs pins-idle walk-hover-off">
     <!-- Pull-to-refresh affordance (mobile) -->
     <div class="ptr-indicator" id="ptr-indicator" aria-hidden="true">
       <span id="ptr-label">Pull to refresh</span>
@@ -399,9 +399,25 @@
         <!-- CLI-clean command strip (inspired by x.ai/cli density) — keeps center content tall -->
         <header class="topbar topbar-cli" id="lab-topbar">
           <div class="topbar-cmd" role="toolbar" aria-label="Find · history · walkthrough">
-            <button class="menu-btn" id="menu-btn" type="button" aria-label="Menu">
-              Menu
+            <!-- Sidebar hide / show — official SpaceXAI mark (unaltered) -->
+            <button
+              class="menu-btn menu-btn-logo"
+              id="menu-btn"
+              type="button"
+              aria-label="Hide or show left menu"
+              aria-expanded="true"
+              title="Hide left menu"
+            >
+              <img
+                class="menu-btn-mark"
+                src="assets/brand/spacexai-symbol-white-transparent.svg"
+                width="22"
+                height="22"
+                alt="SpaceXAI"
+                draggable="false"
+              />
             </button>
+
             <a
               class="gy-brand gy-brand-inline"
               href="http://127.0.0.1:8766/burst.html"
@@ -414,6 +430,7 @@
               <span class="brand-name">GY</span>
             </a>
 
+            <!-- Find only in-flow; history is a floating vertical panel (does not push content) -->
             <div class="filter-nav-block">
               <input
                 class="search"
@@ -423,24 +440,26 @@
                 autocomplete="off"
                 aria-label="Filter documentation nav"
               />
-              <!-- Collapsed history strip — expand for scrub; never steals a tall second stack -->
-              <div
-                class="hist-timeline-wrap hist-timeline-compact"
-                id="hist-slider-bar"
-                title="Version history scrub"
-              >
+              <div class="hist-float-anchor" id="hist-slider-bar">
                 <button
                   type="button"
                   class="hist-toggle btn-mini"
                   id="btn-hist-toggle"
                   aria-expanded="false"
-                  aria-controls="hist-timeline-mini"
-                  title="Show / hide history scrub"
+                  aria-controls="hist-timeline-expand"
+                  title="Version history scrub"
                 >
                   Hist
                 </button>
                 <span class="hist-slider-meta" id="hist-slider-meta">—</span>
-                <div class="hist-timeline-expand" id="hist-timeline-expand" hidden>
+                <!-- position:absolute vertical popover — never grows topbar height -->
+                <div
+                  class="hist-timeline-expand hist-float-panel"
+                  id="hist-timeline-expand"
+                  hidden
+                  role="dialog"
+                  aria-label="History scrubber"
+                >
                   <div class="hist-timeline-chrome">
                     <span class="hist-slider-label">history</span>
                     <div class="hist-tl-zoom" id="hist-tl-zoom-mini">
@@ -485,21 +504,13 @@
               </div>
             </section>
 
+            <!-- Hover first at the top of the walk cluster -->
             <div class="walk-cluster" id="walk-toolbar" title="Walkthrough">
               <button
                 type="button"
                 class="btn-mini walk-pill"
-                id="btn-walk-hide"
-                aria-pressed="false"
-                title="Hide walkthrough chrome / tip"
-              >
-                Hide
-              </button>
-              <button
-                type="button"
-                class="btn-mini walk-pill"
                 id="btn-walk-hover"
-                aria-pressed="true"
+                aria-pressed="false"
                 title="Highlight sections on mouse over"
               >
                 Hover
@@ -520,6 +531,15 @@
                 title="Next section"
               >
                 Next
+              </button>
+              <button
+                type="button"
+                class="btn-mini walk-pill"
+                id="btn-walk-hide"
+                aria-pressed="false"
+                title="Hide walkthrough chrome / tip"
+              >
+                Hide
               </button>
               <span class="topbar-meta" title="Current page">
                 <code id="crumb">00-overview</code>

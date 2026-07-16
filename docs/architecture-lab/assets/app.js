@@ -128,7 +128,7 @@ async function loadPage(id) {
     if (!md) {
       // stale-while-revalidate: prefer network, fall back to cache for offline PWA
       try {
-        const res = await fetch(`content/${id}.md`, { cache: "no-cache" });
+        const res = await fetch(`content/${id}.md`, { cache: "default" });
         if (!res.ok) throw new Error(`content/${id}.md → ${res.status}`);
         md = await res.text();
         state.cache.set(id, md);
@@ -156,11 +156,10 @@ async function loadPage(id) {
     });
     window.scrollTo(0, 0);
     $("#crumb").textContent = id;
-    // Grok walkthrough / section highlight re-bind
+    // Single walkthrough hook (avoid double annotate)
     window.dispatchEvent(
       new CustomEvent("lab:page-loaded", { detail: { id: id } })
     );
-    window.LabWalkthrough?.onPageReady?.();
   } catch (err) {
     article.innerHTML = `<div class="error"><strong>Failed to load page</strong><br>${escapeHtml(
       String(err.message || err)
@@ -289,8 +288,14 @@ async function boot() {
       document.body.classList.add("sidebar-collapsed");
       const btn = $("#menu-btn");
       if (btn) {
-        btn.textContent = "Menu";
         btn.setAttribute("aria-expanded", "false");
+        btn.title = "Show left menu";
+        btn.classList.add("menu-collapsed");
+        // Keep SpaceXAI logo mark
+        if (!btn.querySelector(".menu-btn-mark")) {
+          btn.innerHTML =
+            '<img class="menu-btn-mark" src="assets/brand/spacexai-symbol-white-transparent.svg" width="22" height="22" alt="SpaceXAI" draggable="false" />';
+        }
       }
       return;
     }

@@ -9,7 +9,8 @@
     sections: [],
     index: -1,
     tour: false,
-    hoverOn: true,
+    /** Off by default — cheaper first paint; user enables Hover/Tour */
+    hoverOn: false,
     tipEl: null,
     dimEl: null,
     /** last soft-hover el for O(1) class clear */
@@ -17,6 +18,8 @@
     softI: -1,
     /** rAF throttle for tip reanchor */
     reanchorRaf: 0,
+    /** true once annotate() has run for current article DOM */
+    annotated: false,
   };
 
   function article() {
@@ -92,6 +95,7 @@
     clearHighlight();
     state.softEl = null;
     state.softI = -1;
+    state.annotated = false;
 
     art.querySelectorAll("[data-walk]").forEach((n) => {
       n.removeAttribute("data-walk");
@@ -101,10 +105,19 @@
       n.classList.remove("walk-section", "walk-hot", "walk-tour-current", "walk-soft");
     });
 
+    // Skip heavy section walk when neither hover nor tour is active
+    if (!state.hoverOn && !state.tour) {
+      state.sections = [];
+      updateToolbar();
+      return state.sections;
+    }
+
     const list = Array.from(
       art.querySelectorAll("h1, h2, h3, h4, table, pre, blockquote")
     );
+    // Cap long pages for first annotate; blurbs stay lazy
     art.querySelectorAll(":scope > p").forEach((p) => {
+      if (list.length > 48) return;
       if ((p.textContent || "").trim().length > 80) list.push(p);
     });
 
@@ -124,12 +137,19 @@
       node.dataset.walkI = String(i);
       node.dataset.walkTitle = title;
       node.dataset.walkKind = kind;
+      // blurbs filled on demand in blurbFor() — not at annotate time
       return { el: node, title, kind, i };
     });
 
+    state.annotated = true;
     wireHover(art);
     updateToolbar();
     return state.sections;
+  }
+
+  function ensureAnnotated() {
+    if (state.annotated && state.sections.length) return state.sections;
+    return annotate();
   }
 
   /** Fast soft highlight — class only, no tip / no full DOM scan. */
@@ -342,7 +362,7 @@
     if (opts.soft && !state.tour && !opts.pin) return false;
 
     ensureChrome();
-    if (!state.sections.length) annotate();
+    ensureAnnotated();
     if (!state.sections.length) return false;
     i = ((i % state.sections.length) + state.sections.length) % state.sections.length;
     const sec = state.sections[i];
@@ -401,7 +421,7 @@
   }
 
   function highlightQuery(q) {
-    if (!state.sections.length) annotate();
+    ensureAnnotated();
     const needle = String(q || "")
       .toLowerCase()
       .trim();
@@ -437,9 +457,12 @@
       location.hash =
         location.hash.replace(/^#\/tool\/.*/, "") || "#/00-overview";
     }
-    annotate();
-    if (!state.sections.length) return false;
-    state.tour = true;
+    state.tour = true; // so annotate() runs (not idle-skip)
+    ensureAnnotated();
+    if (!state.sections.length) {
+      state.tour = false;
+      return false;
+    }
     state.index = -1;
     document.body.classList.add("walk-touring");
     return next();
@@ -459,7 +482,7 @@
   }
 
   function next() {
-    if (!state.sections.length) annotate();
+    ensureAnnotated();
     if (!state.sections.length) return false;
     state.tour = true;
     const i = state.index < 0 ? 0 : state.index + 1;
@@ -471,7 +494,7 @@
   }
 
   function prev() {
-    if (!state.sections.length) annotate();
+    ensureAnnotated();
     if (!state.sections.length) return false;
     state.tour = true;
     const i = state.index <= 0 ? 0 : state.index - 1;
@@ -481,7 +504,24 @@
   function setHover(on) {
     state.hoverOn = !!on;
     document.body.classList.toggle("walk-hover-off", !state.hoverOn);
-    if (!state.hoverOn) clearSoft();
+    if (!state.hoverOn) {
+      clearSoft();
+      // Drop walk classes when fully idle (no tour) to keep DOM light
+      if (!state.tour) {
+        state.annotated = false;
+        state.sections = [];
+        const art = article();
+        art?.querySelectorAll("[data-walk]").forEach((n) => {
+          n.removeAttribute("data-walk");
+          n.removeAttribute("data-walk-i");
+          n.removeAttribute("data-walk-title");
+          n.classList.remove("walk-section", "walk-hot", "walk-tour-current", "walk-soft");
+        });
+      }
+    } else {
+      // Enable: annotate lazily on first use
+      ensureAnnotated();
+    }
     updateToolbar();
   }
 
@@ -531,15 +571,30 @@
   }
 
   function onPageReady() {
-    requestAnimationFrame(() => {
-      annotate();
-      if (state.tour && state.sections.length) {
-        highlightIndex(Math.min(state.index, state.sections.length - 1), {
-          scroll: true,
-          pin: true,
-        });
-      }
-    });
+    // Idle path: no annotate (fast page switch). Tour/hover re-annotates when needed.
+    state.annotated = false;
+    state.sections = [];
+    state.softEl = null;
+    state.softI = -1;
+    state._hotEl = null;
+    state._tipNode = null;
+    if (state.tipEl) state.tipEl.hidden = true;
+    if (state.dimEl) state.dimEl.hidden = true;
+
+    if (state.tour || state.hoverOn) {
+      // Idle until after paint so markdown can settle
+      requestAnimationFrame(() => {
+        ensureAnnotated();
+        if (state.tour && state.sections.length) {
+          highlightIndex(Math.min(state.index, state.sections.length - 1), {
+            scroll: true,
+            pin: true,
+          });
+        }
+      });
+    } else {
+      updateToolbar();
+    }
   }
 
   window.LabWalkthrough = {
@@ -557,20 +612,24 @@
     isTouring: () => state.tour,
   };
 
+  // Single entry: app.js dispatches lab:page-loaded (do not also call onPageReady there)
   window.addEventListener("lab:page-loaded", onPageReady);
   // Only reanchor during tour/pin — throttled via rAF
   window.addEventListener("scroll", reanchorTip, { passive: true, capture: true });
   window.addEventListener("resize", reanchorTip, { passive: true });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      ensureChrome();
-      bindToolbar();
-      annotate();
-    });
-  } else {
+  function bootWalk() {
     ensureChrome();
     bindToolbar();
-    annotate();
+    // Hover/tour off: skip annotate on cold start
+    document.body.classList.add("walk-hover-off");
+    document.body.classList.remove("walk-touring", "walk-active");
+    updateToolbar();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootWalk);
+  } else {
+    bootWalk();
   }
 })();

@@ -1006,13 +1006,9 @@ body.term-collapsed .sidebar {
   opacity: 1;
 }
 
-/* Compact topbar history — no tall forced stack */
-.filter-nav-block .hist-timeline-wrap {
+/* History is a floating panel — keep topbar one line */
+.filter-nav-block .hist-float-anchor {
   margin-top: 0;
-}
-
-.filter-nav-block .hist-timeline-compact {
-  margin-top: 0.1rem;
 }
 
 @media (max-width: 860px) {
@@ -1028,7 +1024,7 @@ body.term-collapsed .sidebar {
     order: 3;
     margin-left: 0;
   }
-  .hist-timeline-mini {
-    height: 28px;
+  .hist-float-panel {
+    width: min(92vw, 320px);
   }
 }

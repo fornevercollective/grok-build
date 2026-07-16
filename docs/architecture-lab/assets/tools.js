@@ -94,7 +94,10 @@
       // never strip sidebar column for tools
       app.classList.remove("tools-wide");
     }
-    if (mode === "history") refreshHistory();
+    if (mode === "history") {
+      // Lazy: only hit /api/git-log when History tab is selected
+      refreshHistory();
+    }
     location.hash =
       mode === "docs"
         ? location.hash.replace(/^#\/tool\/.*/, "") || location.hash
@@ -116,7 +119,12 @@
     if (btn) {
       btn.setAttribute("aria-expanded", coll ? "false" : "true");
       btn.title = coll ? "Show left menu" : "Hide left menu";
-      btn.textContent = coll ? "Menu" : "Hide";
+      btn.classList.toggle("menu-collapsed", !!coll);
+      // Keep SpaceXAI logo — never replace with text
+      if (!btn.querySelector(".menu-btn-mark")) {
+        btn.innerHTML =
+          '<img class="menu-btn-mark" src="assets/brand/spacexai-symbol-white-transparent.svg" width="22" height="22" alt="SpaceXAI" draggable="false" />';
+      }
     }
     if (edge) {
       edge.setAttribute("aria-expanded", coll ? "false" : "true");
@@ -1574,14 +1582,20 @@ gy space mute all`;
       if (open) {
         exp.removeAttribute("hidden");
         btn.setAttribute("aria-expanded", "true");
-        // redraw after layout
-        requestAnimationFrame(() => drawHistTimeline("hist-timeline-canvas-mini"));
+        // Lazy-load git history only when user opens Hist (faster cold start)
+        if (!state.commits?.length) {
+          loadHistorySlider().then(() => {
+            requestAnimationFrame(() => drawHistTimeline("hist-timeline-canvas-mini"));
+          });
+        } else {
+          requestAnimationFrame(() => drawHistTimeline("hist-timeline-canvas-mini"));
+        }
       } else {
         exp.setAttribute("hidden", "");
         btn.setAttribute("aria-expanded", "false");
       }
     });
-    loadHistorySlider();
+    // Do not loadHistorySlider() on boot — defer until Hist open or History tab
 
     document.querySelectorAll("#panel-history .rail-tab").forEach((t) => {
       t.addEventListener("click", () => setHistRail(t.dataset.hrail));
