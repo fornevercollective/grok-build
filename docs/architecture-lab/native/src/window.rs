@@ -479,6 +479,13 @@ fn agent_init_script() -> String {
         r##"
 {chrome}
 document.documentElement.classList.add("lab-native","lab-agent-surface");
+function __labMarkAgentBody(){{
+  if (document.body) {{
+    document.body.classList.add("lab-native","lab-agent-surface","ac-body");
+  }}
+}}
+__labMarkAgentBody();
+document.addEventListener("DOMContentLoaded", __labMarkAgentBody);
 window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
   isDesktop: true, isNative: true, isAgentWindow: true, shell: "wry-agent", floatChrome: true,
   control: function(action, extra){{
@@ -499,6 +506,13 @@ fn launch_init_script() -> String {
         r##"
 {chrome}
 document.documentElement.classList.add("lab-native","lab-launch-surface");
+function __labMarkLaunchBody(){{
+  if (document.body) {{
+    document.body.classList.add("lab-native","lab-launch-surface","lp-body");
+  }}
+}}
+__labMarkLaunchBody();
+document.addEventListener("DOMContentLoaded", __labMarkLaunchBody);
 window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
   isDesktop: true, isNative: true, isLaunchWindow: true, shell: "wry-launch", floatChrome: true,
   control: function(action, extra){{
@@ -571,6 +585,9 @@ fn build_webview(
         target_os = "android"
     ))]
     {
+        // Re-assert rounded NSView clip after WKWebView attaches (lazy satellites).
+        #[cfg(target_os = "macos")]
+        crate::macos_style::apply_lab_window_shape(window);
         builder.build(window).context("build webview")
     }
 

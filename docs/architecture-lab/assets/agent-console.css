@@ -34,6 +34,20 @@ body.ac-body {
   background: var(--ac-bg);
   color: var(--ac-text);
   font-family: var(--ac-font);
+  /* Match lab float shell (native also injects lab-round chrome) */
+  border-radius: 18px;
+}
+
+html {
+  background: transparent;
+}
+
+body.ac-body {
+  position: relative;
+  background:
+    radial-gradient(ellipse 70% 40% at 15% 0%, rgba(56, 189, 248, 0.08), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 90% 100%, rgba(167, 139, 250, 0.07), transparent 50%),
+    var(--ac-bg);
 }
 
 .ac-chrome {
@@ -41,12 +55,14 @@ body.ac-body {
   align-items: center;
   gap: 0.45rem;
   height: 42px;
-  padding: 0 0.65rem 0 0.75rem;
+  padding: 0 14px 0 0.75rem; /* clear rounded TR */
   border-bottom: 1px solid var(--ac-border);
   background: rgba(9, 9, 11, 0.92);
   backdrop-filter: blur(14px);
   flex-shrink: 0;
   user-select: none;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
 }
 
 .ac-lights {

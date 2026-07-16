@@ -1,5 +1,8 @@
 //! Non-Apple window chrome — soft lab corners (Grok/SpaceXAI float vibe).
 //! Intentional: not stock NSWindow chrome; local fornever lab shell.
+//!
+//! Visual language: chat-orb multi-hue bloom sits *around* the 18px rounded
+//! shell (corner glows + rainbow hairline) on every float surface.
 
 #![cfg(target_os = "macos")]
 
@@ -13,6 +16,7 @@ use tao::window::Window;
 pub const LAB_CORNER_RADIUS: f64 = 18.0;
 
 /// Apply fornever-lab rounded shell + transparent host so CSS can soft-clip.
+/// Safe to call again after lazy webview attach (re-asserts layer clip).
 pub fn apply_lab_window_shape(window: &Window) {
     unsafe {
         let ns_win = window.ns_window() as id;
@@ -43,58 +47,99 @@ pub fn apply_lab_window_shape(window: &Window) {
     }
 }
 
-/// CSS fragment for webviews — lab rounded content + rainbow edge (not official mark).
+/// CSS fragment for webviews — lab rounded content + chat-orb corner glow + rainbow edge.
+/// Targets lab · chat · stream · agent · launch body/html classes.
 pub fn lab_round_css() -> &'static str {
     r#"
-html.lab-native, html.lab-float, html.lab-chat-surface, html.lab-stream-surface,
-body.lab-native, body.lab-float, body.lab-chat-window, body.stream-window {
+/* ── Shell: all native float surfaces ─────────────────────────────── */
+html.lab-native, html.lab-float,
+html.lab-chat-surface, html.lab-stream-surface,
+html.lab-agent-surface, html.lab-launch-surface,
+body.lab-native, body.lab-float,
+body.lab-chat-window, body.stream-window,
+body.lab-agent-surface, body.lab-launch-surface,
+body.ac-body, body.lp-body {
   border-radius: 18px !important;
   overflow: hidden !important;
+  background-clip: padding-box !important;
 }
-body.lab-native, body.lab-float, body.lab-chat-window, body.stream-window {
-  /* soft rainbow hairline — lab chrome, not a trademark */
+
+/* Transparent host + solid interior so corners don't show square fill */
+html.lab-native, html.lab-float,
+html.lab-chat-surface, html.lab-stream-surface,
+html.lab-agent-surface, html.lab-launch-surface {
+  background: transparent !important;
+}
+
+body.lab-native, body.lab-float,
+body.lab-chat-window, body.stream-window,
+body.lab-agent-surface, body.lab-launch-surface,
+body.ac-body, body.lp-body {
+  position: relative !important;
+  /* soft hairline + depth so glow reads against desktop */
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.06),
-    inset 0 0 0 1px transparent;
-  background-clip: padding-box;
-  position: relative;
+    inset 0 0 0 1px rgba(255,255,255,0.06) !important;
 }
+
+/* ── Chat-orb corner bloom (behind / around rounded shell) ──────────
+   Same multi-hue language as .chat-stage::before conic halo —
+   sits just inside the 18px radius so it wraps each corner. */
 body.lab-native::before, body.lab-float::before,
-body.lab-chat-window::before, body.stream-window::before {
-  content: "";
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  border-radius: 18px;
-  z-index: 400;
-  box-shadow:
-    inset 0 0 0 1px rgba(110,203,255,0.22),
-    inset 0 0 24px rgba(167,139,250,0.06);
+body.lab-chat-window::before, body.stream-window::before,
+body.lab-agent-surface::before, body.lab-launch-surface::before,
+body.ac-body::before, body.lp-body::before {
+  content: "" !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  inset: 0 !important;
+  border-radius: 18px !important;
+  z-index: 398 !important;
+  background:
+    radial-gradient(ellipse 55% 48% at 0% 0%, rgba(110, 203, 255, 0.42), transparent 62%),
+    radial-gradient(ellipse 55% 48% at 100% 0%, rgba(167, 139, 250, 0.36), transparent 62%),
+    radial-gradient(ellipse 55% 48% at 0% 100%, rgba(255, 122, 200, 0.28), transparent 62%),
+    radial-gradient(ellipse 55% 48% at 100% 100%, rgba(74, 222, 128, 0.34), transparent 62%),
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(110, 203, 255, 0.12), transparent 70%) !important;
+  filter: blur(16px) !important;
+  opacity: 0.72 !important;
+  mix-blend-mode: screen !important;
+  animation: lab-corner-glow 18s linear infinite !important;
 }
-/* continuous rainbow rim */
+@keyframes lab-corner-glow {
+  0%, 100% { filter: blur(16px) hue-rotate(0deg); opacity: 0.68; }
+  50% { filter: blur(20px) hue-rotate(12deg); opacity: 0.85; }
+}
+
+/* ── Continuous rainbow rim (chat-orb palette) ───────────────────── */
 body.lab-native::after, body.lab-float::after,
-body.lab-chat-window::after, body.stream-window::after {
-  content: "";
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  border-radius: 18px;
-  z-index: 401;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(110,203,255,0.55),
-    rgba(167,139,250,0.45),
-    rgba(248,113,113,0.4),
-    rgba(74,222,128,0.45),
-    rgba(110,203,255,0.55)
-  );
+body.lab-chat-window::after, body.stream-window::after,
+body.lab-agent-surface::after, body.lab-launch-surface::after,
+body.ac-body::after, body.lp-body::after {
+  content: "" !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  inset: 0 !important;
+  border-radius: 18px !important;
+  z-index: 401 !important;
+  padding: 1.25px !important;
+  background: conic-gradient(
+    from 180deg,
+    rgba(110, 203, 255, 0.7),
+    rgba(167, 139, 250, 0.55),
+    rgba(248, 113, 113, 0.5),
+    rgba(74, 222, 128, 0.55),
+    rgba(110, 203, 255, 0.7)
+  ) !important;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0.55;
+    linear-gradient(#000 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  opacity: 0.62 !important;
+  animation: lab-rim-spin 22s linear infinite !important;
+}
+@keyframes lab-rim-spin {
+  to { filter: hue-rotate(360deg); }
 }
 "#
 }
