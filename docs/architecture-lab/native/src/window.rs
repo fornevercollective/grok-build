@@ -1095,12 +1095,14 @@ fn float_chrome_js(role: &str) -> String {
 
   // Throttle edge cursor probes — full-document mousemove flooded the event loop
   // and contributed to freezes/crashes with multiple WKWebViews.
+  // Wider edge (14px) so top corners near stoplights still get resize hits.
   var __labMoveAt = 0;
+  var EDGE = 14;
   document.addEventListener("mousemove", function(e){{
     var now = Date.now();
     if (now - __labMoveAt < 40) return;
     __labMoveAt = now;
-    var m = 10;
+    var m = EDGE;
     var w = window.innerWidth || 0;
     var h = window.innerHeight || 0;
     if (e.clientX > m && e.clientX < w - m && e.clientY > m && e.clientY < h - m) {{
@@ -1112,9 +1114,31 @@ fn float_chrome_js(role: &str) -> String {
   document.addEventListener("mousedown", function(e){{
     if (e.button !== 0) return;
     var t = e.target;
-    if (t && t.closest && t.closest("button, a, input, textarea, select, pre, [data-no-drag], .ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll")) return;
+    // Stoplights / chrome controls: never steal for drag; allow button handlers
+    if (t && t.closest && t.closest("[data-no-drag], .tl, .lnb-tl, .lights, .lnb-lights, button, a, input, textarea, select, pre, video, .ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll, .stream-body, .sv-stage")) {{
+      // Still allow pure edge resize if press is on the very rim (not on a button)
+      if (t.closest && t.closest("button, a, input, textarea, select, .tl, .lnb-tl")) return;
+    }}
+    // Explicit resize grips
+    var grip = t && t.closest ? t.closest("[data-resize]") : null;
+    if (grip) {{
+      var dir = grip.getAttribute("data-resize") || "se";
+      try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }}
     var dragEl = t && t.closest ? t.closest("[data-drag-region]") : null;
     if (dragEl) {{
+      // Top-edge resize: if pointer is within EDGE of window edge, prefer resize over drag
+      var m = EDGE;
+      var w = window.innerWidth || 0;
+      var h = window.innerHeight || 0;
+      if (e.clientX <= m || e.clientX >= w - m || e.clientY <= m || e.clientY >= h - m) {{
+        try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
+        e.preventDefault();
+        return;
+      }}
       if (e.detail === 2) {{
         ipc("maximize");
       }} else {{
@@ -1124,10 +1148,10 @@ fn float_chrome_js(role: &str) -> String {
       return;
     }}
     // Edge resize only near borders
-    var m = 8;
-    var w = window.innerWidth || 0;
-    var h = window.innerHeight || 0;
-    if (e.clientX <= m || e.clientX >= w - m || e.clientY <= m || e.clientY >= h - m) {{
+    var m2 = EDGE;
+    var w2 = window.innerWidth || 0;
+    var h2 = window.innerHeight || 0;
+    if (e.clientX <= m2 || e.clientX >= w2 - m2 || e.clientY <= m2 || e.clientY >= h2 - m2) {{
       try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
     }}
   }}, true);

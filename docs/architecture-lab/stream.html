@@ -260,14 +260,38 @@
         color: #71717a;
         text-align: center;
       }
+      .sv-pop-row {
+        margin-top: 0.35rem;
+        flex-wrap: wrap;
+      }
+      .resize-grip {
+        position: fixed;
+        z-index: 40;
+        width: 16px;
+        height: 16px;
+        pointer-events: auto;
+        background: transparent;
+      }
+      .resize-grip.nw { top: 0; left: 0; cursor: nwse-resize; }
+      .resize-grip.ne { top: 0; right: 0; cursor: nesw-resize; }
+      .resize-grip.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+      .resize-grip.se { bottom: 0; right: 0; cursor: nwse-resize; }
+      /* Keep stoplights clickable above grips */
+      .stream-chrome .lights { position: relative; z-index: 50; }
     </style>
   </head>
   <body class="stream-window lab-native lab-stream-surface">
+    <!-- Corner resize grips (stoplight area is no-drag; edges still resize) -->
+    <div class="resize-grip nw" data-resize="nw" data-no-drag title="Resize"></div>
+    <div class="resize-grip ne" data-resize="ne" data-no-drag title="Resize"></div>
+    <div class="resize-grip sw" data-resize="sw" data-no-drag title="Resize"></div>
+    <div class="resize-grip se" data-resize="se" data-no-drag title="Resize"></div>
+
     <header class="stream-chrome" id="stream-chrome" data-drag-region="1">
       <div class="lights" data-no-drag>
         <button type="button" class="tl close" id="btn-close" title="Hide stream"></button>
         <button type="button" class="tl min" id="btn-min" title="Minimize"></button>
-        <button type="button" class="tl max" id="btn-max" title="Zoom"></button>
+        <button type="button" class="tl max" id="btn-max" title="Zoom / maximize (double-click chrome to zoom)"></button>
       </div>
       <span class="dot" title="stream"></span>
       <span class="title" title="Grok Build Lab · stream">Stream</span>
@@ -291,10 +315,12 @@
             muted
           ></video>
           <div class="sv-overlay" id="sv-overlay">
-            <span>URL · @handle · blank · cam</span>
+            <span>SpaceXAI · X · blank · gy · paste URL</span>
           </div>
         </div>
         <div class="sv-presets" id="sv-presets" role="group" aria-label="Stream presets">
+          <button type="button" class="sv-chip" data-preset="spacexai" title="https://x.com/spacexai">SpaceXAI</button>
+          <button type="button" class="sv-chip" data-preset="xai" title="https://x.com/xai">xAI</button>
           <button type="button" class="sv-chip" data-preset="overview">Overview</button>
           <button type="button" class="sv-chip" data-preset="blank">Blank</button>
           <button type="button" class="sv-chip" data-preset="demo">Demo</button>
@@ -306,7 +332,7 @@
             type="text"
             id="sv-url"
             class="sv-input"
-            placeholder="https://…  or  @handle  or  device:0"
+            placeholder="https://x.com/spacexai · @spacexai · x:spacexai · paste"
             spellcheck="false"
             aria-label="Stream URL or handle"
           />
@@ -319,14 +345,21 @@
             </select>
             <button type="submit" class="btn-mini primary" id="sv-play">Play</button>
             <button type="button" class="btn-mini" id="sv-stop" title="Stop stream">Stop</button>
-            <button type="button" class="btn-mini" id="sv-ffplay" title="Open in ffplay">ffplay</button>
+            <button type="button" class="btn-mini" id="sv-copy" title="Copy URL">Copy</button>
+            <button type="button" class="btn-mini" id="sv-paste" title="Paste URL from clipboard">Paste</button>
+          </div>
+          <div class="sv-row sv-pop-row">
+            <button type="button" class="btn-mini primary" id="sv-pop-blank" title="Pop-out via GY blank (:5173)">Pop blank</button>
+            <button type="button" class="btn-mini" id="sv-pop-gy" title="Pop-out via GrokYtalkY hub burst">Pop GY</button>
+            <button type="button" class="btn-mini" id="sv-pop-ffplay" title="OS ffplay window">ffplay</button>
+            <button type="button" class="btn-mini" id="sv-pop-video" title="Browser video pop-out window">Pop video</button>
           </div>
         </form>
-        <p class="sv-status" id="sv-status">yt-dlp · ffmpeg · blank · gy hub</p>
+        <p class="sv-status" id="sv-status">yt-dlp · blank · gy · ffplay · SpaceXAI X feed</p>
         <span class="sb-summary-meta" id="video-feed-pill" hidden>idle</span>
         <div class="sv-history" id="sv-history" aria-label="Recent stream requests"></div>
       </div>
-      <p class="stream-meta">POST /api/control · dock / undock · SpaceXAI</p>
+      <p class="stream-meta">Drag edges / corner grips to resize · green traffic light = zoom · SpaceXAI</p>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js" defer></script>
@@ -359,17 +392,22 @@
 
       let docked = true;
       document.getElementById("btn-close")?.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         control("hide_stream");
+        ipc("close");
       });
       document.getElementById("btn-min")?.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         ipc("minimize");
         control("minimize", { target: "stream" });
       });
       document.getElementById("btn-max")?.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         ipc("maximize");
+        control("maximize", { target: "stream" });
       });
       document.getElementById("btn-lab")?.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -403,6 +441,6 @@
 
       window.LabStream = { control: control };
     </script>
-    <script src="assets/video-feed.js?v=stream1" defer></script>
+    <script src="assets/video-feed.js?v=stream3" defer></script>
   </body>
 </html>

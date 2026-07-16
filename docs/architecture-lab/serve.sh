@@ -706,6 +706,9 @@ def expand_media_input(raw: str) -> str:
             return f"https://www.tiktok.com/@{handle}/live"
         if plat in ("x", "twitter"):
             return f"https://x.com/{handle}"
+    # bare known X handles without @
+    if s.lower() in ("spacexai", "xai", "spacex") and "://" not in s:
+        return f"https://x.com/{s}"
     return s
 
 

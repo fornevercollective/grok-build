@@ -29,6 +29,10 @@ pub fn router(state: Arc<LabState>) -> Router {
         .route("/api/summon-grok", get(summon_get).post(summon_post))
         .route("/api/mitigate", get(mitigate_get).post(mitigate_post))
         .route("/api/media/tools", get(media_tools))
+        .route("/api/media/resolve", get(media_resolve_help).post(media_resolve_post))
+        .route("/api/media/ffplay", get(media_ffplay_help).post(media_ffplay_post))
+        .route("/api/media/stop", post(media_stop_post))
+        .route("/api/media/popout", post(media_popout_post))
         // Colossus/Dojo LTS (GOJO/DOLOSUS) path resolution
         .route("/api/lts", get(lts_status))
         .route("/api/lts/status", get(lts_status))
@@ -770,16 +774,137 @@ fn mitigate_impl(action: &str) -> Json<Value> {
 }
 
 async fn media_tools() -> Json<Value> {
+    Json(crate::media::tools_json())
+}
+
+#[derive(Deserialize, Default)]
+struct MediaBody {
+    url: Option<String>,
+    quality: Option<String>,
+    #[allow(dead_code)]
+    restream: Option<bool>,
+    prefer_blank: Option<bool>,
+    prefer_gy: Option<bool>,
+    #[serde(rename = "preferBlank")]
+    prefer_blank_alt: Option<bool>,
+    #[serde(default, rename = "jobId")]
+    #[allow(dead_code)]
+    job_id: Option<String>,
+    mode: Option<String>,
+}
+
+async fn media_resolve_help() -> Json<Value> {
     Json(json!({
         "ok": true,
-        "ytdlp": which("yt-dlp"),
-        "ffmpeg": which("ffmpeg"),
-        "ffplay": which("ffplay"),
-        "blank": false,
-        "gy_hub": false,
-        "gy_bin": which("gy"),
-        "native": true,
+        "method": "POST",
+        "body": {
+            "url": "https://x.com/spacexai | @spacexai | x:spacexai | youtube…",
+            "quality": "1080",
+            "prefer_blank": true,
+            "prefer_gy": true,
+        },
+        "via": ["gy-hub", "blank", "yt-dlp", "ffplay popout"],
     }))
+}
+
+async fn media_resolve_post(Json(body): Json<MediaBody>) -> Json<Value> {
+    let url = body.url.unwrap_or_default();
+    let quality = body.quality.unwrap_or_else(|| "1080".into());
+    let prefer_blank = body.prefer_blank.or(body.prefer_blank_alt).unwrap_or(true);
+    let prefer_gy = body.prefer_gy.unwrap_or(true);
+    let url_c = url.clone();
+    let q_c = quality.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        crate::media::resolve(&url_c, &q_c, prefer_blank, prefer_gy)
+    })
+    .await;
+    match result {
+        Ok(v) => Json(v),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+async fn media_ffplay_help() -> Json<Value> {
+    Json(json!({
+        "ok": true,
+        "method": "POST",
+        "body": {"url": "…", "quality": "1080"},
+        "note": "GrokYtalkY/blank-style pop-out player via ffplay",
+    }))
+}
+
+async fn media_ffplay_post(Json(body): Json<MediaBody>) -> Json<Value> {
+    let url = body.url.unwrap_or_default();
+    let quality = body.quality.unwrap_or_else(|| "1080".into());
+    let url_c = url.clone();
+    let q_c = quality.clone();
+    let result =
+        tokio::task::spawn_blocking(move || crate::media::ffplay(&url_c, &q_c)).await;
+    match result {
+        Ok(v) => Json(v),
+        Err(e) => Json(json!({"ok": false, "error": e.to_string()})),
+    }
+}
+
+async fn media_stop_post(Json(_body): Json<MediaBody>) -> Json<Value> {
+    Json(crate::media::stop_all())
+}
+
+/// Pop-out: prefer blank / GY URLs; also launches ffplay as OS window.
+async fn media_popout_post(Json(body): Json<MediaBody>) -> Json<Value> {
+    let url = body.url.unwrap_or_default();
+    let mode = body.mode.unwrap_or_else(|| "auto".into());
+    let quality = body.quality.unwrap_or_else(|| "1080".into());
+    let expanded = crate::media::expand_input(&url);
+    let tools = crate::media::tools_json();
+    let blank_up = tools.get("blank").and_then(|b| b.as_bool()).unwrap_or(false);
+    let gy_up = tools.get("gy_hub").and_then(|b| b.as_bool()).unwrap_or(false);
+
+    if mode == "ffplay" || mode == "auto" {
+        if mode == "ffplay" || (!blank_up && !gy_up) {
+            let url_c = expanded.clone();
+            let q_c = quality.clone();
+            let fp = tokio::task::spawn_blocking(move || crate::media::ffplay(&url_c, &q_c))
+                .await
+                .unwrap_or_else(|e| json!({"ok": false, "error": e.to_string()}));
+            if mode == "ffplay" {
+                return Json(fp);
+            }
+            if fp.get("ok") == Some(&Value::Bool(true)) {
+                return Json(fp);
+            }
+        }
+    }
+
+    let blank_pop = format!(
+        "http://127.0.0.1:5173/?url={}",
+        urlencoding_simple(&expanded)
+    );
+    let gy_pop = format!(
+        "http://127.0.0.1:9876/burst.html?url={}",
+        urlencoding_simple(&expanded)
+    );
+    Json(json!({
+        "ok": true,
+        "via": if blank_up { "blank" } else if gy_up { "gy-hub" } else { "url" },
+        "url": expanded,
+        "popout_blank": blank_pop,
+        "popout_gy": gy_pop,
+        "blank_up": blank_up,
+        "gy_up": gy_up,
+        "message": "Open popout_blank or popout_gy in browser / Lab Browser window",
+    }))
+}
+
+fn urlencoding_simple(s: &str) -> String {
+    let mut out = String::new();
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
 
 #[derive(Deserialize, Default)]
