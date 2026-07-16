@@ -59,7 +59,7 @@ async fn health(State(st): State<Arc<LabState>>) -> Json<Value> {
         "native": true,
         "shell": "architecture-lab-native",
         "webview": "system",
-        "windows": ["lab", "chat", "stream"],
+        "windows": ["lab", "chat", "stream", "agent"],
         "chat_visible": st.control.chat_visible(),
         "stream_visible": st.control.stream_visible(),
         "chat_docked": st.control.chat_docked(),
@@ -89,10 +89,10 @@ async fn control_help() -> Json<Value> {
             "center", "move", "resize", "eval", "error",
             "refresh", "refresh_lab", "refresh_chat", "refresh_stream", "refresh_all",
             "check_updates", "open_chat_independent", "chat_only",
-            "open_panda", "spawn_fleet",
+            "open_panda", "spawn_fleet", "show_agent", "hide_agent", "toggle_agent",
             "drag", "ping", "quit"
         ],
-        "targets": ["lab", "chat", "stream", "all"],
+        "targets": ["lab", "chat", "stream", "agent", "all"],
         "examples": [
             {"action": "show_stream"},
             {"action": "dock_chat"},

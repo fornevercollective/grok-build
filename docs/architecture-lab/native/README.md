@@ -6,9 +6,11 @@
 |---------|--------|
 | Float / Lab window | **tao + wry** → macOS **WKWebView**, Windows WebView2, Linux WebKitGTK |
 | Chat window | Same stack · independent frameless float (`chat.html`) |
+| Stream window | Same stack · live event feed (`stream.html`) |
+| **Agent Console** | Same stack · **center chat + α/β/γ feeds** (`agent.html`) — agentcn-inspired |
 | Embedded server | **axum** — static lab + `/api/*` + SpaceXAI **control bus** |
 | Menus | **muda** (View refresh · Window · Help / updates) |
-| Terminal | **ratatui** `--mode tui` (mugrok / grok-cli lineage) |
+| Terminal | **ratatui** `--mode tui` (mugrok / grok-cli lineage) · **Panda** for multi-PTY fleet |
 
 Dojo/Colossus-shaped path: one Rust binary, system webview, no Chromium embed, no Node in the product process.
 
@@ -27,7 +29,7 @@ Dojo/Colossus-shaped path: one Rust binary, system webview, no Chromium embed, n
 | Pages / update check | lab `version.json` (git SHA) | Help → Check for Updates… |
 | Bundle id | `dev.fornevercollective.architecture-lab` | Local lab — not an xAI product |
 
-**Current baseline:** `0.3.0` (crate + marketing) — fleet: **Open Panda** αβγ + handoff bus.
+**Current baseline:** `0.3.1` (crate + marketing) — **Agent Console** (center + αβγ feeds) + **Open Panda** fleet + handoff bus.
 
 This crate is a **standalone Cargo workspace** (`[workspace]` in this folder) — it is **not** a member of the monorepo root workspace. That is intentional (isolation, faster lab iteration).
 
@@ -145,7 +147,7 @@ Abort trap: 6
 
 **Cause class:** concurrent creation of **three** WKWebViews + large init scripts right as AppKit/WebKit starts. `NSString::from_str` then panics inside an ObjC callback (cannot unwind → abort).
 
-**Mitigation (default):** only the **lab** webview is built at startup. **Chat** and **stream** attach their WKWebViews on first show (Cmd+2 / Cmd+3 / control API). Control handlers are also `catch_unwind`-wrapped.
+**Mitigation (default):** only the **lab** webview is built at startup. **Chat**, **stream**, and **Agent Console** attach WKWebViews on first show (control API / menu / lab bar). Control handlers are also `catch_unwind`-wrapped.
 
 ```bash
 # restore old “all three up front” behavior if needed
@@ -166,6 +168,9 @@ curl -s -X POST http://127.0.0.1:PORT/api/control \
   -d '{"action":"show_stream"}'
 curl -s -X POST http://127.0.0.1:PORT/api/control \
   -H 'Content-Type: application/json' \
+  -d '{"action":"show_agent"}'
+curl -s -X POST http://127.0.0.1:PORT/api/control \
+  -H 'Content-Type: application/json' \
   -d '{"action":"link_all"}'
 curl -s -X POST http://127.0.0.1:PORT/api/control \
   -H 'Content-Type: application/json' \
@@ -175,9 +180,28 @@ curl -s -X POST http://127.0.0.1:PORT/api/control \
   -d '{"action":"pin","target":"lab","on":true}'
 ```
 
-Actions include: `show_chat` · `show_stream` · `open_chat_independent` · dock/undock · `link_all` · `unlink_all` · `focus_*` · `pin` · `unpin` · `center` · `move` · `resize` · `minimize` · `maximize` · `close` · `refresh` / `refresh_*` · `check_updates` · `eval` · `error` · `quit` · `drag` (IPC).
+Actions include: `show_chat` · `show_stream` · **`show_agent` / `open_agent` / `toggle_agent`** · `open_chat_independent` · dock/undock · `link_all` · `unlink_all` · `focus_*` · `pin` · `unpin` · `center` · `move` · `resize` · `minimize` · `maximize` · `close` · `refresh` / `refresh_*` (incl. `refresh_agent`) · `check_updates` · `eval` · `error` · `quit` · `drag` (IPC).
 
-Targets: `lab` · `chat` · `stream` · `all`.
+Targets: `lab` · `chat` · `stream` · **`agent`** · `all`.
+
+### Agent Console layout (target UI)
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Lab chrome (native / browser)                              │
+├──────────────────────────────┬──────────────────────────────┤
+│                              │  α plan   terminal feed      │
+│   CENTER                     │  (live PTY / agent stream)   │
+│   Prompt + scrollback        ├──────────────────────────────┤
+│   like grok.com / Cursor     │  β build  terminal feed      │
+│   main agent chat            ├──────────────────────────────┤
+│                              │  γ verify terminal feed      │
+└──────────────────────────────┴──────────────────────────────┘
+```
+
+Open: **Window → Open Agent Console** (⌘⇧A) · lab bar **Agent** · `POST /api/control` `show_agent` · browser: `agent.html`.
+
+Live PTYs still open via **Panda** (⌘⇧P); the console is the orchestration surface (handoffs + feed status).
 
 Errors: `GET /api/control/errors` · toast in windows.
 

@@ -21,6 +21,11 @@ pub enum ControlCmd {
     HideStream,
     FocusStream,
     ToggleStream,
+    /// Agent console: center chat + α/β/γ feeds (agentcn-inspired)
+    ShowAgent,
+    HideAgent,
+    FocusAgent,
+    ToggleAgent,
     /// Dock / undock satellite windows relative to lab
     Dock { target: WinTarget },
     Undock { target: WinTarget },
@@ -79,6 +84,7 @@ pub enum WinTarget {
     Lab,
     Chat,
     Stream,
+    Agent,
     All,
 }
 
@@ -241,6 +247,10 @@ impl ControlRequest {
             "hide_stream" | "close_stream" => Ok(ControlCmd::HideStream),
             "toggle_stream" => Ok(ControlCmd::ToggleStream),
             "focus_stream" => Ok(ControlCmd::FocusStream),
+            "show_agent" | "open_agent" | "agent" | "agent_console" => Ok(ControlCmd::ShowAgent),
+            "hide_agent" | "close_agent" => Ok(ControlCmd::HideAgent),
+            "toggle_agent" => Ok(ControlCmd::ToggleAgent),
+            "focus_agent" => Ok(ControlCmd::FocusAgent),
             "dock" | "dock_window" => Ok(ControlCmd::Dock {
                 target: self.target,
             }),
@@ -327,6 +337,9 @@ impl ControlRequest {
             }),
             "refresh_stream" => Ok(ControlCmd::Refresh {
                 target: WinTarget::Stream,
+            }),
+            "refresh_agent" => Ok(ControlCmd::Refresh {
+                target: WinTarget::Agent,
             }),
             "refresh_all" => Ok(ControlCmd::Refresh {
                 target: WinTarget::All,

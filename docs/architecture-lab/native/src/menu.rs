@@ -121,6 +121,15 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         )),
     );
     let unlink_all = MenuItem::with_id("unlink_all", "Unlink All (Undock)", true, None);
+    let open_agent = MenuItem::with_id(
+        "open_agent",
+        "Open Agent Console",
+        true,
+        Some(Accelerator::new(
+            Some(Modifiers::META | Modifiers::SHIFT),
+            Code::KeyA,
+        )),
+    );
     let open_panda = MenuItem::with_id(
         "open_panda",
         "Open Panda Fleet (αβγ)",
@@ -136,6 +145,7 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         &win_stream,
         &win_both,
         &PredefinedMenuItem::separator(),
+        &open_agent,
         &open_panda,
         &PredefinedMenuItem::separator(),
         &dock_chat,
@@ -264,6 +274,9 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
         }
         "check_updates" => {
             let _ = proxy.send_event(ControlCmd::CheckUpdates);
+        }
+        "open_agent" => {
+            let _ = proxy.send_event(ControlCmd::ShowAgent);
         }
         "open_panda" => {
             // Spawn Panda off the menu thread — no window ControlCmd required.

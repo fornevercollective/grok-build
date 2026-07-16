@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Build Lab · Agent Console</title>
+    <meta
+      name="description"
+      content="agentcn-inspired agent console: center chat + α/β/γ terminal feeds"
+    />
+    <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/agent-console.css?v=ac1" />
+  </head>
+  <body class="ac-body">
+    <!-- Scaffold pattern: agentcn = composable agent chrome · shadcn-like cards · role feeds -->
+    <header class="ac-chrome" data-drag-region="1">
+      <div class="ac-lights" data-no-drag>
+        <button type="button" class="ac-tl close" id="btn-close" title="Close"></button>
+        <button type="button" class="ac-tl min" id="btn-min" title="Minimize"></button>
+        <button type="button" class="ac-tl max" id="btn-max" title="Zoom"></button>
+      </div>
+      <img
+        class="ac-mark"
+        src="assets/brand/grok-logomark-light.svg"
+        width="20"
+        height="20"
+        alt=""
+      />
+      <strong class="ac-title">Agent Console</strong>
+      <span class="ac-pill" id="ac-status">idle</span>
+      <span class="ac-spacer"></span>
+      <button type="button" class="ac-btn" id="btn-lab" data-no-drag title="Focus lab">Lab</button>
+      <button type="button" class="ac-btn" id="btn-panda" data-no-drag title="Open Panda fleet">
+        Panda
+      </button>
+      <button type="button" class="ac-btn primary" id="btn-handoff-pb" data-no-drag>
+        Plan → Build
+      </button>
+      <button type="button" class="ac-btn" id="btn-handoff-bv" data-no-drag>Build → Verify</button>
+    </header>
+
+    <main class="ac-layout">
+      <!-- CENTER: grok.com / Cursor-style main agent -->
+      <section class="ac-center" aria-label="Main agent chat">
+        <div class="ac-center-head">
+          <div>
+            <h1>Main agent</h1>
+            <p class="ac-muted">
+              Prompt + scrollback · orchestrates α plan · β build · γ verify
+              <span class="ac-badge">agentcn scaffold</span>
+            </p>
+          </div>
+          <div class="ac-center-actions">
+            <button type="button" class="ac-btn" id="btn-clear-chat">Clear</button>
+            <button type="button" class="ac-btn" id="btn-export-chat">Export</button>
+          </div>
+        </div>
+
+        <div class="ac-scroll" id="ac-scroll" role="log" aria-live="polite"></div>
+
+        <form class="ac-prompt" id="ac-form">
+          <div class="ac-prompt-card">
+            <textarea
+              id="ac-input"
+              rows="3"
+              maxlength="8000"
+              placeholder="Message the main agent… e.g. Plan JWT auth, then hand off to build"
+              aria-label="Agent prompt"
+            ></textarea>
+            <div class="ac-prompt-bar">
+              <div class="ac-chips" id="ac-chips">
+                <button type="button" data-chip="Plan a safe approach for the current task">
+                  Plan
+                </button>
+                <button type="button" data-chip="Implement the approved plan in a worktree">
+                  Build
+                </button>
+                <button type="button" data-chip="Run tests and review regressions only">
+                  Verify
+                </button>
+                <button type="button" data-chip="Summarize status of α β γ and next hop">
+                  Status
+                </button>
+              </div>
+              <button type="submit" class="ac-send" id="ac-send">Send</button>
+            </div>
+          </div>
+          <p class="ac-hint">
+            Enter send · Shift+Enter newline · feeds update from handoff bus · real PTYs via
+            <strong>Panda</strong>
+          </p>
+        </form>
+      </section>
+
+      <!-- RIGHT: three working feeds (Cursor-agent / Panda style) -->
+      <aside class="ac-feeds" aria-label="Agent terminal feeds">
+        <article class="ac-feed" data-role="plan" id="feed-plan">
+          <header>
+            <span class="ac-role plan">α plan</span>
+            <span class="ac-feed-status" data-st="plan">idle</span>
+            <button type="button" class="ac-icon-btn" data-focus="plan" title="Focus role">↗</button>
+          </header>
+          <pre class="ac-feed-body" id="feed-plan-body">Waiting for plan activity…</pre>
+          <footer>
+            <button type="button" class="ac-btn sm" data-source="plan">Source profile</button>
+            <button type="button" class="ac-btn sm primary" data-send-role="plan">Send here</button>
+          </footer>
+        </article>
+
+        <article class="ac-feed" data-role="build" id="feed-build">
+          <header>
+            <span class="ac-role build">β build</span>
+            <span class="ac-feed-status" data-st="build">idle</span>
+            <button type="button" class="ac-icon-btn" data-focus="build" title="Focus role">↗</button>
+          </header>
+          <pre class="ac-feed-body" id="feed-build-body">Waiting for build activity…</pre>
+          <footer>
+            <button type="button" class="ac-btn sm" data-source="build">Source profile</button>
+            <button type="button" class="ac-btn sm primary" data-send-role="build">Send here</button>
+          </footer>
+        </article>
+
+        <article class="ac-feed" data-role="verify" id="feed-verify">
+          <header>
+            <span class="ac-role verify">γ verify</span>
+            <span class="ac-feed-status" data-st="verify">idle</span>
+            <button type="button" class="ac-icon-btn" data-focus="verify" title="Focus role">↗</button>
+          </header>
+          <pre class="ac-feed-body" id="feed-verify-body">Waiting for verify activity…</pre>
+          <footer>
+            <button type="button" class="ac-btn sm" data-source="verify">Source profile</button>
+            <button type="button" class="ac-btn sm primary" data-send-role="verify">Send here</button>
+          </footer>
+        </article>
+      </aside>
+    </main>
+
+    <script src="assets/agent-console.js?v=ac1"></script>
+  </body>
+</html>
