@@ -1211,9 +1211,10 @@ fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutStat
     }
     if layout.stream_docked {
         if let Some(sz) = stream_sz {
-            let side_w = sz.width.clamp(300, 380);
+            // Slightly wider dock so stream chrome + stage aren't clipped on left rim
+            let side_w = sz.width.clamp(340, 420);
             let side_h = (lh as u32).saturating_sub(8).max(360);
-            let x = (lx - side_w as i32 - DOCK_GAP).max(8);
+            let x = (lx - side_w as i32 - DOCK_GAP).max(12);
             let y = ly;
             for p in windows.values() {
                 if p.role == Role::Stream && p.window.is_visible() {

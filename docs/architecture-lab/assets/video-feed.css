@@ -124,17 +124,25 @@
 /* ── High-res video stage (above Grok Build Lab) ── */
 .sb-video .sb-section-body {
   padding: 0 0.4rem 0.65rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .sidebar-video {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .sv-stage {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;

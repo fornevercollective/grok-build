@@ -173,21 +173,33 @@
       }
       .stream-body {
         position: relative;
-        z-index: 2;
-        flex: 1;
+        z-index: 5;
+        flex: 1 1 auto;
         min-height: 0;
-        overflow: auto;
-        padding: 0.65rem 0.75rem 0.85rem;
+        overflow-x: hidden;
+        overflow-y: scroll !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        /* Symmetric padding — docked left column was clipping stage on left edge */
+        padding: 0.65rem 0.85rem 0.9rem 0.85rem;
+        pointer-events: auto;
       }
       /* Standalone stream surface — reuse sidebar-video styles full-width */
       .sidebar-video {
         border: none;
         background: transparent;
         padding: 0;
+        margin: 0;
         max-width: none;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
       }
       .sv-stage {
         position: relative;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
         aspect-ratio: 16 / 9;
         max-height: min(52vh, 420px);
         border-radius: 14px;

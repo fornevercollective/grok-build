@@ -318,42 +318,84 @@ pub fn open_panda_fleet(repo: &Path, splits: u8) -> Value {
     let cwd = repo.display().to_string();
     let shell_s = fleet_shell.display().to_string();
 
-    // Interactive TUI needs a real terminal — macOS Terminal.app; else spawn and hope.
+    // Option A: three titled Terminal windows (α plan · β build · γ verify)
+    // tiled on the left, plus optional multi-pane Panda when splits>=2.
     #[cfg(target_os = "macos")]
     {
-        let cmd = format!(
-            "export PANDA_HOME={home:?}; cd {cwd:?} && exec {panda:?} new {session} --splits {splits} -C {cwd:?} -s {shell:?}",
-            home = home.display().to_string(),
-            cwd = cwd,
-            panda = panda_s,
-            session = FLEET_SESSION,
-            splits = splits,
-            shell = shell_s,
-        );
-        let esc = cmd.replace('\\', "\\\\").replace('"', "\\\"");
-        let script = format!(
-            r#"tell application "Terminal"
-              activate
-              do script "{esc}"
-              set custom title of front window to "Panda · lab-fleet αβγ"
-            end tell"#
-        );
-        match Command::new("osascript").args(["-e", &script]).spawn() {
+        let home_s = home.display().to_string();
+        let roles = [
+            ("plan", "α Plan · Lab fleet", 24i32, 48i32),
+            ("build", "β Build · Lab fleet", 24i32, 320i32),
+            ("verify", "γ Verify · Lab fleet", 24i32, 590i32),
+        ];
+        // Build one AppleScript that opens 3 role shells with titles + positions.
+        let mut lines = String::from("tell application \"Terminal\"\n  activate\n");
+        for (role, title, x, y) in roles {
+            let profile = home.join("profiles").join(format!("{role}.env"));
+            let cmd = format!(
+                "export PANDA_HOME={home:?}; export LAB_FLEET=1; export PANDA_ROLE={role}; \
+                 [ -f {fleet:?} ] && . {fleet:?}; [ -f {profile:?} ] && . {profile:?}; \
+                 cd {cwd:?} || true; echo '── {title} ──'; echo \"handoff: $LAB_HANDOFF\"; \
+                 echo \"source profiles/{role}.env · run: grok\"; exec {shell:?} -i",
+                home = home_s,
+                fleet = home.join("fleet.env"),
+                profile = profile,
+                cwd = cwd,
+                title = title,
+                role = role,
+                shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into()),
+            );
+            let esc = cmd
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "; ");
+            let title_esc = title.replace('"', "\\\"");
+            lines.push_str(&format!(
+                "  set w to do script \"{esc}\"\n  try\n    set custom title of w to \"{title_esc}\"\n    set bounds of window 1 to {{{x}, {y}, {x2}, {y2}}}\n  end try\n  delay 0.15\n",
+                esc = esc,
+                title_esc = title_esc,
+                x = x,
+                y = y,
+                x2 = x + 520,
+                y2 = y + 260,
+            ));
+        }
+        // Also open multi-pane Panda when available (Option A hybrid)
+        if splits >= 2 {
+            let panda_cmd = format!(
+                "export PANDA_HOME={home:?}; cd {cwd:?} && exec {panda:?} new {session} --splits {splits} -C {cwd:?} -s {shell:?}",
+                home = home_s,
+                cwd = cwd,
+                panda = panda_s,
+                session = FLEET_SESSION,
+                splits = splits,
+                shell = shell_s,
+            );
+            let pesc = panda_cmd.replace('\\', "\\\\").replace('"', "\\\"");
+            lines.push_str(&format!(
+                "  do script \"{pesc}\"\n  try\n    set custom title of front window to \"Panda · lab-fleet multi-pane\"\n  end try\n"
+            ));
+        }
+        lines.push_str("end tell\n");
+        match Command::new("osascript").args(["-e", &lines]).spawn() {
             Ok(_) => {
                 return json!({
                     "ok": true,
                     "launched": true,
                     "via": "Terminal.app",
+                    "mode": "option-a-triple-titles",
                     "panda": panda_s,
                     "session": FLEET_SESSION,
                     "splits": splits,
+                    "roles": ["plan", "build", "verify"],
                     "cwd": cwd,
                     "shell": shell_s,
                     "handoff": handoff_path().display().to_string(),
                     "profiles": home.join("profiles").display().to_string(),
-                    "message": "Panda lab-fleet opening — 3 panes · fleet-shell · handoff file ready",
+                    "message": "Option A: α Plan · β Build · γ Verify Terminal windows (+ Panda multi-pane if available)",
                     "fleet": true,
                     "native": true,
+                    "option": "A",
                 });
             }
             Err(e) => {

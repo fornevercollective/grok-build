@@ -1,34 +1,69 @@
 #!/usr/bin/env bash
-# Grok Build Lab — static + ops APIs
+# Grok Build Lab — static + ops APIs (PTY hub · shells bus · media)
 # Usage: ./serve.sh [port]
+# If preferred port is busy (e.g. native grok-build-lab on :8765), auto-picks next free.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-PORT="${1:-8765}"
+WANT_PORT="${1:-8765}"
 HOST="${HOST:-127.0.0.1}"
 cd "$ROOT"
 command -v python3 >/dev/null || { echo "python3 required" >&2; exit 1; }
 
+port_free() {
+  local p="$1"
+  # Prefer python bind probe — works without lsof
+  python3 - "$HOST" "$p" <<'CHK' 2>/dev/null
+import socket, sys
+host, port = sys.argv[1], int(sys.argv[2])
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+    s.bind((host, port))
+except OSError:
+    sys.exit(1)
+finally:
+    s.close()
+sys.exit(0)
+CHK
+}
+
+PORT="$WANT_PORT"
+if ! port_free "$PORT"; then
+  echo "  note: :$PORT busy (native Lab often holds 8765) — searching free port…"
+  found=""
+  for try in $(seq "$WANT_PORT" $((WANT_PORT + 40))); do
+    if port_free "$try"; then
+      found="$try"
+      break
+    fi
+  done
+  if [[ -z "$found" ]]; then
+    echo "  error: no free port in ${WANT_PORT}–$((WANT_PORT + 40))" >&2
+    echo "  tip: quit Grok Build Lab.app / grok-build-lab, or: lsof -i :${WANT_PORT}" >&2
+    exit 1
+  fi
+  PORT="$found"
+  if [[ "$PORT" != "$WANT_PORT" ]]; then
+    echo "  → using http://${HOST}:${PORT}/  (PTY hub; native may still be on :${WANT_PORT})"
+  fi
+fi
+
 echo ""
-echo "  Grok Build Lab"
+echo "  Grok Build Lab · serve (PTY hub)"
 echo "  http://${HOST}:${PORT}"
 echo "  Surfaces:"
+echo "    /workbench.html   Center agent + live αβγ xterm  ← Option B primary"
 echo "    /                 Lab docs + multi-term"
-echo "    /workbench.html   Center agent + live αβγ xterm PTYs  ← primary layout"
 echo "    /agent.html       Agent console"
-echo "    /launch.html      Launch pad (all windows)"
-echo "    /chat.html        Chat float"
-echo "    /stream.html      Stream feed"
-echo "  Pages: https://fornevercollective.github.io/grok-build/  (auto-deploy on push)"
-echo "  APIs: /api/health · /api/processes · /api/git-log · /api/summon-grok · /api/mitigate"
-echo "        /api/shells · handoff · advance · spawn · reset  (triple shell bus)"
-echo "        /api/pty/open · write · poll · resize · close · open-triple  (live PTYs)"
-echo "        /api/voices · /api/tts  (SpaceXAI Grok Voice spheres)"
-echo "        /api/media/tools · resolve · stop · ffplay · hls/*  (yt-dlp · ffmpeg · blank · gy)"
+echo "    /launch.html      Launch pad"
+echo "    /chat.html · /stream.html"
+echo "  Option A: native Lab Dock/Arrange + Multi (Panda αβγ OS terms)"
+echo "  Option C: see content/24-abc-path.md (Panda/Mu host pipe)"
+echo "  APIs: /api/pty/* · /api/shells · /api/panda/open · /api/health · …"
 echo ""
 
 # Desktop shell sets LAB_DESKTOP=1 — never open a browser tab for localhost
 if [[ -z "${LAB_DESKTOP:-}" ]] && command -v open >/dev/null 2>&1; then
-  # Default to workbench (center + live αβγ) when available
   (sleep 0.35 && open "http://${HOST}:${PORT}/workbench.html") >/dev/null 2>&1 || true
 fi
 
@@ -45,6 +80,10 @@ REPO = (ROOT / "../..").resolve()  # grok-build root
 GY_REPO = Path.home() / "Projects" / "GrokYtalkY"
 LOG_BUF = []  # in-memory event log
 MAX_LOG = 400
+
+# Allow fast restart if OS still holds TIME_WAIT (bind still fails if LISTEN active)
+class ReuseHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
 
 # ── Interactive PTY hub (browser multi-term · localhost only) ─────
 PTY_LOCK = threading.Lock()
@@ -2026,8 +2065,9 @@ class Handler(SimpleHTTPRequestHandler):
         return self._json(404, {"ok": False, "message": "not found"})
 
 
-httpd = ThreadingHTTPServer((HOST, PORT), Handler)
+httpd = ReuseHTTPServer((HOST, PORT), Handler)
 print(f"serving {ROOT} on http://{HOST}:{PORT}", flush=True)
+print(f"workbench → http://{HOST}:{PORT}/workbench.html", flush=True)
 try:
     httpd.serve_forever()
 except KeyboardInterrupt:

@@ -34,6 +34,17 @@ body {
   line-height: 1.6;
 }
 
+/* Lab workspace scroll chain (native + browser) */
+html.lab-native,
+html.lab-float,
+body.lab-native,
+body.lab-float,
+body.lab-desktop {
+  overflow: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
@@ -47,7 +58,19 @@ a:hover {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   min-height: 100vh;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
   transition: grid-template-columns 0.18s ease;
+}
+
+body.lab-native .app,
+body.lab-float .app,
+body.lab-desktop .app {
+  /* native float chrome bar is injected at top (40px) */
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
 }
 
 /* Sidebar stays on all pages; collapse shrinks rail to edge toggle */
@@ -585,11 +608,15 @@ body.listen-active .xai-logo-react .logo-glow {
   color: #52525b;
 }
 
-/* Main */
+/* Main — scroll lives here (not body) */
 .main {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  max-height: 100%;
 }
 
 .topbar {
@@ -910,9 +937,18 @@ body.mode-tools .filter-nav-block {
 }
 
 .content-wrap {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 1.5rem 2rem 4rem;
   max-width: 900px;
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .article {
@@ -1277,6 +1313,19 @@ body.lab-native .content-wrap,
 body.lab-float .content-wrap {
   padding: 0.55rem 0.85rem 2rem;
   max-width: min(820px, 100%);
+  overflow-y: scroll !important;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* tool panels also scroll when active */
+body.lab-native .tool-panel.active,
+body.lab-float .tool-panel.active,
+.tool-panel.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
 }
 
 body.lab-native .article,

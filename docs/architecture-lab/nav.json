@@ -38,7 +38,8 @@
         { "id": "15-lab-shells", "label": "Lab shells · native vs Electron" },
         { "id": "19-fork-leverage", "label": "Fork leverage map" },
         { "id": "22-panda-shell", "label": "Panda shell · new terminal app" },
-        { "id": "23-fleet-funnel", "label": "Fleet funnel · build order" }
+        { "id": "23-fleet-funnel", "label": "Fleet funnel · build order" },
+        { "id": "24-abc-path", "label": "A·B·C path · center + 3 feeds" }
       ]
     },
     {
