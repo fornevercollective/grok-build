@@ -21,7 +21,7 @@ docs/architecture-lab/assets/brand/
 xAI (developer of Grok) owns trademarks and branding in “xAI”, “Grok”, combinations, and logos.  
 xAI is a **separate company from X** (formerly Twitter).
 
-This Architecture Lab is a **local engineering map**. It is **not** an official xAI product page and does **not** imply endorsement.
+This Grok Build Lab is a **local engineering map**. It is **not** an official xAI product page and does **not** imply endorsement.
 
 ---
 
@@ -53,7 +53,7 @@ Permission can be terminated; then stop use promptly. Press mentions: **legal@x.
 
 ---
 
-## Architecture Lab app icon (policy)
+## Grok Build Lab app icon + shell chrome (policy)
 
 Native Mac dock icon lives at `native/icons/AppIcon.icns` (source `app-icon-1024.png`).
 
@@ -65,7 +65,31 @@ Native Mac dock icon lives at `native/icons/AppIcon.icns` (source `app-icon-1024
 
 This composition is local engineering chrome for the lab shell. It is **not** an official xAI product icon and must not be used to imply endorsement.
 
-Bundle id uses `dev.fornevercollective.architecture-lab` (not an `ai.x` product identifier).
+### Swing further out of the product ballpark
+
+The **window shell** is intentionally **non-Apple / non-product**:
+
+| Choice | Why |
+|--------|-----|
+| Soft **18px** continuous corners | Not stock macOS sheet radius (~10) |
+| Rainbow hairline rim + soft accent washes | Local shell chrome, not system graphite |
+| Bundle id `dev.fornevercollective.grok-build-lab` | **Technical only** (macOS package id · not user-facing). Not an `ai.x.*` product id. Same on every machine — **not** per-user. |
+| Chrome label **Grok Build Lab** | User-facing app name. Not personalized per user. |
+| TUI **Charmbracelet-style** palette | Bubble Tea / Lip Gloss roles — terminal craft, not marketing site |
+
+### “fornever” vs what you see
+
+| Surface | What users see | Notes |
+|---------|----------------|--------|
+| Window titles / float bar | **Grok Build Lab** (+ Chat / Stream) | Product-facing name of this lab shell |
+| Bundle id / GitHub org | `fornevercollective` | Developer/fork identity so this is **not** mistaken for an official xAI app |
+| Official marks (orbs, docs) | Unaltered **Grok** / **SpaceXAI** assets | Accurate reference only — no endorsement claim |
+
+**Does not change per user.** Labels and logos are fixed in the app/docs. Only live voice catalog data can vary if your machine has `XAI_API_KEY`.
+
+Official marks still appear only as **accurate references** (docs, attribution). They are never the window shape, traffic lights, or rim treatment.
+
+Bundle id uses `dev.fornevercollective.grok-build-lab` (not an `ai.x` product identifier).
 
 ## Logos
 

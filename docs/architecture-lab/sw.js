@@ -1,4 +1,4 @@
-/* Architecture Lab service worker — offline shell + lazy asset cache
+/* Grok Build Lab service worker — offline shell + lazy asset cache
  * CACHE name is rewritten per GitHub Pages deploy (see workflow). */
 const CACHE = "grok-lab-voice2";
 const PRECACHE = [

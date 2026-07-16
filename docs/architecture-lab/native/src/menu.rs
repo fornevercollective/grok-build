@@ -1,11 +1,17 @@
-//! Native app menu — Refresh · Windows · Check for Updates.
+//! Native app menu — Refresh · Windows (dock/stream) · Check for Updates.
 //! Uses `muda` (works with tao on macOS/Windows/Linux).
+//!
+//! Note: avoid `PredefinedMenuItem::about(Some(AboutMetadata{...}))` on macOS.
+//! muda 0.15 can SIGABRT in `platform_impl/macos/icon.rs` (`to_png` → ZeroWidth)
+//! when the About path touches `PlatformIcon` across the ObjC menu action
+//! (panic in a function that cannot unwind → abort). Use system About instead.
 
 use crate::control::{ControlCmd, WinTarget};
 use muda::{
     accelerator::{Accelerator, Code, Modifiers},
-    AboutMetadata, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
+    Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
 };
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use tao::event_loop::EventLoopProxy;
 
 #[allow(dead_code)]
@@ -15,6 +21,7 @@ pub struct MenuIds {
     pub refresh_all: muda::MenuId,
     pub win_lab: muda::MenuId,
     pub win_chat: muda::MenuId,
+    pub win_stream: muda::MenuId,
     pub win_both: muda::MenuId,
     pub win_hide_chat: muda::MenuId,
     pub check_updates: muda::MenuId,
@@ -27,16 +34,10 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
     #[cfg(target_os = "macos")]
     {
         let app_m = Submenu::new("Grok Build Lab", true);
+        // Custom About — never use muda PredefinedMenuItem::about with metadata/icon.
+        let about = MenuItem::with_id("about", "About Grok Build Lab", true, None);
         let _ = app_m.append_items(&[
-            &PredefinedMenuItem::about(
-                Some("About Grok Build Lab"),
-                Some(AboutMetadata {
-                    name: Some("Grok Build Lab".into()),
-                    version: Some(env!("CARGO_PKG_VERSION").into()),
-                    copyright: Some("Local lab · SpaceXAI / Grok marks © xAI".into()),
-                    ..Default::default()
-                }),
-            ),
+            &about,
             &PredefinedMenuItem::separator(),
             &PredefinedMenuItem::services(None),
             &PredefinedMenuItem::separator(),
@@ -67,16 +68,18 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         )),
     );
     let refresh_chat = MenuItem::with_id("refresh_chat", "Refresh Chat", true, None);
+    let refresh_stream = MenuItem::with_id("refresh_stream", "Refresh Stream", true, None);
     let _ = view.append_items(&[
         &refresh_all,
         &refresh_lab,
         &refresh_chat,
+        &refresh_stream,
         &PredefinedMenuItem::separator(),
         &PredefinedMenuItem::fullscreen(None),
     ]);
     let _ = menu.append(&view);
 
-    // Windows
+    // Windows — open / dock / undock
     let win = Submenu::new("Window", true);
     let win_lab = MenuItem::with_id(
         "win_lab",
@@ -90,19 +93,49 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         true,
         Some(Accelerator::new(Some(Modifiers::META), Code::Digit2)),
     );
+    let win_stream = MenuItem::with_id(
+        "win_stream",
+        "Open Stream Feed",
+        true,
+        Some(Accelerator::new(Some(Modifiers::META), Code::Digit3)),
+    );
     let win_both = MenuItem::with_id(
         "win_both",
-        "Show Both Windows",
+        "Show All Windows",
         true,
         Some(Accelerator::new(Some(Modifiers::META), Code::Digit0)),
     );
     let win_hide_chat = MenuItem::with_id("win_hide_chat", "Hide Chat Window", true, None);
+    let win_hide_stream = MenuItem::with_id("win_hide_stream", "Hide Stream Feed", true, None);
+    let dock_chat = MenuItem::with_id("dock_chat", "Dock Chat to Lab", true, None);
+    let undock_chat = MenuItem::with_id("undock_chat", "Undock Chat", true, None);
+    let dock_stream = MenuItem::with_id("dock_stream", "Dock Stream to Lab", true, None);
+    let undock_stream = MenuItem::with_id("undock_stream", "Undock Stream", true, None);
+    let link_all = MenuItem::with_id(
+        "link_all",
+        "Link All (Dock + Show)",
+        true,
+        Some(Accelerator::new(
+            Some(Modifiers::META | Modifiers::SHIFT),
+            Code::KeyL,
+        )),
+    );
+    let unlink_all = MenuItem::with_id("unlink_all", "Unlink All (Undock)", true, None);
     let _ = win.append_items(&[
         &win_lab,
         &win_chat,
+        &win_stream,
         &win_both,
         &PredefinedMenuItem::separator(),
+        &dock_chat,
+        &undock_chat,
+        &dock_stream,
+        &undock_stream,
+        &link_all,
+        &unlink_all,
+        &PredefinedMenuItem::separator(),
         &win_hide_chat,
+        &win_hide_stream,
         &PredefinedMenuItem::separator(),
         &PredefinedMenuItem::minimize(None),
     ]);
@@ -110,12 +143,8 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
 
     // Help / Updates
     let help = Submenu::new("Help", true);
-    let check_updates = MenuItem::with_id(
-        "check_updates",
-        "Check for Updates…",
-        true,
-        None,
-    );
+    // ASCII ellipsis — avoid fancy unicode in menu titles where possible
+    let check_updates = MenuItem::with_id("check_updates", "Check for Updates...", true, None);
     let _ = help.append(&check_updates);
     let _ = menu.append(&help);
 
@@ -124,43 +153,17 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         menu.init_for_nsapp();
     }
 
-    // Route menu events → control bus
     let proxy2 = proxy.clone();
     MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-        let id = event.id().0.as_str();
-        match id {
-            "refresh_all" => {
-                let _ = proxy2.send_event(ControlCmd::Refresh {
-                    target: WinTarget::All,
-                });
-            }
-            "refresh_lab" => {
-                let _ = proxy2.send_event(ControlCmd::Refresh {
-                    target: WinTarget::Lab,
-                });
-            }
-            "refresh_chat" => {
-                let _ = proxy2.send_event(ControlCmd::Refresh {
-                    target: WinTarget::Chat,
-                });
-            }
-            "win_lab" => {
-                let _ = proxy2.send_event(ControlCmd::FocusLab);
-            }
-            "win_chat" => {
-                let _ = proxy2.send_event(ControlCmd::OpenChatIndependent);
-            }
-            "win_both" => {
-                let _ = proxy2.send_event(ControlCmd::FocusLab);
-                let _ = proxy2.send_event(ControlCmd::OpenChatIndependent);
-            }
-            "win_hide_chat" => {
-                let _ = proxy2.send_event(ControlCmd::HideChat);
-            }
-            "check_updates" => {
-                let _ = proxy2.send_event(ControlCmd::CheckUpdates);
-            }
-            _ => {}
+        // Menu actions run under AppKit (cannot unwind). Never let a Rust panic
+        // become SIGABRT mid-sendAction.
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            dispatch_menu_event(event.id().0.as_str(), &proxy2);
+        }));
+        if let Err(payload) = result {
+            let msg = panic_message(&payload);
+            eprintln!("[menu] panic caught (menu action): {msg}");
+            tracing::error!(%msg, "menu action panic caught");
         }
     }));
 
@@ -170,8 +173,129 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         refresh_all: refresh_all.id().clone(),
         win_lab: win_lab.id().clone(),
         win_chat: win_chat.id().clone(),
+        win_stream: win_stream.id().clone(),
         win_both: win_both.id().clone(),
         win_hide_chat: win_hide_chat.id().clone(),
         check_updates: check_updates.id().clone(),
+    }
+}
+
+fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
+    match id {
+        "about" => {
+            show_about_panel();
+        }
+        "refresh_all" => {
+            let _ = proxy.send_event(ControlCmd::Refresh {
+                target: WinTarget::All,
+            });
+        }
+        "refresh_lab" => {
+            let _ = proxy.send_event(ControlCmd::Refresh {
+                target: WinTarget::Lab,
+            });
+        }
+        "refresh_chat" => {
+            let _ = proxy.send_event(ControlCmd::Refresh {
+                target: WinTarget::Chat,
+            });
+        }
+        "refresh_stream" => {
+            let _ = proxy.send_event(ControlCmd::Refresh {
+                target: WinTarget::Stream,
+            });
+        }
+        "win_lab" => {
+            let _ = proxy.send_event(ControlCmd::FocusLab);
+        }
+        "win_chat" => {
+            let _ = proxy.send_event(ControlCmd::ShowChat);
+        }
+        "win_stream" => {
+            let _ = proxy.send_event(ControlCmd::ShowStream);
+        }
+        "win_both" => {
+            let _ = proxy.send_event(ControlCmd::FocusLab);
+            let _ = proxy.send_event(ControlCmd::ShowChat);
+            let _ = proxy.send_event(ControlCmd::ShowStream);
+        }
+        "win_hide_chat" => {
+            let _ = proxy.send_event(ControlCmd::HideChat);
+        }
+        "win_hide_stream" => {
+            let _ = proxy.send_event(ControlCmd::HideStream);
+        }
+        "dock_chat" => {
+            let _ = proxy.send_event(ControlCmd::Dock {
+                target: WinTarget::Chat,
+            });
+        }
+        "undock_chat" => {
+            let _ = proxy.send_event(ControlCmd::Undock {
+                target: WinTarget::Chat,
+            });
+        }
+        "dock_stream" => {
+            let _ = proxy.send_event(ControlCmd::Dock {
+                target: WinTarget::Stream,
+            });
+        }
+        "undock_stream" => {
+            let _ = proxy.send_event(ControlCmd::Undock {
+                target: WinTarget::Stream,
+            });
+        }
+        "link_all" => {
+            let _ = proxy.send_event(ControlCmd::LinkAll);
+        }
+        "unlink_all" => {
+            let _ = proxy.send_event(ControlCmd::UnlinkAll);
+        }
+        "check_updates" => {
+            let _ = proxy.send_event(ControlCmd::CheckUpdates);
+        }
+        _ => {}
+    }
+}
+
+/// System About panel — uses CFBundle icon/name from Info.plist, no muda Icon path.
+fn show_about_panel() {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::{id, nil};
+        use objc::{class, msg_send, sel, sel_impl};
+        // orderFrontStandardAboutPanel: is safe; never convert muda RgbaIcon → PNG.
+        let result = catch_unwind(AssertUnwindSafe(|| unsafe {
+            let app: id = msg_send![class!(NSApplication), sharedApplication];
+            if app != nil {
+                let _: () = msg_send![app, orderFrontStandardAboutPanel: nil];
+            }
+        }));
+        if let Err(payload) = result {
+            let msg = panic_message(&payload);
+            eprintln!("[menu] about panel failed: {msg}");
+            // Fallback: osascript dialog
+            let _ = std::process::Command::new("osascript")
+                .arg("-e")
+                .arg(format!(
+                    r#"display dialog "Grok Build Lab {}" with title "About Grok Build Lab" buttons {{"OK"}} default button "OK""#,
+                    env!("CARGO_PKG_VERSION")
+                ))
+                .spawn();
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = env!("CARGO_PKG_VERSION");
+    }
+}
+
+fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        (*s).to_string()
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "unknown panic".into()
     }
 }

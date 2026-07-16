@@ -28,11 +28,11 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="assets/style.css?v=float3" />
+    <link rel="stylesheet" href="assets/style.css?v=cli2" />
     <link rel="stylesheet" href="assets/walkie-dock.css?v=wave3" />
     <link rel="stylesheet" href="assets/video-feed.css?v=sb2" />
-    <link rel="stylesheet" href="assets/tools.css?v=hist2" />
-    <link rel="stylesheet" href="assets/walkthrough.css?v=wt1" />
+    <link rel="stylesheet" href="assets/tools.css?v=hist3" />
+    <link rel="stylesheet" href="assets/walkthrough.css?v=wt4" />
     <link rel="stylesheet" href="assets/mobile-pwa.css" />
     <script
       src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
@@ -43,11 +43,11 @@
       defer
     ></script>
     <script src="assets/app.js?v=wt1" defer></script>
-    <script src="assets/walkthrough.js?v=wt1" defer></script>
+    <script src="assets/walkthrough.js?v=wt4" defer></script>
     <script src="assets/video-feed.js?v=sb3" defer></script>
     <script src="assets/walkie-dock.js?v=wave3" defer></script>
     <script src="assets/grok-listen.js?v=wave3" defer></script>
-    <script src="assets/tools.js?v=hist2" defer></script>
+    <script src="assets/tools.js?v=hist4" defer></script>
     <script src="assets/mesh-collab.js" defer></script>
     <script src="assets/mobile-pwa.js" defer></script>
     <script src="assets/lab-update.js?v=pages1" defer></script>
@@ -154,7 +154,7 @@
           </div>
         </div>
 
-        <!-- High-res stream feed ABOVE Architecture Lab (yt-dlp · ffmpeg · blank · gy) -->
+        <!-- High-res stream feed ABOVE Grok Build Lab (yt-dlp · ffmpeg · blank · gy) -->
         <details class="sb-section sb-video" id="sb-sec-video" data-sb-key="video">
           <summary class="sb-summary">
             <span class="sb-chev" aria-hidden="true"></span>
@@ -215,7 +215,7 @@
           <p>Map · plugins · leverage · riff zone</p>
         </div>
 
-        <!-- Walkie burst UNDER Architecture Lab title -->
+        <!-- Walkie burst UNDER Grok Build Lab title -->
         <details class="sb-section" id="sb-sec-walkie" data-sb-key="walkie">
           <summary class="sb-summary">
             <span class="sb-chev" aria-hidden="true"></span>
@@ -396,8 +396,9 @@
           <button type="button" class="app-tab" data-mode="history">History</button>
         </nav>
 
-        <header class="topbar">
-          <div class="topbar-row">
+        <!-- CLI-clean command strip (inspired by x.ai/cli density) — keeps center content tall -->
+        <header class="topbar topbar-cli" id="lab-topbar">
+          <div class="topbar-cmd" role="toolbar" aria-label="Find · history · walkthrough">
             <button class="menu-btn" id="menu-btn" type="button" aria-label="Menu">
               Menu
             </button>
@@ -410,7 +411,7 @@
               title="GrokYtalkY · Burst"
             >
               <span class="brand-mark" aria-hidden="true">◈</span>
-              <span class="brand-name">GrokYtalkY</span>
+              <span class="brand-name">GY</span>
             </a>
 
             <div class="filter-nav-block">
@@ -418,39 +419,56 @@
                 class="search"
                 id="search"
                 type="search"
-                placeholder="Filter nav…"
+                placeholder="Find nav…"
                 autocomplete="off"
+                aria-label="Filter documentation nav"
               />
-              <!-- mueee-style scrub timeline under filter nav -->
-              <div class="hist-timeline-wrap" id="hist-slider-bar" title="Scrub version history · drag · wheel zoom · click">
-                <div class="hist-timeline-chrome">
-                  <span class="hist-slider-label">history</span>
-                  <span class="hist-slider-meta" id="hist-slider-meta">—</span>
-                  <div class="hist-tl-zoom" id="hist-tl-zoom-mini">
-                    <button type="button" class="btn-mini" data-hist-zoom="out" title="Zoom out">−</button>
-                    <button type="button" class="btn-mini" data-hist-zoom="in" title="Zoom in">+</button>
-                    <button type="button" class="btn-mini" data-hist-zoom="reset" title="Reset">↺</button>
+              <!-- Collapsed history strip — expand for scrub; never steals a tall second stack -->
+              <div
+                class="hist-timeline-wrap hist-timeline-compact"
+                id="hist-slider-bar"
+                title="Version history scrub"
+              >
+                <button
+                  type="button"
+                  class="hist-toggle btn-mini"
+                  id="btn-hist-toggle"
+                  aria-expanded="false"
+                  aria-controls="hist-timeline-mini"
+                  title="Show / hide history scrub"
+                >
+                  Hist
+                </button>
+                <span class="hist-slider-meta" id="hist-slider-meta">—</span>
+                <div class="hist-timeline-expand" id="hist-timeline-expand" hidden>
+                  <div class="hist-timeline-chrome">
+                    <span class="hist-slider-label">history</span>
+                    <div class="hist-tl-zoom" id="hist-tl-zoom-mini">
+                      <button type="button" class="btn-mini" data-hist-zoom="out" title="Zoom out">−</button>
+                      <button type="button" class="btn-mini" data-hist-zoom="in" title="Zoom in">+</button>
+                      <button type="button" class="btn-mini" data-hist-zoom="reset" title="Reset">↺</button>
+                    </div>
+                    <button type="button" class="btn-mini" id="btn-hist-slider-open" title="Open History tab">
+                      ↗
+                    </button>
                   </div>
-                  <button type="button" class="btn-mini" id="btn-hist-slider-open" title="Open History tab">
-                    ↗
-                  </button>
-                </div>
-                <div class="hist-timeline-strip hist-timeline-mini" id="hist-timeline-mini">
-                  <canvas id="hist-timeline-canvas-mini" aria-label="Commit timeline scrubber"></canvas>
-                  <span class="hist-tl-hover" id="hist-tl-hover-mini" hidden></span>
+                  <div class="hist-timeline-strip hist-timeline-mini" id="hist-timeline-mini">
+                    <canvas id="hist-timeline-canvas-mini" aria-label="Commit timeline scrubber"></canvas>
+                    <span class="hist-tl-hover" id="hist-tl-hover-mini" hidden></span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Pins stay collapsed until multi-device collaboration -->
+            <!-- Pins: only when collaborating (gated) -->
             <section
               class="glyph-pin-rail-bar pins-gated"
               id="glyph-pin-rail"
               aria-label="Glyph pins — active when collaborating"
               data-collab="0"
             >
-              <div class="glyph-pin-idle-msg" id="glyph-pin-idle-msg">
-                pins idle · join mesh from another device to collaborate
+              <div class="glyph-pin-idle-msg" id="glyph-pin-idle-msg" hidden>
+                pins idle
               </div>
               <div class="glyph-pin-live" id="glyph-pin-live" hidden>
                 <div class="glyph-pin-rail-head">
@@ -467,10 +485,19 @@
               </div>
             </section>
 
-            <div class="walk-toolbar" id="walk-toolbar" title="Grok walkthrough · hover page sections">
+            <div class="walk-cluster" id="walk-toolbar" title="Walkthrough">
               <button
                 type="button"
-                class="btn-mini"
+                class="btn-mini walk-pill"
+                id="btn-walk-hide"
+                aria-pressed="false"
+                title="Hide walkthrough chrome / tip"
+              >
+                Hide
+              </button>
+              <button
+                type="button"
+                class="btn-mini walk-pill"
                 id="btn-walk-hover"
                 aria-pressed="true"
                 title="Highlight sections on mouse over"
@@ -479,7 +506,7 @@
               </button>
               <button
                 type="button"
-                class="btn-mini"
+                class="btn-mini walk-pill"
                 id="btn-walkthrough"
                 aria-pressed="false"
                 title="Guided tour of this page"
@@ -488,14 +515,16 @@
               </button>
               <button
                 type="button"
-                class="btn-mini"
+                class="btn-mini walk-pill walk-pill-primary"
                 id="btn-walk-next"
                 title="Next section"
               >
                 Next
               </button>
+              <span class="topbar-meta" title="Current page">
+                <code id="crumb">00-overview</code>
+              </span>
             </div>
-            <span class="topbar-meta">page <code id="crumb">…</code></span>
           </div>
         </header>
 

@@ -1,6 +1,7 @@
-# Deploy Architecture Lab to GitHub Pages
+# Deploy Grok Build Lab (docs/architecture-lab) to GitHub Pages
 # https://fornevercollective.github.io/grok-build/
-name: pages-architecture-lab
+# Product name: Grok Build Lab · path remains docs/architecture-lab (historical)
+name: pages-grok-build-lab
 
 on:
   push:
@@ -16,11 +17,24 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-architecture-lab
+  group: pages-grok-build-lab
   cancel-in-progress: true
 
 jobs:
+  status-gating:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: status.x.ai go/no-go (pre-deploy)
+        # Big deploys: block on known incidents; allow unknown if CF blocks runners
+        run: |
+          chmod +x docs/architecture-lab/scripts/status-xai-check.sh
+          bash docs/architecture-lab/scripts/status-xai-check.sh --strict \
+            || STATUS_XAI_ALLOW_UNKNOWN=1 bash docs/architecture-lab/scripts/status-xai-check.sh
+
   build:
+    needs: status-gating
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,7 +47,7 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bash docs/architecture-lab/scripts/prepare-pages-site.sh /tmp/architecture-lab-site
+        run: bash docs/architecture-lab/scripts/prepare-pages-site.sh /tmp/grok-build-lab-site
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -41,7 +55,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: /tmp/architecture-lab-site
+          path: /tmp/grok-build-lab-site
 
   deploy:
     needs: build

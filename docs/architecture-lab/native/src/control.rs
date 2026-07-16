@@ -17,6 +17,18 @@ pub enum ControlCmd {
     ToggleChat,
     /// Open chat only (focus chat; lab can stay minimized/background)
     OpenChatIndependent,
+    ShowStream,
+    HideStream,
+    FocusStream,
+    ToggleStream,
+    /// Dock / undock satellite windows relative to lab
+    Dock { target: WinTarget },
+    Undock { target: WinTarget },
+    ToggleDock { target: WinTarget },
+    /// Dock all satellites and show them
+    LinkAll,
+    /// Undock all satellites (leave visible)
+    UnlinkAll,
     SetAlwaysOnTop { target: WinTarget, on: bool },
     SetDecorations { target: WinTarget, on: bool },
     Minimize { target: WinTarget },
@@ -66,6 +78,7 @@ pub enum ResizeDir {
 pub enum WinTarget {
     Lab,
     Chat,
+    Stream,
     All,
 }
 
@@ -81,6 +94,9 @@ pub struct ControlBus {
     errors: Mutex<VecDeque<ControlError>>,
     status: Mutex<Value>,
     chat_visible: Mutex<bool>,
+    stream_visible: Mutex<bool>,
+    chat_docked: Mutex<bool>,
+    stream_docked: Mutex<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -99,7 +115,10 @@ impl ControlBus {
                 "shell": "architecture-lab-native",
                 "ready": false,
             })),
-            chat_visible: Mutex::new(true),
+            chat_visible: Mutex::new(false),
+            stream_visible: Mutex::new(false),
+            chat_docked: Mutex::new(true),
+            stream_docked: Mutex::new(true),
         }
     }
 
@@ -155,6 +174,30 @@ impl ControlBus {
     pub fn chat_visible(&self) -> bool {
         *self.chat_visible.lock().unwrap()
     }
+
+    pub fn set_stream_visible(&self, v: bool) {
+        *self.stream_visible.lock().unwrap() = v;
+    }
+
+    pub fn stream_visible(&self) -> bool {
+        *self.stream_visible.lock().unwrap()
+    }
+
+    pub fn set_chat_docked(&self, v: bool) {
+        *self.chat_docked.lock().unwrap() = v;
+    }
+
+    pub fn chat_docked(&self) -> bool {
+        *self.chat_docked.lock().unwrap()
+    }
+
+    pub fn set_stream_docked(&self, v: bool) {
+        *self.stream_docked.lock().unwrap() = v;
+    }
+
+    pub fn stream_docked(&self) -> bool {
+        *self.stream_docked.lock().unwrap()
+    }
 }
 
 fn now_secs() -> u64 {
@@ -167,8 +210,7 @@ fn now_secs() -> u64 {
 /// Body for POST /api/control
 #[derive(Debug, Deserialize)]
 pub struct ControlRequest {
-    /// Action name: show_chat, hide_chat, focus_lab, pin, unpin, minimize, close,
-    /// center, move, resize, eval, error, quit, toggle_chat, decorations
+    /// Action name: show_chat, hide_chat, show_stream, dock_chat, undock_stream, …
     pub action: String,
     #[serde(default)]
     pub target: WinTarget,
@@ -193,6 +235,33 @@ impl ControlRequest {
             }
             "focus_chat" => Ok(ControlCmd::FocusChat),
             "focus_lab" | "focus" => Ok(ControlCmd::FocusLab),
+            "show_stream" | "open_stream" | "stream" => Ok(ControlCmd::ShowStream),
+            "hide_stream" | "close_stream" => Ok(ControlCmd::HideStream),
+            "toggle_stream" => Ok(ControlCmd::ToggleStream),
+            "focus_stream" => Ok(ControlCmd::FocusStream),
+            "dock" | "dock_window" => Ok(ControlCmd::Dock {
+                target: self.target,
+            }),
+            "undock" | "undock_window" => Ok(ControlCmd::Undock {
+                target: self.target,
+            }),
+            "toggle_dock" => Ok(ControlCmd::ToggleDock {
+                target: self.target,
+            }),
+            "dock_chat" => Ok(ControlCmd::Dock {
+                target: WinTarget::Chat,
+            }),
+            "undock_chat" => Ok(ControlCmd::Undock {
+                target: WinTarget::Chat,
+            }),
+            "dock_stream" => Ok(ControlCmd::Dock {
+                target: WinTarget::Stream,
+            }),
+            "undock_stream" => Ok(ControlCmd::Undock {
+                target: WinTarget::Stream,
+            }),
+            "link" | "link_all" | "dock_all" => Ok(ControlCmd::LinkAll),
+            "unlink" | "unlink_all" | "undock_all" => Ok(ControlCmd::UnlinkAll),
             "drag" | "drag_window" => Ok(ControlCmd::DragWindow {
                 target: self.target,
             }),
@@ -253,6 +322,9 @@ impl ControlRequest {
             }),
             "refresh_chat" => Ok(ControlCmd::Refresh {
                 target: WinTarget::Chat,
+            }),
+            "refresh_stream" => Ok(ControlCmd::Refresh {
+                target: WinTarget::Stream,
             }),
             "refresh_all" => Ok(ControlCmd::Refresh {
                 target: WinTarget::All,

@@ -23,7 +23,7 @@ Install path for GY:
 #   grok plugin validate ~/.grok/plugins/gy-glyph-pins
 ```
 
-**Architecture Lab is not a plugin.** It is a companion docs + float shell under `docs/architecture-lab/`.
+**Grok Build Lab is not a plugin.** It is a companion docs + float shell under `docs/architecture-lab/`.
 
 ## Build next (high value)
 

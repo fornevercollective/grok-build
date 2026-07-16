@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Launch Architecture Lab as a native Rust shell (WKWebView / WebView2).
+# Launch Grok Build Lab as a native Rust shell (WKWebView / WebView2).
 # Not Electron. Not a browser tab.
+# Note: folder path docs/architecture-lab is historical; product name is Grok Build Lab.
 set -euo pipefail
 
 NATIVE="$(cd "$(dirname "$0")" && pwd)"
@@ -23,13 +24,22 @@ case "$MODE" in
   *) echo "unknown mode: $MODE" >&2; exit 1 ;;
 esac
 
-BIN="$NATIVE/target/release/architecture-lab"
-if [[ ! -x "$BIN" ]]; then
-  echo "Building architecture-lab (release)…"
+# Prefer new binary name; fall back to legacy architecture-lab if present
+BIN=""
+for cand in "$NATIVE/target/release/grok-build-lab" "$NATIVE/target/release/architecture-lab"; do
+  if [[ -x "$cand" ]]; then
+    BIN="$cand"
+    break
+  fi
+done
+
+if [[ -z "$BIN" ]]; then
+  echo "Building grok-build-lab (release)…"
   (cd "$NATIVE" && cargo build --release)
+  BIN="$NATIVE/target/release/grok-build-lab"
 fi
 
-echo "architecture-lab · native · mode=$MODE"
+echo "Grok Build Lab · native · mode=$MODE"
 echo "  lab: $LAB"
 echo "  bin: $BIN"
 # --port 0 picks a free port (survives when ./serve.sh holds :8765)

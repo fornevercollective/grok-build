@@ -35,12 +35,38 @@ This lab maps its architecture, extension surfaces, plugin ideas, and how to lev
 - [GrokYtalkY companion](#/10-gy-companion)
 - [SpaceXAI / Grok brand](#/12-brand)
 - [**Dev build · versions · forks · compliance**](#/14-dev-build-and-forks)
+- [**X / xAI · HackerOne bounty**](#/16-hackerone-x) — rewards, scope, our prize scorecard
 - [Riffing on docs](#/99-contributing-docs)
 
-## Brand note
+## Brand note · SpaceXAI family
 
-Official logos: `docs/SpaceXAI_Grok_Assets/` · guidelines: [x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines).  
-This lab is **local engineering docs**, not an official xAI page. Use marks only to refer to Grok / SpaceXAI accurately — no alteration, no implied endorsement.
+**SpaceXAI** is the org brand; **Grok** / **Grok Build** are products under it. Related surfaces include (non-exhaustive): Grok, [x.com](https://x.com), Grokipedia, and other SpaceXAI / xAI properties. Official CLI: **[x.ai/cli](https://x.ai/cli)**.
+
+This **Grok Build Lab** is a **local engineering map** of Grok Build — **not** an official product page and does **not** imply endorsement.
+
+| Name | Role |
+|------|------|
+| **Grok Build Lab** | Product-facing name of this docs + float shell |
+| `docs/architecture-lab/` | **Historical folder path** on disk (do not rename casually — breaks CI/Pages) |
+| Bundle id `dev.fornevercollective.*` | Technical packaging only (not user-facing) |
+
+Official logos: `docs/SpaceXAI_Grok_Assets/` · guidelines: [x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines).
+
+## Go / no-go · status.x.ai
+
+**Before any big push or Pages deploy**, check SpaceXAI service health:
+
+```bash
+# from repo
+npm run status --prefix docs/architecture-lab
+# or
+bash docs/architecture-lab/scripts/status-xai-check.sh --strict
+
+# install git pre-push hook (recommended)
+npm run install-pre-push --prefix docs/architecture-lab
+```
+
+Live board: **[status.x.ai](https://status.x.ai)** · NO-GO if incidents / outages; UNKNOWN (CF block) also blocks strict big-push mode until you confirm manually.
 
 ## Guidelines we track
 

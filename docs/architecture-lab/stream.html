@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Build Lab · Stream</title>
+    <link rel="stylesheet" href="assets/video-feed.css?v=stream1" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0c0f;
+        color: #e8eaed;
+        font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      }
+      html, body.stream-window {
+        border-radius: 18px;
+      }
+      body.stream-window {
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+        position: relative;
+        /* Color halo wash — ambient chrome, not a trademark */
+        background:
+          radial-gradient(ellipse 90% 70% at 50% 18%, rgba(110, 203, 255, 0.16), transparent 55%),
+          radial-gradient(ellipse 70% 55% at 12% 78%, rgba(167, 139, 250, 0.12), transparent 50%),
+          radial-gradient(ellipse 65% 50% at 88% 72%, rgba(248, 113, 113, 0.1), transparent 48%),
+          radial-gradient(ellipse 50% 40% at 50% 95%, rgba(74, 222, 128, 0.08), transparent 55%),
+          #0b0c0f;
+        box-shadow:
+          inset 0 0 0 1px rgba(125, 86, 244, 0.28),
+          inset 0 0 48px rgba(110, 203, 255, 0.04);
+      }
+      body.stream-window::before {
+        content: "";
+        pointer-events: none;
+        position: fixed;
+        inset: -20%;
+        z-index: 0;
+        background: conic-gradient(
+          from 200deg at 50% 45%,
+          rgba(110, 203, 255, 0.14),
+          rgba(167, 139, 250, 0.12),
+          rgba(248, 113, 113, 0.1),
+          rgba(74, 222, 128, 0.11),
+          rgba(255, 166, 87, 0.1),
+          rgba(110, 203, 255, 0.14)
+        );
+        filter: blur(42px);
+        opacity: 0.55;
+        animation: stream-halo-spin 28s linear infinite;
+      }
+      body.stream-window::after {
+        content: "";
+        pointer-events: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        border-radius: 18px;
+        box-shadow:
+          inset 0 0 0 1px rgba(110, 203, 255, 0.18),
+          inset 0 0 28px rgba(167, 139, 250, 0.05);
+      }
+      @keyframes stream-halo-spin {
+        to { transform: rotate(360deg); }
+      }
+      .stream-chrome {
+        position: relative;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        height: 40px;
+        padding: 0 0.55rem 0 0.85rem;
+        flex-shrink: 0;
+        user-select: none;
+        background: rgba(11, 12, 15, 0.72);
+        backdrop-filter: blur(16px) saturate(1.25);
+        -webkit-backdrop-filter: blur(16px) saturate(1.25);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .stream-chrome::after {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        bottom: -1px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(110, 203, 255, 0.45),
+          rgba(167, 139, 250, 0.4),
+          rgba(248, 113, 113, 0.35),
+          rgba(74, 222, 128, 0.4),
+          transparent
+        );
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      .stream-chrome .lights {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-right: 4px;
+      }
+      .stream-chrome .tl {
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+      }
+      .stream-chrome .tl.close { background: #ff5f57; }
+      .stream-chrome .tl.min { background: #febc2e; }
+      .stream-chrome .tl.max { background: #28c840; }
+      .stream-chrome .title {
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        color: rgba(110, 203, 255, 0.95);
+        letter-spacing: 0.04em;
+      }
+      .stream-chrome .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+      }
+      .stream-chrome .spacer { flex: 1; }
+      .stream-chrome button.act {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(16, 18, 24, 0.55);
+        color: #9aa3b5;
+        border-radius: 6px;
+        height: 24px;
+        padding: 0 0.45rem;
+        font-size: 0.68rem;
+        cursor: pointer;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      }
+      .stream-chrome button.act:hover {
+        color: #6ecbff;
+        border-color: rgba(110, 203, 255, 0.35);
+      }
+      .stream-chrome button.act.on {
+        color: #4ade80;
+        border-color: rgba(74, 222, 128, 0.4);
+      }
+      .stream-body {
+        position: relative;
+        z-index: 2;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 0.65rem 0.75rem 0.85rem;
+      }
+      /* Standalone stream surface — reuse sidebar-video styles full-width */
+      .sidebar-video {
+        border: none;
+        background: transparent;
+        padding: 0;
+        max-width: none;
+      }
+      .sv-stage {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        max-height: min(52vh, 420px);
+        border-radius: 14px;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse 80% 70% at 50% 40%, rgba(110, 203, 255, 0.1), transparent 65%),
+          radial-gradient(ellipse 60% 50% at 20% 80%, rgba(167, 139, 250, 0.08), transparent 55%),
+          #050508;
+        border: 1px solid rgba(110, 203, 255, 0.16);
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.4),
+          0 12px 40px rgba(0, 0, 0, 0.45),
+          0 0 48px rgba(110, 203, 255, 0.12),
+          0 0 80px rgba(167, 139, 250, 0.08);
+      }
+      .sv-stage::before {
+        content: "";
+        pointer-events: none;
+        position: absolute;
+        inset: -30%;
+        z-index: 0;
+        background: conic-gradient(
+          from 120deg,
+          rgba(110, 203, 255, 0.22),
+          rgba(167, 139, 250, 0.18),
+          rgba(248, 113, 113, 0.14),
+          rgba(74, 222, 128, 0.16),
+          rgba(110, 203, 255, 0.22)
+        );
+        filter: blur(28px);
+        opacity: 0.45;
+        animation: stream-halo-spin 18s linear infinite;
+      }
+      .sv-stage::after {
+        content: "";
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      }
+      .sv-video {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: transparent;
+      }
+      .sv-overlay {
+        z-index: 3;
+      }
+      .stream-meta {
+        margin: 0.55rem 0 0;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.55rem;
+        color: #71717a;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body class="stream-window lab-native lab-stream-surface">
+    <header class="stream-chrome" id="stream-chrome" data-drag-region="1">
+      <div class="lights" data-no-drag>
+        <button type="button" class="tl close" id="btn-close" title="Hide stream"></button>
+        <button type="button" class="tl min" id="btn-min" title="Minimize"></button>
+        <button type="button" class="tl max" id="btn-max" title="Zoom"></button>
+      </div>
+      <span class="dot" title="stream"></span>
+      <span class="title">Grok Build Lab · stream</span>
+      <span class="spacer"></span>
+      <button type="button" class="act" id="btn-dock" data-no-drag title="Dock to lab">Dock</button>
+      <button type="button" class="act" id="btn-lab" data-no-drag title="Show lab">Lab</button>
+      <button type="button" class="act" id="btn-chat" data-no-drag title="Open chat">Chat</button>
+    </header>
+
+    <main class="stream-body">
+      <div class="sidebar-video" id="sidebar-video">
+        <div class="sv-stage">
+          <video
+            id="sidebar-video-el"
+            class="sv-video"
+            playsinline
+            controls
+            muted
+          ></video>
+          <div class="sv-overlay" id="sv-overlay">
+            <span>URL · @handle · blank · cam</span>
+          </div>
+        </div>
+        <div class="sv-presets" id="sv-presets" role="group" aria-label="Stream presets">
+          <button type="button" class="sv-chip" data-preset="overview">Overview</button>
+          <button type="button" class="sv-chip" data-preset="blank">Blank</button>
+          <button type="button" class="sv-chip" data-preset="demo">Demo</button>
+          <button type="button" class="sv-chip" data-preset="live">Live</button>
+          <button type="button" class="sv-chip" data-preset="cam">Cam</button>
+        </div>
+        <form class="sv-form" id="sv-form" autocomplete="off">
+          <input
+            type="text"
+            id="sv-url"
+            class="sv-input"
+            placeholder="https://…  or  @handle  or  device:0"
+            spellcheck="false"
+            aria-label="Stream URL or handle"
+          />
+          <div class="sv-row">
+            <select id="sv-quality" class="sv-select" title="Max resolution" aria-label="Quality">
+              <option value="1080" selected>1080p</option>
+              <option value="720">720p</option>
+              <option value="best">best</option>
+              <option value="480">480p</option>
+            </select>
+            <button type="submit" class="btn-mini primary" id="sv-play">Play</button>
+            <button type="button" class="btn-mini" id="sv-stop" title="Stop stream">Stop</button>
+            <button type="button" class="btn-mini" id="sv-ffplay" title="Open in ffplay">ffplay</button>
+          </div>
+        </form>
+        <p class="sv-status" id="sv-status">yt-dlp · ffmpeg · blank · gy hub</p>
+        <span class="sb-summary-meta" id="video-feed-pill" hidden>idle</span>
+        <div class="sv-history" id="sv-history" aria-label="Recent stream requests"></div>
+      </div>
+      <p class="stream-meta">POST /api/control · dock / undock · SpaceXAI</p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js" defer></script>
+    <script>
+      window.LabDesktop = Object.assign(window.LabDesktop || {}, {
+        isDesktop: true,
+        isNative: true,
+        isStreamWindow: true,
+        shell: "stream-window",
+      });
+      document.documentElement.classList.add("lab-native", "lab-stream-surface");
+
+      async function control(action, extra) {
+        try {
+          const r = await fetch("/api/control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.assign({ action: action, target: "stream" }, extra || {})),
+          });
+          return await r.json().catch(() => ({}));
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+      function ipc(msg) {
+        try {
+          if (window.ipc && window.ipc.postMessage) window.ipc.postMessage(msg);
+        } catch (_) {}
+      }
+
+      let docked = true;
+      document.getElementById("btn-close")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        control("hide_stream");
+      });
+      document.getElementById("btn-min")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ipc("minimize");
+        control("minimize", { target: "stream" });
+      });
+      document.getElementById("btn-max")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ipc("maximize");
+      });
+      document.getElementById("btn-lab")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        control("focus_lab");
+      });
+      document.getElementById("btn-chat")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        control("open_chat_independent");
+      });
+      const dockBtn = document.getElementById("btn-dock");
+      dockBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        docked = !docked;
+        control(docked ? "dock_stream" : "undock_stream");
+        dockBtn.textContent = docked ? "Undock" : "Dock";
+        dockBtn.classList.toggle("on", docked);
+      });
+      // default docked label
+      if (dockBtn) {
+        dockBtn.textContent = "Undock";
+        dockBtn.classList.add("on");
+      }
+
+      window.LabStream = { control: control };
+    </script>
+    <script src="assets/video-feed.js?v=stream1" defer></script>
+  </body>
+</html>

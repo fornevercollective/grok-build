@@ -115,7 +115,7 @@ grok plugin details my-plugin
 - [ ] README or skill points at companion tools (gy, mcp)  
 - [ ] `grok plugin validate ./my-plugin` passes  
 - [ ] Enabled in TUI or `[plugins].enabled` (files alone ≠ enabled)  
-- [ ] Semver in `plugin.json` independent of Architecture Lab / Grok CLI versions  
+- [ ] Semver in `plugin.json` independent of Grok Build Lab / Grok CLI versions  
 - [ ] Does **not** reimplement mesh/walkie that belongs in GrokYtalkY  
 
 ## Live example: `gy-glyph-pins`

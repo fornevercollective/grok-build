@@ -1,5 +1,5 @@
 /**
- * Architecture Lab tools: Terminal · Notes · Table · X desk · Broadcast · History
+ * Grok Build Lab tools: Terminal · Notes · Table · X desk · Broadcast · History
  * Inspired by mueee history/notes/pad-datatable + burst X Spaces/RTMP.
  */
 (function () {
@@ -1447,7 +1447,12 @@ gy space mute all`;
     // Left menu: always available + collapsible on every page
     $("menu-btn")?.addEventListener("click", toggleSidebar);
     $("sidebar-edge-toggle")?.addEventListener("click", toggleSidebar);
-    if (localStorage.getItem("lab.sidebarCollapsed") === "1") {
+    // Float shell: default collapsed (more content room) unless user saved preference
+    const saved = localStorage.getItem("lab.sidebarCollapsed");
+    const isFloat =
+      document.body.classList.contains("lab-float") ||
+      document.body.classList.contains("lab-native");
+    if (saved === "1" || (saved === null && isFloat)) {
       setSidebarCollapsed(true);
     } else {
       setSidebarCollapsed(false);
@@ -1560,6 +1565,22 @@ gy space mute all`;
     bindHistorySlider("hist-slider-panel");
     bindHistTimelines();
     $("btn-hist-slider-open")?.addEventListener("click", () => setMode("history"));
+    // Compact topbar: Hist toggle expands scrub without stacking the whole chrome
+    $("btn-hist-toggle")?.addEventListener("click", () => {
+      const exp = $("hist-timeline-expand");
+      const btn = $("btn-hist-toggle");
+      if (!exp || !btn) return;
+      const open = exp.hasAttribute("hidden");
+      if (open) {
+        exp.removeAttribute("hidden");
+        btn.setAttribute("aria-expanded", "true");
+        // redraw after layout
+        requestAnimationFrame(() => drawHistTimeline("hist-timeline-canvas-mini"));
+      } else {
+        exp.setAttribute("hidden", "");
+        btn.setAttribute("aria-expanded", "false");
+      }
+    });
     loadHistorySlider();
 
     document.querySelectorAll("#panel-history .rail-tab").forEach((t) => {

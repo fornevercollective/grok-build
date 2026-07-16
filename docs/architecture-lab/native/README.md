@@ -84,20 +84,32 @@ Icon: `icons/AppIcon.icns` — unaltered Grok mark + rainbow aura chrome (brand-
 
 ---
 
-## Dual windows + control
+## Triple windows + control
 
 | Window | Default | Open |
 |--------|---------|------|
 | **Lab** | Visible · frameless float chrome · drag title bar | App start |
-| **Chat** | **Hidden** · always-on-top when shown | **Chat** button · **Window → Open Chat** (⌘2) · API |
+| **Chat** | **Hidden** · can dock right of lab | **Chat** · **Window → Open Chat** (⌘2) |
+| **Stream** | **Hidden** · can dock left of lab | **Stream** · **Window → Open Stream** (⌘3) |
+
+### Dock / undock
+
+| Action | Effect |
+|--------|--------|
+| **Dock** | Snap satellite to lab (chat → right, stream → left); follows lab move/resize |
+| **Undock** | Free float |
+| **Link All** (⇧⌘L) | Show + dock chat & stream |
+| **Unlink All** | Undock both (keep visible) |
 
 ### Menus
 
 | Menu | Actions |
 |------|---------|
-| **View** | Refresh All (⌘R) · Refresh Lab · Refresh Chat |
-| **Window** | Lab (⌘1) · Open Chat (⌘2) · Show Both (⌘0) · Hide Chat |
+| **View** | Refresh All (⌘R) · Refresh Lab · Refresh Chat · Refresh Stream |
+| **Window** | Lab (⌘1) · Open Chat (⌘2) · Open Stream (⌘3) · Link / Unlink · Hide satellites |
 | **Help** | Check for Updates… (Pages `version.json` vs local) |
+
+Refresh uses `load_url` + per-window `entry_url` (safe across triple webviews).
 
 ### Control API (agents / Grok / scripts)
 
@@ -110,13 +122,21 @@ curl -s -X POST http://127.0.0.1:PORT/api/control \
   -d '{"action":"open_chat_independent"}'
 curl -s -X POST http://127.0.0.1:PORT/api/control \
   -H 'Content-Type: application/json' \
+  -d '{"action":"show_stream"}'
+curl -s -X POST http://127.0.0.1:PORT/api/control \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"link_all"}'
+curl -s -X POST http://127.0.0.1:PORT/api/control \
+  -H 'Content-Type: application/json' \
   -d '{"action":"refresh_all"}'
 curl -s -X POST http://127.0.0.1:PORT/api/control \
   -H 'Content-Type: application/json' \
   -d '{"action":"pin","target":"lab","on":true}'
 ```
 
-Actions include: `show_chat` · `open_chat_independent` · `hide_chat` · `toggle_chat` · `focus_lab` · `pin` · `unpin` · `center` · `move` · `resize` · `minimize` · `maximize` · `close` · `refresh` / `refresh_*` · `check_updates` · `eval` · `error` · `quit` · `drag` (IPC).
+Actions include: `show_chat` · `show_stream` · `open_chat_independent` · dock/undock · `link_all` · `unlink_all` · `focus_*` · `pin` · `unpin` · `center` · `move` · `resize` · `minimize` · `maximize` · `close` · `refresh` / `refresh_*` · `check_updates` · `eval` · `error` · `quit` · `drag` (IPC).
+
+Targets: `lab` · `chat` · `stream` · `all`.
 
 Errors: `GET /api/control/errors` · toast in windows.
 

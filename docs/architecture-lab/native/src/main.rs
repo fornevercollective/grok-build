@@ -1,4 +1,4 @@
-//! Architecture Lab — native floating shell.
+//! Grok Build Lab — native floating shell.
 //!
 //! * **Window**: `tao` + `wry` → macOS **WKWebView** (not Electron/Chromium)
 //! * **Server**: in-process `axum` serves the lab static tree + ops APIs
@@ -9,6 +9,8 @@
 mod api;
 mod control;
 mod menu;
+#[cfg(target_os = "macos")]
+mod macos_style;
 mod tui;
 mod window;
 
@@ -80,7 +82,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "architecture_lab=info".into()),
+                .unwrap_or_else(|_| "grok_build_lab=info,architecture_lab=info".into()),
         )
         .init();
 

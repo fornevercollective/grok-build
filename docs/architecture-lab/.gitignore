@@ -5,6 +5,8 @@ desktop/Architecture Lab.app/
 desktop/icon.icns
 native/target/
 native/Architecture Lab.app/
+native/Grok Build Lab.app/
 **/Architecture Lab.app/
+**/Grok Build Lab.app/
 *.log
 .DS_Store

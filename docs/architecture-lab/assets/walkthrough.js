@@ -1,6 +1,6 @@
 /**
- * Page highlighting + walkthrough — hover/mouseover sections so Grok can show the work.
- * Tags article blocks after markdown render; supports tour next/prev and voice queries.
+ * Page highlighting + walkthrough.
+ * Soft hover is CSS-cheap (class toggle only). Tips only for tour/pin.
  */
 (function () {
   "use strict";
@@ -12,11 +12,12 @@
     hoverOn: true,
     tipEl: null,
     dimEl: null,
+    /** last soft-hover el for O(1) class clear */
+    softEl: null,
+    softI: -1,
+    /** rAF throttle for tip reanchor */
+    reanchorRaf: 0,
   };
-
-  function $(sel) {
-    return document.querySelector(sel);
-  }
 
   function article() {
     return document.getElementById("article");
@@ -29,7 +30,7 @@
       tip.className = "walk-tip";
       tip.hidden = true;
       tip.innerHTML =
-        '<div class="walk-tip-head"><span class="walk-tip-kicker">Grok</span>' +
+        '<div class="walk-tip-head"><span class="walk-tip-kicker">tour</span>' +
         '<span class="walk-tip-count" id="walk-tip-count"></span></div>' +
         '<p class="walk-tip-title" id="walk-tip-title"></p>' +
         '<p class="walk-tip-body" id="walk-tip-body"></p>' +
@@ -68,9 +69,12 @@
   }
 
   function blurbFor(node) {
+    // Prefer cached dataset to avoid re-walking large textContent on every tip
+    if (node.dataset && node.dataset.walkBlurb) return node.dataset.walkBlurb;
     const t = (node.textContent || "").trim().replace(/\s+/g, " ");
-    if (t.length <= 140) return t;
-    return t.slice(0, 137) + "…";
+    const b = t.length <= 140 ? t : t.slice(0, 137) + "…";
+    if (node.dataset) node.dataset.walkBlurb = b;
+    return b;
   }
 
   function sectionKind(node) {
@@ -82,42 +86,30 @@
     return "section";
   }
 
-  /**
-   * Tag highlightable blocks in the article (call after each page load).
-   */
   function annotate(root) {
     const art = root || article();
     if (!art) return [];
     clearHighlight();
-    // remove prior tags
+    state.softEl = null;
+    state.softI = -1;
+
     art.querySelectorAll("[data-walk]").forEach((n) => {
       n.removeAttribute("data-walk");
       n.removeAttribute("data-walk-i");
       n.removeAttribute("data-walk-title");
-      n.classList.remove("walk-section", "walk-hot", "walk-tour-current");
-    });
-
-    const nodes = [];
-    // Headings + following content group: mark each h2/h3 and major blocks
-    const candidates = art.querySelectorAll(
-      "h1, h2, h3, h4, table, pre, blockquote, .article > p, .article > ul, .article > ol"
-    );
-    // Also direct children that are sections
-    art.querySelectorAll(":scope > *").forEach((n) => {
-      if (!candidates.length || true) {
-        /* use query list */
-      }
+      n.removeAttribute("data-walk-blurb");
+      n.classList.remove("walk-section", "walk-hot", "walk-tour-current", "walk-soft");
     });
 
     const list = Array.from(
       art.querySelectorAll("h1, h2, h3, h4, table, pre, blockquote")
     );
-    // Include standalone paragraphs that are long enough (leverage / decision blocks)
     art.querySelectorAll(":scope > p").forEach((p) => {
       if ((p.textContent || "").trim().length > 80) list.push(p);
     });
 
     const seen = new Set();
+    const nodes = [];
     list.forEach((node) => {
       if (seen.has(node)) return;
       seen.add(node);
@@ -140,96 +132,215 @@
     return state.sections;
   }
 
+  /** Fast soft highlight — class only, no tip / no full DOM scan. */
+  function softHover(el, i) {
+    if (state.softI === i && state.softEl === el) return;
+    if (state.softEl && state.softEl !== el) {
+      state.softEl.classList.remove("walk-soft", "walk-hot");
+    }
+    state.softEl = el;
+    state.softI = i;
+    el.classList.add("walk-soft");
+  }
+
+  function clearSoft() {
+    if (state.softEl) {
+      state.softEl.classList.remove("walk-soft", "walk-hot");
+      state.softEl = null;
+      state.softI = -1;
+    }
+  }
+
   function wireHover(art) {
     if (art._walkBound) return;
     art._walkBound = true;
 
+    // pointermove is noisier; stick to over/out with early exits
     art.addEventListener(
       "pointerover",
       (e) => {
-        if (!state.hoverOn) return;
-        if (state.tour) return; // tour owns highlight
-        const t = e.target.closest("[data-walk]");
+        if (!state.hoverOn || state.tour) return;
+        // relatedTarget still inside same section → ignore
+        const t = e.target.closest?.("[data-walk]");
         if (!t || !art.contains(t)) return;
-        const i = parseInt(t.dataset.walkI, 10);
+        if (state.softEl === t) return;
+        const from = e.relatedTarget && e.relatedTarget.closest?.("[data-walk]");
+        if (from === t) return;
+        const i = +t.dataset.walkI;
         if (Number.isNaN(i)) return;
-        highlightIndex(i, { soft: true, scroll: false });
+        clearTimeout(wireHover._clearT);
+        softHover(t, i);
       },
-      true
+      { capture: true, passive: true }
     );
 
     art.addEventListener(
       "pointerout",
       (e) => {
         if (!state.hoverOn || state.tour) return;
-        const t = e.target.closest("[data-walk]");
-        if (!t) return;
+        const t = e.target.closest?.("[data-walk]");
+        if (!t || t !== state.softEl) return;
         const rel = e.relatedTarget;
-        if (rel && t.contains(rel)) return;
-        // leave soft highlight after a beat unless another section entered
-        clearTimeout(wireHover._t);
-        wireHover._t = setTimeout(() => {
-          if (!state.tour) clearHighlight({ keepDim: false });
-        }, 180);
+        if (rel && (t === rel || t.contains(rel))) return;
+        clearTimeout(wireHover._clearT);
+        wireHover._clearT = setTimeout(() => {
+          if (!state.tour) clearSoft();
+        }, 120);
       },
-      true
+      { capture: true, passive: true }
     );
 
     art.addEventListener("click", (e) => {
-      const t = e.target.closest("[data-walk]");
+      const t = e.target.closest?.("[data-walk]");
       if (!t || !art.contains(t)) return;
-      // pin highlight on click
-      const i = parseInt(t.dataset.walkI, 10);
+      const i = +t.dataset.walkI;
       if (Number.isNaN(i)) return;
+      clearSoft();
       highlightIndex(i, { soft: false, scroll: true, pin: true });
     });
   }
 
   function clearHighlight(opts) {
     opts = opts || {};
-    document.querySelectorAll(".walk-hot, .walk-tour-current").forEach((n) => {
-      n.classList.remove("walk-hot", "walk-tour-current");
-    });
-    document.body.classList.remove("walk-active", "walk-touring");
+    clearSoft();
+    // Only clear known hot nodes, not whole document if we track them
+    if (state._hotEl) {
+      state._hotEl.classList.remove("walk-hot", "walk-tour-current");
+      state._hotEl = null;
+    } else {
+      document.querySelectorAll(".walk-hot, .walk-tour-current").forEach((n) => {
+        n.classList.remove("walk-hot", "walk-tour-current");
+      });
+    }
+    document.body.classList.remove("walk-active");
+    if (!state.tour) document.body.classList.remove("walk-touring");
     if (state.tipEl && !state.tour) {
       state.tipEl.hidden = true;
+      state._tipNode = null;
     }
     if (state.dimEl && !opts.keepDim && !state.tour) {
       state.dimEl.hidden = true;
     }
   }
 
-  function placeTip(node, sec) {
+  function chromeTopInset() {
+    let top = 8;
+    if (
+      document.body.classList.contains("lab-native") ||
+      document.body.classList.contains("lab-float")
+    ) {
+      top = 48;
+    }
+    // Cache for a frame — avoid double getBoundingClientRect storms
+    if (chromeTopInset._t === performance.now()) return chromeTopInset._v;
+    const tabs = document.querySelector(".app-tabs");
+    const bar = document.querySelector(".topbar");
+    if (tabs) top = Math.max(top, tabs.getBoundingClientRect().bottom + 6);
+    else if (bar) top = Math.max(top, bar.getBoundingClientRect().bottom + 6);
+    chromeTopInset._t = performance.now();
+    chromeTopInset._v = top;
+    return top;
+  }
+
+  function placeTip(node, sec, opts) {
+    opts = opts || {};
+    // Soft hover never opens a tip (perf + less visual noise)
+    if (opts.soft && !state.tour && !opts.pin) return;
+
     ensureChrome();
     const tip = state.tipEl;
-    const title = $("#walk-tip-title");
-    const body = $("#walk-tip-body");
-    const count = $("#walk-tip-count");
-    if (title) title.textContent = sec.title;
+    if (!tip || !node) return;
+
+    const title = document.getElementById("walk-tip-title");
+    const body = document.getElementById("walk-tip-body");
+    const count = document.getElementById("walk-tip-count");
+    const actions = tip.querySelector(".walk-tip-actions");
+    if (title) title.textContent = sec.title || node.dataset.walkTitle || "";
     if (body) body.textContent = blurbFor(node);
     if (count) {
       count.textContent =
-        state.sections.length > 0
-          ? sec.i + 1 + " / " + state.sections.length
-          : "";
+        state.sections.length > 0 ? sec.i + 1 + " / " + state.sections.length : "";
     }
+    tip.classList.remove("soft");
+    if (actions) actions.hidden = false;
+    const kicker = tip.querySelector(".walk-tip-kicker");
+    if (kicker) kicker.textContent = state.tour ? "tour" : "pin";
+
     tip.hidden = false;
+    const tipW = Math.min(300, window.innerWidth - 24);
+    tip.style.width = tipW + "px";
+    // Use fixed estimate first; one layout read only
+    const tipH = tip.offsetHeight || 120;
 
     const rect = node.getBoundingClientRect();
-    const tipW = Math.min(320, window.innerWidth - 24);
-    let left = rect.left + rect.width / 2 - tipW / 2;
-    left = Math.max(12, Math.min(left, window.innerWidth - tipW - 12));
-    let top = rect.bottom + 10;
-    if (top + 160 > window.innerHeight) {
-      top = Math.max(12, rect.top - 140);
+    const main = document.querySelector(".main");
+    const mainRect = main ? main.getBoundingClientRect() : null;
+    const pad = 10;
+    const minTop = chromeTopInset();
+    const maxLeft = window.innerWidth - tipW - pad;
+    const maxTop = window.innerHeight - tipH - pad;
+
+    const invalid =
+      !rect ||
+      rect.width < 2 ||
+      rect.height < 2 ||
+      rect.bottom < minTop - 40 ||
+      rect.top > window.innerHeight + 40;
+
+    let left;
+    let top;
+
+    if (invalid) {
+      left = mainRect ? mainRect.left + 12 : pad;
+      top = minTop + 8;
+    } else if (rect.height > window.innerHeight * 0.45) {
+      left = Math.min(maxLeft, Math.max(pad, rect.left));
+      top = Math.min(maxTop, Math.max(minTop, rect.top + 8));
+      if (mainRect && mainRect.right - tipW - 12 > rect.left + 40) {
+        left = Math.min(maxLeft, mainRect.right - tipW - 12);
+      }
+    } else if (rect.right + tipW + 16 < window.innerWidth) {
+      left = rect.right + 12;
+      top = Math.min(maxTop, Math.max(minTop, rect.top));
+    } else {
+      left = Math.min(
+        maxLeft,
+        Math.max(pad, rect.left + rect.width / 2 - tipW / 2)
+      );
+      top = rect.bottom + 10;
+      if (top + tipH > window.innerHeight - pad) {
+        top = Math.max(minTop, rect.top - tipH - 10);
+      }
     }
-    tip.style.width = tipW + "px";
-    tip.style.left = left + "px";
-    tip.style.top = top + "px";
+
+    tip.style.left = Math.round(Math.min(maxLeft, Math.max(pad, left))) + "px";
+    tip.style.top = Math.round(Math.min(maxTop, Math.max(minTop, top))) + "px";
+
+    state._tipNode = node;
+    state._tipSec = sec;
+    state._tipOpts = opts;
+  }
+
+  function reanchorTip() {
+    if (!state.tipEl || state.tipEl.hidden || !state._tipNode) return;
+    if (!state.tour && !state._tipOpts?.pin) return;
+    if (state.reanchorRaf) return;
+    state.reanchorRaf = requestAnimationFrame(() => {
+      state.reanchorRaf = 0;
+      if (!state.tipEl || state.tipEl.hidden || !state._tipNode) return;
+      placeTip(
+        state._tipNode,
+        state._tipSec || { title: "", i: state.index },
+        state._tipOpts || { pin: true }
+      );
+    });
   }
 
   function highlightIndex(i, opts) {
     opts = opts || {};
+    // Soft path never goes through here anymore
+    if (opts.soft && !state.tour && !opts.pin) return false;
+
     ensureChrome();
     if (!state.sections.length) annotate();
     if (!state.sections.length) return false;
@@ -237,11 +348,28 @@
     const sec = state.sections[i];
     if (!sec || !sec.el) return false;
 
-    document.querySelectorAll(".walk-hot, .walk-tour-current").forEach((n) => {
-      n.classList.remove("walk-hot", "walk-tour-current");
-    });
+    // Skip redundant full work if same pin/tour index
+    if (
+      state.index === i &&
+      state._hotEl === sec.el &&
+      (state.tour || opts.pin) &&
+      opts.scroll === false
+    ) {
+      placeTip(sec.el, sec, opts);
+      return true;
+    }
 
+    if (state._hotEl && state._hotEl !== sec.el) {
+      state._hotEl.classList.remove("walk-hot", "walk-tour-current");
+    } else if (!state._hotEl) {
+      document.querySelectorAll(".walk-hot, .walk-tour-current").forEach((n) => {
+        if (n !== sec.el) n.classList.remove("walk-hot", "walk-tour-current");
+      });
+    }
+
+    clearSoft();
     state.index = i;
+    state._hotEl = sec.el;
     sec.el.classList.add("walk-hot");
     if (state.tour || opts.pin) sec.el.classList.add("walk-tour-current");
 
@@ -249,30 +377,26 @@
     if (state.tour) {
       document.body.classList.add("walk-touring");
       if (state.dimEl) state.dimEl.hidden = false;
-    } else {
-      // hover / pin — no heavy scrim, outline only
-      if (state.dimEl) state.dimEl.hidden = true;
+    } else if (state.dimEl) {
+      state.dimEl.hidden = true;
     }
 
     if (opts.scroll !== false) {
-      sec.el.scrollIntoView({ behavior: "smooth", block: "center" });
+      sec.el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      clearTimeout(highlightIndex._scrollT);
+      highlightIndex._scrollT = setTimeout(() => placeTip(sec.el, sec, opts), 200);
     }
 
-    if (!opts.soft || state.tour || opts.pin) {
-      placeTip(sec.el, sec);
-    } else {
-      // soft hover: mini tip
-      placeTip(sec.el, sec);
-      if (state.tipEl) state.tipEl.classList.add("soft");
-    }
-    if (!opts.soft) state.tipEl?.classList.remove("soft");
+    placeTip(sec.el, sec, opts);
 
-    // broadcast for voice / multi-term
-    window.dispatchEvent(
-      new CustomEvent("lab:walk-highlight", {
-        detail: { index: i, title: sec.title, kind: sec.kind },
-      })
-    );
+    // Defer event so UI paints first
+    queueMicrotask(() => {
+      window.dispatchEvent(
+        new CustomEvent("lab:walk-highlight", {
+          detail: { index: i, title: sec.title, kind: sec.kind },
+        })
+      );
+    });
     return true;
   }
 
@@ -295,9 +419,11 @@
       }
     });
     if (best < 0) {
-      // try nav-ish words
       best = state.sections.findIndex((s) =>
-        s.title.toLowerCase().split(/\s+/).some((w) => needle.includes(w) && w.length > 3)
+        s.title
+          .toLowerCase()
+          .split(/\s+/)
+          .some((w) => needle.includes(w) && w.length > 3)
       );
     }
     if (best < 0) return false;
@@ -307,9 +433,9 @@
 
   function start() {
     ensureChrome();
-    // docs mode
     if (document.body.classList.contains("mode-tools")) {
-      location.hash = location.hash.replace(/^#\/tool\/.*/, "") || "#/00-overview";
+      location.hash =
+        location.hash.replace(/^#\/tool\/.*/, "") || "#/00-overview";
     }
     annotate();
     if (!state.sections.length) return false;
@@ -323,7 +449,10 @@
     state.tour = false;
     state.index = -1;
     clearHighlight();
-    if (state.tipEl) state.tipEl.hidden = true;
+    if (state.tipEl) {
+      state.tipEl.hidden = true;
+      state._tipNode = null;
+    }
     if (state.dimEl) state.dimEl.hidden = true;
     document.body.classList.remove("walk-touring", "walk-active");
     updateToolbar();
@@ -352,6 +481,7 @@
   function setHover(on) {
     state.hoverOn = !!on;
     document.body.classList.toggle("walk-hover-off", !state.hoverOn);
+    if (!state.hoverOn) clearSoft();
     updateToolbar();
   }
 
@@ -369,6 +499,22 @@
     }
   }
 
+  function setChromeHidden(on) {
+    document.body.classList.toggle("walk-chrome-hidden", !!on);
+    const hide = document.getElementById("btn-walk-hide");
+    if (hide) {
+      hide.setAttribute("aria-pressed", on ? "true" : "false");
+      hide.classList.toggle("active", !!on);
+      hide.textContent = on ? "Show" : "Hide";
+    }
+    if (on) {
+      stop();
+      setHover(false);
+      const tip = document.getElementById("walk-tip");
+      if (tip) tip.hidden = true;
+    }
+  }
+
   function bindToolbar() {
     document.getElementById("btn-walkthrough")?.addEventListener("click", () => {
       if (state.tour) stop();
@@ -378,10 +524,13 @@
       setHover(!state.hoverOn);
     });
     document.getElementById("btn-walk-next")?.addEventListener("click", () => next());
+    document.getElementById("btn-walk-hide")?.addEventListener("click", () => {
+      const on = !document.body.classList.contains("walk-chrome-hidden");
+      setChromeHidden(on);
+    });
   }
 
   function onPageReady() {
-    // re-annotate after docs page loads
     requestAnimationFrame(() => {
       annotate();
       if (state.tour && state.sections.length) {
@@ -398,6 +547,7 @@
     start,
     stop,
     next,
+    setChromeHidden,
     prev,
     highlightIndex,
     highlightQuery,
@@ -407,8 +557,10 @@
     isTouring: () => state.tour,
   };
 
-  // Hook page loads from app.js
   window.addEventListener("lab:page-loaded", onPageReady);
+  // Only reanchor during tour/pin — throttled via rAF
+  window.addEventListener("scroll", reanchorTip, { passive: true, capture: true });
+  window.addEventListener("resize", reanchorTip, { passive: true });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {

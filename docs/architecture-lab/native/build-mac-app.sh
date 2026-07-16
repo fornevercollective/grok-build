@@ -12,16 +12,21 @@ RES="$APP_DIR/Contents/Resources"
 echo "Building native binary…"
 (cd "$NATIVE" && cargo build --release)
 
-BIN_SRC="$NATIVE/target/release/architecture-lab"
-[[ -x "$BIN_SRC" ]] || { echo "missing $BIN_SRC" >&2; exit 1; }
+BIN_SRC=""
+for cand in "$NATIVE/target/release/grok-build-lab" "$NATIVE/target/release/architecture-lab"; do
+  if [[ -x "$cand" ]]; then BIN_SRC="$cand"; break; fi
+done
+[[ -n "$BIN_SRC" && -x "$BIN_SRC" ]] || { echo "missing release binary (cargo build --release)" >&2; exit 1; }
 
 echo "Assembling ${APP_DIR}…"
-# Remove legacy bundle name if present
+# Remove legacy bundle names if present
 rm -rf "$APP_DIR" "$NATIVE/Architecture Lab.app"
 mkdir -p "$MACOS" "$RES"
 
+# Ship as grok-build-lab (keep architecture-lab alias for old wrappers)
+cp "$BIN_SRC" "$MACOS/grok-build-lab"
 cp "$BIN_SRC" "$MACOS/architecture-lab"
-chmod +x "$MACOS/architecture-lab"
+chmod +x "$MACOS/grok-build-lab" "$MACOS/architecture-lab"
 
 # Robust launcher: always prefer bundled Resources/lab, log failures, show dialog
 # CFBundleExecutable must match this filename.
@@ -48,7 +53,11 @@ fi
 
 echo "ARCH_LAB_ROOT=${ARCH_LAB_ROOT:-unset}"
 MODE="${LAB_WINDOW_MODE:-float}"
-BIN="$HERE/architecture-lab"
+if [[ -x "$HERE/grok-build-lab" ]]; then
+  BIN="$HERE/grok-build-lab"
+else
+  BIN="$HERE/architecture-lab"
+fi
 
 if [[ ! -x "$BIN" ]]; then
   osascript -e 'display dialog "Grok Build Lab binary missing inside the app bundle. Re-run native/build-mac-app.sh" with title "Grok Build Lab" buttons {"OK"} default button "OK" with icon stop' 2>/dev/null || true
@@ -61,7 +70,8 @@ if [[ -z "${ARCH_LAB_ROOT:-}" || ! -f "${ARCH_LAB_ROOT}/index.html" ]]; then
 fi
 
 # port 0 = free port (avoids crash when ./serve.sh already holds :8765)
-export RUST_LOG="${RUST_LOG:-architecture_lab=info}"
+export RUST_LOG="${RUST_LOG:-grok_build_lab=info,architecture_lab=info}"
+export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
 exec "$BIN" --mode "$MODE" --root "$ARCH_LAB_ROOT" --port 0
 WRAP
 chmod +x "$MACOS/Grok Build Lab"

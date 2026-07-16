@@ -166,9 +166,26 @@
   }
 
   function sizeFor(v, i, n) {
-    if (v.id === state.selected) return 36;
-    if (v.gen === "original") return 30;
-    return 24 + (i % 3) * 2;
+    // Slightly larger so official marks stay legible
+    if (v.id === state.selected) return 40;
+    if (v.gen === "original") return 34;
+    return 28 + (i % 3) * 2;
+  }
+
+  /** Official Grok logomark only — unaltered (see content/12-brand.md).
+   *  Do NOT put the corporate SpaceXAI symbol on voice orbs (looks like an "exec" logo).
+   *  SpaceXAI name is text attribution; the product face for Grok Voice is the Grok mark.
+   */
+  const BRAND = {
+    grok: "assets/brand/grok-logomark-light.svg",
+  };
+
+  function brandSrcFor(_v) {
+    return BRAND.grok;
+  }
+
+  function brandAltFor(_v) {
+    return "Grok";
   }
 
   function render() {
@@ -199,15 +216,18 @@
       btn.style.setProperty("--dur", 5.5 + (i % 5) * 0.7 + "s");
       btn.style.setProperty("--delay", -(i * 0.35) + "s");
 
+      // Official SpaceXAI / Grok mark (unaltered) + hue halo via CSS ::before
       btn.innerHTML =
-        '<span class="vc-initial">' +
-        (v.name.charAt(0) || "?").toUpperCase() +
-        "</span>" +
+        '<img class="vc-brand" src="' +
+        brandSrcFor(v) +
+        '" alt="' +
+        escapeHtml(brandAltFor(v)) +
+        '" width="48" height="48" draggable="false" />' +
         '<span class="vc-tip"><strong>' +
         escapeHtml(v.name) +
         "</strong>" +
         (v.tone ? "<em>" + escapeHtml(v.tone) + "</em>" : "") +
-        (v.gen === "flagship" ? "<em>flagship</em>" : "<em>original</em>") +
+        (v.gen === "flagship" ? "<em>Grok Voice · flagship</em>" : "<em>Grok Voice · original</em>") +
         "</span>";
 
       wireSphere(btn, v);
@@ -416,7 +436,10 @@
     wrap.id = "voice-constellation";
     wrap.innerHTML =
       '<div class="voice-constellation-head">' +
-      "<span>SpaceXAI voices · <strong id=\"voice-constellation-active\">eve</strong></span>" +
+      '<img class="vc-mark" src="' +
+      BRAND.grok +
+      '" alt="Grok" width="12" height="12" draggable="false" />' +
+      "<span>Grok Voice · <strong id=\"voice-constellation-active\">eve</strong></span>" +
       '<span class="vc-live off" id="voice-constellation-live">catalog</span>' +
       "</div>" +
       '<div class="voice-filter-row" id="voice-filter-row">' +
@@ -432,7 +455,7 @@
       '<button type="button" class="btn-mini" id="btn-voice-scatter">Scatter</button>' +
       '<button type="button" class="btn-mini" id="btn-voice-refresh">Refresh</button>' +
       "</div>" +
-      '<p class="chat-meta" id="voice-constellation-status" style="margin-top:0.35rem">hover to float · drag to place · click to select</p>';
+      '<p class="chat-meta" id="voice-constellation-status" style="margin-top:0.35rem">Grok logomark · hue halo only · click to select</p>';
 
     const stage = document.getElementById("chat-stage");
     if (stage && stage.nextSibling) {

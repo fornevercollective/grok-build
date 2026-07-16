@@ -42,6 +42,7 @@
         { "id": "12-brand", "label": "SpaceXAI / Grok brand" },
         { "id": "13-tools", "label": "Lab tools workspace" },
         { "id": "14-dev-build-and-forks", "label": "Dev build · versions · forks" },
+        { "id": "16-hackerone-x", "label": "X / xAI · HackerOne bounty" },
         { "id": "99-contributing-docs", "label": "Riffing on these docs" }
       ]
     }

@@ -2,16 +2,16 @@
 [workspace]
 
 [package]
-name = "architecture-lab-native"
+name = "grok-build-lab-native"
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
-description = "Floating native Grok Build Lab shell — WKWebView (macOS) / WebView2 (Windows), no Electron. Standalone workspace under docs/architecture-lab/native (not monorepo member)."
+description = "Grok Build Lab native shell — WKWebView (macOS) / WebView2 (Windows), no Electron. Standalone workspace under docs/architecture-lab/native (not monorepo member)."
 license = "Apache-2.0"
 publish = false
 
 [[bin]]
-name = "architecture-lab"
+name = "grok-build-lab"
 path = "src/main.rs"
 
 [dependencies]
@@ -33,6 +33,11 @@ http = "1"
 url = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Lab window shape (rounded corners) — macOS only
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
+cocoa = "0.26"
 
 [profile.release]
 # thin LTO keeps release builds practical for iterative lab work

@@ -13,11 +13,11 @@ Before you expand the lab, read the compliance + fork map:
 | Surface | Accepts external PRs? | Where work lives |
 |---------|----------------------|------------------|
 | **SpaceXAI / `xai-org/grok-build`** | **No** — see root `CONTRIBUTING.md` | Upstream only |
-| **This Architecture Lab** (`docs/architecture-lab/`) | Local / fork experiments OK | `fornevercollective/grok-build` or your fork |
+| **This Grok Build Lab** (`docs/architecture-lab/`) | Local / fork experiments OK | `fornevercollective/grok-build` or your fork |
 | **gy-glyph-pins plugin** | Companion repo | `GrokYtalkY` → `~/.grok/plugins/` |
 | **Grok Build core crates** | Prefer **plugins / MCP / skills**, not core forks | Extension surfaces |
 
-Security issues: follow monorepo `SECURITY.md` — do not open public issues for vulns.
+Security issues: follow monorepo `SECURITY.md` → [HackerOne X/xAI](https://hackerone.com/x). Do not open public issues for vulns. Lab prize scorecard: [HackerOne bounty](#/16-hackerone-x).
 
 Licensing: monorepo is **Apache-2.0**. Lab native shell matches that license. Do not drop proprietary third-party marks into the tree.
 
@@ -36,7 +36,7 @@ Minimum bar:
 5. Validate: `grok plugin validate ./my-plugin`  
 6. Enable: TUI `Ctrl+L` or `[plugins].enabled`  
 
-Architecture Lab is **not** a plugin. Do not package the whole SPA as a plugin unless you deliberately ship skills/commands that point *at* the lab.
+Grok Build Lab is **not** a plugin. Do not package the whole SPA as a plugin unless you deliberately ship skills/commands that point *at* the lab.
 
 ---
 

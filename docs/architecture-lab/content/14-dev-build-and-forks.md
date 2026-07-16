@@ -10,13 +10,13 @@ Single map for **how this lab is built**, **what versions mean**, **where code d
 |-----------|--------|-------|
 | **Upstream `CONTRIBUTING.md`** (no external PRs to SpaceXAI tree) | **Met** | Lab is local engineering docs + shells. Do **not** open PRs to `xai-org/grok-build`. Experiments stay on `fornevercollective/grok-build` or personal forks. |
 | **Apache-2.0 monorepo license** | **Mostly met** | Root `LICENSE` is Apache-2.0. Native shell crate is aligned to Apache-2.0 (was briefly MIT — fixed). Electron desktop remains private/local. |
-| **Plugin unit** (skills · commands · hooks · manifest) | **Met for GY** | `gy-glyph-pins` has `.grok-plugin/plugin.json`, skills, commands, hooks. Architecture Lab itself is **not** a Grok plugin — it is a companion docs surface. |
+| **Plugin unit** (skills · commands · hooks · manifest) | **Met for GY** | `gy-glyph-pins` has `.grok-plugin/plugin.json`, skills, commands, hooks. Grok Build Lab itself is **not** a Grok plugin — it is a companion docs surface. |
 | **`grok plugin validate`** | **Met** | `grok plugin validate ~/.grok/plugins/gy-glyph-pins` → valid. |
 | **Plugin enabled in config** | **Check locally** | Files under `~/.grok/plugins/` are not always *enabled*. Use TUI `Ctrl+L` → Plugins, or `[plugins].enabled` in `~/.grok/config.toml`. |
 | **Extension without forking pager** | **Met** | Lab uses plugins / HTTP / native host; does not patch `xai-grok-pager` for mesh or docs. |
 | **GY boundary** (no reimplement mesh in Grok) | **Met** | Walkie/orb in lab UI; mesh remains `gy` / GrokYtalkY. Skills point at companion, not a second mesh stack. |
-| **Brand guidelines** ([x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines)) | **Mostly met · watch icons** | Official marks copied **unaltered** under `assets/brand/`. App dock icon = **unaltered Grok logomark** + separate rainbow *aura chrome* (not a recolored mark). Do not ship altered official logos. Lab is **not** an official xAI product page. |
-| **Security reports** | **Met (process)** | Vulnerabilities in upstream → `SECURITY.md` process. Lab-local issues → private report, not public issue spam. |
+| **Brand guidelines** ([x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines)) | **Met · swung further out of product ballpark** | Official marks **unaltered** under `assets/brand/`. Dock icon = unaltered mark + **separate** rainbow aura. Window shell is **non-Apple** (18px lab corners, rainbow rim, fornever chrome). Bundle id `dev.fornevercollective.*` (not `ai.x`). TUI uses Charmbracelet-style colors — local craft, not product marketing. Lab is **not** an official xAI app. |
+| **Security reports** | **Met (process)** | Vulnerabilities in upstream → `SECURITY.md` → [HackerOne X/xAI](https://hackerone.com/x). Lab-local issues → private fix, not public issue spam. Prize eligibility scorecard: [HackerOne bounty page](#/16-hackerone-x). |
 
 ### Plugin anatomy checklist (`gy-glyph-pins`)
 
@@ -27,7 +27,7 @@ Single map for **how this lab is built**, **what versions mean**, **where code d
 - [x] Source of truth in companion repo; install under `~/.grok/plugins/`
 - [ ] Confirm enabled in every machine’s `config.toml` (operator step)
 
-### What Architecture Lab is *not*
+### What Grok Build Lab is *not*
 
 | Not this | Because |
 |----------|---------|
@@ -45,7 +45,7 @@ xai-org/grok-build          (upstream · SpaceXAI · periodic public sync)
         │
         │  git remote: upstream
         ▼
-fornevercollective/grok-build   (origin · local experiments + Architecture Lab)
+fornevercollective/grok-build   (origin · local experiments + Grok Build Lab)
         │
         ├── crates/codegen/xai-grok-*     ← stays close to upstream (do not random-fork)
         ├── docs/architecture-lab/        ← THIS LAB (docs SPA + shells)
@@ -80,6 +80,23 @@ fornevercollective/GrokYtalkY   (separate repo)
 
 **Deep dive (footprint · cold start · `/api/control` · scorecard):** [Lab shells · native vs Electron](#/15-lab-shells) under Companions.
 
+### status.x.ai go/no-go (big pushes)
+
+| Check | Command |
+|-------|---------|
+| Manual | Open [status.x.ai](https://status.x.ai) |
+| Script | `npm run status --prefix docs/architecture-lab` or `bash docs/architecture-lab/scripts/status-xai-check.sh --strict` |
+| Git hook | `npm run install-pre-push --prefix docs/architecture-lab` |
+| Pages CI | Workflow job `status-gating` runs the same script before deploy |
+
+| Exit | Meaning |
+|------|---------|
+| **0 GO** | No incident / outage signals |
+| **1 NO-GO** | Do **not** big-push |
+| **2 UNKNOWN** | Unreachable / CF — confirm in browser; strict mode blocks |
+
+Emergency only: `STATUS_XAI_SKIP=1 git push` or `STATUS_XAI_ALLOW_UNKNOWN=1`.
+
 ---
 
 ## Versioning matrix
@@ -110,7 +127,7 @@ Versions are **not one number**. Use this matrix when shipping.
 | Key | Value | Note |
 |-----|-------|------|
 | Bundle id (native) | `dev.fornevercollective.architecture-lab` | Local lab — not an xAI product id |
-| Display name | `Architecture Lab` | Neutral engineering name |
+| Display name | `Grok Build Lab` | Neutral engineering name |
 
 ---
 
@@ -147,7 +164,7 @@ cd docs/architecture-lab/native
 cargo build --release
 ./launch.sh float          # lab float; chat opens independently
 ./build-mac-app.sh
-open "Architecture Lab.app"
+open "Grok Build Lab.app"
 ```
 
 Standalone workspace: `native/Cargo.toml` has `[workspace]` so it does **not** join root grok-build workspace.

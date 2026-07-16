@@ -84,12 +84,12 @@ Anything with an API → MCP server in a plugin, not a core crate:
 | Product | Relation |
 |---------|----------|
 | GrokYtalkY | Pins, mesh, camera — plugin + tmux (**separate repo**) · [GY companion](#/10-gy-companion) |
-| Architecture Lab shells | Native (tao/wry) product path vs Electron fallback · [Lab shells analysis](#/15-lab-shells) |
-| Architecture Lab | Docs + native float shell under `docs/architecture-lab/` (not a core crate) |
+| Grok Build Lab shells | Native (tao/wry) product path vs Electron fallback · [Lab shells analysis](#/15-lab-shells) |
+| Grok Build Lab | Docs + native float shell under `docs/architecture-lab/` (not a core crate) |
 | ptyctl | Headless PTY (alacritty_terminal) |
 | Custom MCP | Language-agnostic tools |
 
-**Float app automation:** `POST /api/control` on the native shell (show/hide chat, pin, eval JS, refresh). Full route + performance map: [Lab shells · native vs Electron](#/15-lab-shells).
+**Float app automation:** `POST /api/control` on the native shell (lab · chat · stream, dock/link, pin, eval JS, safe refresh). Full route + performance map: [Lab shells · native vs Electron](#/15-lab-shells).
 
 Fork / version / compliance map: [Dev build · versions · forks](#/14-dev-build-and-forks).
 

@@ -1,6 +1,6 @@
 # Lab tools workspace
 
-Tabs across the top of the Architecture Lab:
+Tabs across the top of the Grok Build Lab:
 
 | Tab | Purpose |
 |-----|---------|

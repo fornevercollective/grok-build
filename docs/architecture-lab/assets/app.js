@@ -1,4 +1,4 @@
-/* Grok Build Architecture Lab — static markdown SPA */
+/* Grok Build Lab — static markdown SPA */
 
 const state = {
   nav: null,
@@ -18,11 +18,11 @@ async function loadNav() {
   const res = await fetch("nav.json", { cache: "no-store" });
   if (!res.ok) throw new Error(`nav.json ${res.status}`);
   state.nav = await res.json();
-  document.title = state.nav.title || "Architecture Lab";
+  document.title = state.nav.title || "Grok Build Lab";
   // Keep burst-page ◈ GrokYtalkY brand in top-left; only refresh lab subtitle.
   const lab = $(".brand-lab");
   if (lab) {
-    lab.innerHTML = `<h1>Architecture Lab</h1>
+    lab.innerHTML = `<h1>Grok Build Lab</h1>
       <p>${escapeHtml(state.nav.subtitle || "Grok Build · map · plugins · leverage")}</p>`;
   }
   renderNav();

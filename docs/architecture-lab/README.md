@@ -2,19 +2,29 @@
 
 Launchable docs site for mapping **Grok Build** architecture, plugins, and leverage paths. Markdown sources are the source of truth — riff freely.
 
-**App name:** Grok Build Lab (`.app` / menus / window title).
+**App name:** Grok Build Lab (`.app` / menus / window title).  
+**Disk path:** `docs/architecture-lab/` is **historical** (kept so CI/Pages paths stay stable). Product name everywhere else is **Grok Build Lab**.  
+**Official CLI:** [x.ai/cli](https://x.ai/cli) · **Status board:** [status.x.ai](https://status.x.ai)
 
 Works **locally** and on **GitHub Pages**. Open tabs auto-reload when a new deploy lands.
 
 | Doc | Topic |
 |-----|--------|
-| **[content/14-dev-build-and-forks.md](content/14-dev-build-and-forks.md)** | **Build deps · versioning · forks · plugin/contributing compliance** |
+| **[content/14-dev-build-and-forks.md](content/14-dev-build-and-forks.md)** | **Build deps · versioning · forks · status.x.ai go/no-go** |
 | [content/99-contributing-docs.md](content/99-contributing-docs.md) | How to riff on lab pages |
 | [native/README.md](native/README.md) | Rust float shell (product path) |
 | [content/06-plugin-anatomy.md](content/06-plugin-anatomy.md) | Plugin packaging rules |
 | [content/12-brand.md](content/12-brand.md) | SpaceXAI / Grok brand |
 
-**Lab version (package):** `0.2.0` · **Native crate:** `0.2.0` · **Pages clients:** git SHA in `version.json`
+**Lab version (package):** `0.2.2` · **Native crate:** `0.2.0` · **Pages clients:** git SHA in `version.json`
+
+### Go / no-go before big pushes
+
+```bash
+npm run status --prefix docs/architecture-lab          # check https://status.x.ai
+npm run install-pre-push --prefix docs/architecture-lab  # git pre-push hook
+# emergency only: STATUS_XAI_SKIP=1 git push
+```
 
 ---
 
@@ -70,7 +80,7 @@ See [native/README.md](native/README.md).
 |--|--|
 | **URL** | [https://fornevercollective.github.io/grok-build/](https://fornevercollective.github.io/grok-build/) |
 | **Deploy** | `.github/workflows/pages-architecture-lab.yml` on push to `main` (paths under `docs/architecture-lab/**`) |
-| **Manual** | Actions → **Deploy Architecture Lab (Pages)** → Run workflow |
+| **Manual** | Actions → **Deploy Grok Build Lab (Pages)** → Run workflow |
 | **Auto-reload** | `version.json` + `assets/lab-update.js` — open clients reload when the SHA changes |
 
 First-time setup (repo admin): **Settings → Pages → Build and deployment → Source: GitHub Actions**.
@@ -78,16 +88,19 @@ First-time setup (repo admin): **Settings → Pages → Build and deployment →
 ## Layout
 
 ```text
-architecture-lab/
+docs/architecture-lab/          # historical path · product name = Grok Build Lab
   index.html          # SPA shell
   nav.json            # sidebar sections / page ids
   serve.sh            # local server + ops APIs
   version.json        # local placeholder; Pages overwrites with SHA
-  package.json        # lab semver 0.2.0 (not Grok CLI version)
+  package.json        # lab semver 0.2.2 (not Grok CLI version)
+  scripts/
+    status-xai-check.sh       # status.x.ai go/no-go
+    install-pre-push-hook.sh  # git push gate
   assets/
   content/            # markdown source of truth
-  native/             # Rust product shell (standalone Cargo workspace)
-  desktop/            # Electron fallback (deprecated)
+  native/             # Rust product shell → Grok Build Lab.app · bin grok-build-lab
+  desktop/            # Electron fallback (deprecated · no Architecture Lab.app)
   scripts/prepare-pages-site.sh
 ```
 

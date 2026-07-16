@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Architecture Lab — static + ops APIs
+# Grok Build Lab — static + ops APIs
 # Usage: ./serve.sh [port]
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -631,7 +631,7 @@ def launch_ffplay(url: str, quality: str = "1080"):
         "error",
         "-autoexit",
         "-window_title",
-        "Architecture Lab · ffplay",
+        "Grok Build Lab · ffplay",
         src,
     ]
     try:

@@ -1,5 +1,5 @@
 /**
- * Top-left walkie dock for Architecture Lab:
+ * Top-left walkie dock for Grok Build Lab:
  *  - Glyph pins rail (25² listener tiles)
  *  - Walkie burst orb (hold / space to TX)
  * Demo mode when mesh hub is offline; optional cam when permitted.

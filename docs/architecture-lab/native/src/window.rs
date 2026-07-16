@@ -1,5 +1,5 @@
-//! Dual native windows: Lab workspace + floating Chat (own WKWebView).
-//! Both use the same frameless float chrome; SpaceXAI control bus + IPC drag.
+//! Multi native windows: Lab + Chat + Stream (each own WKWebView).
+//! Dock/undock links satellites to the lab; SpaceXAI control bus + IPC drag.
 
 use crate::control::{ControlBus, ControlCmd, ResizeDir, WinTarget};
 use crate::menu;
@@ -15,10 +15,13 @@ use tao::{
 };
 use wry::{http::Request, WebViewBuilder};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+const DOCK_GAP: i32 = 10;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Role {
     Lab,
     Chat,
+    Stream,
 }
 
 impl Role {
@@ -26,6 +29,7 @@ impl Role {
         match self {
             Role::Lab => WinTarget::Lab,
             Role::Chat => WinTarget::Chat,
+            Role::Stream => WinTarget::Stream,
         }
     }
 }
@@ -34,6 +38,16 @@ struct WinPair {
     window: Window,
     webview: wry::WebView,
     role: Role,
+    /// Stable entry URL for safe reload (avoids evaluate_script → CFString crash).
+    entry_url: String,
+}
+
+/// Dock/undock layout — satellites snap to lab when docked.
+struct LayoutState {
+    chat_docked: bool,
+    stream_docked: bool,
+    /// Suppress undock-on-move while we programmatically snap.
+    suppressing_move: bool,
 }
 
 pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) -> Result<()> {
@@ -60,6 +74,7 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
             window: lab,
             webview: lab_wv,
             role: Role::Lab,
+            entry_url: lab_url.clone(),
         },
     );
 
@@ -82,25 +97,92 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
             window: chat,
             webview: chat_wv,
             role: Role::Chat,
+            entry_url: chat_url.clone(),
         },
     );
     bus.set_chat_visible(false);
+    bus.set_chat_docked(true);
+
+    // ── Stream feed window — independent; can dock left of lab ──
+    let stream = build_stream_window(&event_loop)?;
+    place_stream_window(&stream);
+    stream.set_visible(false);
+    let stream_id = stream.id();
+    let stream_url = format!("{url}stream.html");
+    let stream_wv = build_webview(
+        &stream,
+        &stream_url,
+        &stream_init_script(),
+        Role::Stream,
+        proxy.clone(),
+    )?;
+    windows.insert(
+        stream_id,
+        WinPair {
+            window: stream,
+            webview: stream_wv,
+            role: Role::Stream,
+            entry_url: stream_url.clone(),
+        },
+    );
+    bus.set_stream_visible(false);
+    bus.set_stream_docked(true);
+
+    // Initial dock snap positions (hidden until shown)
+    {
+        let mut layout = LayoutState {
+            chat_docked: true,
+            stream_docked: true,
+            suppressing_move: false,
+        };
+        snap_docked(&mut windows, &mut layout);
+    }
 
     tracing::info!(
         %lab_url,
         %chat_url,
+        %stream_url,
         float,
-        "dual webviews up (lab float + independent chat)"
+        "triple webviews up (lab + chat + stream · dock/undock)"
     );
 
     let bus_loop = bus.clone();
+    let mut layout = LayoutState {
+        chat_docked: true,
+        stream_docked: true,
+        suppressing_move: false,
+    };
+
     event_loop.run(move |event, _target, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
             Event::NewEvents(StartCause::Init) => {}
             Event::UserEvent(cmd) => {
-                if let Err(e) = apply_cmd(&cmd, &mut windows, &bus_loop, control_flow) {
+                if let Err(e) =
+                    apply_cmd(&cmd, &mut windows, &bus_loop, &mut layout, control_flow)
+                {
                     bus_loop.push_error(e, "control");
+                }
+            }
+            Event::WindowEvent {
+                window_id,
+                event: WindowEvent::Moved(_),
+                ..
+            } => {
+                handle_moved(window_id, &mut windows, &mut layout, &bus_loop);
+            }
+            Event::WindowEvent {
+                window_id,
+                event: WindowEvent::Resized(_),
+                ..
+            } => {
+                // Lab resize re-snaps docked satellites
+                if let Some(pair) = windows.get(&window_id) {
+                    if pair.role == Role::Lab {
+                        layout.suppressing_move = true;
+                        snap_docked(&mut windows, &mut layout);
+                        layout.suppressing_move = false;
+                    }
                 }
             }
             Event::WindowEvent {
@@ -113,6 +195,10 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
                         Role::Chat => {
                             pair.window.set_visible(false);
                             bus_loop.set_chat_visible(false);
+                        }
+                        Role::Stream => {
+                            pair.window.set_visible(false);
+                            bus_loop.set_stream_visible(false);
                         }
                         Role::Lab => {
                             *control_flow = ControlFlow::Exit;
@@ -140,7 +226,8 @@ fn build_lab_window(
         .with_title("Grok Build Lab")
         .with_decorations(false)
         .with_resizable(true)
-        .with_transparent(false)
+        // Transparent host so NSView can clip soft lab corners (not stock Apple sheet radius)
+        .with_transparent(true)
         .with_always_on_top(false)
         .with_inner_size(LogicalSize::new(w, h))
         .with_min_inner_size(LogicalSize::new(min_w, min_h))
@@ -156,16 +243,19 @@ fn build_lab_window(
             .with_has_shadow(true);
     }
 
-    wb.build(event_loop).context("build lab window")
+    let win = wb.build(event_loop).context("build lab window")?;
+    #[cfg(target_os = "macos")]
+    crate::macos_style::apply_lab_window_shape(&win);
+    Ok(win)
 }
 
 fn build_chat_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
     let mut wb = WindowBuilder::new()
-        .with_title("SpaceXAI · Chat")
+        .with_title("Grok Build Lab · Chat")
         .with_decorations(false)
         .with_always_on_top(true)
         .with_resizable(true)
-        .with_transparent(false)
+        .with_transparent(true)
         .with_inner_size(LogicalSize::new(340.0, 580.0))
         .with_min_inner_size(LogicalSize::new(300.0, 480.0))
         .with_visible(false);
@@ -180,7 +270,37 @@ fn build_chat_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Res
             .with_has_shadow(true);
     }
 
-    wb.build(event_loop).context("build chat window")
+    let win = wb.build(event_loop).context("build chat window")?;
+    #[cfg(target_os = "macos")]
+    crate::macos_style::apply_lab_window_shape(&win);
+    Ok(win)
+}
+
+fn build_stream_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
+    let mut wb = WindowBuilder::new()
+        .with_title("Grok Build Lab · Stream")
+        .with_decorations(false)
+        .with_always_on_top(false)
+        .with_resizable(true)
+        .with_transparent(true)
+        .with_inner_size(LogicalSize::new(420.0, 520.0))
+        .with_min_inner_size(LogicalSize::new(320.0, 360.0))
+        .with_visible(false);
+
+    #[cfg(target_os = "macos")]
+    {
+        use tao::platform::macos::WindowBuilderExtMacOS;
+        wb = wb
+            .with_titlebar_transparent(true)
+            .with_fullsize_content_view(true)
+            .with_title_hidden(true)
+            .with_has_shadow(true);
+    }
+
+    let win = wb.build(event_loop).context("build stream window")?;
+    #[cfg(target_os = "macos")]
+    crate::macos_style::apply_lab_window_shape(&win);
+    Ok(win)
 }
 
 fn build_webview(
@@ -195,9 +315,14 @@ fn build_webview(
         handle_ipc(req.body(), target, &proxy);
     };
 
+    // Inject lab rounded-chrome CSS early (works with transparent host window).
+    let round_css = lab_round_init_js();
+    let full_init = format!("{round_css}\n{init}");
+
     let builder = WebViewBuilder::new()
         .with_url(url)
-        .with_initialization_script(init)
+        .with_initialization_script(&full_init)
+        .with_transparent(true)
         .with_ipc_handler(handler)
         .with_accept_first_mouse(true)
         .with_devtools(cfg!(debug_assertions));
@@ -275,6 +400,47 @@ fn handle_ipc(body: &str, target: WinTarget, proxy: &EventLoopProxy<ControlCmd>)
         "toggle_chat" => {
             let _ = proxy.send_event(ControlCmd::ToggleChat);
         }
+        "show_stream" | "open_stream" => {
+            let _ = proxy.send_event(ControlCmd::ShowStream);
+        }
+        "hide_stream" => {
+            let _ = proxy.send_event(ControlCmd::HideStream);
+        }
+        "toggle_stream" => {
+            let _ = proxy.send_event(ControlCmd::ToggleStream);
+        }
+        "dock" | "dock_window" => {
+            let _ = proxy.send_event(ControlCmd::Dock { target });
+        }
+        "undock" | "undock_window" => {
+            let _ = proxy.send_event(ControlCmd::Undock { target });
+        }
+        "dock_chat" => {
+            let _ = proxy.send_event(ControlCmd::Dock {
+                target: WinTarget::Chat,
+            });
+        }
+        "undock_chat" => {
+            let _ = proxy.send_event(ControlCmd::Undock {
+                target: WinTarget::Chat,
+            });
+        }
+        "dock_stream" => {
+            let _ = proxy.send_event(ControlCmd::Dock {
+                target: WinTarget::Stream,
+            });
+        }
+        "undock_stream" => {
+            let _ = proxy.send_event(ControlCmd::Undock {
+                target: WinTarget::Stream,
+            });
+        }
+        "link_all" | "dock_all" => {
+            let _ = proxy.send_event(ControlCmd::LinkAll);
+        }
+        "unlink_all" | "undock_all" => {
+            let _ = proxy.send_event(ControlCmd::UnlinkAll);
+        }
         "center" => {
             let _ = proxy.send_event(ControlCmd::Center { target });
         }
@@ -295,6 +461,69 @@ fn handle_ipc(body: &str, target: WinTarget, proxy: &EventLoopProxy<ControlCmd>)
         }
         _ => {}
     }
+}
+
+/// Safe webview JS eval — never pass empty; swallow WK errors without panic.
+fn safe_eval(webview: &wry::WebView, script: &str) -> Result<(), String> {
+    if script.is_empty() {
+        return Err("empty script".into());
+    }
+    // catch_unwind won't catch ObjC SIGSEGV, but Result covers Rust-side failures.
+    webview
+        .evaluate_script(script)
+        .map_err(|e| format!("{e}"))
+}
+
+/// Reload via load_url (stable) instead of location.reload() evaluate_script.
+fn safe_reload(pair: &WinPair) -> Result<(), String> {
+    let base = if !pair.entry_url.is_empty() {
+        pair.entry_url.clone()
+    } else {
+        pair.webview
+            .url()
+            .map_err(|e| format!("url: {e}"))?
+    };
+    if base.is_empty() {
+        return Err("no url to reload".into());
+    }
+    let bust = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    // Preserve hash fragment (lab routes live in #/…)
+    let reload_url = if let Some((head, hash)) = base.split_once('#') {
+        let head = head.trim_end_matches('&').trim_end_matches('?');
+        let sep = if head.contains('?') { '&' } else { '?' };
+        format!("{head}{sep}_r={bust}#{hash}")
+    } else {
+        let sep = if base.contains('?') { '&' } else { '?' };
+        format!("{base}{sep}_r={bust}")
+    };
+    pair.webview
+        .load_url(&reload_url)
+        .map_err(|e| format!("load_url: {e}"))
+}
+
+fn lab_round_init_js() -> String {
+    #[cfg(target_os = "macos")]
+    let css = crate::macos_style::lab_round_css();
+    #[cfg(not(target_os = "macos"))]
+    let css = "/* lab corners: webview-only on non-macOS */ body{border-radius:12px;overflow:hidden}";
+    // Escape for embedding in JS string via template
+    let css_escaped = css.replace('\\', "\\\\").replace('`', "\\`");
+    format!(
+        r##"
+(function(){{
+  try {{
+    var st = document.createElement("style");
+    st.id = "lab-round-chrome";
+    st.textContent = `{css}`;
+    (document.head || document.documentElement).appendChild(st);
+  }} catch (e) {{}}
+}})();
+"##,
+        css = css_escaped
+    )
 }
 
 /// Shared float-chrome JS: drag titlebar, edge resize, traffic controls.
@@ -363,6 +592,11 @@ fn lab_init_script() -> String {
 document.documentElement.classList.add("lab-native","lab-desktop","lab-float");
 document.addEventListener("DOMContentLoaded", function(){{
   document.body && document.body.classList.add("lab-native","lab-desktop","lab-float");
+  // Float shell: collapse left rail by default for content room
+  if (localStorage.getItem("lab.sidebarCollapsed") === null) {{
+    document.body.classList.add("sidebar-collapsed");
+    try {{ localStorage.setItem("lab.sidebarCollapsed", "1"); }} catch (e) {{}}
+  }}
   var s = document.getElementById("siri-burst");
   if (s) {{ s.classList.add("siri-hidden"); s.style.display = "none"; }}
   var peek = document.getElementById("siri-burst-peek");
@@ -381,7 +615,10 @@ document.addEventListener("DOMContentLoaded", function(){{
       '<span class="lnb-dot"></span>' +
       '<span class="lnb-title">Grok Build Lab</span>' +
       '<span class="lnb-sp"></span>' +
-      '<button type="button" class="lnb-btn primary" data-c="open_chat_independent" data-no-drag title="Open chat as its own window (Cmd+2)">Chat</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="show_chat" data-no-drag title="Open chat (Cmd+2)">Chat</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream feed (Cmd+3)">Stream</button>' +
+      '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab">Link</button>' +
+      '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock all satellites">Unlink</button>' +
       '<button type="button" class="lnb-btn" data-c="center" data-t="lab" data-no-drag title="Center">Ctr</button>' +
       '<button type="button" class="lnb-btn" data-c="pin" data-t="lab" data-no-drag title="Always on top" id="lnb-pin">Pin</button>' +
       '<button type="button" class="lnb-btn" data-c="refresh" data-t="lab" data-no-drag title="Refresh">R</button>';
@@ -486,6 +723,26 @@ window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
     )
 }
 
+fn stream_init_script() -> String {
+    let chrome = float_chrome_js("stream");
+    format!(
+        r##"
+{chrome}
+document.documentElement.classList.add("lab-native","lab-stream-surface");
+window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
+  isDesktop: true, isNative: true, isStreamWindow: true, shell: "wry-stream", floatChrome: true,
+  control: function(action, extra){{
+    return fetch("/api/control", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify(Object.assign({{ action: action, target: "stream" }}, extra || {{}}))
+    }}).then(function(r){{ return r.json(); }});
+  }}
+}});
+"##
+    )
+}
+
 fn center_window(window: &Window) {
     if let Some(m) = window.current_monitor() {
         let screen = m.size();
@@ -507,6 +764,99 @@ fn place_chat_window(window: &Window) {
         window.set_outer_position(PhysicalPosition::new(x.max(12), y.max(12)));
     } else {
         window.set_outer_position(LogicalPosition::new(40.0, 80.0));
+    }
+}
+
+fn place_stream_window(window: &Window) {
+    if let Some(m) = window.current_monitor() {
+        let screen = m.size();
+        let size = window.outer_size();
+        let x = 28;
+        let y = screen.height as i32 - size.height as i32 - 48;
+        window.set_outer_position(PhysicalPosition::new(x, y.max(12)));
+    } else {
+        window.set_outer_position(LogicalPosition::new(40.0, 120.0));
+    }
+}
+
+fn lab_pair<'a>(windows: &'a HashMap<WindowId, WinPair>) -> Option<&'a WinPair> {
+    windows.values().find(|p| p.role == Role::Lab)
+}
+
+fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+    let Some(lab) = lab_pair(windows) else {
+        return;
+    };
+    let lab_pos = lab.window.outer_position().unwrap_or(PhysicalPosition::new(80, 60));
+    let lab_size = lab.window.outer_size();
+    let lx = lab_pos.x;
+    let ly = lab_pos.y;
+    let lw = lab_size.width as i32;
+    let lh = lab_size.height as i32;
+
+    // Collect positions first to avoid borrow issues
+    let chat_size = windows
+        .values()
+        .find(|p| p.role == Role::Chat)
+        .map(|p| p.window.outer_size());
+    let stream_size = windows
+        .values()
+        .find(|p| p.role == Role::Stream)
+        .map(|p| p.window.outer_size());
+
+    if layout.chat_docked {
+        if let Some(sz) = chat_size {
+            let x = lx + lw + DOCK_GAP;
+            let y = ly;
+            // match height roughly if taller lab
+            let _ = sz;
+            for p in windows.values() {
+                if p.role == Role::Chat {
+                    p.window
+                        .set_outer_position(PhysicalPosition::new(x, y));
+                    // optional: match lab height
+                    p.window
+                        .set_inner_size(PhysicalSize::new(sz.width, (lh as u32).saturating_sub(20).max(400)));
+                }
+            }
+        }
+    }
+    if layout.stream_docked {
+        if let Some(sz) = stream_size {
+            let x = lx - sz.width as i32 - DOCK_GAP;
+            let y = ly;
+            for p in windows.values() {
+                if p.role == Role::Stream {
+                    p.window.set_outer_position(PhysicalPosition::new(
+                        x.max(8),
+                        y,
+                    ));
+                    p.window.set_inner_size(PhysicalSize::new(
+                        sz.width,
+                        (lh as u32).saturating_sub(20).max(360),
+                    ));
+                }
+            }
+        }
+    }
+}
+
+fn handle_moved(
+    window_id: WindowId,
+    windows: &mut HashMap<WindowId, WinPair>,
+    layout: &mut LayoutState,
+    _bus: &ControlBus,
+) {
+    if layout.suppressing_move {
+        return;
+    }
+    // Only lab moves re-snap satellites. Docked windows stay linked until
+    // explicit Undock / Unlink (avoids false undock from programmatic snaps).
+    let role = windows.get(&window_id).map(|p| p.role);
+    if role == Some(Role::Lab) {
+        layout.suppressing_move = true;
+        snap_docked(windows, layout);
+        layout.suppressing_move = false;
     }
 }
 
@@ -580,6 +930,7 @@ fn for_target(windows: &mut HashMap<WindowId, WinPair>, target: WinTarget, mut f
             WinTarget::All => true,
             WinTarget::Lab => p.role == Role::Lab,
             WinTarget::Chat => p.role == Role::Chat,
+            WinTarget::Stream => p.role == Role::Stream,
         };
         if hit {
             f(p);
@@ -591,6 +942,7 @@ fn apply_cmd(
     cmd: &ControlCmd,
     windows: &mut HashMap<WindowId, WinPair>,
     bus: &ControlBus,
+    layout: &mut LayoutState,
     control_flow: &mut ControlFlow,
 ) -> Result<(), String> {
     match cmd {
@@ -607,10 +959,17 @@ fn apply_cmd(
                     bus.set_chat_visible(true);
                 }
             }
+            if layout.chat_docked {
+                layout.suppressing_move = true;
+                snap_docked(windows, layout);
+                layout.suppressing_move = false;
+            }
             Ok(())
         }
         ControlCmd::OpenChatIndependent => {
-            // Chat as its own floating surface — no need to focus lab
+            // Undock for free float when opening "independently"
+            layout.chat_docked = false;
+            bus.set_chat_docked(false);
             for p in windows.values() {
                 if p.role == Role::Chat {
                     p.window.set_visible(true);
@@ -632,10 +991,153 @@ fn apply_cmd(
         }
         ControlCmd::ToggleChat => {
             if bus.chat_visible() {
-                apply_cmd(&ControlCmd::HideChat, windows, bus, control_flow)
+                apply_cmd(&ControlCmd::HideChat, windows, bus, layout, control_flow)
             } else {
-                apply_cmd(&ControlCmd::OpenChatIndependent, windows, bus, control_flow)
+                apply_cmd(&ControlCmd::ShowChat, windows, bus, layout, control_flow)
             }
+        }
+        ControlCmd::ShowStream | ControlCmd::FocusStream => {
+            for p in windows.values() {
+                if p.role == Role::Stream {
+                    p.window.set_visible(true);
+                    p.window.set_focus();
+                    bus.set_stream_visible(true);
+                }
+            }
+            if layout.stream_docked {
+                layout.suppressing_move = true;
+                snap_docked(windows, layout);
+                layout.suppressing_move = false;
+            }
+            Ok(())
+        }
+        ControlCmd::HideStream => {
+            for p in windows.values() {
+                if p.role == Role::Stream {
+                    p.window.set_visible(false);
+                    bus.set_stream_visible(false);
+                }
+            }
+            Ok(())
+        }
+        ControlCmd::ToggleStream => {
+            if bus.stream_visible() {
+                apply_cmd(&ControlCmd::HideStream, windows, bus, layout, control_flow)
+            } else {
+                apply_cmd(&ControlCmd::ShowStream, windows, bus, layout, control_flow)
+            }
+        }
+        ControlCmd::Dock { target } => {
+            match target {
+                WinTarget::Chat => {
+                    layout.chat_docked = true;
+                    bus.set_chat_docked(true);
+                    for p in windows.values() {
+                        if p.role == Role::Chat {
+                            p.window.set_visible(true);
+                            bus.set_chat_visible(true);
+                        }
+                    }
+                }
+                WinTarget::Stream => {
+                    layout.stream_docked = true;
+                    bus.set_stream_docked(true);
+                    for p in windows.values() {
+                        if p.role == Role::Stream {
+                            p.window.set_visible(true);
+                            bus.set_stream_visible(true);
+                        }
+                    }
+                }
+                WinTarget::All => {
+                    layout.chat_docked = true;
+                    layout.stream_docked = true;
+                    bus.set_chat_docked(true);
+                    bus.set_stream_docked(true);
+                }
+                WinTarget::Lab => {}
+            }
+            layout.suppressing_move = true;
+            snap_docked(windows, layout);
+            layout.suppressing_move = false;
+            Ok(())
+        }
+        ControlCmd::Undock { target } => {
+            match target {
+                WinTarget::Chat => {
+                    layout.chat_docked = false;
+                    bus.set_chat_docked(false);
+                }
+                WinTarget::Stream => {
+                    layout.stream_docked = false;
+                    bus.set_stream_docked(false);
+                }
+                WinTarget::All => {
+                    layout.chat_docked = false;
+                    layout.stream_docked = false;
+                    bus.set_chat_docked(false);
+                    bus.set_stream_docked(false);
+                }
+                WinTarget::Lab => {}
+            }
+            Ok(())
+        }
+        ControlCmd::ToggleDock { target } => {
+            let docked = match target {
+                WinTarget::Chat => layout.chat_docked,
+                WinTarget::Stream => layout.stream_docked,
+                WinTarget::All => layout.chat_docked && layout.stream_docked,
+                WinTarget::Lab => true,
+            };
+            if docked {
+                apply_cmd(
+                    &ControlCmd::Undock { target: *target },
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                )
+            } else {
+                apply_cmd(
+                    &ControlCmd::Dock { target: *target },
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                )
+            }
+        }
+        ControlCmd::LinkAll => {
+            layout.chat_docked = true;
+            layout.stream_docked = true;
+            bus.set_chat_docked(true);
+            bus.set_stream_docked(true);
+            for p in windows.values() {
+                match p.role {
+                    Role::Chat => {
+                        p.window.set_visible(true);
+                        bus.set_chat_visible(true);
+                    }
+                    Role::Stream => {
+                        p.window.set_visible(true);
+                        bus.set_stream_visible(true);
+                    }
+                    Role::Lab => {
+                        p.window.set_visible(true);
+                    }
+                }
+            }
+            layout.suppressing_move = true;
+            snap_docked(windows, layout);
+            layout.suppressing_move = false;
+            Ok(())
+        }
+        ControlCmd::UnlinkAll => {
+            layout.chat_docked = false;
+            layout.stream_docked = false;
+            bus.set_chat_docked(false);
+            bus.set_stream_docked(false);
+            Ok(())
         }
         ControlCmd::FocusLab => {
             for p in windows.values() {
@@ -671,7 +1173,12 @@ fn apply_cmd(
             Ok(())
         }
         ControlCmd::Close { target } => match target {
-            WinTarget::Chat => apply_cmd(&ControlCmd::HideChat, windows, bus, control_flow),
+            WinTarget::Chat => {
+                apply_cmd(&ControlCmd::HideChat, windows, bus, layout, control_flow)
+            }
+            WinTarget::Stream => {
+                apply_cmd(&ControlCmd::HideStream, windows, bus, layout, control_flow)
+            }
             WinTarget::Lab | WinTarget::All => {
                 *control_flow = ControlFlow::Exit;
                 Ok(())
@@ -695,8 +1202,13 @@ fn apply_cmd(
             Ok(())
         }
         ControlCmd::EvalJs { target, script } => {
+            // Never eval empty scripts (null CFString path in WK).
+            if script.is_empty() {
+                return Err("empty script".into());
+            }
             for_target(windows, *target, |p| {
-                if let Err(e) = p.webview.evaluate_script(script) {
+                // Prefer visible windows; still allow hidden for agent control.
+                if let Err(e) = safe_eval(&p.webview, script) {
                     bus.push_error(format!("eval failed: {e}"), "eval");
                 }
             });
@@ -709,18 +1221,38 @@ fn apply_cmd(
                 .replace('\'', "\\'")
                 .replace('\n', " ");
             let js = format!(
-                "window.LabDesktop&&LabDesktop.showError&&LabDesktop.showError('{esc}');\
-                 window.LabChat&&LabChat.showError&&LabChat.showError('{esc}');"
+                "try{{window.LabDesktop&&LabDesktop.showError&&LabDesktop.showError('{esc}');\
+                 window.LabChat&&LabChat.showError&&LabChat.showError('{esc}');}}catch(e){{}}"
             );
+            // Only toast on visible surfaces to avoid WK null crashes on hidden webviews
             for p in windows.values() {
-                let _ = p.webview.evaluate_script(&js);
+                if p.window.is_visible() {
+                    let _ = safe_eval(&p.webview, &js);
+                }
             }
             Ok(())
         }
         ControlCmd::Refresh { target } => {
-            for_target(windows, *target, |p| {
-                let _ = p.webview.evaluate_script("location.reload()");
-            });
+            // CRITICAL: do NOT use evaluate_script("location.reload()") —
+            // on macOS WKWebView that path can SIGSEGV in CFStringCreateWithBytes
+            // when multiple webviews reload from the menu action.
+            let ids: Vec<WindowId> = windows
+                .values()
+                .filter(|p| match target {
+                    WinTarget::All => true,
+                    WinTarget::Lab => p.role == Role::Lab,
+                    WinTarget::Chat => p.role == Role::Chat,
+                    WinTarget::Stream => p.role == Role::Stream,
+                })
+                .map(|p| p.window.id())
+                .collect();
+            for id in ids {
+                if let Some(p) = windows.get(&id) {
+                    if let Err(e) = safe_reload(p) {
+                        bus.push_error(format!("refresh {:?}: {e}", p.role), "refresh");
+                    }
+                }
+            }
             Ok(())
         }
         ControlCmd::CheckUpdates => {
@@ -748,8 +1280,22 @@ fn apply_cmd(
                 (window.LabDesktop && LabDesktop.showError) ? LabDesktop.showError(m) : alert(m);
               }
             })();"#;
+            // Only run on the focused/visible lab window (one is enough)
+            let mut ran = false;
             for p in windows.values() {
-                let _ = p.webview.evaluate_script(js);
+                if p.role == Role::Lab && p.window.is_visible() {
+                    let _ = safe_eval(&p.webview, js);
+                    ran = true;
+                    break;
+                }
+            }
+            if !ran {
+                for p in windows.values() {
+                    if p.window.is_visible() {
+                        let _ = safe_eval(&p.webview, js);
+                        break;
+                    }
+                }
             }
             Ok(())
         }

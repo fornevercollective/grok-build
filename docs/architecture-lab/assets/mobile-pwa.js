@@ -185,7 +185,7 @@
         .share({
           title: document.title,
           url: location.href,
-          text: "Grok Build Architecture Lab",
+          text: "Grok Build Grok Build Lab",
         })
         .catch(() => {});
     };

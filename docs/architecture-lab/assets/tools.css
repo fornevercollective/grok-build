@@ -1006,17 +1006,29 @@ body.term-collapsed .sidebar {
   opacity: 1;
 }
 
-/* keep legacy bar spacing in topbar */
+/* Compact topbar history — no tall forced stack */
 .filter-nav-block .hist-timeline-wrap {
-  margin-top: 0.15rem;
+  margin-top: 0;
+}
+
+.filter-nav-block .hist-timeline-compact {
+  margin-top: 0.1rem;
 }
 
 @media (max-width: 860px) {
-  .hist-timeline-wrap {
+  .topbar-cmd {
+    flex-wrap: wrap;
+  }
+  .filter-nav-block {
+    flex: 1 1 100%;
     max-width: 100%;
-    flex-basis: 100%;
+    order: 2;
+  }
+  .walk-cluster {
+    order: 3;
+    margin-left: 0;
   }
   .hist-timeline-mini {
-    height: 42px;
+    height: 28px;
   }
 }

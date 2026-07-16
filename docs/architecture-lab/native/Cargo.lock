@@ -80,29 +80,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a4385e2e34eb35d6b3efe798b9eb88096925d87726c0798709bf56d9ed84af3"
 
 [[package]]
-name = "architecture-lab-native"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "axum",
- "clap",
- "crossterm",
- "http",
- "mime_guess",
- "muda",
- "ratatui",
- "serde",
- "serde_json",
- "tao",
- "tokio",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "url",
- "wry",
-]
-
-[[package]]
 name = "atk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1115,6 +1092,31 @@ dependencies = [
  "glib-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "grok-build-lab-native"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "clap",
+ "cocoa",
+ "crossterm",
+ "http",
+ "mime_guess",
+ "muda",
+ "objc",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tao",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "wry",
 ]
 
 [[package]]

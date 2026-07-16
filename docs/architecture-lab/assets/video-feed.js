@@ -1,6 +1,6 @@
 /**
  * Sidebar high-res stream feed — yt-dlp · ffmpeg · ffplay · blank · gy hub
- * Sits above Architecture Lab; collapsible sections persist in localStorage.
+ * Sits above Grok Build Lab; collapsible sections persist in localStorage.
  */
 (function () {
   "use strict";
