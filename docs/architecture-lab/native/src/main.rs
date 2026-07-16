@@ -8,6 +8,7 @@
 
 mod api;
 mod control;
+mod fleet;
 mod menu;
 #[cfg(target_os = "macos")]
 mod macos_style;

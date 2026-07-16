@@ -709,6 +709,7 @@ document.addEventListener("DOMContentLoaded", function(){{
       '<span class="lnb-sp"></span>' +
       '<button type="button" class="lnb-btn primary" data-c="show_chat" data-no-drag title="Open chat (Cmd+2)">Chat</button>' +
       '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream feed (Cmd+3)">Stream</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Open Panda fleet αβγ (Cmd+Shift+P)">Panda</button>' +
       '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab">Link</button>' +
       '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock all satellites">Unlink</button>' +
       '<button type="button" class="lnb-btn" data-c="center" data-t="lab" data-no-drag title="Center">Ctr</button>' +
@@ -761,6 +762,20 @@ document.addEventListener("DOMContentLoaded", function(){{
           pinned = !pinned;
           action = pinned ? "pin" : "unpin";
           b.textContent = pinned ? "Unpin" : "Pin";
+        }}
+        if (action === "open_panda") {{
+          fetch("/api/panda/open", {{
+            method: "POST",
+            headers: {{ "Content-Type": "application/json" }},
+            body: JSON.stringify({{ splits: 3 }})
+          }}).then(function(r){{ return r.json(); }}).then(function(j){{
+            if (window.LabDesktop && LabDesktop.showError) {{
+              LabDesktop.showError(j.message || (j.launched ? "Panda fleet opening…" : "Panda failed"));
+            }}
+          }}).catch(function(err){{
+            if (window.LabDesktop && LabDesktop.showError) LabDesktop.showError(String(err));
+          }});
+          return;
         }}
         var body = {{ action: action, target: b.getAttribute("data-t") || "lab" }};
         fetch("/api/control", {{ method:"POST", headers:{{"Content-Type":"application/json"}}, body: JSON.stringify(body) }});

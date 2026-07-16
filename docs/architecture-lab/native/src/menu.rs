@@ -121,11 +121,22 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         )),
     );
     let unlink_all = MenuItem::with_id("unlink_all", "Unlink All (Undock)", true, None);
+    let open_panda = MenuItem::with_id(
+        "open_panda",
+        "Open Panda Fleet (αβγ)",
+        true,
+        Some(Accelerator::new(
+            Some(Modifiers::META | Modifiers::SHIFT),
+            Code::KeyP,
+        )),
+    );
     let _ = win.append_items(&[
         &win_lab,
         &win_chat,
         &win_stream,
         &win_both,
+        &PredefinedMenuItem::separator(),
+        &open_panda,
         &PredefinedMenuItem::separator(),
         &dock_chat,
         &undock_chat,
@@ -253,6 +264,40 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
         }
         "check_updates" => {
             let _ = proxy.send_event(ControlCmd::CheckUpdates);
+        }
+        "open_panda" => {
+            // Spawn Panda off the menu thread — no window ControlCmd required.
+            // Resolve monorepo from ARCH_LAB_ROOT or walk from cwd.
+            let repo = std::env::var("ARCH_LAB_ROOT")
+                .ok()
+                .map(std::path::PathBuf::from)
+                .and_then(|lab| lab.parent().map(|p| p.to_path_buf())) // architecture-lab → docs
+                .and_then(|docs| docs.parent().map(|p| p.to_path_buf())) // docs → repo
+                .or_else(|| {
+                    let mut p = std::env::current_dir().ok()?;
+                    for _ in 0..8 {
+                        if p.join("experiments/panda-shell").is_dir() {
+                            return Some(p);
+                        }
+                        if !p.pop() {
+                            break;
+                        }
+                    }
+                    None
+                })
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+            let out = crate::fleet::open_panda_fleet(&repo, 3);
+            if out.get("ok").and_then(|v| v.as_bool()) != Some(true) {
+                let msg = out
+                    .get("message")
+                    .or_else(|| out.get("mitigation"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("open panda failed");
+                eprintln!("[menu] open_panda: {msg}");
+                let _ = proxy.send_event(ControlCmd::ShowError {
+                    message: msg.to_string(),
+                });
+            }
         }
         _ => {}
     }

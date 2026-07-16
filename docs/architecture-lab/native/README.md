@@ -27,7 +27,7 @@ Dojo/Colossus-shaped path: one Rust binary, system webview, no Chromium embed, n
 | Pages / update check | lab `version.json` (git SHA) | Help → Check for Updates… |
 | Bundle id | `dev.fornevercollective.architecture-lab` | Local lab — not an xAI product |
 
-**Current baseline:** `0.2.0` (crate + marketing).
+**Current baseline:** `0.3.0` (crate + marketing) — fleet: **Open Panda** αβγ + handoff bus.
 
 This crate is a **standalone Cargo workspace** (`[workspace]` in this folder) — it is **not** a member of the monorepo root workspace. That is intentional (isolation, faster lab iteration).
 
@@ -84,6 +84,25 @@ Icon: `icons/AppIcon.icns` — unaltered Grok mark + rainbow aura chrome (brand-
 
 ---
 
+## Fleet · Panda (product path, not Electron)
+
+Native host stays **tao + wry**. Interactive multi-pane terminals are **Panda** (`experiments/panda-shell`), inspired by GrokPtah multi-PTY + Mu frost/host direction — dual home `~/.panda` vs `~/.grok`.
+
+| API / UI | Action |
+|----------|--------|
+| `POST /api/panda/open` | Open Panda session `lab-fleet` with 3 splits + fleet-shell |
+| `GET /api/panda/status` | Binary path + handoff file |
+| `POST /api/shells/handoff` | Write `~/.panda/lab-handoff.json` (α→β→γ bus) |
+| Menu **Window → Open Panda Fleet** | ⌘⇧P |
+| Lab bar **Panda** | Same as open |
+| Ship **Open Panda / triple** | Prefers `/api/panda/open` |
+
+```bash
+# build host + panda
+cargo build -p panda-shell --release   # from monorepo root
+cd docs/architecture-lab/native && cargo build --release && ./launch.sh float
+```
+
 ## Triple windows + control
 
 | Window | Default | Open |
@@ -91,6 +110,7 @@ Icon: `icons/AppIcon.icns` — unaltered Grok mark + rainbow aura chrome (brand-
 | **Lab** | Visible · frameless float chrome · drag title bar | App start |
 | **Chat** | **Hidden** · can dock right of lab | **Chat** · **Window → Open Chat** (⌘2) |
 | **Stream** | **Hidden** · can dock left of lab | **Stream** · **Window → Open Stream** (⌘3) |
+| **Panda** | External multi-pane terminal host | **Panda** · ⌘⇧P |
 
 ### Dock / undock
 

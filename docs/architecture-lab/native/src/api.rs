@@ -29,6 +29,12 @@ pub fn router(state: Arc<LabState>) -> Router {
         .route("/api/summon-grok", get(summon_get).post(summon_post))
         .route("/api/mitigate", get(mitigate_get).post(mitigate_post))
         .route("/api/media/tools", get(media_tools))
+        // Fleet: Panda host + handoff bus (Mu-class product path)
+        .route("/api/panda/open", get(panda_open_get).post(panda_open_post))
+        .route("/api/panda/status", get(panda_status_get))
+        .route("/api/shells", get(shells_get).post(shells_post))
+        .route("/api/shells/handoff", post(shells_handoff_post))
+        .route("/api/shells/reset", post(shells_reset_post))
         // SpaceXAI Grok Voice catalog + TTS preview proxy
         .route("/api/voices", get(voices_list))
         .route("/api/tts", post(tts_proxy))
@@ -62,7 +68,9 @@ async fn health(State(st): State<Arc<LabState>>) -> Json<Value> {
         "root": st.root.display().to_string(),
         "repo": st.repo.display().to_string(),
         "grok": which("grok").or_else(|| which("xai-grok-pager")),
+        "panda": crate::fleet::find_panda(&st.repo).map(|p| p.display().to_string()),
         "gy": which("gy"),
+        "fleet": true,
         "ts": now_secs(),
     }))
 }
@@ -81,6 +89,7 @@ async fn control_help() -> Json<Value> {
             "center", "move", "resize", "eval", "error",
             "refresh", "refresh_lab", "refresh_chat", "refresh_stream", "refresh_all",
             "check_updates", "open_chat_independent", "chat_only",
+            "open_panda", "spawn_fleet",
             "drag", "ping", "quit"
         ],
         "targets": ["lab", "chat", "stream", "all"],
@@ -92,6 +101,8 @@ async fn control_help() -> Json<Value> {
             {"action": "show_chat"},
             {"action": "refresh_all"},
             {"action": "check_updates"},
+            {"action": "open_panda"},
+            {"action": "spawn_fleet"},
             {"action": "pin", "target": "chat", "on": true},
             {"action": "center", "target": "lab"},
             {"action": "eval", "target": "chat", "script": "LabChat.listen()"},
@@ -105,6 +116,18 @@ async fn control_post(
     State(st): State<Arc<LabState>>,
     Json(body): Json<ControlRequest>,
 ) -> (StatusCode, Json<Value>) {
+    // Fleet actions run off the UI thread (spawn Panda) — not window ControlCmd.
+    let action = body.action.to_ascii_lowercase();
+    if matches!(action.as_str(), "open_panda" | "spawn_fleet" | "panda") {
+        let splits = body.splits.unwrap_or(3);
+        let out = crate::fleet::open_panda_fleet(&st.repo, splits);
+        let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+        return if ok {
+            (StatusCode::OK, Json(out))
+        } else {
+            (StatusCode::OK, Json(out)) // still 200 so UI can show mitigation
+        };
+    }
     match body.into_cmd() {
         Ok(cmd) => match st.control.send(cmd) {
             Ok(()) => (StatusCode::OK, Json(json!({ "ok": true }))),
@@ -535,7 +558,122 @@ async fn summon_post(Json(body): Json<SummonBody>) -> Json<Value> {
     summon_impl(body.phrase.as_deref().unwrap_or("ui"))
 }
 
+// ── Fleet / Panda ────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct PandaOpenBody {
+    splits: Option<u8>,
+    #[allow(dead_code)]
+    session: Option<String>,
+}
+
+async fn panda_open_get(State(st): State<Arc<LabState>>) -> Json<Value> {
+    Json(crate::fleet::open_panda_fleet(&st.repo, 3))
+}
+
+async fn panda_open_post(
+    State(st): State<Arc<LabState>>,
+    Json(body): Json<PandaOpenBody>,
+) -> Json<Value> {
+    Json(crate::fleet::open_panda_fleet(
+        &st.repo,
+        body.splits.unwrap_or(3),
+    ))
+}
+
+async fn panda_status_get(State(st): State<Arc<LabState>>) -> Json<Value> {
+    Json(crate::fleet::panda_status(&st.repo))
+}
+
+async fn shells_get() -> Json<Value> {
+    let mut v = crate::fleet::read_handoff();
+    if let Some(obj) = v.as_object_mut() {
+        obj.insert("ok".into(), json!(true));
+        obj.insert(
+            "path".into(),
+            json!(crate::fleet::handoff_path().display().to_string()),
+        );
+        obj.insert("native".into(), json!(true));
+    }
+    Json(v)
+}
+
+#[derive(Deserialize)]
+struct ShellsBody {
+    id: Option<String>,
+    shell: Option<String>,
+    status: Option<String>,
+}
+
+async fn shells_post(Json(body): Json<ShellsBody>) -> Json<Value> {
+    // Optional status poke for a shell role
+    let sid = body
+        .id
+        .or(body.shell)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if sid.is_empty() {
+        return shells_get().await;
+    }
+    let mut state = crate::fleet::read_handoff();
+    if let Some(shells) = state.get_mut("shells").and_then(|s| s.as_object_mut()) {
+        if let Some(s) = shells.get_mut(&sid) {
+            if let Some(st) = body.status {
+                s["status"] = json!(st);
+            }
+        }
+    }
+    let _ = crate::fleet::write_handoff(&state);
+    Json(json!({ "ok": true, "state": state }))
+}
+
+#[derive(Deserialize)]
+struct HandoffBody {
+    from: Option<String>,
+    to: Option<String>,
+    summary: Option<String>,
+    msg: Option<String>,
+}
+
+async fn shells_handoff_post(Json(body): Json<HandoffBody>) -> Json<Value> {
+    let from = body.from.unwrap_or_default();
+    let to = body.to.unwrap_or_default();
+    let summary = body
+        .summary
+        .or(body.msg)
+        .unwrap_or_else(|| format!("{from} → {to}"));
+    match crate::fleet::handoff(&from, &to, &summary) {
+        Ok(v) => Json(v),
+        Err(e) => Json(json!({ "ok": false, "error": e })),
+    }
+}
+
+async fn shells_reset_post() -> Json<Value> {
+    match crate::fleet::reset_handoff() {
+        Ok(v) => Json(json!({ "ok": true, "state": v })),
+        Err(e) => Json(json!({ "ok": false, "error": e })),
+    }
+}
+
 fn summon_impl(phrase: &str) -> Json<Value> {
+    // Prefer fleet host when phrase asks for panda / triple / fleet
+    let low = phrase.to_ascii_lowercase();
+    if low.contains("panda") || low.contains("fleet") || low.contains("triple") {
+        // repo unknown here — caller should use /api/panda/open with state
+        // fall through to grok unless we have HOME-relative search
+        if let Ok(cwd) = std::env::current_dir() {
+            // try walk up to find Cargo workspace with experiments/panda-shell
+            let mut p = cwd;
+            for _ in 0..6 {
+                if p.join("experiments/panda-shell").is_dir() || p.join("target/release/panda").is_file() {
+                    return Json(crate::fleet::open_panda_fleet(&p, 3));
+                }
+                if !p.pop() {
+                    break;
+                }
+            }
+        }
+    }
     let bin = which("grok").or_else(|| which("xai-grok-pager"));
     let Some(bin) = bin else {
         return Json(json!({
@@ -609,10 +747,13 @@ fn mitigate_impl(action: &str) -> Json<Value> {
     if a == "summon-grok" || a == "grok" {
         return summon_impl("mitigate");
     }
+    if a == "open-panda" || a == "panda" || a == "fleet" {
+        return summon_impl("panda fleet");
+    }
     Json(json!({
         "ok": false,
         "message": format!("unknown action {action}"),
-        "known": ["kill-ffmpeg", "summon-grok"],
+        "known": ["kill-ffmpeg", "summon-grok", "open-panda"],
     }))
 }
 

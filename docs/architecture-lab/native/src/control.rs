@@ -221,6 +221,8 @@ pub struct ControlRequest {
     pub on: Option<bool>,
     pub script: Option<String>,
     pub message: Option<String>,
+    /// Panda fleet splits (open_panda / spawn_fleet)
+    pub splits: Option<u8>,
 }
 
 impl ControlRequest {

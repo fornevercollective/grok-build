@@ -167,8 +167,11 @@ cargo build -p panda-shell --release
 ## This week’s concrete tickets
 
 1. **P1** — Lab: button **Open in Panda** → `panda new lab-fleet --splits 3` (osascript / PATH).  
+   - ✅ **Native 0.3.0:** `POST /api/panda/open` · menu **Window → Open Panda Fleet** (⌘⇧P) · lab bar **Panda** · Ship **Open Panda / triple** · `~/.panda/fleet.env` + profiles + `lab-handoff.json`  
 2. **P1** — Panda: session titles / env `PANDA_ROLE=plan|build|verify`.  
-3. **P1** — Lab handoff flash → optional write to panda status file under `~/.panda/lab-handoff.json`.  
+   - ✅ Profiles under `~/.panda/profiles/{plan,build,verify}.env` (source in a pane); fleet-shell sets shared `LAB_*`  
+3. **P1** — Lab handoff flash → write `~/.panda/lab-handoff.json`.  
+   - ✅ Native `POST /api/shells/handoff` (+ serve.sh bus when using python serve)  
 4. **P2** — Deploy recipe commands in Panda help / slash (`:deploy test`).  
 5. **P2** — `scripts/sync-upstream-crates.sh` + note to re-add `experiments/panda-shell` member.
 

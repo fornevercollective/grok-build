@@ -671,12 +671,24 @@
   function bindActions() {
     $("ship-shells-spawn")?.addEventListener("click", async () => {
       try {
-        const j = await shellsApi("/api/shells/spawn", {
-          triple: true,
-          task: "triple shell simultaneous handoff loop",
-        });
-        flash(j.launched ? "Triple shells spawned (Terminal)" : j.message || "spawn recorded");
-        renderShellsBus(j.state || (await shellsApi("/api/shells")));
+        // Prefer native/serve fleet: Open Panda (Mu-class host) then fall back to shell spawn
+        let j = null;
+        try {
+          j = await shellsApi("/api/panda/open", { splits: 3 });
+        } catch (_) {
+          j = await shellsApi("/api/shells/spawn", {
+            triple: true,
+            task: "triple shell simultaneous handoff loop",
+          });
+        }
+        flash(
+          j.launched
+            ? j.fleet
+              ? "Panda fleet αβγ opening"
+              : "Triple shells spawned (Terminal)"
+            : j.message || j.mitigation || "spawn recorded"
+        );
+        renderShellsBus(j.state || (await shellsApi("/api/shells").catch(() => null)) || {});
       } catch (e) {
         flash(String(e.message || e));
       }
