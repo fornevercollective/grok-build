@@ -1,7 +1,7 @@
 {
-  "name": "Grok Build Architecture Lab",
+  "name": "Grok Build Lab",
   "short_name": "Grok Lab",
-  "description": "Architecture map, tools, mesh-aware pins, and Grok Build leverage — local + GitHub Pages.",
+  "description": "Grok Build Lab — architecture map, tools, mesh-aware pins, and leverage — local + GitHub Pages.",
   "start_url": "./",
   "scope": "./",
   "id": "./",

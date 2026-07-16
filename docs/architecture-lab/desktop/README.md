@@ -1,4 +1,12 @@
-# Architecture Lab · Floating desktop shell
+# Grok Build Lab · Electron shell (**deprecated**)
+
+> **Prefer the Rust native shell:** [`../native/README.md`](../native/README.md)  
+> Product path is **tao + wry → WKWebView**, not Electron.  
+> Force this fallback only with `ARCH_LAB_FORCE_ELECTRON=1`.  
+> Full map: [Dev build · versions · forks](../content/14-dev-build-and-forks.md).
+
+**Status:** optional emergency fallback. Not the primary Mac app.  
+**App name:** Grok Build Lab.
 
 **Not a browser tab. Not “open localhost.”**
 
@@ -14,8 +22,8 @@ A frameless Electron shell that:
 
 ```bash
 cd docs/architecture-lab/desktop
-./build-mac-app.sh          # Architecture Lab.app
-open "Architecture Lab.app" # or double-click
+./build-mac-app.sh          # Grok Build Lab.app
+open "Grok Build Lab.app"   # or double-click
 
 # or
 ./launch-mac.sh             # float mode
@@ -27,7 +35,7 @@ First run installs Electron once (`npm install` inside `desktop/`).
 ```bash
 npm install
 npm run start:float   # floating walkie-style pod
-npm run start:lab     # full Architecture Lab
+npm run start:lab     # full Grok Build Lab
 ```
 
 ## Modes

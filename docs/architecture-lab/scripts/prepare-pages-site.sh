@@ -33,6 +33,8 @@ python3 - "$SITE" "$SHA" "$SHORT" "$REF" "$BUILT" "$RUN_ID" "$URL" <<'PY'
 import json, pathlib, re, sys
 site, sha, short, ref, built, run_id, url = sys.argv[1:8]
 site = pathlib.Path(site)
+# Keep marketing semver in sync with docs/architecture-lab/package.json when bumping.
+lab_semver = "0.2.0"
 ver = {
     "ok": True,
     "sha": sha,
@@ -42,6 +44,7 @@ ver = {
     "source": "github-pages",
     "run_id": run_id,
     "url": url,
+    "lab_semver": lab_semver,
 }
 (site / "version.json").write_text(json.dumps(ver, indent=2) + "\n")
 sw = site / "sw.js"

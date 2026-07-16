@@ -9,10 +9,11 @@ cd "$ROOT"
 command -v python3 >/dev/null || { echo "python3 required" >&2; exit 1; }
 
 echo ""
-echo "  Grok Build Architecture Lab"
+echo "  Grok Build Lab"
 echo "  http://${HOST}:${PORT}"
 echo "  Pages: https://fornevercollective.github.io/grok-build/  (auto-deploy on push)"
 echo "  APIs: /api/health · /api/processes · /api/git-log · /api/summon-grok · /api/mitigate"
+echo "        /api/voices · /api/tts  (SpaceXAI Grok Voice spheres)"
 echo "        /api/media/tools · resolve · stop · ffplay · hls/*  (yt-dlp · ffmpeg · blank · gy)"
 echo ""
 
@@ -929,6 +930,131 @@ def mitigate(action: str):
     }
 
 
+def xai_api_key():
+    for k in ("XAI_API_KEY", "GROK_API_KEY", "XAI_KEY"):
+        v = (os.environ.get(k) or "").strip()
+        if v:
+            return v
+    auth = Path.home() / ".grok" / "auth.json"
+    try:
+        data = json.loads(auth.read_text(encoding="utf-8"))
+        for key in ("api_key", "xai_api_key", "token", "access_token"):
+            v = data.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    except Exception:
+        pass
+    return None
+
+
+def list_spacexai_voices():
+    """Static catalog + optional live merge from SpaceXAI TTS voices API."""
+    catalog_path = ROOT / "assets" / "spacexai-voices.json"
+    voices = []
+    models = {
+        "agent": "grok-voice-latest",
+        "realtime_ws": "wss://api.x.ai/v1/realtime?model=grok-voice-latest",
+        "tts": "https://api.x.ai/v1/tts",
+        "tts_voices": "https://api.x.ai/v1/tts/voices",
+    }
+    live = False
+    try:
+        cat = json.loads(catalog_path.read_text(encoding="utf-8"))
+        voices = list(cat.get("voices") or [])
+        if cat.get("models"):
+            models = cat["models"]
+    except Exception:
+        voices = [
+            {"id": x, "name": x.capitalize(), "gen": "original"}
+            for x in ("ara", "eve", "leo", "rex", "sal")
+        ]
+    key = xai_api_key()
+    if key:
+        try:
+            import urllib.request
+
+            req = urllib.request.Request(
+                "https://api.x.ai/v1/tts/voices",
+                headers={"Authorization": f"Bearer {key}"},
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            arr = payload.get("voices") if isinstance(payload, dict) else payload
+            if isinstance(arr, list):
+                live = True
+                by_id = {
+                    str(v.get("id") or "").lower(): v
+                    for v in voices
+                    if isinstance(v, dict)
+                }
+                for item in arr:
+                    if not isinstance(item, dict):
+                        continue
+                    vid = str(item.get("voice_id") or item.get("id") or "").lower()
+                    if not vid:
+                        continue
+                    if vid in by_id:
+                        if item.get("name"):
+                            by_id[vid]["name"] = item["name"]
+                    else:
+                        by_id[vid] = {
+                            "id": vid,
+                            "name": item.get("name") or vid,
+                            "gen": "flagship",
+                            "tone": item.get("description") or "",
+                            "custom": bool(item.get("custom")),
+                        }
+                voices = list(by_id.values())
+        except Exception as e:
+            log_event("voices", f"live merge failed: {e}")
+    return {
+        "ok": True,
+        "live": live,
+        "has_key": bool(key),
+        "count": len(voices),
+        "models": models,
+        "voices": voices,
+        "default_voice_id": "eve",
+    }
+
+
+def tts_proxy(data: dict):
+    """Proxy SpaceXAI TTS so the browser never sees the API key."""
+    key = xai_api_key()
+    if not key:
+        return {
+            "ok": False,
+            "error": "XAI_API_KEY not set — export key for TTS preview",
+            "status": 503,
+        }
+    text = str(data.get("text") or "").strip()[:500]
+    if not text:
+        return {"ok": False, "error": "text required", "status": 400}
+    voice = str(data.get("voice_id") or "eve").strip().lower()
+    lang = str(data.get("language") or "en")
+    payload = json.dumps(
+        {"text": text, "voice_id": voice, "language": lang}
+    ).encode("utf-8")
+    try:
+        import urllib.request
+
+        req = urllib.request.Request(
+            "https://api.x.ai/v1/tts",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            audio = resp.read()
+            ctype = resp.headers.get("Content-Type") or "audio/mpeg"
+        return {"ok": True, "audio": audio, "content_type": ctype}
+    except Exception as e:
+        return {"ok": False, "error": f"TTS failed: {e}", "status": 502}
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -1048,6 +1174,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, media_tools())
         if path == "/api/media/history":
             return self._json(200, {"ok": True, "history": MEDIA_HISTORY[:40]})
+        if path == "/api/voices":
+            return self._json(200, list_spacexai_voices())
         if path == "/api/media/resolve":
             url = (q.get("url") or q.get("q") or [""])[0]
             quality = (q.get("quality") or ["1080"])[0]
@@ -1110,6 +1238,19 @@ class Handler(SimpleHTTPRequestHandler):
                     quality=str(data.get("quality") or "1080"),
                 ),
             )
+        if path == "/api/tts":
+            out = tts_proxy(data if isinstance(data, dict) else {})
+            if not out.get("ok"):
+                return self._json(int(out.get("status") or 502), out)
+            audio = out["audio"]
+            self.send_response(200)
+            self.send_header("Content-Type", out.get("content_type") or "audio/mpeg")
+            self.send_header("Content-Length", str(len(audio)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(audio)
+            return
         return self._json(404, {"ok": False, "message": "not found"})
 
 

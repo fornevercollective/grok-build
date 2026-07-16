@@ -1,10 +1,14 @@
 //! Embedded lab HTTP API + static files (axum).
-//! Replaces Python serve.sh for the native binary path; same routes the SPA expects.
+//! Includes SpaceXAI control plane: POST /api/control
 
+use crate::control::ControlRequest;
 use crate::LabState;
 use axum::{
+    body::Body,
     extract::{Query, State},
-    routing::get,
+    http::{header, StatusCode},
+    response::Response,
+    routing::{get, post},
     Json, Router,
 };
 use serde::Deserialize;
@@ -25,6 +29,13 @@ pub fn router(state: Arc<LabState>) -> Router {
         .route("/api/summon-grok", get(summon_get).post(summon_post))
         .route("/api/mitigate", get(mitigate_get).post(mitigate_post))
         .route("/api/media/tools", get(media_tools))
+        // SpaceXAI Grok Voice catalog + TTS preview proxy
+        .route("/api/voices", get(voices_list))
+        .route("/api/tts", post(tts_proxy))
+        // SpaceXAI / Grok direct control of native windows
+        .route("/api/control", get(control_help).post(control_post))
+        .route("/api/control/status", get(control_status))
+        .route("/api/control/errors", get(control_errors).delete(control_errors_clear))
         .fallback_service(ServeDir::new(static_root).append_index_html_on_directories(true))
         .layer(
             CorsLayer::new()
@@ -36,17 +47,322 @@ pub fn router(state: Arc<LabState>) -> Router {
 }
 
 async fn health(State(st): State<Arc<LabState>>) -> Json<Value> {
+    let url = st.base_url.lock().unwrap().clone();
     Json(json!({
         "ok": true,
         "native": true,
         "shell": "architecture-lab-native",
-        "webview": "system", // WKWebView / WebView2 / WebKitGTK
+        "webview": "system",
+        "windows": ["lab", "chat"],
+        "chat_visible": st.control.chat_visible(),
+        "control": format!("{url}api/control"),
         "root": st.root.display().to_string(),
         "repo": st.repo.display().to_string(),
         "grok": which("grok").or_else(|| which("xai-grok-pager")),
         "gy": which("gy"),
         "ts": now_secs(),
     }))
+}
+
+async fn control_help() -> Json<Value> {
+    Json(json!({
+        "ok": true,
+        "spacexai": true,
+        "description": "POST JSON to drive native lab + chat windows",
+        "actions": [
+            "show_chat", "hide_chat", "toggle_chat", "focus_chat", "focus_lab",
+            "pin", "unpin", "decorations", "minimize", "maximize", "close",
+            "center", "move", "resize", "eval", "error",
+            "refresh", "refresh_lab", "refresh_chat", "refresh_all",
+            "check_updates", "open_chat_independent", "chat_only",
+            "drag", "ping", "quit"
+        ],
+        "targets": ["lab", "chat", "all"],
+        "examples": [
+            {"action": "show_chat"},
+            {"action": "refresh_all"},
+            {"action": "check_updates"},
+            {"action": "pin", "target": "chat", "on": true},
+            {"action": "center", "target": "lab"},
+            {"action": "eval", "target": "chat", "script": "LabChat.listen()"},
+            {"action": "error", "message": "fix me"},
+            {"action": "quit"}
+        ]
+    }))
+}
+
+async fn control_post(
+    State(st): State<Arc<LabState>>,
+    Json(body): Json<ControlRequest>,
+) -> (StatusCode, Json<Value>) {
+    match body.into_cmd() {
+        Ok(cmd) => match st.control.send(cmd) {
+            Ok(()) => (StatusCode::OK, Json(json!({ "ok": true }))),
+            Err(e) => {
+                st.control.push_error(&e, "control_send");
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    Json(json!({ "ok": false, "error": e })),
+                )
+            }
+        },
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "ok": false, "error": e })),
+        ),
+    }
+}
+
+async fn control_status(State(st): State<Arc<LabState>>) -> Json<Value> {
+    Json(json!({
+        "ok": true,
+        "chat_visible": st.control.chat_visible(),
+        "status": st.control.status(),
+        "base_url": st.base_url.lock().unwrap().clone(),
+    }))
+}
+
+async fn control_errors(State(st): State<Arc<LabState>>) -> Json<Value> {
+    Json(json!({ "ok": true, "errors": st.control.errors() }))
+}
+
+async fn control_errors_clear(State(st): State<Arc<LabState>>) -> Json<Value> {
+    st.control.clear_errors();
+    Json(json!({ "ok": true }))
+}
+
+/// SpaceXAI Grok Voice roster: static catalog + optional live merge.
+async fn voices_list(State(st): State<Arc<LabState>>) -> Json<Value> {
+    let catalog_path = st.root.join("assets/spacexai-voices.json");
+    let mut voices: Vec<Value> = Vec::new();
+    let mut models = json!({
+        "agent": "grok-voice-latest",
+        "realtime_ws": "wss://api.x.ai/v1/realtime?model=grok-voice-latest",
+        "tts": "https://api.x.ai/v1/tts",
+        "tts_voices": "https://api.x.ai/v1/tts/voices",
+    });
+    let mut live = false;
+
+    if let Ok(raw) = std::fs::read_to_string(&catalog_path) {
+        if let Ok(v) = serde_json::from_str::<Value>(&raw) {
+            if let Some(arr) = v.get("voices").and_then(|x| x.as_array()) {
+                voices = arr.clone();
+            }
+            if let Some(m) = v.get("models") {
+                models = m.clone();
+            }
+        }
+    }
+
+    if let Some(key) = xai_api_key() {
+        // Live list from SpaceXAI — best-effort via curl
+        if let Ok(out) = Command::new("curl")
+            .args([
+                "-sS",
+                "--max-time",
+                "8",
+                "-H",
+                &format!("Authorization: Bearer {key}"),
+                "https://api.x.ai/v1/tts/voices",
+            ])
+            .output()
+        {
+            if out.status.success() {
+                if let Ok(v) = serde_json::from_slice::<Value>(&out.stdout) {
+                    if let Some(arr) = v
+                        .get("voices")
+                        .or_else(|| v.as_array().map(|_| &v))
+                        .and_then(|x| x.as_array())
+                    {
+                        live = true;
+                        for item in arr {
+                            let id = item
+                                .get("voice_id")
+                                .or_else(|| item.get("id"))
+                                .and_then(|x| x.as_str())
+                                .unwrap_or("")
+                                .to_ascii_lowercase();
+                            if id.is_empty() {
+                                continue;
+                            }
+                            if let Some(existing) = voices.iter_mut().find(|v| {
+                                v.get("id")
+                                    .and_then(|x| x.as_str())
+                                    .map(|s| s.eq_ignore_ascii_case(&id))
+                                    .unwrap_or(false)
+                            }) {
+                                if let Some(n) = item.get("name").and_then(|x| x.as_str()) {
+                                    existing["name"] = json!(n);
+                                }
+                            } else {
+                                voices.push(json!({
+                                    "id": id,
+                                    "name": item.get("name").and_then(|x| x.as_str()).unwrap_or(&id),
+                                    "gen": "flagship",
+                                    "tone": item.get("description").and_then(|x| x.as_str()).unwrap_or(""),
+                                    "custom": item.get("custom").and_then(|x| x.as_bool()).unwrap_or(false),
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Json(json!({
+        "ok": true,
+        "live": live,
+        "has_key": xai_api_key().is_some(),
+        "count": voices.len(),
+        "models": models,
+        "voices": voices,
+        "default_voice_id": "eve",
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+struct TtsBody {
+    text: Option<String>,
+    voice_id: Option<String>,
+    language: Option<String>,
+}
+
+/// Proxy TTS so the browser never sees XAI_API_KEY.
+async fn tts_proxy(Json(body): Json<TtsBody>) -> Response {
+    let Some(key) = xai_api_key() else {
+        return json_err(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "XAI_API_KEY not set — export key or run with SpaceXAI auth for TTS preview",
+        );
+    };
+    let text = body
+        .text
+        .as_deref()
+        .unwrap_or("")
+        .trim()
+        .chars()
+        .take(500)
+        .collect::<String>();
+    if text.is_empty() {
+        return json_err(StatusCode::BAD_REQUEST, "text required");
+    }
+    let voice = body
+        .voice_id
+        .as_deref()
+        .unwrap_or("eve")
+        .trim()
+        .to_ascii_lowercase();
+    let lang = body.language.as_deref().unwrap_or("en");
+    let payload = json!({
+        "text": text,
+        "voice_id": voice,
+        "language": lang,
+    });
+    let tmp = std::env::temp_dir().join(format!(
+        "archlab-tts-{}-{}.mp3",
+        voice,
+        now_secs()
+    ));
+    let payload_s = payload.to_string();
+    let out = Command::new("curl")
+        .args([
+            "-sS",
+            "--max-time",
+            "30",
+            "-X",
+            "POST",
+            "https://api.x.ai/v1/tts",
+            "-H",
+            &format!("Authorization: Bearer {key}"),
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            &payload_s,
+            "-o",
+            tmp.to_str().unwrap_or("/tmp/archlab-tts.mp3"),
+            "-w",
+            "%{http_code}",
+        ])
+        .output();
+
+    match out {
+        Ok(o) => {
+            let code = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if code != "200" {
+                let _ = std::fs::remove_file(&tmp);
+                return json_err(
+                    StatusCode::BAD_GATEWAY,
+                    &format!("TTS upstream HTTP {code}"),
+                );
+            }
+            match std::fs::read(&tmp) {
+                Ok(bytes) if !bytes.is_empty() => {
+                    let _ = std::fs::remove_file(&tmp);
+                    Response::builder()
+                        .status(StatusCode::OK)
+                        .header(header::CONTENT_TYPE, "audio/mpeg")
+                        .header(header::CACHE_CONTROL, "no-store")
+                        .body(Body::from(bytes))
+                        .unwrap_or_else(|_| {
+                            json_err(StatusCode::INTERNAL_SERVER_ERROR, "response build failed")
+                        })
+                }
+                _ => {
+                    let _ = std::fs::remove_file(&tmp);
+                    json_err(StatusCode::BAD_GATEWAY, "empty TTS audio")
+                }
+            }
+        }
+        Err(e) => json_err(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("curl failed: {e}"),
+        ),
+    }
+}
+
+fn xai_api_key() -> Option<String> {
+    for k in ["XAI_API_KEY", "GROK_API_KEY", "XAI_KEY"] {
+        if let Ok(v) = std::env::var(k) {
+            let t = v.trim().to_string();
+            if !t.is_empty() {
+                return Some(t);
+            }
+        }
+    }
+    // Optional: ~/.grok/auth.json common shapes
+    if let Ok(home) = std::env::var("HOME") {
+        let p = std::path::PathBuf::from(home).join(".grok/auth.json");
+        if let Ok(raw) = std::fs::read_to_string(p) {
+            if let Ok(v) = serde_json::from_str::<Value>(&raw) {
+                for path in [
+                    v.pointer("/api_key"),
+                    v.pointer("/xai_api_key"),
+                    v.pointer("/token"),
+                    v.pointer("/access_token"),
+                ] {
+                    if let Some(s) = path.and_then(|x| x.as_str()) {
+                        let t = s.trim();
+                        if !t.is_empty() {
+                            return Some(t.into());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn json_err(status: StatusCode, msg: &str) -> Response {
+    let body = json!({ "ok": false, "error": msg }).to_string();
+    Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body))
+        .unwrap_or_else(|_| {
+            Response::new(Body::from(r#"{"ok":false,"error":"err"}"#))
+        })
 }
 
 async fn version(State(st): State<Arc<LabState>>) -> Json<Value> {

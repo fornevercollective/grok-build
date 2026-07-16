@@ -8,6 +8,8 @@ Living board — check items off, add new ones freely.
 - [x] Local launchable lab site  
 - [x] gy-glyph-pins multi-user chat  
 - [x] gy Ctrl+C → `pkill -x ffmpeg` exit cleanup  
+- [x] Native float shell (tao/wry · dual windows · control API)  
+- [x] Dev docs: deps · versioning · forks · compliance (`14-dev-build-and-forks`)  
 
 ## Next
 
@@ -15,6 +17,8 @@ Living board — check items off, add new ones freely.
 - [ ] repo-ship plugin (fmt/test hooks + `/ship`)  
 - [ ] Team marketplace source + `plugin-index.json`  
 - [ ] One internal MCP (jobs / tickets / cluster)  
+- [ ] Confirm `gy-glyph-pins` enabled on every operator machine  
+- [ ] Optional: publish lab version matrix in Pages footer
 
 ## Later
 

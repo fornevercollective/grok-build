@@ -1,0 +1,292 @@
+/* SpaceXAI Grok Voice — floating / hoverable voice spheres */
+
+.voice-constellation {
+  position: relative;
+  width: min(100%, 340px);
+  margin: 0.15rem auto 0.35rem;
+  flex-shrink: 0;
+}
+
+.voice-constellation-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.58rem;
+  color: #71717a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.voice-constellation-head strong {
+  color: rgba(110, 203, 255, 0.9);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.voice-constellation-head .vc-live {
+  margin-left: auto;
+  color: #4ade80;
+  opacity: 0.85;
+}
+
+.voice-constellation-head .vc-live.off {
+  color: #71717a;
+}
+
+.voice-sphere-field {
+  position: relative;
+  width: 100%;
+  height: clamp(120px, 28vmin, 168px);
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(110, 203, 255, 0.06), transparent 60%),
+    rgba(8, 10, 15, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  touch-action: none;
+}
+
+.voice-sphere {
+  position: absolute;
+  width: var(--sz, 28px);
+  height: var(--sz, 28px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: grab;
+  transform: translate(-50%, -50%) scale(1);
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      hsla(var(--hue, 200), 85%, 72%, 0.95),
+      hsla(var(--hue, 200), 70%, 42%, 0.85) 55%,
+      hsla(var(--hue, 200), 60%, 22%, 0.9)
+    );
+  box-shadow:
+    0 0 0 1px hsla(var(--hue, 200), 70%, 60%, 0.35),
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    0 0 18px hsla(var(--hue, 200), 80%, 55%, 0.25);
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    z-index 0s;
+  z-index: 1;
+  will-change: transform, left, top;
+  animation: vc-float var(--dur, 7s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+.voice-sphere::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    hsla(var(--hue, 200), 90%, 60%, 0.35),
+    hsla(calc(var(--hue, 200) + 80), 80%, 55%, 0.25),
+    hsla(calc(var(--hue, 200) + 160), 75%, 50%, 0.2),
+    hsla(var(--hue, 200), 90%, 60%, 0.35)
+  );
+  filter: blur(8px);
+  opacity: 0.35;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.3s ease;
+}
+
+.voice-sphere .vc-initial {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: calc(var(--sz, 28px) * 0.38);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  user-select: none;
+}
+
+.voice-sphere .vc-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(11, 12, 15, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e8eaed;
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.58rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 5;
+}
+
+.voice-sphere .vc-tip em {
+  display: block;
+  color: #9aa3b5;
+  font-style: normal;
+  font-size: 0.52rem;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hover: lift sphere above the field */
+.voice-sphere:hover,
+.voice-sphere.vc-hover {
+  z-index: 10;
+  cursor: pointer;
+  animation-play-state: paused;
+  transform: translate(-50%, -50%) scale(1.35) translateY(-10px);
+  box-shadow:
+    0 0 0 1.5px hsla(var(--hue, 200), 80%, 70%, 0.55),
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 0 28px hsla(var(--hue, 200), 85%, 55%, 0.45);
+}
+
+.voice-sphere:hover::before,
+.voice-sphere.vc-hover::before {
+  opacity: 0.75;
+  transform: scale(1.15);
+}
+
+.voice-sphere:hover .vc-tip,
+.voice-sphere.vc-hover .vc-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Selected active voice */
+.voice-sphere.vc-active {
+  z-index: 8;
+  box-shadow:
+    0 0 0 2px rgba(110, 203, 255, 0.75),
+    0 0 0 4px rgba(110, 203, 255, 0.2),
+    0 8px 22px rgba(0, 0, 0, 0.5),
+    0 0 24px hsla(var(--hue, 200), 90%, 55%, 0.5);
+  animation: vc-active-pulse 1.8s ease-in-out infinite;
+}
+
+.voice-sphere.vc-dragging {
+  z-index: 20;
+  cursor: grabbing;
+  animation: none;
+  transition: none;
+}
+
+.voice-sphere.vc-speaking {
+  animation: vc-speak 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes vc-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-5px);
+  }
+}
+
+@keyframes vc-active-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(110, 203, 255, 0.65),
+      0 0 0 4px rgba(110, 203, 255, 0.15),
+      0 8px 22px rgba(0, 0, 0, 0.5),
+      0 0 18px hsla(var(--hue, 200), 90%, 55%, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(110, 203, 255, 0.9),
+      0 0 0 6px rgba(110, 203, 255, 0.22),
+      0 10px 26px rgba(0, 0, 0, 0.55),
+      0 0 32px hsla(var(--hue, 200), 90%, 55%, 0.55);
+  }
+}
+
+@keyframes vc-speak {
+  from {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.22);
+  }
+}
+
+.voice-constellation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+.voice-constellation-actions .btn-mini {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #101218;
+  color: #9aa3b5;
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.62rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.voice-constellation-actions .btn-mini:hover {
+  color: #6ecbff;
+  border-color: rgba(110, 203, 255, 0.35);
+}
+
+.voice-constellation-actions .btn-mini.primary {
+  color: #6ecbff;
+  border-color: rgba(110, 203, 255, 0.4);
+  background: rgba(110, 203, 255, 0.1);
+}
+
+.voice-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: center;
+  margin-bottom: 0.3rem;
+}
+
+.voice-filter-row button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 18, 24, 0.55);
+  color: #71717a;
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.55rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.voice-filter-row button:hover,
+.voice-filter-row button.on {
+  color: #6ecbff;
+  border-color: rgba(110, 203, 255, 0.35);
+}
+
+/* Lab float density */
+body.lab-float .voice-sphere-field,
+body.lab-native .voice-sphere-field {
+  height: clamp(100px, 22vmin, 150px);
+}

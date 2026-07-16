@@ -113,3 +113,19 @@ grok plugin details my-plugin
 - [ ] Hooks are non-blocking unless PreToolUse  
 - [ ] SessionStart is cheap (no long network)  
 - [ ] README or skill points at companion tools (gy, mcp)  
+- [ ] `grok plugin validate ./my-plugin` passes  
+- [ ] Enabled in TUI or `[plugins].enabled` (files alone ≠ enabled)  
+- [ ] Semver in `plugin.json` independent of Architecture Lab / Grok CLI versions  
+- [ ] Does **not** reimplement mesh/walkie that belongs in GrokYtalkY  
+
+## Live example: `gy-glyph-pins`
+
+| Check | Status |
+|-------|--------|
+| Tree under `~/.grok/plugins/gy-glyph-pins` | Expected install target |
+| Source of truth | `GrokYtalkY/grok-plugin/gy-glyph-pins` (separate repo) |
+| `plugin.json` name / version | `gy-glyph-pins` · **0.2.0** |
+| `grok plugin validate` | Passes when files present |
+| Enabled | Operator must enable (TUI / config) — validate ≠ enabled |
+
+Full fork + version map: [Dev build · versions · forks](#/14-dev-build-and-forks).

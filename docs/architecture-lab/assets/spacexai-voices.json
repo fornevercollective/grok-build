@@ -1,0 +1,48 @@
+{
+  "source": "SpaceXAI Grok Voice · static catalog + optional live merge from GET /v1/tts/voices",
+  "updated": "2026-07-06",
+  "models": {
+    "agent": "grok-voice-latest",
+    "realtime_ws": "wss://api.x.ai/v1/realtime?model=grok-voice-latest",
+    "tts": "https://api.x.ai/v1/tts",
+    "tts_voices": "https://api.x.ai/v1/tts/voices",
+    "stt": "https://api.x.ai/v1/stt"
+  },
+  "default_voice_id": "eve",
+  "voices": [
+    { "id": "ara", "name": "Ara", "gen": "original", "tone": "Warm and friendly", "hue": 210, "role": "general" },
+    { "id": "eve", "name": "Eve", "gen": "original", "tone": "Default · clear & natural", "hue": 195, "role": "default" },
+    { "id": "leo", "name": "Leo", "gen": "original", "tone": "Confident · expressive", "hue": 32, "role": "general" },
+    { "id": "rex", "name": "Rex", "gen": "original", "tone": "Bold · energetic", "hue": 12, "role": "general" },
+    { "id": "sal", "name": "Sal", "gen": "original", "tone": "Smooth · conversational", "hue": 280, "role": "general" },
+
+    { "id": "lumen", "name": "Lumen", "gen": "flagship", "tone": "Bright · articulate", "hue": 48, "role": "education" },
+    { "id": "castor", "name": "Castor", "gen": "flagship", "tone": "Steady · narrative", "hue": 220, "role": "narration" },
+    { "id": "naksh", "name": "Naksh", "gen": "flagship", "tone": "Multilingual · warm", "hue": 330, "role": "general" },
+    { "id": "atlas", "name": "Atlas", "gen": "flagship", "tone": "Grounded · authoritative", "hue": 160, "role": "support" },
+    { "id": "carina", "name": "Carina", "gen": "flagship", "tone": "Soft · empathetic · soothing", "hue": 320, "role": "wellness" },
+    { "id": "zagan", "name": "Zagan", "gen": "flagship", "tone": "Character · dramatic", "hue": 0, "role": "characters" },
+    { "id": "helix", "name": "Helix", "gen": "flagship", "tone": "Tech · precise", "hue": 175, "role": "assistants" },
+    { "id": "orion", "name": "Orion", "gen": "flagship", "tone": "Explorer · open", "hue": 250, "role": "commentary" },
+    { "id": "luna", "name": "Luna", "gen": "flagship", "tone": "Calm · multilingual", "hue": 265, "role": "wellness" },
+    { "id": "wellness", "name": "Wellness", "gen": "flagship", "tone": "Empathetic · support", "hue": 145, "role": "wellness" },
+    { "id": "support", "name": "Support", "gen": "flagship", "tone": "Patient · clear helpdesk", "hue": 200, "role": "support" },
+
+    { "id": "nova", "name": "Nova", "gen": "flagship", "tone": "Bright · upbeat", "hue": 55, "role": "advertising" },
+    { "id": "vega", "name": "Vega", "gen": "flagship", "tone": "Cool · modern", "hue": 190, "role": "assistants" },
+    { "id": "sol", "name": "Sol", "gen": "flagship", "tone": "Warm · sunny", "hue": 38, "role": "sales" },
+    { "id": "mira", "name": "Mira", "gen": "flagship", "tone": "Gentle · reflective", "hue": 300, "role": "wellness" },
+    { "id": "kai", "name": "Kai", "gen": "flagship", "tone": "Direct · practical", "hue": 170, "role": "support" },
+    { "id": "ivy", "name": "Ivy", "gen": "flagship", "tone": "Crisp · educational", "hue": 130, "role": "education" },
+    { "id": "ash", "name": "Ash", "gen": "flagship", "tone": "Neutral · narration", "hue": 25, "role": "narration" },
+    { "id": "jade", "name": "Jade", "gen": "flagship", "tone": "Smooth · sales", "hue": 155, "role": "sales" },
+    { "id": "rio", "name": "Rio", "gen": "flagship", "tone": "Lively · podcast", "hue": 15, "role": "podcasts" },
+    { "id": "nyx", "name": "Nyx", "gen": "flagship", "tone": "Deep · character", "hue": 270, "role": "characters" },
+    { "id": "echo", "name": "Echo", "gen": "flagship", "tone": "Broadcast · commentary", "hue": 205, "role": "commentary" },
+    { "id": "pax", "name": "Pax", "gen": "flagship", "tone": "Calm · mediation", "hue": 185, "role": "support" },
+    { "id": "zen", "name": "Zen", "gen": "flagship", "tone": "Centered · soft", "hue": 165, "role": "wellness" },
+    { "id": "iris", "name": "Iris", "gen": "flagship", "tone": "Clear · audiobook", "hue": 290, "role": "audiobooks" },
+    { "id": "vera", "name": "Vera", "gen": "flagship", "tone": "Assured · professional", "hue": 225, "role": "assistants" }
+  ],
+  "note": "Static IDs match SpaceXAI voice_id (case-insensitive). Live GET /api/voices merges / refreshes when XAI_API_KEY is set. Custom clones appear when returned by the API."
+}

@@ -23,6 +23,13 @@
     collab: false,
     roster: [],
     camOn: false,
+    /** Mic waveform (walkie TX / listen) */
+    audioStream: null,
+    audioCtx: null,
+    audioAnalyser: null,
+    freqData: null,
+    audioLevel: 0,
+    audioWanted: false,
     /** Siri-style floating burst */
     siri: {
       visible: true,
@@ -353,6 +360,131 @@
     if (you) you.talking = state.tx;
     const dock = el("siri-burst");
     if (dock) dock.dataset.mode = state.tx ? "tx" : state.camOn ? "cam" : "idle";
+    // Mic waveform while walkie TX (and keep if Listen already owns mic)
+    if (state.tx) {
+      state.audioWanted = true;
+      ensureWalkieAudio();
+    } else {
+      state.audioWanted = document.body.classList.contains("listen-active");
+      if (!state.audioWanted) stopWalkieAudio();
+    }
+  }
+
+  /** Real mic → frequency bins for ring waveform (walkie mode). */
+  async function ensureWalkieAudio() {
+    if (state.audioAnalyser) {
+      if (state.audioCtx && state.audioCtx.state === "suspended") {
+        try {
+          await state.audioCtx.resume();
+        } catch (_) {}
+      }
+      return;
+    }
+    // Prefer shared analyser from Listen mode if present
+    if (window.__labVoiceAnalyser && window.__labVoiceBins) {
+      state.audioAnalyser = window.__labVoiceAnalyser;
+      state.freqData = window.__labVoiceBins;
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+      state.audioStream = stream;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      state.audioCtx = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.62;
+      src.connect(analyser);
+      state.audioAnalyser = analyser;
+      state.freqData = new Uint8Array(analyser.frequencyBinCount);
+      if (ctx.state === "suspended") await ctx.resume();
+    } catch (e) {
+      console.warn("[walkie] mic waveform", e);
+    }
+  }
+
+  function stopWalkieAudio() {
+    // Don't kill Listen's analyser
+    if (state.audioAnalyser && state.audioAnalyser === window.__labVoiceAnalyser) {
+      state.audioAnalyser = null;
+      state.freqData = null;
+      state.audioLevel = 0;
+      return;
+    }
+    if (state.audioStream) {
+      try {
+        state.audioStream.getTracks().forEach((t) => t.stop());
+      } catch (_) {}
+      state.audioStream = null;
+    }
+    if (state.audioCtx) {
+      try {
+        state.audioCtx.close();
+      } catch (_) {}
+      state.audioCtx = null;
+    }
+    state.audioAnalyser = null;
+    state.freqData = null;
+    state.audioLevel = 0;
+  }
+
+  function sampleWalkieAudio() {
+    // Sync from Listen when it is driving mic
+    if (window.__labVoiceAnalyser && window.__labVoiceBins) {
+      if (state.audioAnalyser !== window.__labVoiceAnalyser) {
+        state.audioAnalyser = window.__labVoiceAnalyser;
+        state.freqData = window.__labVoiceBins;
+      }
+    }
+    if (!state.audioAnalyser || !state.freqData) {
+      // soft idle pulse when no mic
+      return state.audioLevel * 0.9;
+    }
+    try {
+      state.audioAnalyser.getByteFrequencyData(state.freqData);
+    } catch (_) {
+      return state.audioLevel;
+    }
+    let sum = 0;
+    const n = state.freqData.length;
+    for (let i = 0; i < n; i++) sum += state.freqData[i];
+    const avg = sum / n / 255;
+    // speech band
+    let mid = 0;
+    const a = Math.floor(n * 0.08);
+    const b = Math.floor(n * 0.5);
+    for (let i = a; i < b; i++) mid += state.freqData[i];
+    mid = mid / Math.max(1, b - a) / 255;
+    const level = Math.min(1, Math.pow(Math.max(avg, mid * 1.3), 0.8) * 1.55);
+    state.audioLevel = state.audioLevel * 0.35 + level * 0.65;
+    window.__labWalkieLevel = state.audioLevel;
+    applyWalkieLevelBars(state.audioLevel);
+    return state.audioLevel;
+  }
+
+  function applyWalkieLevelBars(level) {
+    const bars = el("voice-level");
+    if (!bars) return;
+    // Only drive bars when walkie TX and Listen is not already animating
+    if (!state.tx && !document.body.classList.contains("listen-active")) return;
+    if (document.body.classList.contains("listen-active") && !state.tx) return;
+    const kids = bars.querySelectorAll("i");
+    kids.forEach((node, i) => {
+      const thr = (i + 1) / (kids.length + 0.5);
+      node.classList.toggle("on", level > thr * 0.2);
+      node.style.setProperty("--h", String(0.22 + level * (0.45 + i * 0.07)));
+    });
   }
 
   function paintRing(canvas, t) {
@@ -363,31 +495,90 @@
     ctx.clearRect(0, 0, W, H);
     const cx = W / 2;
     const cy = H / 2;
-    const r0 = Math.min(W, H) * 0.46;
+    const r0 = Math.min(W, H) * 0.42;
     const listen = document.body.classList.contains("listen-active");
     const talking = document.body.classList.contains("voice-talking");
-    for (let i = 0; i < 4; i++) {
+    const level = sampleWalkieAudio();
+    const hot = state.tx || talking || (listen && level > 0.06);
+
+    // Base pulse rings
+    for (let i = 0; i < 3; i++) {
       const pulse =
-        (state.tx ? 1 + 0.1 * Math.sin(t * 0.025 + i) : 1) *
-        (talking ? 1 + 0.06 * Math.sin(t * 0.04 + i * 0.7) : 1);
+        1 +
+        level * 0.14 +
+        (state.tx ? 0.06 * Math.sin(t * 0.03 + i) : 0) +
+        (talking ? 0.04 * Math.sin(t * 0.04 + i * 0.7) : 0);
       ctx.beginPath();
-      ctx.arc(cx, cy, r0 * pulse - i * 5.5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r0 * pulse - i * 6, 0, Math.PI * 2);
       if (state.tx) {
-        ctx.strokeStyle = "rgba(248,113,113," + (0.4 - i * 0.08) + ")";
-      } else if (talking) {
-        ctx.strokeStyle = "rgba(110,203,255," + (0.4 - i * 0.07) + ")";
+        ctx.strokeStyle = "rgba(248,113,113," + (0.38 - i * 0.09) + ")";
+      } else if (talking || level > 0.12) {
+        ctx.strokeStyle = "rgba(110,203,255," + (0.38 - i * 0.08) + ")";
       } else if (listen) {
-        ctx.strokeStyle = "rgba(74,222,128," + (0.28 - i * 0.05) + ")";
+        ctx.strokeStyle = "rgba(74,222,128," + (0.26 - i * 0.05) + ")";
       } else {
-        ctx.strokeStyle = "rgba(110,203,255," + (0.22 - i * 0.05) + ")";
+        ctx.strokeStyle = "rgba(110,203,255," + (0.2 - i * 0.04) + ")";
       }
-      ctx.lineWidth = 2 + (talking ? 0.5 : 0);
+      ctx.lineWidth = 1.5 + (hot ? 0.6 : 0) + level * 1.2;
+      ctx.stroke();
+    }
+
+    // Sound waveform spokes (reacts to mic like walkie TX)
+    const bins = state.freqData;
+    const nSpokes = bins && bins.length ? Math.min(56, bins.length) : 32;
+    for (let i = 0; i < nSpokes; i++) {
+      const ang = (i / nSpokes) * Math.PI * 2 - Math.PI / 2;
+      let v;
+      if (bins && bins.length) {
+        v = bins[Math.floor((i / nSpokes) * bins.length)] / 255;
+      } else {
+        // gentle idle shimmer
+        v = 0.08 + 0.04 * Math.sin(t * 0.008 + i * 0.45);
+      }
+      if (state.tx) v = Math.min(1, v * 1.35 + level * 0.25);
+      else if (listen || talking) v = Math.min(1, v * 1.1 + level * 0.2);
+      else v *= 0.35;
+
+      const inner = r0 * 0.88;
+      const outer = inner + (6 + v * (22 + level * 18));
+      const cos = Math.cos(ang);
+      const sin = Math.sin(ang);
+      ctx.beginPath();
+      ctx.moveTo(cx + cos * inner, cy + sin * inner);
+      ctx.lineTo(cx + cos * outer, cy + sin * outer);
+      if (state.tx) {
+        ctx.strokeStyle = "rgba(248,113,113," + (0.25 + v * 0.55) + ")";
+      } else if (talking || level > 0.1) {
+        ctx.strokeStyle = "rgba(110,203,255," + (0.2 + v * 0.55) + ")";
+      } else if (listen) {
+        ctx.strokeStyle = "rgba(74,222,128," + (0.15 + v * 0.45) + ")";
+      } else {
+        ctx.strokeStyle = "rgba(110,203,255," + (0.08 + v * 0.2) + ")";
+      }
+      ctx.lineWidth = 1.5 + v * 1.8;
+      ctx.lineCap = "round";
       ctx.stroke();
     }
   }
 
   function tick(t) {
     ensureYou();
+    // Keep waveform live while Listen or TX wants audio
+    if (
+      state.tx ||
+      document.body.classList.contains("listen-active") ||
+      document.body.classList.contains("voice-talking")
+    ) {
+      if (!state.audioAnalyser && !window.__labVoiceAnalyser) {
+        // lazy attach — non-blocking
+        if (!state._audioKick) {
+          state._audioKick = true;
+          ensureWalkieAudio().finally(() => {
+            state._audioKick = false;
+          });
+        }
+      }
+    }
     const you = state.peers.get("__you__");
     if (you) {
       const gotCam = sampleVideoToLum(you.lum);

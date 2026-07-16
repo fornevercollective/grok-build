@@ -1,8 +1,9 @@
 {
   "name": "grok-build-architecture-lab",
   "private": true,
-  "version": "0.1.0",
-  "description": "Local static docs lab for Grok Build architecture, plugins, and leverage",
+  "version": "0.2.1",
+  "description": "Local static docs lab for Grok Build architecture, plugins, and leverage. See content/14-dev-build-and-forks.md and content/15-lab-shells.md for shells, deps, versioning, forks, compliance.",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "bash ./serve.sh",
     "serve": "bash ./serve.sh",

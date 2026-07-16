@@ -7,11 +7,14 @@
 //! Dojo/Colossus path: one Rust binary, system webview, no Node runtime in the product path.
 
 mod api;
+mod control;
+mod menu;
 mod tui;
 mod window;
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
+use control::ControlBus;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -30,8 +33,8 @@ enum Mode {
 #[derive(Parser, Debug)]
 #[command(
     name = "architecture-lab",
-    about = "Grok Build Architecture Lab — native floating shell (WKWebView / TUI)",
-    long_about = "Rust native shell for the Architecture Lab.\n\
+    about = "Grok Build Lab — native floating shell (WKWebView / TUI)",
+    long_about = "Rust native shell for Grok Build Lab.\n\
         Float mode: frameless always-on-top pod.\n\
         Lab mode: full workspace.\n\
         TUI mode: ratatui control plane (no webview).\n\
@@ -50,9 +53,13 @@ struct Args {
     #[arg(long, default_value = "127.0.0.1")]
     host: String,
 
-    /// Port (0 = ephemeral)
-    #[arg(long, default_value_t = 8765)]
+    /// Port (0 = pick a free port). If preferred port is busy, falls back automatically.
+    #[arg(long, default_value_t = 0)]
     port: u16,
+
+    /// Prefer this port first (default 8765), then ephemeral if busy.
+    #[arg(long, default_value_t = 8765)]
+    prefer_port: u16,
 
     /// Print URL and exit (for scripting)
     #[arg(long)]
@@ -63,6 +70,9 @@ struct Args {
 pub struct LabState {
     pub root: PathBuf,
     pub repo: PathBuf,
+    /// SpaceXAI / Grok can POST /api/control to drive windows.
+    pub control: Arc<ControlBus>,
+    pub base_url: Arc<std::sync::Mutex<String>>,
 }
 
 #[tokio::main]
@@ -75,23 +85,39 @@ async fn main() -> Result<()> {
         .init();
 
     let args = Args::parse();
-    let root = resolve_lab_root(args.root)?;
-    let repo = root
-        .join("../..")
-        .canonicalize()
-        .unwrap_or_else(|_| root.parent().unwrap_or(&root).to_path_buf());
+    let root = match resolve_lab_root(args.root.clone()) {
+        Ok(r) => r,
+        Err(e) => {
+            fatal_dialog(&format!(
+                "Cannot find Grok Build Lab files.\n\n{e}\n\nSet ARCH_LAB_ROOT or re-run native/build-mac-app.sh"
+            ));
+            return Err(e);
+        }
+    };
+    let repo = resolve_git_repo(&root);
 
+    let control = Arc::new(ControlBus::new());
+    let base_url = Arc::new(std::sync::Mutex::new(String::new()));
     let state = Arc::new(LabState {
         root: root.clone(),
         repo,
+        control: control.clone(),
+        base_url: base_url.clone(),
     });
 
-    // Bind server
-    let listener = tokio::net::TcpListener::bind((args.host.as_str(), args.port))
-        .await
-        .with_context(|| format!("bind {}:{}", args.host, args.port))?;
+    // Bind server — never crash the .app just because :8765 is taken by serve.sh
+    let listener = match bind_listener(&args.host, args.port, args.prefer_port).await {
+        Ok(l) => l,
+        Err(e) => {
+            fatal_dialog(&format!(
+                "Could not start local lab server.\n\n{e}\n\nQuit other Grok Build Lab / serve.sh instances and try again."
+            ));
+            return Err(e);
+        }
+    };
     let addr = listener.local_addr()?;
     let url = format!("http://{addr}/");
+    *base_url.lock().unwrap() = url.clone();
 
     if args.print_url {
         println!("{url}");
@@ -99,6 +125,8 @@ async fn main() -> Result<()> {
     }
 
     tracing::info!(%url, root = %root.display(), "architecture-lab native");
+    println!("architecture-lab control API: {url}api/control");
+    println!("  POST {{\"action\":\"show_chat\"|\"hide_chat\"|\"pin\"|\"center\"|\"eval\"|…}}");
 
     let app = api::router(state.clone());
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
@@ -112,7 +140,11 @@ async fn main() -> Result<()> {
     });
 
     // Wait until health responds
-    wait_ready(&url).await?;
+    if let Err(e) = wait_ready(&url).await {
+        fatal_dialog(&format!("Lab server started but health check failed.\n\n{e}"));
+        let _ = shutdown_tx.send(());
+        return Err(e);
+    }
 
     match args.mode {
         Mode::Tui => {
@@ -120,13 +152,14 @@ async fn main() -> Result<()> {
             let _ = shutdown_tx.send(());
         }
         Mode::Float | Mode::Lab => {
-            // Webview must run on the main thread on macOS — block here.
             let float = matches!(args.mode, Mode::Float);
-            // Run window on main thread; server keeps running on tokio runtime.
-            // We use a dedicated OS thread for the event loop when needed, but
-            // wry/tao want the main thread on macOS — so we block_on is already
-            // on main; call window::run which blocks until close.
-            window::run_blocking(&url, float, &root)?;
+            // Dual windows (lab + chat) on main thread
+            if let Err(e) = window::run_blocking(&url, float, &root, control.clone()) {
+                fatal_dialog(&format!("Window failed to open.\n\n{e}"));
+                control.push_error(format!("{e}"), "window");
+                let _ = shutdown_tx.send(());
+                return Err(e);
+            }
             let _ = shutdown_tx.send(());
         }
     }
@@ -135,16 +168,96 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+async fn bind_listener(
+    host: &str,
+    port: u16,
+    prefer: u16,
+) -> Result<tokio::net::TcpListener> {
+    // Explicit --port 0 → pure ephemeral
+    if port == 0 {
+        // Try preferred first (play nice with bookmarks), then any free port
+        if prefer != 0 {
+            if let Ok(l) = tokio::net::TcpListener::bind((host, prefer)).await {
+                return Ok(l);
+            }
+            tracing::warn!(prefer, "preferred port busy — using ephemeral");
+        }
+        return tokio::net::TcpListener::bind((host, 0u16))
+            .await
+            .with_context(|| format!("bind {host}:0"));
+    }
+    // Explicit non-zero port — try it, then fallback ephemeral with warning
+    match tokio::net::TcpListener::bind((host, port)).await {
+        Ok(l) => Ok(l),
+        Err(e) => {
+            tracing::warn!(port, error = %e, "port busy — falling back to ephemeral");
+            tokio::net::TcpListener::bind((host, 0u16))
+                .await
+                .with_context(|| format!("bind {host}:0 after {port} failed: {e}"))
+        }
+    }
+}
+
+fn resolve_git_repo(root: &std::path::Path) -> PathBuf {
+    // Prefer monorepo roots relative to lab
+    for rel in ["../..", "../../..", "."] {
+        let cand = root.join(rel);
+        if cand.join(".git").exists() || cand.join("Cargo.toml").exists() {
+            if let Ok(c) = cand.canonicalize() {
+                return c;
+            }
+        }
+    }
+    if let Ok(h) = std::env::var("HOME") {
+        let p = PathBuf::from(h).join("Projects/grok-build");
+        if p.exists() {
+            return p;
+        }
+    }
+    root.to_path_buf()
+}
+
+/// macOS user-visible error (Dock bounce with no window is worse than a dialog).
+fn fatal_dialog(msg: &str) {
+    eprintln!("architecture-lab fatal: {msg}");
+    #[cfg(target_os = "macos")]
+    {
+        let escaped = msg.replace('\\', "\\\\").replace('"', "\\\"");
+        let script = format!(
+            r#"display dialog "{escaped}" with title "Grok Build Lab" buttons {{"OK"}} default button "OK" with icon stop"#
+        );
+        let _ = std::process::Command::new("osascript")
+            .args(["-e", &script])
+            .status();
+    }
+}
+
 fn resolve_lab_root(explicit: Option<PathBuf>) -> Result<PathBuf> {
     if let Some(p) = explicit {
-        return p
-            .canonicalize()
-            .with_context(|| format!("lab root {}", p.display()));
+        let p = if p.as_os_str().is_empty() || p == PathBuf::from(".") {
+            // wrapper sometimes passed "." when ARCH_LAB_ROOT unset — ignore
+            None
+        } else {
+            Some(p)
+        };
+        if let Some(p) = p {
+            let c = p
+                .canonicalize()
+                .with_context(|| format!("lab root {}", p.display()))?;
+            if c.join("index.html").is_file() {
+                return Ok(c);
+            }
+            anyhow::bail!("lab root missing index.html: {}", c.display());
+        }
     }
     if let Ok(env) = std::env::var("ARCH_LAB_ROOT") {
-        return PathBuf::from(env)
+        let c = PathBuf::from(&env)
             .canonicalize()
-            .context("ARCH_LAB_ROOT");
+            .with_context(|| format!("ARCH_LAB_ROOT={env}"))?;
+        if c.join("index.html").is_file() {
+            return Ok(c);
+        }
+        anyhow::bail!("ARCH_LAB_ROOT missing index.html: {}", c.display());
     }
     // native/ is inside architecture-lab/
     let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -152,9 +265,13 @@ fn resolve_lab_root(explicit: Option<PathBuf>) -> Result<PathBuf> {
         .parent()
         .map(|p| p.to_path_buf())
         .unwrap_or(here.clone());
-    parent
+    let c = parent
         .canonicalize()
-        .with_context(|| format!("lab root {}", parent.display()))
+        .with_context(|| format!("lab root {}", parent.display()))?;
+    if !c.join("index.html").is_file() {
+        anyhow::bail!("no index.html under {}", c.display());
+    }
+    Ok(c)
 }
 
 async fn wait_ready(url: &str) -> Result<()> {

@@ -53,6 +53,20 @@ Permission can be terminated; then stop use promptly. Press mentions: **legal@x.
 
 ---
 
+## Architecture Lab app icon (policy)
+
+Native Mac dock icon lives at `native/icons/AppIcon.icns` (source `app-icon-1024.png`).
+
+| Layer | Rule |
+|-------|------|
+| **Grok logomark** | Copied from official assets — **unaltered** (no recolor / stretch / morph) |
+| **Rainbow aura** | Separate ambient chrome (matches floating chat orb), **not** part of the official mark |
+| **Do not** | Bake a new combined trademark or recolor the Grok glyph itself |
+
+This composition is local engineering chrome for the lab shell. It is **not** an official xAI product icon and must not be used to imply endorsement.
+
+Bundle id uses `dev.fornevercollective.architecture-lab` (not an `ai.x` product identifier).
+
 ## Logos
 
 Use logos **exactly as provided** — no recoloring, stretching, or effects.

@@ -2,20 +2,28 @@
 
 Ideas and real plugins mapped to Grok Build surfaces.
 
+Compliance + install details: [Dev build · versions · forks](#/14-dev-build-and-forks) · [Plugin anatomy](#/06-plugin-anatomy).
+
 ## In play
 
-| Plugin | Bundle | Role |
-|--------|--------|------|
-| **gy-glyph-pins** | skills · commands · hooks | Multi-user mesh pins above Grok; `/glyph-pins`, `/with-grok` |
-| **cloudflare** | marketplace skills | Workers / CF platform (official marketplace) |
+| Plugin | Bundle | Role | Guideline status |
+|--------|--------|------|------------------|
+| **gy-glyph-pins** | skills · commands · hooks | Multi-user mesh pins above Grok; `/glyph-pins`, `/with-grok` | Manifest valid (`grok plugin validate`). Enable in TUI if not listed. Source: **GrokYtalkY** (not monorepo). |
+| **cloudflare** | marketplace skills | Workers / CF platform (official marketplace) | Marketplace install path |
 
 Install path for GY:
 
 ```text
 ~/.grok/plugins/gy-glyph-pins
-# source of truth often:
+# source of truth:
 #   ~/Projects/GrokYtalkY/grok-plugin/gy-glyph-pins
+# sync:
+#   rsync -a ~/Projects/GrokYtalkY/grok-plugin/gy-glyph-pins/ ~/.grok/plugins/gy-glyph-pins/
+# validate:
+#   grok plugin validate ~/.grok/plugins/gy-glyph-pins
 ```
+
+**Architecture Lab is not a plugin.** It is a companion docs + float shell under `docs/architecture-lab/`.
 
 ## Build next (high value)
 

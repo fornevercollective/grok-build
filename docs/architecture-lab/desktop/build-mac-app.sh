@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Build a double-clickable Architecture Lab.app for macOS (no code signing).
+# Build a double-clickable Grok Build Lab.app for macOS (no code signing).
 set -euo pipefail
 
 DESKTOP="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DESKTOP/.." && pwd)"
-APP_NAME="Architecture Lab"
+APP_NAME="Grok Build Lab"
 APP_DIR="$DESKTOP/${APP_NAME}.app"
 MACOS="$APP_DIR/Contents/MacOS"
 RES="$APP_DIR/Contents/Resources"
@@ -18,7 +18,7 @@ cp "$DESKTOP/launch-mac.sh" "$RES/launch-mac.sh"
 chmod +x "$RES/launch-mac.sh"
 
 # Launcher binary (shell)
-cat > "$MACOS/Architecture Lab" << 'LAUNCH'
+cat > "$MACOS/Grok Build Lab" << 'LAUNCH'
 #!/usr/bin/env bash
 # Resolve: Contents/MacOS → Contents → Resources/launch-mac.sh
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -28,15 +28,15 @@ APP="$(cd "$HERE/../.." && pwd)"
 if [[ -f "$RES/launch-mac.sh" ]]; then
   exec bash "$RES/launch-mac.sh"
 fi
-# 2) Sibling desktop folder (repo layout: desktop/Architecture Lab.app)
+# 2) Sibling desktop folder (repo layout: desktop/Grok Build Lab.app)
 DESKTOP="$(cd "$APP/.." && pwd)"
 if [[ -f "$DESKTOP/launch-mac.sh" ]]; then
   exec bash "$DESKTOP/launch-mac.sh"
 fi
-osascript -e 'display alert "Architecture Lab" message "launch-mac.sh not found. Re-run desktop/build-mac-app.sh from the repo."'
+osascript -e 'display alert "Grok Build Lab" message "launch-mac.sh not found. Re-run desktop/build-mac-app.sh from the repo."'
 exit 1
 LAUNCH
-chmod +x "$MACOS/Architecture Lab"
+chmod +x "$MACOS/Grok Build Lab"
 
 # Info.plist
 cat > "$APP_DIR/Contents/Info.plist" << PLIST
@@ -47,15 +47,15 @@ cat > "$APP_DIR/Contents/Info.plist" << PLIST
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleExecutable</key>
-  <string>Architecture Lab</string>
+  <string>Grok Build Lab</string>
   <key>CFBundleIdentifier</key>
-  <string>ai.x.architecture-lab</string>
+  <string>dev.fornevercollective.grok-build-lab</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>Architecture Lab</string>
+  <string>Grok Build Lab</string>
   <key>CFBundleDisplayName</key>
-  <string>Architecture Lab</string>
+  <string>Grok Build Lab</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

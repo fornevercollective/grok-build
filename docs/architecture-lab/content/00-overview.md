@@ -31,13 +31,25 @@ This lab maps its architecture, extension surfaces, plugin ideas, and how to lev
 - [System architecture](#/01-architecture)
 - [Plugin catalog](#/05-plugin-catalog)
 - [Leverage further](#/07-leverage)
+- [**Lab shells · native vs Electron**](#/15-lab-shells) — speed, footprint, control API
+- [GrokYtalkY companion](#/10-gy-companion)
 - [SpaceXAI / Grok brand](#/12-brand)
+- [**Dev build · versions · forks · compliance**](#/14-dev-build-and-forks)
 - [Riffing on docs](#/99-contributing-docs)
 
 ## Brand note
 
 Official logos: `docs/SpaceXAI_Grok_Assets/` · guidelines: [x.ai/legal/brand-guidelines](https://x.ai/legal/brand-guidelines).  
 This lab is **local engineering docs**, not an official xAI page. Use marks only to refer to Grok / SpaceXAI accurately — no alteration, no implied endorsement.
+
+## Guidelines we track
+
+| Area | Detail |
+|------|--------|
+| Contributing | Upstream `CONTRIBUTING.md` — **no** external PRs to SpaceXAI tree |
+| Plugins | Anatomy + validate — see [plugin anatomy](#/06-plugin-anatomy) |
+| Forks | Lab + GY live outside core; map on [dev build page](#/14-dev-build-and-forks) |
+| Versions | Lab `0.2.0` ≠ Grok CLI release; Pages uses git SHA |
 
 ## Repo pointers
 
@@ -49,5 +61,7 @@ This lab is **local engineering docs**, not an official xAI page. Use marks only
 | `crates/codegen/xai-grok-tools` | Tool implementations |
 | `crates/codegen/xai-grok-workspace` | Host FS / VCS / exec |
 | `crates/codegen/xai-grok-pager/docs/user-guide/` | Official user guide |
+| `docs/architecture-lab/` | This lab (docs + native shell) |
+| `docs/architecture-lab/native/` | Standalone Rust float app (not workspace member) |
 
-**Note:** Upstream external PRs are not accepted. Local experiments, plugins, and this lab live outside that constraint.
+**Note:** Upstream external PRs are not accepted. Local experiments, plugins, and this lab live outside that constraint — on `fornevercollective/grok-build` (or your fork), not as contributions to `xai-org/grok-build`.

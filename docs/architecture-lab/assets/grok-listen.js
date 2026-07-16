@@ -614,6 +614,9 @@
       src.connect(analyser);
       state.analyser = analyser;
       const data = new Uint8Array(analyser.frequencyBinCount);
+      // Share with walkie ring waveform (walkie-dock.js)
+      window.__labVoiceAnalyser = analyser;
+      window.__labVoiceBins = data;
 
       const tick = () => {
         if (!state.on || !state.analyser) return;
@@ -629,6 +632,7 @@
         mid = mid / (b - a) / 255;
         const level = Math.min(1, Math.pow(Math.max(avg, mid * 1.25), 0.85) * 1.6);
         state.level = level;
+        window.__labVoiceLevel = level;
         applyLevelUI(level);
         state.raf = requestAnimationFrame(tick);
       };
@@ -667,6 +671,11 @@
     if (state.raf) {
       cancelAnimationFrame(state.raf);
       state.raf = 0;
+    }
+    if (window.__labVoiceAnalyser === state.analyser) {
+      window.__labVoiceAnalyser = null;
+      window.__labVoiceBins = null;
+      window.__labVoiceLevel = 0;
     }
     if (state.micStream) {
       state.micStream.getTracks().forEach((t) => t.stop());

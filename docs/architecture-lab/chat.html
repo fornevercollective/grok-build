@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SpaceXAI · Chat</title>
+    <link rel="stylesheet" href="assets/walkie-dock.css?v=wave3" />
+    <link rel="stylesheet" href="assets/voice-spheres.css?v=v1" />
+    <style>
+      /* Self-contained chat surface — no full lab CSS (avoids layout skew) */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0c0f;
+        color: #e8eaed;
+        font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      }
+      body.lab-chat-window {
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+      }
+
+      /* See-through black top bar — same float chrome as lab */
+      .chat-chrome {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        height: 40px;
+        padding: 0 0.55rem 0 0.85rem;
+        flex-shrink: 0;
+        z-index: 10;
+        user-select: none;
+        background: rgba(11, 12, 15, 0.82);
+        backdrop-filter: blur(16px) saturate(1.25);
+        -webkit-backdrop-filter: blur(16px) saturate(1.25);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 1px 0 rgba(110, 203, 255, 0.04);
+      }
+      .chat-chrome::after {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        bottom: -1px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(110, 203, 255, 0.45),
+          rgba(167, 139, 250, 0.4),
+          rgba(248, 113, 113, 0.35),
+          rgba(74, 222, 128, 0.4),
+          transparent
+        );
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      .chat-chrome .lights {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-right: 4px;
+      }
+      .chat-chrome .tl {
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+      }
+      .chat-chrome .tl.close { background: #ff5f57; }
+      .chat-chrome .tl.min { background: #febc2e; }
+      .chat-chrome .tl.max { background: #28c840; }
+      .chat-chrome .tl:hover { filter: brightness(1.08); }
+      .chat-chrome .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+        flex-shrink: 0;
+      }
+      .chat-chrome .title {
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        color: rgba(110, 203, 255, 0.95);
+        letter-spacing: 0.05em;
+        white-space: nowrap;
+      }
+      .chat-chrome .spacer {
+        flex: 1;
+      }
+      .chat-chrome button.act {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(16, 18, 24, 0.55);
+        color: #9aa3b5;
+        border-radius: 6px;
+        min-width: 28px;
+        height: 24px;
+        padding: 0 0.45rem;
+        font-size: 0.68rem;
+        cursor: pointer;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      }
+      .chat-chrome button.act:hover {
+        color: #6ecbff;
+        border-color: rgba(110, 203, 255, 0.35);
+        background: rgba(110, 203, 255, 0.08);
+      }
+      .chat-chrome button.act.danger:hover {
+        color: #f87171;
+        border-color: rgba(248, 113, 113, 0.4);
+      }
+
+      .chat-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        padding: 1rem 0.85rem 1rem;
+        overflow: auto;
+        background: #0b0c0f;
+      }
+
+      /* Perfect square orb stage — smart scale with window */
+      .chat-stage {
+        flex: 0 0 auto;
+        width: clamp(132px, 42vmin, 220px);
+        aspect-ratio: 1 / 1;
+        height: auto;
+        position: relative;
+        margin: 0.25rem auto 0;
+        container-type: size;
+      }
+
+      /* Kill floating-lab siri positioning so orb stays a clean circle */
+      .siri-burst.chat-owned {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        transform: none !important;
+        pointer-events: auto !important;
+        overflow: visible;
+      }
+      .siri-burst.chat-owned .siri-burst-aura {
+        inset: -28% !important;
+        opacity: 0.45;
+        filter: blur(16px);
+      }
+      .siri-burst.chat-owned .siri-burst-shell {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+      .siri-burst.chat-owned .siri-orb,
+      .siri-burst.chat-owned .burst-orb {
+        position: relative !important;
+        inset: auto !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100%;
+        max-height: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 50%;
+        flex-shrink: 0;
+        transform: none !important;
+        overflow: hidden;
+      }
+      /* Disable hover scale that skewed the orb */
+      .siri-burst.chat-owned:hover .siri-orb,
+      .siri-burst.chat-owned.siri-hover .siri-orb,
+      .siri-burst.chat-owned.siri-expanded .siri-orb,
+      .siri-burst.chat-owned .siri-orb:active {
+        transform: none !important;
+      }
+      .siri-burst.chat-owned .orb-logo {
+        object-fit: contain;
+        width: 76%;
+        height: 76%;
+        inset: 12%;
+        z-index: 3;
+      }
+      /* Branded logo hovers over cam image */
+      .siri-burst.chat-owned .siri-orb.cam-on .orb-logo {
+        width: 60%;
+        height: 60%;
+        inset: 20%;
+        opacity: 0.78;
+      }
+      .siri-burst.chat-owned .siri-orb.cam-on:hover .orb-logo,
+      .siri-burst.chat-owned:hover .siri-orb.cam-on .orb-logo {
+        width: 68%;
+        height: 68%;
+        inset: 16%;
+        opacity: 0.98;
+        transform: scale(1.08);
+      }
+      .siri-burst.chat-owned .orb-cam {
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        z-index: 1;
+      }
+      .siri-burst.chat-owned canvas.ring {
+        width: 100% !important;
+        height: 100% !important;
+        inset: 0 !important;
+      }
+      .siri-burst.chat-owned canvas.face {
+        /* keep badge circular, not stretched */
+        width: 28% !important;
+        height: 28% !important;
+        aspect-ratio: 1 / 1;
+      }
+
+      /* Controls under orb — not inside siri shell (avoids height distortion) */
+      .chat-controls {
+        width: min(300px, 92%);
+        flex-shrink: 0;
+        padding: 0.55rem 0.65rem;
+        border-radius: 12px;
+        background: rgba(14, 16, 22, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        backdrop-filter: blur(12px);
+      }
+      .chat-controls .status {
+        margin: 0 0 0.45rem;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.62rem;
+        color: #9aa3b5;
+        text-align: center;
+        line-height: 1.35;
+      }
+      .chat-controls .status em {
+        color: #6ecbff;
+        font-style: normal;
+      }
+      .chat-controls .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.3rem;
+      }
+      .btn-mini {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #101218;
+        color: #9aa3b5;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.65rem;
+        padding: 0.28rem 0.55rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .btn-mini:hover {
+        color: #e8eaed;
+        border-color: rgba(110, 203, 255, 0.35);
+      }
+      .btn-mini.primary {
+        color: #6ecbff;
+        border-color: rgba(110, 203, 255, 0.4);
+        background: rgba(110, 203, 255, 0.1);
+      }
+      .btn-mini.primary.active,
+      .btn-mini.active {
+        color: #4ade80;
+        border-color: rgba(74, 222, 128, 0.4);
+      }
+
+      /* Voice panel — fixed proportions */
+      .voice-readout {
+        width: min(300px, 92%);
+        flex: 0 1 auto;
+        max-height: 32vh;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.5rem 0.55rem;
+        border-radius: 12px;
+        background: rgba(8, 10, 15, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .voice-label {
+        display: block;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #71717a;
+        margin-bottom: 0.1rem;
+      }
+      .voice-heard,
+      .voice-intent {
+        margin: 0;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        line-height: 1.35;
+        color: #e8eaed;
+        word-break: break-word;
+      }
+      .voice-heard.interim {
+        color: #9aa3b5;
+        font-style: italic;
+      }
+      .voice-intent.hit {
+        color: #4ade80;
+      }
+      .voice-intent.hot {
+        color: #6ecbff;
+      }
+      .voice-intent.miss {
+        color: #71717a;
+      }
+      .voice-intent.err {
+        color: #f87171;
+      }
+      .voice-level {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 18px;
+        justify-content: center;
+      }
+      .voice-level i {
+        flex: 1;
+        max-width: 5px;
+        height: 3px;
+        border-radius: 2px;
+        background: #1a1e28;
+        transition: height 0.05s ease, background 0.08s;
+      }
+      .voice-level i.on {
+        height: calc(3px + var(--h, 0.4) * 16px);
+        background: linear-gradient(180deg, rgba(110, 203, 255, 0.95), rgba(74, 222, 128, 0.7));
+        box-shadow: 0 0 6px rgba(110, 203, 255, 0.35);
+      }
+      .voice-action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+      }
+      .voice-chip {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #101218;
+        color: #9aa3b5;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.58rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .voice-chip.primary {
+        color: #6ecbff;
+        border-color: rgba(110, 203, 255, 0.35);
+      }
+      .voice-turns {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 4rem;
+        overflow: auto;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.55rem;
+        color: #71717a;
+      }
+      .chat-meta {
+        margin: 0;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.55rem;
+        color: #52525b;
+        text-align: center;
+      }
+      .chat-error {
+        position: fixed;
+        left: 50%;
+        bottom: 0.75rem;
+        transform: translateX(-50%);
+        max-width: 90%;
+        padding: 0.4rem 0.7rem;
+        border-radius: 10px;
+        background: rgba(40, 12, 12, 0.92);
+        border: 1px solid rgba(248, 113, 113, 0.4);
+        color: #fca5a5;
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.65rem;
+        z-index: 50;
+        display: none;
+      }
+      .chat-error.show {
+        display: block;
+      }
+
+      /* Hide walkie-dock floating defaults that break this surface */
+      .siri-burst-peek {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body class="lab-chat-window">
+    <header class="chat-chrome" id="chat-chrome" data-drag-region="1">
+      <div class="lights" data-no-drag>
+        <button type="button" class="tl close" id="btn-close" title="Hide chat"></button>
+        <button type="button" class="tl min" id="btn-min" title="Minimize"></button>
+        <button type="button" class="tl max" id="btn-max" title="Zoom"></button>
+      </div>
+      <span class="dot" id="chat-dot" title="live"></span>
+      <span class="title">spacexai · chat</span>
+      <span class="spacer"></span>
+      <button type="button" class="act" id="btn-pin" data-no-drag title="Always on top">Pin</button>
+      <button type="button" class="act" id="btn-center" data-no-drag title="Center">Ctr</button>
+      <button type="button" class="act" id="btn-lab" data-no-drag title="Show lab workspace">Lab</button>
+    </header>
+
+    <main class="chat-body">
+      <div class="chat-stage" id="chat-stage">
+        <div class="siri-burst chat-owned" id="siri-burst" data-mode="idle">
+          <div class="siri-burst-aura" aria-hidden="true"></div>
+          <div class="siri-burst-shell">
+            <div
+              class="burst-orb siri-orb"
+              id="siri-burst-orb"
+              role="button"
+              aria-label="Hold to talk"
+              tabindex="0"
+            >
+              <img
+                class="orb-logo"
+                src="assets/brand/grok-logomark-light.svg"
+                alt="Grok"
+                width="176"
+                height="176"
+                draggable="false"
+              />
+              <video
+                class="orb-cam"
+                id="siri-cam-video"
+                playsinline
+                muted
+                autoplay
+                aria-hidden="true"
+              ></video>
+              <canvas class="ring" id="siri-ring-canvas" width="176" height="176"></canvas>
+              <canvas class="face" id="siri-face-canvas" width="25" height="25"></canvas>
+              <span class="orb-label" id="siri-orb-label">hey</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-controls">
+        <p class="status" id="siri-burst-status">hold orb to talk · Listen for intent</p>
+        <div class="actions">
+          <button type="button" class="btn-mini primary" id="siri-btn-hold">Hold</button>
+          <button type="button" class="btn-mini" id="siri-btn-cam">Cam</button>
+          <button type="button" class="btn-mini" id="btn-listen">Listen</button>
+        </div>
+      </div>
+
+      <div class="voice-readout" id="voice-readout">
+        <div class="voice-level" id="voice-level" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div>
+          <span class="voice-label">heard</span>
+          <p class="voice-heard" id="voice-heard">Tap Listen · talk to Grok</p>
+        </div>
+        <div>
+          <span class="voice-label">intent</span>
+          <p class="voice-intent" id="voice-intent">idle</p>
+        </div>
+        <div class="voice-action-row" id="voice-action-row" hidden></div>
+        <ul class="voice-turns" id="voice-turns"></ul>
+      </div>
+      <p class="chat-meta">POST /api/control · SpaceXAI</p>
+    </main>
+
+    <div class="chat-error" id="chat-error" role="alert"></div>
+
+    <!-- Stubs for walkie-dock / listen -->
+    <div id="burst-orb" hidden></div>
+    <canvas id="face-canvas" width="1" height="1" hidden></canvas>
+    <canvas id="ring-canvas" width="1" height="1" hidden></canvas>
+    <span id="listen-status" hidden>off</span>
+    <span id="orb-label" hidden></span>
+    <span id="burst-meta" hidden></span>
+
+    <script>
+      window.LabDesktop = Object.assign(window.LabDesktop || {}, {
+        isDesktop: true,
+        isNative: true,
+        isChatWindow: true,
+        shell: "chat-window",
+      });
+      document.documentElement.classList.add("lab-native", "lab-chat-surface");
+      document.body.classList.add("lab-native", "lab-chat-surface", "listen-active");
+
+      async function control(action, extra) {
+        try {
+          const r = await fetch("/api/control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.assign({ action: action, target: "chat" }, extra || {})),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || j.ok === false) showErr(j.error || j.message || "control failed");
+          return j;
+        } catch (e) {
+          showErr(String(e.message || e));
+        }
+      }
+
+      function showErr(msg) {
+        const el = document.getElementById("chat-error");
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(showErr._t);
+        showErr._t = setTimeout(() => el.classList.remove("show"), 5000);
+      }
+
+      function ipc(msg) {
+        try {
+          if (window.ipc && window.ipc.postMessage) window.ipc.postMessage(msg);
+        } catch (_) {}
+      }
+      document.getElementById("btn-close")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        control("hide_chat");
+      });
+      document.getElementById("btn-min")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ipc("minimize");
+        control("minimize", { target: "chat" });
+      });
+      document.getElementById("btn-max")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ipc("maximize");
+      });
+      document.getElementById("btn-center")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        control("center", { target: "chat" });
+      });
+      document.getElementById("btn-lab")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        control("focus_lab");
+      });
+      let pinned = true;
+      document.getElementById("btn-pin")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        pinned = !pinned;
+        control(pinned ? "pin" : "unpin", { target: "chat", on: pinned });
+        document.getElementById("btn-pin").textContent = pinned ? "Pin" : "Unp";
+      });
+
+      // Sync status text into panel when siri updates
+      const statusEl = document.getElementById("siri-burst-status");
+      const obs = new MutationObserver(() => {
+        /* keep */
+      });
+      if (statusEl) obs.observe(statusEl, { childList: true, characterData: true, subtree: true });
+
+      async function pollErrors() {
+        try {
+          const r = await fetch("/api/control/errors");
+          const j = await r.json();
+          if (j.errors && j.errors[0]) {
+            const last = j.errors[0];
+            if (pollErrors._last !== last.t + last.message) {
+              pollErrors._last = last.t + last.message;
+              showErr(last.message);
+            }
+          }
+        } catch (_) {}
+      }
+      setInterval(pollErrors, 2500);
+
+      window.LabChat = {
+        control: control,
+        showError: showErr,
+        listen: () => document.getElementById("btn-listen")?.click(),
+      };
+    </script>
+    <script src="assets/walkie-dock.js?v=wave3" defer></script>
+    <script src="assets/grok-listen.js?v=wave3" defer></script>
+    <script src="assets/voice-spheres.js?v=v1" defer></script>
+  </body>
+</html>

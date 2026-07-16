@@ -32,4 +32,5 @@ fi
 echo "architecture-lab · native · mode=$MODE"
 echo "  lab: $LAB"
 echo "  bin: $BIN"
-exec "$BIN" --mode "$MODE"
+# --port 0 picks a free port (survives when ./serve.sh holds :8765)
+exec "$BIN" --mode "$MODE" --root "$LAB" --port 0

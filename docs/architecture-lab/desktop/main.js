@@ -1,5 +1,5 @@
 /**
- * Architecture Lab — floating native-style shell (Electron)
+ * Grok Build Lab — floating native-style shell (Electron fallback)
  *
  * Not a browser tab / not “open localhost”:
  *  - frameless floating window (TUI / Rust-tool aesthetic)
@@ -230,7 +230,7 @@ function windowOptsForMode(mode) {
       resizable: true,
       fullscreenable: false,
       skipTaskbar: false,
-      title: "Architecture Lab · float",
+      title: "Grok Build Lab · float",
       vibrancy: process.platform === "darwin" ? "under-window" : undefined,
       visualEffectState: process.platform === "darwin" ? "active" : undefined,
     };
@@ -247,7 +247,7 @@ function windowOptsForMode(mode) {
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition: { x: 14, y: 12 },
     alwaysOnTop: false,
-    title: "Architecture Lab",
+    title: "Grok Build Lab",
   };
 }
 
@@ -472,7 +472,7 @@ function setupTray() {
   let img = nativeImage.createFromPath(ip);
   if (process.platform === "darwin") img = img.resize({ width: 18, height: 18 });
   tray = new Tray(img);
-  tray.setToolTip("Architecture Lab");
+  tray.setToolTip("Grok Build Lab");
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: "Show float", click: () => createWindow("float") },
@@ -500,7 +500,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    app.setName("Architecture Lab");
+    app.setName("Grok Build Lab");
     registerLabProtocol();
     wireIpc();
     buildMenu();

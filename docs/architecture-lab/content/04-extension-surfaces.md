@@ -2,6 +2,8 @@
 
 Everything you can bolt on without forking the pager.
 
+> Prefer these surfaces over forking `xai-grok-pager`. Upstream does **not** accept external PRs (`CONTRIBUTING.md`). Lab + plugins live on your fork / companion repos — see [Dev build · forks](#/14-dev-build-and-forks).
+
 ## Plugin as the unit of install
 
 A **plugin** bundles any combination of:

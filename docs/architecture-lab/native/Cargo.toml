@@ -3,11 +3,11 @@
 
 [package]
 name = "architecture-lab-native"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
-description = "Floating native Architecture Lab shell — WKWebView (macOS) / WebView2 (Windows), no Electron"
-license = "MIT"
+description = "Floating native Grok Build Lab shell — WKWebView (macOS) / WebView2 (Windows), no Electron. Standalone workspace under docs/architecture-lab/native (not monorepo member)."
+license = "Apache-2.0"
 publish = false
 
 [[bin]]
@@ -28,12 +28,14 @@ mime_guess = "2"
 # System webview — not Chromium. macOS → WKWebView. Windows → WebView2. Linux → WebKitGTK.
 tao = "0.31"
 wry = "0.48"
+muda = "0.15"
 http = "1"
 url = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [profile.release]
-lto = true
-codegen-units = 1
+# thin LTO keeps release builds practical for iterative lab work
+lto = "thin"
+codegen-units = 4
 strip = true

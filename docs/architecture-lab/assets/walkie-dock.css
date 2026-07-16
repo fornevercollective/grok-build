@@ -189,7 +189,7 @@
   transform: scale(1.03);
 }
 
-/* Official Grok mark fills the circular bg (exact SVG) */
+/* Official Grok mark — branded face; sits ABOVE cam as hoverable chrome */
 .burst-orb .orb-logo {
   position: absolute;
   inset: 12%;
@@ -197,19 +197,25 @@
   height: 76%;
   object-fit: contain;
   pointer-events: none;
-  z-index: 0;
+  z-index: 3; /* above video · branded component */
   opacity: 0.92;
-  /* keep mark crisp inside the disc */
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
-  transition: opacity 0.2s ease;
+  transition:
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.22s ease,
+    inset 0.28s ease,
+    width 0.28s ease,
+    height 0.28s ease;
+  transform-origin: 50% 50%;
 }
 
 .burst-orb.tx .orb-logo {
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.25));
+  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.35));
 }
 
-/* Live camera — full-bleed circular crop, mirrored selfie */
+/* Live camera — full-bleed circular crop, mirrored selfie (under logo) */
 .burst-orb .orb-cam {
   position: absolute;
   inset: 0;
@@ -229,9 +235,30 @@
   opacity: 1;
 }
 
+/* Cam live: logo floats as branded watermark over the image */
 .burst-orb.cam-on .orb-logo {
-  opacity: 0.12;
-  filter: drop-shadow(0 0 6px rgba(110, 203, 255, 0.2));
+  inset: 20%;
+  width: 60%;
+  height: 60%;
+  opacity: 0.72;
+  filter:
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75))
+    drop-shadow(0 0 10px rgba(110, 203, 255, 0.35));
+}
+
+/* Hover: logo lifts over the cam — branded component emphasis */
+.burst-orb.cam-on:hover .orb-logo,
+.burst-orb.cam-on.brand-hover .orb-logo,
+.siri-burst.siri-hover .burst-orb.cam-on .orb-logo,
+.siri-burst:hover .burst-orb.cam-on .orb-logo {
+  opacity: 0.98;
+  transform: scale(1.1);
+  inset: 16%;
+  width: 68%;
+  height: 68%;
+  filter:
+    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8))
+    drop-shadow(0 0 18px rgba(110, 203, 255, 0.55));
 }
 
 .burst-orb.cam-on {
@@ -244,6 +271,26 @@
 .burst-orb.cam-on.tx {
   border-color: rgba(248, 113, 113, 0.75);
   box-shadow: 0 0 28px rgba(248, 113, 113, 0.28);
+}
+
+.burst-orb.cam-on.tx .orb-logo {
+  opacity: 1;
+  animation: brand-logo-pulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes brand-logo-pulse {
+  from {
+    transform: scale(1);
+    filter:
+      drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75))
+      drop-shadow(0 0 10px rgba(248, 113, 113, 0.4));
+  }
+  to {
+    transform: scale(1.08);
+    filter:
+      drop-shadow(0 3px 10px rgba(0, 0, 0, 0.85))
+      drop-shadow(0 0 20px rgba(248, 113, 113, 0.55));
+  }
 }
 
 /* Glyph face pin (optional overlay when cam; smaller corner badge) */
@@ -284,7 +331,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 3;
+  z-index: 4; /* waveform above branded logo + cam */
 }
 
 .burst-orb .orb-label {

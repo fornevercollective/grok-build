@@ -1,5 +1,5 @@
 {
-  "title": "Grok Build Architecture Lab",
+  "title": "Grok Build Lab",
   "subtitle": "Map · plugins · leverage · riff zone",
   "home": "00-overview",
   "sections": [
@@ -32,7 +32,8 @@
       "title": "Companions",
       "items": [
         { "id": "10-gy-companion", "label": "GrokYtalkY companion" },
-        { "id": "11-local-stack", "label": "Local stack recipes" }
+        { "id": "11-local-stack", "label": "Local stack recipes" },
+        { "id": "15-lab-shells", "label": "Lab shells · native vs Electron" }
       ]
     },
     {
@@ -40,6 +41,7 @@
       "items": [
         { "id": "12-brand", "label": "SpaceXAI / Grok brand" },
         { "id": "13-tools", "label": "Lab tools workspace" },
+        { "id": "14-dev-build-and-forks", "label": "Dev build · versions · forks" },
         { "id": "99-contributing-docs", "label": "Riffing on these docs" }
       ]
     }

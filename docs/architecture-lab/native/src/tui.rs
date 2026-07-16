@@ -39,7 +39,7 @@ async fn run_app(
     root: &Path,
 ) -> Result<()> {
     let mut log: Vec<String> = vec![
-        format!("architecture-lab native TUI"),
+        format!("Grok Build Lab native TUI"),
         format!("root  {}", root.display()),
         format!("http  {url}  (API only — open window with default mode)"),
         "keys: q quit · o open float · l open lab · r health · g git head".into(),
@@ -59,7 +59,7 @@ async fn run_app(
 
             let title = Paragraph::new(Line::from(vec![
                 Span::styled(
-                    " architecture-lab ",
+                    " Grok Build Lab ",
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
