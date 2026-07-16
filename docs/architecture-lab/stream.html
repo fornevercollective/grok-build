@@ -73,10 +73,12 @@
         z-index: 5;
         display: flex;
         align-items: center;
-        gap: 0.45rem;
+        gap: 0.35rem;
         height: 40px;
-        padding: 0 0.55rem 0 0.85rem;
+        min-width: 0;
+        padding: 0 14px 0 0.85rem; /* clear 18px rounded TR corner */
         flex-shrink: 0;
+        overflow: hidden;
         user-select: none;
         background: rgba(11, 12, 15, 0.72);
         backdrop-filter: blur(16px) saturate(1.25);
@@ -126,15 +128,28 @@
         font-size: 0.68rem;
         color: rgba(110, 203, 255, 0.95);
         letter-spacing: 0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+        max-width: 8rem;
       }
       .stream-chrome .dot {
         width: 7px;
         height: 7px;
         border-radius: 50%;
+        flex-shrink: 0;
         background: #4ade80;
         box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
       }
-      .stream-chrome .spacer { flex: 1; }
+      .stream-chrome .spacer { flex: 1 1 auto; min-width: 4px; }
+      .stream-chrome .acts {
+        display: flex;
+        align-items: center;
+        gap: 0.28rem;
+        flex: 0 0 auto;
+        padding-right: 2px;
+      }
       .stream-chrome button.act {
         appearance: none;
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -142,9 +157,10 @@
         color: #9aa3b5;
         border-radius: 6px;
         height: 24px;
-        padding: 0 0.45rem;
-        font-size: 0.68rem;
+        padding: 0 0.4rem;
+        font-size: 0.62rem;
         cursor: pointer;
+        white-space: nowrap;
         font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
       }
       .stream-chrome button.act:hover {
@@ -242,11 +258,13 @@
         <button type="button" class="tl max" id="btn-max" title="Zoom"></button>
       </div>
       <span class="dot" title="stream"></span>
-      <span class="title">Grok Build Lab · stream</span>
-      <span class="spacer"></span>
-      <button type="button" class="act" id="btn-dock" data-no-drag title="Dock to lab">Dock</button>
-      <button type="button" class="act" id="btn-lab" data-no-drag title="Show lab">Lab</button>
-      <button type="button" class="act" id="btn-chat" data-no-drag title="Open chat">Chat</button>
+      <span class="title" title="Grok Build Lab · stream">Stream</span>
+      <span class="spacer" data-drag-region="1"></span>
+      <div class="acts" data-no-drag>
+        <button type="button" class="act" id="btn-dock" title="Dock to lab">Dock</button>
+        <button type="button" class="act" id="btn-lab" title="Show lab">Lab</button>
+        <button type="button" class="act" id="btn-chat" title="Open chat">Chat</button>
+      </div>
     </header>
 
     <main class="stream-body">
