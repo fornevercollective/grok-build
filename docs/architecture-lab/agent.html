@@ -9,10 +9,9 @@
       content="agentcn-inspired agent console: center chat + α/β/γ terminal feeds"
     />
     <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/agent-console.css?v=ac2" />
+    <link rel="stylesheet" href="assets/agent-console.css?v=ac3" />
   </head>
   <body class="ac-body">
-    <!-- Scaffold pattern: agentcn = composable agent chrome · shadcn-like cards · role feeds -->
     <header class="ac-chrome" data-drag-region="1">
       <div class="ac-lights" data-no-drag>
         <button type="button" class="ac-tl close" id="btn-close" title="Close"></button>
@@ -26,43 +25,72 @@
         height="20"
         alt=""
       />
-      <strong class="ac-title">Agent Console</strong>
+      <strong class="ac-title">Agent</strong>
       <span class="ac-pill" id="ac-status">idle</span>
-      <span class="ac-spacer"></span>
-      <button type="button" class="ac-btn" id="btn-lab" data-no-drag title="Focus lab">Lab</button>
-      <button
-        type="button"
-        class="ac-btn"
-        id="btn-panda"
-        data-no-drag
-        title="Multi-term · Panda · prompt fleet αβγ"
-      >
-        Multi-term
-      </button>
-      <button type="button" class="ac-btn primary" id="btn-handoff-pb" data-no-drag>
-        Plan → Build
-      </button>
-      <button type="button" class="ac-btn" id="btn-handoff-bv" data-no-drag>Build → Verify</button>
+      <span class="ac-spacer" data-drag-region="1"></span>
+      <div class="ac-chrome-acts" data-no-drag>
+        <button type="button" class="ac-btn danger" id="btn-cancel" title="Cancel turn (Esc)" disabled>
+          Cancel
+        </button>
+        <button type="button" class="ac-btn" id="btn-refresh" title="Refresh window + feeds">
+          Refresh
+        </button>
+        <button type="button" class="ac-btn" id="btn-new" title="New conversation">New</button>
+        <button type="button" class="ac-btn" id="btn-pin" title="Always on top">Pin</button>
+        <button type="button" class="ac-btn" id="btn-chat" title="Open chat">Chat</button>
+        <button type="button" class="ac-btn" id="btn-stream" title="Open stream">Stream</button>
+        <button type="button" class="ac-btn" id="btn-lab" title="Focus lab">Lab</button>
+        <button
+          type="button"
+          class="ac-btn"
+          id="btn-panda"
+          title="Multi-term · Panda · prompt fleet αβγ"
+        >
+          Multi
+        </button>
+      </div>
     </header>
 
     <main class="ac-layout">
-      <!-- CENTER: grok.com / Cursor-style main agent -->
       <section class="ac-center" aria-label="Main agent chat">
         <div class="ac-center-head">
           <div>
             <h1>Main agent</h1>
             <p class="ac-muted">
-              Prompt + scrollback · orchestrates α plan · β build · γ verify
-              <span class="ac-badge">agentcn scaffold</span>
+              Prompt + scrollback · α plan · β build · γ verify
+              <span class="ac-badge">agentcn</span>
             </p>
           </div>
-          <div class="ac-center-actions">
-            <button type="button" class="ac-btn" id="btn-clear-chat">Clear</button>
-            <button type="button" class="ac-btn" id="btn-export-chat">Export</button>
+          <div class="ac-center-actions" data-no-drag>
+            <button type="button" class="ac-btn sm" id="btn-scroll-top" title="Scroll to top">
+              ↑ Top
+            </button>
+            <button type="button" class="ac-btn sm" id="btn-scroll-bottom" title="Scroll to bottom">
+              ↓ End
+            </button>
+            <button type="button" class="ac-btn sm" id="btn-regen" title="Regenerate last reply">
+              Regen
+            </button>
+            <button type="button" class="ac-btn sm" id="btn-copy-last" title="Copy last message">
+              Copy
+            </button>
+            <button type="button" class="ac-btn sm" id="btn-clear-chat" title="Clear scrollback">
+              Clear
+            </button>
+            <button type="button" class="ac-btn sm" id="btn-export-chat" title="Export JSON">
+              Export
+            </button>
+            <button type="button" class="ac-btn sm primary" id="btn-handoff-pb" title="Plan → Build">
+              P→B
+            </button>
+            <button type="button" class="ac-btn sm" id="btn-handoff-bv" title="Build → Verify">
+              B→V
+            </button>
           </div>
         </div>
 
-        <div class="ac-scroll" id="ac-scroll" role="log" aria-live="polite"></div>
+        <!-- Scrollport: isolated so wheel works under rounded shell -->
+        <div class="ac-scroll" id="ac-scroll" role="log" aria-live="polite" tabindex="0"></div>
 
         <form class="ac-prompt" id="ac-form">
           <div class="ac-prompt-card">
@@ -87,26 +115,35 @@
                 <button type="button" data-chip="Summarize status of α β γ and next hop">
                   Status
                 </button>
+                <button type="button" data-chip="open ship">Ship</button>
+                <button type="button" data-chip="open plan">Plan loop</button>
+                <button type="button" data-chip="hey grok">Summon</button>
+                <button type="button" data-chip="open history">History</button>
+                <button type="button" data-chip="open notes">Notes</button>
               </div>
+              <button type="button" class="ac-btn danger sm" id="btn-cancel-bar" disabled title="Cancel">
+                Stop
+              </button>
               <button type="submit" class="ac-send" id="ac-send">Send</button>
             </div>
           </div>
           <p class="ac-hint">
-            Enter send · Shift+Enter newline · feeds update from handoff bus · real PTYs via
-            <strong>Panda</strong>
+            Enter send · Shift+Enter newline · Esc cancel · wheel scrolls chat &amp; feeds
           </p>
         </form>
       </section>
 
-      <!-- RIGHT: three working feeds (Cursor-agent / Panda style) -->
       <aside class="ac-feeds" aria-label="Agent terminal feeds">
         <article class="ac-feed" data-role="plan" id="feed-plan">
           <header>
             <span class="ac-role plan">α plan</span>
             <span class="ac-feed-status" data-st="plan">idle</span>
+            <button type="button" class="ac-icon-btn" data-clear-feed="plan" title="Clear feed">
+              ⌫
+            </button>
             <button type="button" class="ac-icon-btn" data-focus="plan" title="Focus role">↗</button>
           </header>
-          <pre class="ac-feed-body" id="feed-plan-body">Waiting for plan activity…</pre>
+          <pre class="ac-feed-body" id="feed-plan-body" tabindex="0">Waiting for plan activity…</pre>
           <footer>
             <button type="button" class="ac-btn sm" data-source="plan">Source profile</button>
             <button type="button" class="ac-btn sm primary" data-send-role="plan">Send here</button>
@@ -117,9 +154,12 @@
           <header>
             <span class="ac-role build">β build</span>
             <span class="ac-feed-status" data-st="build">idle</span>
+            <button type="button" class="ac-icon-btn" data-clear-feed="build" title="Clear feed">
+              ⌫
+            </button>
             <button type="button" class="ac-icon-btn" data-focus="build" title="Focus role">↗</button>
           </header>
-          <pre class="ac-feed-body" id="feed-build-body">Waiting for build activity…</pre>
+          <pre class="ac-feed-body" id="feed-build-body" tabindex="0">Waiting for build activity…</pre>
           <footer>
             <button type="button" class="ac-btn sm" data-source="build">Source profile</button>
             <button type="button" class="ac-btn sm primary" data-send-role="build">Send here</button>
@@ -130,17 +170,25 @@
           <header>
             <span class="ac-role verify">γ verify</span>
             <span class="ac-feed-status" data-st="verify">idle</span>
-            <button type="button" class="ac-icon-btn" data-focus="verify" title="Focus role">↗</button>
+            <button type="button" class="ac-icon-btn" data-clear-feed="verify" title="Clear feed">
+              ⌫
+            </button>
+            <button type="button" class="ac-icon-btn" data-focus="verify" title="Focus role">
+              ↗
+            </button>
           </header>
-          <pre class="ac-feed-body" id="feed-verify-body">Waiting for verify activity…</pre>
+          <pre class="ac-feed-body" id="feed-verify-body" tabindex="0">Waiting for verify activity…</pre>
           <footer>
             <button type="button" class="ac-btn sm" data-source="verify">Source profile</button>
-            <button type="button" class="ac-btn sm primary" data-send-role="verify">Send here</button>
+            <button type="button" class="ac-btn sm primary" data-send-role="verify">
+              Send here
+            </button>
           </footer>
         </article>
       </aside>
     </main>
 
-    <script src="assets/agent-console.js?v=ac1"></script>
+    <div class="ac-toast" id="ac-toast" role="status" hidden></div>
+    <script src="assets/agent-console.js?v=ac3"></script>
   </body>
 </html>

@@ -1,5 +1,4 @@
-/* Agent Console — agentcn / shadcn-inspired agent chrome
-   Layout: center main chat + three role feeds (plan · build · verify) */
+/* Agent Console — chat-parity controls + reliable scroll ports */
 
 :root {
   --ac-bg: #09090b;
@@ -12,12 +11,15 @@
   --ac-dim: #71717a;
   --ac-accent: #38bdf8;
   --ac-accent-soft: rgba(56, 189, 248, 0.12);
+  --ac-danger: #f87171;
+  --ac-danger-soft: rgba(248, 113, 113, 0.12);
   --ac-plan: #38bdf8;
   --ac-build: #a78bfa;
   --ac-verify: #4ade80;
   --ac-radius: 12px;
   --ac-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --ac-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ac-chrome-h: 42px;
 }
 
 *,
@@ -26,23 +28,27 @@
   box-sizing: border-box;
 }
 
-html,
-body.ac-body {
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
-  background: var(--ac-bg);
-  color: var(--ac-text);
-  font-family: var(--ac-font);
-  /* Match lab float shell (native also injects lab-round chrome) */
-  border-radius: 18px;
-}
-
+/* Flex shell — critical for nested overflow:auto scroll */
 html {
+  height: 100%;
+  width: 100%;
   background: transparent;
 }
 
+html,
 body.ac-body {
+  margin: 0;
+  border-radius: 18px;
+  color: var(--ac-text);
+  font-family: var(--ac-font);
+}
+
+body.ac-body {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important; /* scroll lives in children */
   position: relative;
   background:
     radial-gradient(ellipse 70% 40% at 15% 0%, rgba(56, 189, 248, 0.08), transparent 55%),
@@ -50,25 +56,29 @@ body.ac-body {
     var(--ac-bg);
 }
 
+/* ── Chrome ───────────────────────────────────────────────────────── */
 .ac-chrome {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  height: 42px;
-  padding: 0 14px 0 0.75rem; /* clear rounded TR */
+  gap: 0.35rem;
+  height: var(--ac-chrome-h);
+  min-height: var(--ac-chrome-h);
+  padding: 0 12px 0 0.75rem;
   border-bottom: 1px solid var(--ac-border);
   background: rgba(9, 9, 11, 0.92);
   backdrop-filter: blur(14px);
   flex-shrink: 0;
   user-select: none;
   border-radius: 18px 18px 0 0;
-  overflow: hidden;
+  z-index: 10;
+  min-width: 0;
 }
 
 .ac-lights {
   display: flex;
   gap: 7px;
   margin-right: 4px;
+  flex-shrink: 0;
 }
 
 .ac-tl {
@@ -92,19 +102,22 @@ body.ac-body {
 
 .ac-mark {
   opacity: 0.9;
+  flex-shrink: 0;
 }
 .ac-title {
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 .ac-pill {
   font-family: var(--ac-mono);
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   color: var(--ac-muted);
   border: 1px solid var(--ac-border);
   border-radius: 999px;
-  padding: 0.12rem 0.45rem;
+  padding: 0.12rem 0.4rem;
+  flex-shrink: 0;
 }
 .ac-pill.live {
   color: var(--ac-verify);
@@ -114,8 +127,30 @@ body.ac-body {
   color: var(--ac-accent);
   border-color: rgba(56, 189, 248, 0.35);
 }
+.ac-pill.err {
+  color: var(--ac-danger);
+  border-color: rgba(248, 113, 113, 0.4);
+}
 .ac-spacer {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 6px;
+}
+
+.ac-chrome-acts {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 72%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+  scrollbar-width: none;
+}
+.ac-chrome-acts::-webkit-scrollbar {
+  display: none;
 }
 
 .ac-btn {
@@ -124,47 +159,63 @@ body.ac-body {
   background: var(--ac-elev);
   color: var(--ac-muted);
   border-radius: 8px;
-  height: 28px;
-  padding: 0 0.55rem;
-  font-size: 0.68rem;
+  height: 26px;
+  padding: 0 0.45rem;
+  font-size: 0.62rem;
   font-family: var(--ac-mono);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.ac-btn:hover {
+.ac-btn:hover:not(:disabled) {
   color: var(--ac-text);
   border-color: var(--ac-border-strong);
+}
+.ac-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .ac-btn.primary {
   color: var(--ac-accent);
   border-color: rgba(56, 189, 248, 0.35);
   background: var(--ac-accent-soft);
 }
+.ac-btn.danger {
+  color: var(--ac-danger);
+  border-color: rgba(248, 113, 113, 0.4);
+  background: var(--ac-danger-soft);
+}
 .ac-btn.sm {
   height: 24px;
-  font-size: 0.6rem;
-  padding: 0 0.4rem;
+  font-size: 0.58rem;
+  padding: 0 0.38rem;
 }
 
+/* ── Layout ───────────────────────────────────────────────────────── */
 .ac-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
-  height: calc(100% - 42px);
+  flex: 1 1 auto;
   min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.85fr);
+  /* do NOT use height:100% alone — flex:1 + min-height:0 is the scroll fix */
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 @media (max-width: 900px) {
   .ac-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
-/* Center agent */
 .ac-center {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   border-right: 1px solid var(--ac-border);
   background:
     radial-gradient(ellipse 70% 40% at 20% 0%, rgba(56, 189, 248, 0.07), transparent 55%),
@@ -175,45 +226,63 @@ body.ac-body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem 0.55rem;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem 0.45rem;
   flex-shrink: 0;
+  min-width: 0;
 }
 .ac-center-head h1 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 .ac-muted {
-  margin: 0.2rem 0 0;
-  font-size: 0.72rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.68rem;
   color: var(--ac-muted);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 .ac-badge {
   display: inline-block;
-  margin-left: 0.35rem;
+  margin-left: 0.25rem;
   font-family: var(--ac-mono);
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   color: var(--ac-build);
   border: 1px solid rgba(167, 139, 250, 0.35);
   border-radius: 999px;
-  padding: 0.05rem 0.35rem;
-  vertical-align: middle;
+  padding: 0.05rem 0.3rem;
 }
 .ac-center-actions {
   display: flex;
-  gap: 0.3rem;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+  max-width: 55%;
 }
 
+/* ── MAIN SCROLLPORT (chat transcript) ────────────────────────────── */
 .ac-scroll {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
-  padding: 0.5rem 1rem 1rem;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll; /* always reserve bar — reliable in WKWebView */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 0.45rem 0.9rem 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
+  position: relative;
+  z-index: 3;
+  outline: none;
+  /* isolate so parent transform/filter doesn't kill scroll */
+  transform: translateZ(0);
+  will-change: scroll-position;
+}
+.ac-scroll:focus-visible {
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.25);
 }
 
 .ac-msg {
@@ -221,18 +290,8 @@ body.ac-body {
   border-radius: var(--ac-radius);
   border: 1px solid var(--ac-border);
   background: var(--ac-card);
-  padding: 0.65rem 0.8rem;
-  animation: ac-in 0.18s ease;
-}
-@keyframes ac-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  padding: 0.6rem 0.75rem;
+  flex-shrink: 0;
 }
 .ac-msg.user {
   align-self: flex-end;
@@ -244,19 +303,23 @@ body.ac-body {
 }
 .ac-msg.system {
   align-self: center;
-  max-width: 90%;
+  max-width: 92%;
   background: transparent;
   border-style: dashed;
   color: var(--ac-dim);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+}
+.ac-msg.cancelled {
+  opacity: 0.75;
+  border-color: rgba(248, 113, 113, 0.35);
 }
 .ac-msg-role {
   font-family: var(--ac-mono);
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ac-dim);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 .ac-msg.user .ac-msg-role {
   color: var(--ac-accent);
@@ -264,21 +327,23 @@ body.ac-body {
 }
 .ac-msg-body {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .ac-msg-meta {
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   font-family: var(--ac-mono);
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   color: var(--ac-dim);
 }
 
+/* ── Prompt ───────────────────────────────────────────────────────── */
 .ac-prompt {
   flex-shrink: 0;
-  padding: 0 1rem 0.85rem;
+  padding: 0 0.85rem 0.7rem;
+  z-index: 3;
 }
 .ac-prompt-card {
   border: 1px solid var(--ac-border-strong);
@@ -295,9 +360,9 @@ body.ac-body {
   background: transparent;
   color: var(--ac-text);
   font-family: var(--ac-font);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   line-height: 1.45;
-  padding: 0.75rem 0.85rem 0.35rem;
+  padding: 0.7rem 0.8rem 0.3rem;
   outline: none;
 }
 .ac-prompt textarea::placeholder {
@@ -306,16 +371,19 @@ body.ac-body {
 .ac-prompt-bar {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.4rem 0.55rem 0.55rem;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem 0.5rem;
   border-top: 1px solid var(--ac-border);
 }
 .ac-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.22rem;
   flex: 1;
   min-width: 0;
+  max-height: 3.2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .ac-chips button {
   appearance: none;
@@ -324,8 +392,8 @@ body.ac-body {
   color: var(--ac-muted);
   border-radius: 999px;
   font-family: var(--ac-mono);
-  font-size: 0.58rem;
-  padding: 0.2rem 0.45rem;
+  font-size: 0.55rem;
+  padding: 0.18rem 0.4rem;
   cursor: pointer;
 }
 .ac-chips button:hover {
@@ -336,12 +404,12 @@ body.ac-body {
   appearance: none;
   border: 0;
   border-radius: 9px;
-  height: 32px;
-  padding: 0 0.9rem;
+  height: 30px;
+  padding: 0 0.85rem;
   background: linear-gradient(135deg, #38bdf8, #818cf8);
   color: #0b0c0f;
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -350,19 +418,20 @@ body.ac-body {
   cursor: not-allowed;
 }
 .ac-hint {
-  margin: 0.4rem 0 0;
-  font-size: 0.62rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.58rem;
   color: var(--ac-dim);
   font-family: var(--ac-mono);
 }
 
-/* Feeds */
+/* ── Feeds ────────────────────────────────────────────────────────── */
 .ac-feeds {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.4rem;
   min-height: 0;
-  padding: 0.55rem;
+  min-width: 0;
+  padding: 0.5rem;
   background: #07070a;
   overflow: hidden;
 }
@@ -392,15 +461,15 @@ body.ac-body {
 .ac-feed header {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.5rem;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
   border-bottom: 1px solid var(--ac-border);
   background: var(--ac-elev);
   flex-shrink: 0;
 }
 .ac-role {
   font-family: var(--ac-mono);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -415,7 +484,7 @@ body.ac-body {
 }
 .ac-feed-status {
   font-family: var(--ac-mono);
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   color: var(--ac-dim);
   text-transform: uppercase;
   margin-left: auto;
@@ -432,7 +501,7 @@ body.ac-body {
   background: transparent;
   color: var(--ac-dim);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   padding: 0 0.15rem;
 }
 .ac-icon-btn:hover {
@@ -440,23 +509,51 @@ body.ac-body {
 }
 
 .ac-feed-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   margin: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 0.4rem 0.5rem;
   font-family: var(--ac-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   line-height: 1.4;
   color: #c4c4cc;
   white-space: pre-wrap;
   word-break: break-word;
+  outline: none;
+  transform: translateZ(0);
 }
 
 .ac-feed footer {
   display: flex;
-  gap: 0.3rem;
-  padding: 0.3rem 0.4rem;
+  gap: 0.28rem;
+  padding: 0.28rem 0.35rem;
   border-top: 1px solid var(--ac-border);
   flex-shrink: 0;
+}
+
+/* Toast */
+.ac-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: 90%;
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(20, 22, 28, 0.95);
+  border: 1px solid rgba(110, 203, 255, 0.35);
+  color: #e8eaed;
+  font-family: var(--ac-mono);
+  font-size: 0.65rem;
+  pointer-events: none;
+}
+.ac-toast.err {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
 }
