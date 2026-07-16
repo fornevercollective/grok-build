@@ -83,19 +83,22 @@ Model strip → panes get `GROK_MODEL` / `PANDA_MODEL_*` so `grok` picks up inte
 
 ## Roadmap
 
+**Authoritative staged plan:** [Fleet funnel · build order](#/23-fleet-funnel) (stages 1–4 + this week’s tickets).
+
 1. [x] Rescue crate from history → `experiments/panda-shell`  
 2. [x] Document product + fork leverage fit  
-3. [ ] Lab button: **Open in Panda** (spawn `panda new lab-α` / `lab-β` / `lab-γ`)  
-4. [ ] Map `/api/shells` handoffs to panda session titles / status line  
-5. [ ] GrokPtah-inspired tool strip (optional overlay)  
-6. [ ] Mu wgpu path for frost where it earns FPS  
-7. [ ] Install story: `panda install` + optional brew/cask later  
+3. [ ] Lab button: **Open in Panda** (spawn `panda new lab-fleet --splits 3`) — funnel **1.1**  
+4. [ ] Map `/api/shells` handoffs to panda status — funnel **1.3**  
+5. [ ] Deploy recipes + tool-card strip — funnel **2.2 / 2.3**  
+6. [ ] Mu wgpu path for frost where it earns FPS — funnel **4.1**  
+7. [ ] Install story: `panda install` + optional brew/cask later — funnel **3.3**  
 
 ---
 
 ## Related
 
 - Code: [`experiments/panda-shell/README.md`](../../../experiments/panda-shell/README.md)  
+- [Fleet funnel · build order](#/23-fleet-funnel)  
 - [Fork leverage map](#/19-fork-leverage)  
 - [Triple shell](#/21-triple-shell)  
 - [Lab shells](#/15-lab-shells)  

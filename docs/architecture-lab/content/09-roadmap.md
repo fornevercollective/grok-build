@@ -19,6 +19,7 @@ Living board — check items off, add new ones freely.
 - [x] Triple shell bus — α plan · β build · γ verify handoffs (`/api/shells` · Ship panel · `21-triple-shell`)  
 - [x] Fork leverage map (`19-fork-leverage`) + merge/conflicts handoff page (`20-merge-and-conflicts`)  
 - [x] **Panda shell** rescued to `experiments/panda-shell` + lab page `#/22-panda-shell` (Mu-class terminal product)  
+- [x] **Fleet funnel** execution plan `#/23-fleet-funnel` (stages 1–4 + tickets)  
 
 ## Next
 

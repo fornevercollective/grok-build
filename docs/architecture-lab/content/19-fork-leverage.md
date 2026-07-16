@@ -111,6 +111,8 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 
 ### Natural next build (fleet)
 
+**Full execution funnel (staged tickets + exit demos):** [Fleet funnel · build order](#/23-fleet-funnel).
+
 1. **Panda** multi-tab PTY host (this repo) + GrokPtah UX patterns — not Tauri wholesale  
 2. Lab **Open in Panda** for α/β/γ triple shell  
 3. gork / no-telemetry as optional child-process privacy later  
@@ -121,6 +123,7 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 
 ## Related lab pages
 
+- [Fleet funnel · build order](#/23-fleet-funnel)  
 - [How to leverage further](#/07-leverage)  
 - [Ship everything · x.ai/cli](#/17-ship-everything)  
 - [Triple shell · handoffs](#/21-triple-shell)  

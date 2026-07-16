@@ -37,7 +37,8 @@
         { "id": "11-local-stack", "label": "Local stack recipes" },
         { "id": "15-lab-shells", "label": "Lab shells · native vs Electron" },
         { "id": "19-fork-leverage", "label": "Fork leverage map" },
-        { "id": "22-panda-shell", "label": "Panda shell · new terminal app" }
+        { "id": "22-panda-shell", "label": "Panda shell · new terminal app" },
+        { "id": "23-fleet-funnel", "label": "Fleet funnel · build order" }
       ]
     },
     {
