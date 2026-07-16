@@ -12,14 +12,14 @@ Local path (Mini): `/Volumes/qbitOS/00.dev/projects/grok-build`
 
 ---
 
-## Current state (after laptop pull)
+## Current state
 
 | Item | Value |
 |------|--------|
-| **HEAD (example)** | `5639ec2` *Blend Mac Mini lab 0.3.x with community fork leverage map* (then later commits) |
-| **Working tree** | Should be clean after `git pull --ff-only origin main` |
 | **Remotes** | `origin` + `upstream` configured |
 | **Pages** | Deploys lab from `docs/architecture-lab/**` on push to `main` |
+| **Upstream sync (2026-07-16)** | Path-checkout of `upstream/main` into `crates/`, `third_party/`, `prod/`, root manifests — **lab `docs/` kept**. Removed fork-only `panda-shell`. Verified `cargo check -p xai-grok-pager-bin`. |
+| **Still no merge-base** | Histories remain unrelated; future updates use the same path-checkout recipe (B below). |
 
 ```bash
 cd /Volumes/qbitOS/00.dev/projects/grok-build   # or your laptop clone

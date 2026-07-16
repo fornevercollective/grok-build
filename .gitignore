@@ -2,7 +2,7 @@
 **/*.rs.bk
 .DS_Store
 
-# Local / lab build artifacts (never push)
+# --- fornevercollective / lab (keep after upstream sync) ---
 target/
 **/target/
 docs/architecture-lab/native/target/

@@ -4,7 +4,6 @@
 resolver = "2"
 members = [
     "crates/build/xai-proto-build",
-    "crates/codegen/panda-shell",
     "crates/codegen/ptyctl",
     "crates/codegen/ptyctl-cli",
     "crates/codegen/xai-acp-lib",
