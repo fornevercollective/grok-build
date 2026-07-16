@@ -125,6 +125,15 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         )),
     );
     let unlink_all = MenuItem::with_id("unlink_all", "Unlink All (Undock)", true, None);
+    let arrange = MenuItem::with_id(
+        "arrange",
+        "Arrange Windows",
+        true,
+        Some(Accelerator::new(
+            Some(Modifiers::META | Modifiers::SHIFT),
+            Code::KeyY,
+        )),
+    );
     let open_launch = MenuItem::with_id(
         "open_launch",
         "Open Launch Pad",
@@ -170,6 +179,7 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         &undock_stream,
         &link_all,
         &unlink_all,
+        &arrange,
         &PredefinedMenuItem::separator(),
         &win_hide_chat,
         &win_hide_stream,
@@ -307,6 +317,9 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
         }
         "unlink_all" => {
             let _ = proxy.send_event(ControlCmd::UnlinkAll);
+        }
+        "arrange" => {
+            let _ = proxy.send_event(ControlCmd::Arrange);
         }
         "check_updates" => {
             let _ = proxy.send_event(ControlCmd::CheckUpdates);

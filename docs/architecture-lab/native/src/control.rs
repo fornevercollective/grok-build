@@ -39,6 +39,8 @@ pub enum ControlCmd {
     LinkAll,
     /// Undock all satellites (leave visible)
     UnlinkAll,
+    /// Smart-organize all visible windows around the lab (no force-show)
+    Arrange,
     SetAlwaysOnTop { target: WinTarget, on: bool },
     SetDecorations { target: WinTarget, on: bool },
     Minimize { target: WinTarget },
@@ -284,6 +286,7 @@ impl ControlRequest {
             }),
             "link" | "link_all" | "dock_all" => Ok(ControlCmd::LinkAll),
             "unlink" | "unlink_all" | "undock_all" => Ok(ControlCmd::UnlinkAll),
+            "arrange" | "organize" | "tidy" | "layout" => Ok(ControlCmd::Arrange),
             "drag" | "drag_window" => Ok(ControlCmd::DragWindow {
                 target: self.target,
             }),

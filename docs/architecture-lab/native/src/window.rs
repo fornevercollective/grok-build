@@ -702,6 +702,9 @@ fn handle_ipc(body: &str, target: WinTarget, proxy: &EventLoopProxy<ControlCmd>)
         "unlink_all" | "undock_all" => {
             let _ = proxy.send_event(ControlCmd::UnlinkAll);
         }
+        "arrange" | "organize" | "tidy" | "layout" => {
+            let _ = proxy.send_event(ControlCmd::Arrange);
+        }
         "center" => {
             let _ = proxy.send_event(ControlCmd::Center { target });
         }
@@ -924,8 +927,9 @@ document.addEventListener("DOMContentLoaded", function(){{
       '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream feed (Cmd+3)">Stream</button>' +
       '<button type="button" class="lnb-btn primary" data-c="open_agent" data-no-drag title="Agent console · center chat + αβγ feeds">Agent</button>' +
       '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Multi-term · Panda prompt fleet αβγ (Cmd+Shift+P)">Multi</button>' +
-      '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab">Link</button>' +
-      '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock all satellites">Unlink</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="arrange" data-no-drag title="Smart arrange all visible windows">Arrange</button>' +
+      '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab flanks">Link</button>' +
+      '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock chat + stream (free float)">Unlink</button>' +
       '<button type="button" class="lnb-btn" data-c="center" data-t="lab" data-no-drag title="Center">Ctr</button>' +
       '<button type="button" class="lnb-btn" data-c="pin" data-t="lab" data-no-drag title="Always on top" id="lnb-pin">Pin</button>' +
       '<button type="button" class="lnb-btn" data-c="refresh" data-t="lab" data-no-drag title="Refresh">R</button>';
@@ -1004,6 +1008,14 @@ document.addEventListener("DOMContentLoaded", function(){{
             method: "POST",
             headers: {{ "Content-Type": "application/json" }},
             body: JSON.stringify({{ action: "show_launch" }})
+          }});
+          return;
+        }}
+        if (action === "arrange" || action === "organize" || action === "tidy") {{
+          fetch("/api/control", {{
+            method: "POST",
+            headers: {{ "Content-Type": "application/json" }},
+            body: JSON.stringify({{ action: "arrange" }})
           }});
           return;
         }}
@@ -1120,6 +1132,14 @@ fn lab_pair<'a>(windows: &'a HashMap<WindowId, WinPair>) -> Option<&'a WinPair> 
     windows.values().find(|p| p.role == Role::Lab)
 }
 
+fn role_visible(windows: &HashMap<WindowId, WinPair>, role: Role) -> bool {
+    windows
+        .values()
+        .any(|p| p.role == role && p.window.is_visible())
+}
+
+/// Docked satellites only — **visible** chat/stream stick to lab flanks.
+/// Hidden docked windows are left alone (no phantom “link everything” jump).
 fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
     let Some(lab) = lab_pair(windows) else {
         return;
@@ -1131,51 +1151,232 @@ fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutStat
     let lw = lab_size.width as i32;
     let lh = lab_size.height as i32;
 
-    // Collect positions first to avoid borrow issues
-    let chat_size = windows
+    let chat_sz = windows
         .values()
-        .find(|p| p.role == Role::Chat)
+        .find(|p| p.role == Role::Chat && p.window.is_visible())
         .map(|p| p.window.outer_size());
-    let stream_size = windows
+    let stream_sz = windows
         .values()
-        .find(|p| p.role == Role::Stream)
+        .find(|p| p.role == Role::Stream && p.window.is_visible())
         .map(|p| p.window.outer_size());
 
     if layout.chat_docked {
-        if let Some(sz) = chat_size {
+        if let Some(sz) = chat_sz {
+            let side_w = sz.width.clamp(300, 380);
+            let side_h = (lh as u32).saturating_sub(8).max(420);
             let x = lx + lw + DOCK_GAP;
             let y = ly;
-            // match height roughly if taller lab
-            let _ = sz;
             for p in windows.values() {
-                if p.role == Role::Chat {
-                    p.window
-                        .set_outer_position(PhysicalPosition::new(x, y));
-                    // optional: match lab height
-                    p.window
-                        .set_inner_size(PhysicalSize::new(sz.width, (lh as u32).saturating_sub(20).max(400)));
+                if p.role == Role::Chat && p.window.is_visible() {
+                    p.window.set_outer_position(PhysicalPosition::new(x, y));
+                    p.window.set_inner_size(PhysicalSize::new(side_w, side_h));
                 }
             }
         }
     }
     if layout.stream_docked {
-        if let Some(sz) = stream_size {
-            let x = lx - sz.width as i32 - DOCK_GAP;
+        if let Some(sz) = stream_sz {
+            let side_w = sz.width.clamp(300, 380);
+            let side_h = (lh as u32).saturating_sub(8).max(360);
+            let x = (lx - side_w as i32 - DOCK_GAP).max(8);
             let y = ly;
             for p in windows.values() {
-                if p.role == Role::Stream {
-                    p.window.set_outer_position(PhysicalPosition::new(
-                        x.max(8),
-                        y,
-                    ));
-                    p.window.set_inner_size(PhysicalSize::new(
-                        sz.width,
-                        (lh as u32).saturating_sub(20).max(360),
-                    ));
+                if p.role == Role::Stream && p.window.is_visible() {
+                    p.window.set_outer_position(PhysicalPosition::new(x, y));
+                    p.window.set_inner_size(PhysicalSize::new(side_w, side_h));
                 }
             }
         }
     }
+}
+
+/// Smart workspace layout for **all visible** surfaces.
+///
+/// ```text
+/// ┌─ Stream ─┬────── Lab ──────┬─ Chat ─┐
+/// │ (dock)   │                 │ (dock) │
+/// ├──────────┴─────────────────┴────────┤
+/// │ Launch (TR)        Agent (below)    │
+/// └─────────────────────────────────────┘
+/// ```
+/// Undocked chat/stream keep free corners; Agent/Launch always get a slot.
+fn arrange_workspace(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+    let Some(lab) = lab_pair(windows) else {
+        return;
+    };
+    let mon = lab.window.current_monitor();
+    let (screen_w, screen_h, mon_x, mon_y) = if let Some(m) = mon {
+        let s = m.size();
+        let p = m.position();
+        (s.width as i32, s.height as i32, p.x, p.y)
+    } else {
+        (1440, 900, 0, 0)
+    };
+    let margin = 12i32;
+    let gap = DOCK_GAP;
+
+    // Ensure lab is on-screen and leave room for side docks when those are visible+docked
+    let lab_size = lab.window.outer_size();
+    let mut lw = lab_size.width as i32;
+    let mut lh = lab_size.height as i32;
+    let mut lx;
+    let mut ly;
+
+    let chat_vis = role_visible(windows, Role::Chat);
+    let stream_vis = role_visible(windows, Role::Stream);
+    let agent_vis = role_visible(windows, Role::Agent);
+    let launch_vis = role_visible(windows, Role::Launch);
+
+    let side_w = 340i32;
+    let need_left = stream_vis && layout.stream_docked;
+    let need_right = chat_vis && layout.chat_docked;
+
+    // Fit lab into remaining work area
+    let left_reserve = if need_left { side_w + gap } else { margin };
+    let right_reserve = if need_right { side_w + gap } else { margin };
+    let max_lab_w = (screen_w - left_reserve - right_reserve - margin).max(480);
+    let top_reserve = mon_y + 48;
+    let bottom_reserve = if agent_vis { 280 + gap } else { margin + 24 };
+    let max_lab_h = (screen_h - (top_reserve - mon_y) - bottom_reserve).max(400);
+
+    if lw > max_lab_w {
+        lw = max_lab_w;
+    }
+    if lh > max_lab_h {
+        lh = max_lab_h;
+    }
+    lx = mon_x + left_reserve;
+    ly = top_reserve;
+    // Center lab horizontally in free band when only one side dock
+    if !need_left && need_right {
+        lx = mon_x + margin + ((screen_w - margin - right_reserve - lw) / 2).max(0);
+    } else if need_left && !need_right {
+        let free = screen_w - left_reserve - margin;
+        lx = mon_x + left_reserve + ((free - lw) / 2).max(0);
+    } else if !need_left && !need_right {
+        lx = mon_x + ((screen_w - lw) / 2).max(margin);
+    }
+
+    for p in windows.values() {
+        if p.role == Role::Lab {
+            p.window
+                .set_outer_position(PhysicalPosition::new(lx, ly));
+            p.window
+                .set_inner_size(PhysicalSize::new(lw as u32, lh as u32));
+        }
+    }
+
+    // Re-read lab frame after resize
+    let (lx, ly, lw, lh) = {
+        let lab = lab_pair(windows).unwrap();
+        let pos = lab.window.outer_position().unwrap_or(PhysicalPosition::new(lx, ly));
+        let sz = lab.window.outer_size();
+        (pos.x, pos.y, sz.width as i32, sz.height as i32)
+    };
+
+    // Docked flanks (visible only)
+    snap_docked(windows, layout);
+
+    // Free-float undocked chat / stream → corners, clear of lab
+    if chat_vis && !layout.chat_docked {
+        for p in windows.values() {
+            if p.role == Role::Chat {
+                let sz = p.window.outer_size();
+                let x = mon_x + screen_w - sz.width as i32 - margin;
+                let y = mon_y + screen_h - sz.height as i32 - margin - 28;
+                p.window
+                    .set_outer_position(PhysicalPosition::new(x.max(mon_x + margin), y.max(ly)));
+            }
+        }
+    }
+    if stream_vis && !layout.stream_docked {
+        for p in windows.values() {
+            if p.role == Role::Stream {
+                let sz = p.window.outer_size();
+                let x = mon_x + margin;
+                let y = mon_y + screen_h - sz.height as i32 - margin - 28;
+                p.window
+                    .set_outer_position(PhysicalPosition::new(x, y.max(ly)));
+            }
+        }
+    }
+
+    // Launch pad — top-right of lab (or screen right if chat docked there)
+    if launch_vis {
+        let launch_w = 480u32;
+        let launch_h = 560u32;
+        let x = if need_right {
+            // above chat column slightly inset
+            lx + lw + gap
+        } else {
+            mon_x + screen_w - launch_w as i32 - margin
+        };
+        let y = mon_y + 48;
+        for p in windows.values() {
+            if p.role == Role::Launch {
+                p.window.set_inner_size(PhysicalSize::new(launch_w, launch_h));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    x.min(mon_x + screen_w - launch_w as i32 - margin)
+                        .max(mon_x + margin),
+                    y,
+                ));
+            }
+        }
+    }
+
+    // Agent — below lab spanning lab width (+ side docks if present)
+    if agent_vis {
+        let left = if need_left {
+            (lx - side_w - gap).max(mon_x + margin)
+        } else {
+            lx
+        };
+        let right = if need_right {
+            lx + lw + gap + side_w
+        } else {
+            lx + lw
+        };
+        let agent_w = ((right - left) as u32).clamp(720, 1400);
+        let agent_h = 320u32;
+        let x = left;
+        let y = ly + lh + gap;
+        // If below would fall off screen, park right of lab under chat/stream free zone
+        let y = if y + agent_h as i32 > mon_y + screen_h - margin {
+            (mon_y + screen_h - agent_h as i32 - margin).max(ly)
+        } else {
+            y
+        };
+        for p in windows.values() {
+            if p.role == Role::Agent {
+                p.window
+                    .set_inner_size(PhysicalSize::new(agent_w, agent_h.min(420)));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    x.max(mon_x + margin),
+                    y,
+                ));
+            }
+        }
+    }
+}
+
+/// After showing one surface: snap docks if needed, then light-arrange free windows.
+fn after_show_layout(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+    layout.suppressing_move = true;
+    // Prefer full arrange when 2+ satellites visible so nothing stacks on lab.
+    let n_sat = [Role::Chat, Role::Stream, Role::Agent, Role::Launch]
+        .iter()
+        .filter(|r| role_visible(windows, **r))
+        .count();
+    if n_sat >= 2 {
+        arrange_workspace(windows, layout);
+    } else {
+        snap_docked(windows, layout);
+        // Still park single free-float (agent/launch) off lab center
+        if role_visible(windows, Role::Agent) || role_visible(windows, Role::Launch) {
+            arrange_workspace(windows, layout);
+        }
+    }
+    layout.suppressing_move = false;
 }
 
 fn handle_moved(
@@ -1301,11 +1502,7 @@ fn apply_cmd(
                     bus.set_chat_visible(true);
                 }
             }
-            if layout.chat_docked {
-                layout.suppressing_move = true;
-                snap_docked(windows, layout);
-                layout.suppressing_move = false;
-            }
+            after_show_layout(windows, layout);
             Ok(())
         }
         ControlCmd::OpenChatIndependent => {
@@ -1362,11 +1559,8 @@ fn apply_cmd(
                     bus.set_stream_visible(true);
                 }
             }
-            if layout.stream_docked {
-                layout.suppressing_move = true;
-                snap_docked(windows, layout);
-                layout.suppressing_move = false;
-            }
+            // Only snaps **visible** docked panes — does not drag hidden chat into the link.
+            after_show_layout(windows, layout);
             Ok(())
         }
         ControlCmd::HideStream => {
@@ -1407,6 +1601,7 @@ fn apply_cmd(
                     p.window.set_focus();
                 }
             }
+            after_show_layout(windows, layout);
             Ok(())
         }
         ControlCmd::HideAgent => {
@@ -1449,6 +1644,7 @@ fn apply_cmd(
                     p.window.set_focus();
                 }
             }
+            after_show_layout(windows, layout);
             Ok(())
         }
         ControlCmd::HideLaunch => {
@@ -1517,7 +1713,7 @@ fn apply_cmd(
                 WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => {}
             }
             layout.suppressing_move = true;
-            snap_docked(windows, layout);
+            arrange_workspace(windows, layout);
             layout.suppressing_move = false;
             Ok(())
         }
@@ -1587,12 +1783,15 @@ fn apply_cmd(
                         bus.set_stream_visible(true);
                     }
                     Role::Agent | Role::Launch | Role::Lab => {
-                        p.window.set_visible(true);
+                        // Link = dock chat/stream only; don't force-show agent/launch.
+                        if p.role == Role::Lab {
+                            p.window.set_visible(true);
+                        }
                     }
                 }
             }
             layout.suppressing_move = true;
-            snap_docked(windows, layout);
+            arrange_workspace(windows, layout);
             layout.suppressing_move = false;
             Ok(())
         }
@@ -1601,6 +1800,12 @@ fn apply_cmd(
             layout.stream_docked = false;
             bus.set_chat_docked(false);
             bus.set_stream_docked(false);
+            Ok(())
+        }
+        ControlCmd::Arrange => {
+            layout.suppressing_move = true;
+            arrange_workspace(windows, layout);
+            layout.suppressing_move = false;
             Ok(())
         }
         ControlCmd::FocusLab => {

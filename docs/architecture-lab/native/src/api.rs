@@ -85,7 +85,7 @@ async fn control_help() -> Json<Value> {
             "show_chat", "hide_chat", "toggle_chat", "focus_chat", "focus_lab",
             "show_stream", "hide_stream", "toggle_stream", "focus_stream",
             "dock_chat", "undock_chat", "dock_stream", "undock_stream",
-            "link_all", "unlink_all", "dock", "undock",
+            "link_all", "unlink_all", "arrange", "organize", "tidy", "dock", "undock",
             "pin", "unpin", "decorations", "minimize", "maximize", "close",
             "center", "move", "resize", "eval", "error",
             "refresh", "refresh_lab", "refresh_chat", "refresh_stream", "refresh_agent", "refresh_launch", "refresh_all",
