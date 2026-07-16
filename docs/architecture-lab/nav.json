@@ -42,7 +42,9 @@
         { "id": "24-abc-path", "label": "A·B·C path · center + 3 feeds" },
         { "id": "25-colossus-dojo-lts", "label": "Colossus/Dojo LTS · public-folder" },
         { "id": "26-dev-off-grok-cli-overview", "label": "Dev-off · grok-cli · overview · xai-org" },
-        { "id": "27-upstream-tools-sync", "label": "Upstream tools sync · Lab 1–4+" }
+        { "id": "27-upstream-tools-sync", "label": "Upstream tools sync · Lab 1–4+" },
+        { "id": "28-versioning-upstream", "label": "Versioning · DotSlash · SOURCE_REV" },
+        { "id": "29-grok-voice-spheres", "label": "Grok Voice · spheres · x.ai/voice" }
       ]
     },
     {

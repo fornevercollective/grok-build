@@ -123,3 +123,9 @@ upstream:
         - skip: OAuth workspace scopes, enterprise STT, settings_modal
     - sha: c68e39f
       subject: Publish harness and TUI open-source
+  source_rev_file: SOURCE_REV
+  docs:
+    versioning: content/28-versioning-upstream.md
+    tools_sync: content/27-upstream-tools-sync.md
+    voice: content/29-grok-voice-spheres.md
+  sync_script: scripts/sync-upstream-path-checkout.sh

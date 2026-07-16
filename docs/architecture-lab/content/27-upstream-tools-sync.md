@@ -9,7 +9,8 @@
 # checks out: crates/ Cargo.* SOURCE_REV README bin/ third_party/ prod/ …
 ```
 
-`SOURCE_REV` records monorepo commit: see repo root file.
+`SOURCE_REV` records monorepo commit: see repo root file.  
+Full versioning map (DotSlash · lab semver · pins): [Versioning · upstream](#/28-versioning-upstream).
 
 ### Tool packs now in tree (`crates/codegen/xai-grok-tools`)
 

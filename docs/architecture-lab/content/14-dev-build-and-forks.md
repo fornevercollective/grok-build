@@ -2,6 +2,23 @@
 
 Single map for **how this lab is built**, **what versions mean**, **where code diverges**, and **whether we meet plugin + contributing guidelines**.
 
+**Canonical versioning + upstream pins:** [Versioning · DotSlash · SOURCE_REV](#/28-versioning-upstream)  
+**Tool inventory after monorepo sync:** [Upstream tools sync](#/27-upstream-tools-sync)
+
+### Quick pins (re-fetch to refresh)
+
+| Pin | Meaning |
+|-----|---------|
+| `SOURCE_REV` | Monorepo SHA baked into public tree |
+| `upstream/main` tip | e.g. `8adf901` *Synced from monorepo* |
+| Lab `lab_semver` | `docs/architecture-lab/version.json` (float shell + docs) |
+| DotSlash | Required for `cargo build -p xai-grok-pager-bin` (not Lab native) |
+
+```bash
+./scripts/sync-upstream-path-checkout.sh   # path-checkout crates/ only
+cat SOURCE_REV && git log -1 --oneline upstream/main
+```
+
 ---
 
 ## Compliance snapshot (living)

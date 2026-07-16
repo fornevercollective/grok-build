@@ -5,6 +5,6 @@
   "ref": "local",
   "built_at": "",
   "source": "repo",
-  "lab_semver": "0.3.10",
+  "lab_semver": "0.3.11",
   "note": "lab_semver tracks package.json / native crate marketing version. sha/short are git identity — overwritten on GitHub Pages deploy; local serve.sh answers /version.json live from git. See content/14-dev-build-and-forks.md"
 }

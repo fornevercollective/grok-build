@@ -63,14 +63,22 @@
     const id = String(v.voice_id || v.id || v.name || "voice" + i)
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, "");
+    const gen =
+      v.gen ||
+      (v.custom || v.is_custom
+        ? "clone"
+        : v.generation === "original"
+          ? "original"
+          : "flagship");
     return {
       id,
       name: v.name || id,
-      gen: v.gen || (v.generation === "original" ? "original" : "flagship"),
+      gen: gen,
       tone: v.tone || v.description || v.personality || "",
       hue: typeof v.hue === "number" ? v.hue : hashHue(id),
       role: v.role || v.category || "general",
-      custom: !!v.custom || !!v.is_custom,
+      suite: Array.isArray(v.suite) ? v.suite : ["tts"],
+      custom: !!v.custom || !!v.is_custom || gen === "clone",
     };
   }
 
@@ -162,14 +170,26 @@
     if (state.filter === "all") return state.voices;
     if (state.filter === "original") return state.voices.filter((v) => v.gen === "original");
     if (state.filter === "flagship") return state.voices.filter((v) => v.gen === "flagship");
+    if (state.filter === "clone") return state.voices.filter((v) => v.gen === "clone" || v.custom);
+    if (state.filter === "sts")
+      return state.voices.filter((v) => !v.suite || v.suite.indexOf("sts") >= 0 || v.gen === "original");
+    if (state.filter === "tts")
+      return state.voices.filter((v) => !v.suite || v.suite.indexOf("tts") >= 0);
     return state.voices.filter((v) => v.role === state.filter);
   }
 
   function sizeFor(v, i, n) {
-    // Slightly larger so official marks stay legible
-    if (v.id === state.selected) return 40;
-    if (v.gen === "original") return 34;
+    // Variation sizing: original larger · flagship mid · clone compact
+    if (v.id === state.selected) return 42;
+    if (v.gen === "original") return 36;
+    if (v.gen === "clone" || v.custom) return 26;
     return 28 + (i % 3) * 2;
+  }
+
+  function variationClass(v) {
+    const g = v.gen || "flagship";
+    const r = (v.role || "general").replace(/[^a-z0-9_-]/gi, "");
+    return "vc-gen-" + g + " vc-role-" + r + (v.custom ? " vc-custom" : "");
   }
 
   /** Official Grok logomark only — unaltered (see content/12-brand.md).
@@ -202,10 +222,20 @@
     list.forEach((v, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "voice-sphere" + (v.id === state.selected ? " vc-active" : "");
+      btn.className =
+        "voice-sphere " +
+        variationClass(v) +
+        (v.id === state.selected ? " vc-active" : "");
       btn.dataset.voiceId = v.id;
-      btn.setAttribute("aria-label", v.name + " voice");
-      btn.title = v.name + (v.tone ? " — " + v.tone : "");
+      btn.dataset.gen = v.gen || "flagship";
+      btn.dataset.role = v.role || "general";
+      btn.setAttribute("aria-label", v.name + " voice · " + (v.gen || ""));
+      btn.title =
+        v.name +
+        (v.tone ? " — " + v.tone : "") +
+        " · " +
+        (v.gen || "flagship") +
+        (v.role ? " · " + v.role : "");
 
       const pos = saved[v.id] || layout[i] || { x: 50, y: 50 };
       btn.style.left = pos.x + "%";
@@ -216,18 +246,33 @@
       btn.style.setProperty("--dur", 5.5 + (i % 5) * 0.7 + "s");
       btn.style.setProperty("--delay", -(i * 0.35) + "s");
 
-      // Official SpaceXAI / Grok mark (unaltered) + hue halo via CSS ::before
+      const genLabel =
+        v.gen === "clone" || v.custom
+          ? "clone"
+          : v.gen === "original"
+            ? "original"
+            : "flagship";
+
+      // Official Grok mark (unaltered) + hue halo + variation ring
       btn.innerHTML =
+        '<span class="vc-ring" aria-hidden="true"></span>' +
         '<img class="vc-brand" src="' +
         brandSrcFor(v) +
         '" alt="' +
         escapeHtml(brandAltFor(v)) +
         '" width="48" height="48" draggable="false" />' +
+        '<span class="vc-badge">' +
+        escapeHtml(genLabel) +
+        "</span>" +
         '<span class="vc-tip"><strong>' +
         escapeHtml(v.name) +
         "</strong>" +
         (v.tone ? "<em>" + escapeHtml(v.tone) + "</em>" : "") +
-        (v.gen === "flagship" ? "<em>Grok Voice · flagship</em>" : "<em>Grok Voice · original</em>") +
+        "<em>Grok Voice · " +
+        escapeHtml(genLabel) +
+        (v.role ? " · " + escapeHtml(v.role) : "") +
+        "</em>" +
+        '<em><a href="https://x.ai/voice" target="_blank" rel="noopener">x.ai/voice</a></em>' +
         "</span>";
 
       wireSphere(btn, v);
@@ -444,10 +489,20 @@
       "</div>" +
       '<div class="voice-filter-row" id="voice-filter-row">' +
       '<button type="button" data-voice-filter="all" class="on">All</button>' +
-      '<button type="button" data-voice-filter="original">Original</button>' +
-      '<button type="button" data-voice-filter="flagship">Flagship</button>' +
+      '<button type="button" data-voice-filter="original" title="Ara Eve Leo Rex Sal">Original</button>' +
+      '<button type="button" data-voice-filter="flagship" title="TTS flagship library">Flagship</button>' +
+      '<button type="button" data-voice-filter="clone" title="Custom clones">Clone</button>' +
+      '<button type="button" data-voice-filter="sts" title="Speech-to-speech agents">STS</button>' +
+      '<button type="button" data-voice-filter="tts" title="Text-to-speech">TTS</button>' +
       '<button type="button" data-voice-filter="support">Support</button>' +
       '<button type="button" data-voice-filter="wellness">Wellness</button>' +
+      "</div>" +
+      '<div class="voice-suite-strip" id="voice-suite-strip" aria-label="Grok Voice suite">' +
+      '<a href="https://x.ai/voice" target="_blank" rel="noopener">STS</a>' +
+      '<a href="https://x.ai/voice/text-to-speech" target="_blank" rel="noopener">TTS</a>' +
+      '<a href="https://x.ai/voice/speech-to-text" target="_blank" rel="noopener">STT</a>' +
+      '<a href="https://x.ai/voice/cloning" target="_blank" rel="noopener">Clone</a>' +
+      '<a href="https://x.ai/voice/translation" target="_blank" rel="noopener">Translate</a>' +
       "</div>" +
       '<div class="voice-sphere-field" id="voice-sphere-field" aria-label="Grok Voice models"></div>' +
       '<div class="voice-constellation-actions">' +
@@ -455,7 +510,7 @@
       '<button type="button" class="btn-mini" id="btn-voice-scatter">Scatter</button>' +
       '<button type="button" class="btn-mini" id="btn-voice-refresh">Refresh</button>' +
       "</div>" +
-      '<p class="chat-meta" id="voice-constellation-status" style="margin-top:0.35rem">Grok logomark · hue halo only · click to select</p>';
+      '<p class="chat-meta" id="voice-constellation-status" style="margin-top:0.35rem">Variations · original / flagship / clone · <a href="https://x.ai/voice" target="_blank" rel="noopener">x.ai/voice</a></p>';
 
     const stage = document.getElementById("chat-stage");
     if (stage && stage.nextSibling) {

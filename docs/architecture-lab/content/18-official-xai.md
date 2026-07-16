@@ -162,7 +162,7 @@ Long-context rate (example **grok-4.5** ≥200k): input $4.00 · cached $1.00 ·
 | Surface | Prefer |
 |---------|--------|
 | Grok Build TUI / agent coding | **grok-4.5** (or account default) · coding-oriented **grok-build-0.1** when offered |
-| Lab chat voice path | Voice API pricing above · local Listen is intent routing only |
+| Lab chat voice path | Voice API pricing above · [Voice spheres](#/29-grok-voice-spheres) · [x.ai/voice](https://x.ai/voice) · local Listen is intent routing only |
 | Headless CI | Pin `-<date>` alias if reproducibility matters |
 | Cost control | Prefer cached input · keep context under long-prompt threshold when possible |
 
