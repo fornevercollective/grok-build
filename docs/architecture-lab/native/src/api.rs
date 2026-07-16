@@ -59,7 +59,7 @@ async fn health(State(st): State<Arc<LabState>>) -> Json<Value> {
         "native": true,
         "shell": "architecture-lab-native",
         "webview": "system",
-        "windows": ["lab", "chat", "stream", "agent", "launch"],
+        "windows": ["lab", "chat", "stream", "agent", "launch", "browser"],
         "chat_visible": st.control.chat_visible(),
         "stream_visible": st.control.stream_visible(),
         "chat_docked": st.control.chat_docked(),
@@ -93,9 +93,11 @@ async fn control_help() -> Json<Value> {
             "open_panda", "spawn_fleet",
             "show_agent", "hide_agent", "toggle_agent",
             "show_launch", "hide_launch", "toggle_launch", "open_launch",
+            "show_browser", "hide_browser", "toggle_browser", "open_browser",
+            "navigate", "browse", "goto",
             "drag", "ping", "quit"
         ],
-        "targets": ["lab", "chat", "stream", "agent", "launch", "all"],
+        "targets": ["lab", "chat", "stream", "agent", "launch", "browser", "all"],
         "examples": [
             {"action": "show_stream"},
             {"action": "show_launch"},

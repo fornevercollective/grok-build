@@ -26,6 +26,8 @@ enum Role {
     Agent,
     /// Launch pad: View + Window menu control surface
     Launch,
+    /// Lightweight browser (Rust host + system WebKit — Ladybird-style split)
+    Browser,
 }
 
 impl Role {
@@ -36,6 +38,7 @@ impl Role {
             Role::Stream => WinTarget::Stream,
             Role::Agent => WinTarget::Agent,
             Role::Launch => WinTarget::Launch,
+            Role::Browser => WinTarget::Browser,
         }
     }
 }
@@ -56,6 +59,8 @@ struct LayoutState {
     stream_docked: bool,
     /// Suppress undock-on-move while we programmatically snap.
     suppressing_move: bool,
+    /// First-launch cluster applied (resolution-aware positions).
+    clustered: bool,
 }
 
 pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) -> Result<()> {
@@ -214,14 +219,44 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         },
     );
 
-    // Initial dock snap positions (hidden until shown)
+    // ── Browser — lazy WKWebView (simple URL surface) ──
+    let browser = build_browser_window(&event_loop)?;
+    place_browser_window(&browser);
+    browser.set_visible(false);
+    let browser_id = browser.id();
+    let browser_url = format!("{lab_url}browser.html");
+    let browser_wv = if eager {
+        Some(build_webview(
+            &browser,
+            &browser_url,
+            &browser_init_script(),
+            Role::Browser,
+            proxy.clone(),
+        )?)
+    } else {
+        None
+    };
+    windows.insert(
+        browser_id,
+        WinPair {
+            window: browser,
+            webview: browser_wv,
+            role: Role::Browser,
+            entry_url: browser_url.clone(),
+        },
+    );
+
+    // Initial dock snap + resolution cluster (hidden until shown)
     {
         let mut layout = LayoutState {
             chat_docked: true,
             stream_docked: true,
             suppressing_move: false,
+            clustered: false,
         };
+        apply_launch_cluster(&mut windows, &mut layout, float);
         snap_docked(&mut windows, &mut layout);
+        layout.clustered = true;
     }
 
     tracing::info!(
@@ -230,9 +265,10 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         %stream_url,
         agent_url = %agent_url,
         launch_url = %launch_url,
+        browser_url = %browser_url,
         float,
         eager,
-        "lab webview up · chat/stream/agent/launch {}",
+        "lab webview up · chat/stream/agent/launch/browser {}",
         if eager { "eager" } else { "lazy-on-show" }
     );
 
@@ -242,12 +278,20 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         chat_docked: true,
         stream_docked: true,
         suppressing_move: false,
+        clustered: true,
     };
 
     event_loop.run(move |event, _target, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
-            Event::NewEvents(StartCause::Init) => {}
+            Event::NewEvents(StartCause::Init) => {
+                // Re-cluster against live monitor geometry after AppKit is up.
+                layout.suppressing_move = true;
+                apply_launch_cluster(&mut windows, &mut layout, float);
+                snap_docked(&mut windows, &mut layout);
+                layout.suppressing_move = false;
+                layout.clustered = true;
+            }
             Event::UserEvent(cmd) => {
                 // Menu / HTTP control must never panic across AppKit.
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -312,7 +356,7 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
                             pair.window.set_visible(false);
                             bus_loop.set_stream_visible(false);
                         }
-                        Role::Agent | Role::Launch => {
+                        Role::Agent | Role::Launch | Role::Browser => {
                             pair.window.set_visible(false);
                         }
                         Role::Lab => {
@@ -527,6 +571,165 @@ window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
     )
 }
 
+fn build_browser_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
+    let mut wb = WindowBuilder::new()
+        .with_title("Grok Build Lab - Browser")
+        .with_decorations(false)
+        .with_always_on_top(false)
+        .with_resizable(true)
+        .with_transparent(true)
+        .with_inner_size(LogicalSize::new(960.0, 700.0))
+        .with_min_inner_size(LogicalSize::new(480.0, 360.0))
+        .with_visible(false);
+
+    #[cfg(target_os = "macos")]
+    {
+        use tao::platform::macos::WindowBuilderExtMacOS;
+        wb = wb
+            .with_titlebar_transparent(true)
+            .with_fullsize_content_view(true)
+            .with_title_hidden(true)
+            .with_has_shadow(true);
+    }
+
+    let win = wb.build(event_loop).context("build browser window")?;
+    #[cfg(target_os = "macos")]
+    crate::macos_style::apply_lab_window_shape(&win);
+    Ok(win)
+}
+
+fn place_browser_window(window: &Window) {
+    if let Some(m) = window.current_monitor() {
+        let screen = m.size();
+        let size = window.outer_size();
+        let x = (screen.width as i32 - size.width as i32 - 36).max(24);
+        let y = ((screen.height as i32 - size.height as i32) / 2).max(48);
+        window.set_outer_position(PhysicalPosition::new(x, y));
+    } else {
+        window.set_outer_position(LogicalPosition::new(120.0, 80.0));
+    }
+}
+
+fn browser_init_script() -> String {
+    let chrome = float_chrome_js("browser");
+    format!(
+        r##"
+{chrome}
+document.documentElement.classList.add("lab-native","lab-browser-surface");
+function __labMarkBrowserBody(){{
+  if (document.body) {{
+    document.body.classList.add("lab-native","lab-browser-surface","br-body");
+  }}
+}}
+__labMarkBrowserBody();
+document.addEventListener("DOMContentLoaded", __labMarkBrowserBody);
+window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
+  isDesktop: true, isNative: true, isBrowserWindow: true, shell: "wry-browser", floatChrome: true,
+  control: function(action, extra){{
+    return fetch("/api/control", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify(Object.assign({{ action: action, target: "browser" }}, extra || {{}}))
+    }}).then(function(r){{ return r.json(); }});
+  }}
+}});
+"##
+    )
+}
+
+/// Resolution-aware first-launch cluster — positions all shells for current monitor.
+/// Does not show satellites; only seeds geometry so open/dock feels intentional.
+fn apply_launch_cluster(
+    windows: &mut HashMap<WindowId, WinPair>,
+    layout: &mut LayoutState,
+    float: bool,
+) {
+    let Some(lab) = lab_pair(windows) else {
+        return;
+    };
+    let mon = lab.window.current_monitor();
+    let (sw, sh, mx, my) = if let Some(m) = mon {
+        let s = m.size();
+        let p = m.position();
+        (s.width as i32, s.height as i32, p.x, p.y)
+    } else {
+        (1440, 900, 0, 0)
+    };
+    let margin = 16i32;
+    let gap = DOCK_GAP;
+    let side_w = if sw >= 1600 {
+        360
+    } else if sw >= 1280 {
+        320
+    } else {
+        280
+    };
+    // Lab main cluster — leave flanks for stream (left) + chat (right)
+    let lab_w = ((sw - side_w * 2 - gap * 2 - margin * 2) as u32)
+        .clamp(if float { 720 } else { 900 }, 1280);
+    let lab_h = ((sh as f32 * if float { 0.72 } else { 0.78 }) as u32).clamp(520, 900);
+    let lab_x = mx + margin + side_w + gap;
+    let lab_y = my + 48;
+
+    for p in windows.values() {
+        match p.role {
+            Role::Lab => {
+                p.window
+                    .set_inner_size(PhysicalSize::new(lab_w, lab_h));
+                p.window
+                    .set_outer_position(PhysicalPosition::new(lab_x, lab_y));
+            }
+            Role::Chat => {
+                let ch = lab_h.saturating_sub(8).max(420);
+                p.window
+                    .set_inner_size(PhysicalSize::new(side_w as u32, ch));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    lab_x + lab_w as i32 + gap,
+                    lab_y,
+                ));
+            }
+            Role::Stream => {
+                let shh = lab_h.saturating_sub(8).max(360);
+                p.window
+                    .set_inner_size(PhysicalSize::new(side_w as u32, shh));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    (lab_x - side_w - gap).max(mx + margin),
+                    lab_y,
+                ));
+            }
+            Role::Agent => {
+                let aw = (lab_w + side_w as u32 * 2 + gap as u32 * 2).min(sw as u32 - 40);
+                let ah = ((sh - lab_y - lab_h as i32 - 80).max(280) as u32).min(380);
+                p.window.set_inner_size(PhysicalSize::new(aw, ah));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    (lab_x - side_w - gap).max(mx + margin),
+                    lab_y + lab_h as i32 + gap,
+                ));
+            }
+            Role::Launch => {
+                p.window
+                    .set_inner_size(PhysicalSize::new(480, 560));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    mx + sw - 500,
+                    my + 56,
+                ));
+            }
+            Role::Browser => {
+                let bw = ((sw as f32 * 0.42) as u32).clamp(640, 1000);
+                let bh = ((sh as f32 * 0.55) as u32).clamp(480, 780);
+                p.window.set_inner_size(PhysicalSize::new(bw, bh));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    mx + sw - bw as i32 - margin,
+                    my + sh / 2 - bh as i32 / 2,
+                ));
+            }
+        }
+    }
+    layout.chat_docked = true;
+    layout.stream_docked = true;
+    tracing::info!(sw, sh, lab_w, lab_h, side_w, "launch cluster applied");
+}
+
 fn build_stream_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
     let mut wb = WindowBuilder::new()
         .with_title("Grok Build Lab - Stream")
@@ -687,6 +890,18 @@ fn handle_ipc(body: &str, target: WinTarget, proxy: &EventLoopProxy<ControlCmd>)
         "focus_launch" => {
             let _ = proxy.send_event(ControlCmd::FocusLaunch);
         }
+        "show_browser" | "open_browser" | "browser" | "web" => {
+            let _ = proxy.send_event(ControlCmd::ShowBrowser);
+        }
+        "hide_browser" | "close_browser" => {
+            let _ = proxy.send_event(ControlCmd::HideBrowser);
+        }
+        "toggle_browser" => {
+            let _ = proxy.send_event(ControlCmd::ToggleBrowser);
+        }
+        "focus_browser" => {
+            let _ = proxy.send_event(ControlCmd::FocusBrowser);
+        }
         "dock" | "dock_window" => {
             let _ = proxy.send_event(ControlCmd::Dock { target });
         }
@@ -758,6 +973,7 @@ fn ensure_webview(
         Role::Stream => stream_init_script(),
         Role::Agent => agent_init_script(),
         Role::Launch => launch_init_script(),
+        Role::Browser => browser_init_script(),
     };
     let url = pair.entry_url.clone();
     if url.is_empty() {
@@ -959,10 +1175,11 @@ document.addEventListener("DOMContentLoaded", function(){{
       '<span class="lnb-sp"></span>' +
       '<button type="button" class="lnb-btn primary" data-c="open_launch" data-no-drag title="Launch pad · View + Window controls">Launch</button>' +
       '<button type="button" class="lnb-btn primary" data-c="show_chat" data-no-drag title="Open chat (Cmd+2)">Chat</button>' +
-      '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream feed (Cmd+3)">Stream</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="show_stream" data-no-drag title="Open stream only (does not move chat)">Stream</button>' +
       '<button type="button" class="lnb-btn primary" data-c="open_agent" data-no-drag title="Agent console · center chat + αβγ feeds">Agent</button>' +
-      '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Multi-term · Panda prompt fleet αβγ (Cmd+Shift+P)">Multi</button>' +
-      '<button type="button" class="lnb-btn primary" data-c="arrange" data-no-drag title="Smart arrange all visible windows">Arrange</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="open_browser" data-no-drag title="Lab browser · system WebKit">Web</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="open_panda" data-no-drag title="Multi-term · αβγ Terminals (Cmd+Shift+P)">Multi</button>' +
+      '<button type="button" class="lnb-btn primary" data-c="arrange" data-no-drag title="Cluster all visible windows">Arrange</button>' +
       '<button type="button" class="lnb-btn" data-c="link_all" data-no-drag title="Dock chat + stream to lab flanks">Dock</button>' +
       '<button type="button" class="lnb-btn" data-c="unlink_all" data-no-drag title="Undock chat + stream (free float)">Undock</button>' +
       '<button type="button" class="lnb-btn" data-c="center" data-t="lab" data-no-drag title="Center">Ctr</button>' +
@@ -1043,6 +1260,14 @@ document.addEventListener("DOMContentLoaded", function(){{
             method: "POST",
             headers: {{ "Content-Type": "application/json" }},
             body: JSON.stringify({{ action: "show_launch" }})
+          }});
+          return;
+        }}
+        if (action === "open_browser" || action === "show_browser") {{
+          fetch("/api/control", {{
+            method: "POST",
+            headers: {{ "Content-Type": "application/json" }},
+            body: JSON.stringify({{ action: "show_browser" }})
           }});
           return;
         }}
@@ -1173,9 +1398,8 @@ fn role_visible(windows: &HashMap<WindowId, WinPair>, role: Role) -> bool {
         .any(|p| p.role == role && p.window.is_visible())
 }
 
-/// Docked satellites only — **visible** chat/stream stick to lab flanks.
-/// Hidden docked windows are left alone (no phantom “link everything” jump).
-fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+/// Dock **one** satellite to lab flanks. Opening Stream never repositions Chat.
+fn snap_role(windows: &mut HashMap<WindowId, WinPair>, layout: &LayoutState, role: Role) {
     let Some(lab) = lab_pair(windows) else {
         return;
     };
@@ -1186,44 +1410,49 @@ fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutStat
     let lw = lab_size.width as i32;
     let lh = lab_size.height as i32;
 
-    let chat_sz = windows
-        .values()
-        .find(|p| p.role == Role::Chat && p.window.is_visible())
-        .map(|p| p.window.outer_size());
-    let stream_sz = windows
-        .values()
-        .find(|p| p.role == Role::Stream && p.window.is_visible())
-        .map(|p| p.window.outer_size());
+    match role {
+        Role::Chat if layout.chat_docked => {
+            if let Some(p) = windows.values().find(|p| p.role == Role::Chat && p.window.is_visible())
+            {
+                let sz = p.window.outer_size();
+                let side_w = sz.width.clamp(300, 380);
+                let side_h = (lh as u32).saturating_sub(8).max(420);
+                let x = lx + lw + DOCK_GAP;
+                for p in windows.values() {
+                    if p.role == Role::Chat && p.window.is_visible() {
+                        p.window.set_outer_position(PhysicalPosition::new(x, ly));
+                        p.window
+                            .set_inner_size(PhysicalSize::new(side_w, side_h));
+                    }
+                }
+            }
+        }
+        Role::Stream if layout.stream_docked => {
+            if let Some(p) = windows
+                .values()
+                .find(|p| p.role == Role::Stream && p.window.is_visible())
+            {
+                let sz = p.window.outer_size();
+                let side_w = sz.width.clamp(340, 420);
+                let side_h = (lh as u32).saturating_sub(8).max(360);
+                let x = (lx - side_w as i32 - DOCK_GAP).max(12);
+                for p in windows.values() {
+                    if p.role == Role::Stream && p.window.is_visible() {
+                        p.window.set_outer_position(PhysicalPosition::new(x, ly));
+                        p.window
+                            .set_inner_size(PhysicalSize::new(side_w, side_h));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
 
-    if layout.chat_docked {
-        if let Some(sz) = chat_sz {
-            let side_w = sz.width.clamp(300, 380);
-            let side_h = (lh as u32).saturating_sub(8).max(420);
-            let x = lx + lw + DOCK_GAP;
-            let y = ly;
-            for p in windows.values() {
-                if p.role == Role::Chat && p.window.is_visible() {
-                    p.window.set_outer_position(PhysicalPosition::new(x, y));
-                    p.window.set_inner_size(PhysicalSize::new(side_w, side_h));
-                }
-            }
-        }
-    }
-    if layout.stream_docked {
-        if let Some(sz) = stream_sz {
-            // Slightly wider dock so stream chrome + stage aren't clipped on left rim
-            let side_w = sz.width.clamp(340, 420);
-            let side_h = (lh as u32).saturating_sub(8).max(360);
-            let x = (lx - side_w as i32 - DOCK_GAP).max(12);
-            let y = ly;
-            for p in windows.values() {
-                if p.role == Role::Stream && p.window.is_visible() {
-                    p.window.set_outer_position(PhysicalPosition::new(x, y));
-                    p.window.set_inner_size(PhysicalSize::new(side_w, side_h));
-                }
-            }
-        }
-    }
+/// Dock both flanks (Link / Arrange / lab move only).
+fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+    snap_role(windows, layout, Role::Chat);
+    snap_role(windows, layout, Role::Stream);
 }
 
 /// Smart workspace layout for **all visible** surfaces.
@@ -1452,16 +1681,42 @@ fn place_free_satellites(windows: &mut HashMap<WindowId, WinPair>, _layout: &Lay
             }
         }
     }
+
+    if role_visible(windows, Role::Browser) {
+        let x = mon_x + screen_w - 720;
+        let y = mon_y + 80;
+        for p in windows.values() {
+            if p.role == Role::Browser && p.window.is_visible() {
+                let pos = p.window.outer_position().unwrap_or(PhysicalPosition::new(x, y));
+                let overlaps_lab =
+                    pos.x < lx + lw && pos.x + 400 > lx && pos.y < ly + lh && pos.y + 200 > ly;
+                if overlaps_lab {
+                    p.window.set_outer_position(PhysicalPosition::new(
+                        x.max(mon_x + margin),
+                        y.max(mon_y + 48),
+                    ));
+                }
+            }
+        }
+    }
 }
 
-/// After showing one surface: **gentle** layout only.
-/// Never full-arrange (lab resize) on open — that path caused multi-window freezes/crashes.
-fn after_show_layout(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+/// After showing one surface: snap **only that** satellite if docked.
+/// Opening Stream must never re-dock / re-cluster Chat (three-up glitch).
+fn after_show_layout(
+    windows: &mut HashMap<WindowId, WinPair>,
+    layout: &mut LayoutState,
+    focus: Role,
+) {
     layout.suppressing_move = true;
-    // Visible docked chat/stream only — no phantom moves of hidden panes.
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        snap_docked(windows, layout);
-        place_free_satellites(windows, layout);
+        match focus {
+            Role::Chat | Role::Stream => snap_role(windows, layout, focus),
+            Role::Agent | Role::Launch | Role::Browser => {
+                place_free_satellites(windows, layout);
+            }
+            Role::Lab => {}
+        }
     }));
     if r.is_err() {
         tracing::error!("after_show_layout panic caught");
@@ -1561,6 +1816,7 @@ fn for_target(windows: &mut HashMap<WindowId, WinPair>, target: WinTarget, mut f
             WinTarget::Stream => p.role == Role::Stream,
             WinTarget::Agent => p.role == Role::Agent,
             WinTarget::Launch => p.role == Role::Launch,
+            WinTarget::Browser => p.role == Role::Browser,
         };
         if hit {
             f(p);
@@ -1592,7 +1848,7 @@ fn apply_cmd(
                     bus.set_chat_visible(true);
                 }
             }
-            after_show_layout(windows, layout);
+            after_show_layout(windows, layout, Role::Chat);
             Ok(())
         }
         ControlCmd::OpenChatIndependent => {
@@ -1649,8 +1905,8 @@ fn apply_cmd(
                     bus.set_stream_visible(true);
                 }
             }
-            // Only snaps **visible** docked panes — does not drag hidden chat into the link.
-            after_show_layout(windows, layout);
+            // Snap **stream only** — never re-dock/rearrange Chat.
+            after_show_layout(windows, layout, Role::Stream);
             Ok(())
         }
         ControlCmd::HideStream => {
@@ -1691,7 +1947,7 @@ fn apply_cmd(
                     p.window.set_focus();
                 }
             }
-            after_show_layout(windows, layout);
+            after_show_layout(windows, layout, Role::Agent);
             Ok(())
         }
         ControlCmd::HideAgent => {
@@ -1734,7 +1990,7 @@ fn apply_cmd(
                     p.window.set_focus();
                 }
             }
-            after_show_layout(windows, layout);
+            after_show_layout(windows, layout, Role::Launch);
             Ok(())
         }
         ControlCmd::HideLaunch => {
@@ -1769,6 +2025,90 @@ fn apply_cmd(
                 )
             }
         }
+        ControlCmd::ShowBrowser | ControlCmd::FocusBrowser => {
+            for p in windows.values_mut() {
+                if p.role == Role::Browser {
+                    ensure_webview(p, proxy)?;
+                    p.window.set_visible(true);
+                    p.window.set_focus();
+                }
+            }
+            after_show_layout(windows, layout, Role::Browser);
+            Ok(())
+        }
+        ControlCmd::HideBrowser => {
+            for p in windows.values() {
+                if p.role == Role::Browser {
+                    p.window.set_visible(false);
+                }
+            }
+            Ok(())
+        }
+        ControlCmd::ToggleBrowser => {
+            let visible = windows
+                .values()
+                .any(|p| p.role == Role::Browser && p.window.is_visible());
+            if visible {
+                apply_cmd(
+                    &ControlCmd::HideBrowser,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
+            } else {
+                apply_cmd(
+                    &ControlCmd::ShowBrowser,
+                    windows,
+                    bus,
+                    layout,
+                    control_flow,
+                    proxy,
+                )
+            }
+        }
+        ControlCmd::Navigate { target, url } => {
+            let url = url.trim().to_string();
+            if url.is_empty() {
+                return Err("empty navigate url".into());
+            }
+            // Drive browser.html labBrowse() so chrome stays put.
+            let esc = url
+                .replace('\\', "\\\\")
+                .replace('\'', "\\'")
+                .replace('\n', " ");
+            let js = format!(
+                "try{{if(window.labBrowse)labBrowse('{esc}');\
+                 else if(document.getElementById('br-url')){{\
+                 document.getElementById('br-url').value='{esc}';\
+                 var f=document.getElementById('br-frame');if(f)f.src='{esc}';}}}}catch(e){{}}"
+            );
+            let ids: Vec<WindowId> = windows
+                .values()
+                .filter(|p| match target {
+                    WinTarget::All => p.role == Role::Browser,
+                    WinTarget::Browser => p.role == Role::Browser,
+                    WinTarget::Lab => p.role == Role::Lab,
+                    WinTarget::Chat => p.role == Role::Chat,
+                    WinTarget::Stream => p.role == Role::Stream,
+                    WinTarget::Agent => p.role == Role::Agent,
+                    WinTarget::Launch => p.role == Role::Launch,
+                })
+                .map(|p| p.window.id())
+                .collect();
+            for id in ids {
+                if let Some(p) = windows.get_mut(&id) {
+                    if p.webview.is_none() && p.role == Role::Browser {
+                        let _ = ensure_webview(p, proxy);
+                    }
+                    if let Some(wv) = p.webview.as_ref() {
+                        let _ = safe_eval(wv, &js);
+                    }
+                }
+            }
+            Ok(())
+        }
         ControlCmd::Dock { target } => {
             match target {
                 WinTarget::Chat => {
@@ -1781,6 +2121,9 @@ fn apply_cmd(
                             bus.set_chat_visible(true);
                         }
                     }
+                    layout.suppressing_move = true;
+                    snap_role(windows, layout, Role::Chat);
+                    layout.suppressing_move = false;
                 }
                 WinTarget::Stream => {
                     layout.stream_docked = true;
@@ -1792,19 +2135,22 @@ fn apply_cmd(
                             bus.set_stream_visible(true);
                         }
                     }
+                    layout.suppressing_move = true;
+                    snap_role(windows, layout, Role::Stream);
+                    layout.suppressing_move = false;
                 }
                 WinTarget::All => {
                     layout.chat_docked = true;
                     layout.stream_docked = true;
                     bus.set_chat_docked(true);
                     bus.set_stream_docked(true);
+                    layout.suppressing_move = true;
+                    arrange_workspace(windows, layout);
+                    layout.suppressing_move = false;
                 }
-                // Agent / Launch are free-floating, not lab satellites.
-                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => {}
+                // Free-floating surfaces
+                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch | WinTarget::Browser => {}
             }
-            layout.suppressing_move = true;
-            arrange_workspace(windows, layout);
-            layout.suppressing_move = false;
             Ok(())
         }
         ControlCmd::Undock { target } => {
@@ -1823,7 +2169,7 @@ fn apply_cmd(
                     bus.set_chat_docked(false);
                     bus.set_stream_docked(false);
                 }
-                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => {}
+                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch | WinTarget::Browser => {}
             }
             Ok(())
         }
@@ -1833,7 +2179,7 @@ fn apply_cmd(
                 WinTarget::Stream => layout.stream_docked,
                 WinTarget::All => layout.chat_docked && layout.stream_docked,
                 // Always "docked" (noop undock) so toggle leaves free-float alone.
-                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch => true,
+                WinTarget::Lab | WinTarget::Agent | WinTarget::Launch | WinTarget::Browser => true,
             };
             if docked {
                 apply_cmd(
@@ -1872,8 +2218,8 @@ fn apply_cmd(
                         p.window.set_visible(true);
                         bus.set_stream_visible(true);
                     }
-                    Role::Agent | Role::Launch | Role::Lab => {
-                        // Link = dock chat/stream only; don't force-show agent/launch.
+                    Role::Agent | Role::Launch | Role::Browser | Role::Lab => {
+                        // Link = dock chat/stream only; don't force-show free-float.
                         if p.role == Role::Lab {
                             p.window.set_visible(true);
                         }
@@ -1974,6 +2320,14 @@ fn apply_cmd(
                 control_flow,
                 proxy,
             ),
+            WinTarget::Browser => apply_cmd(
+                &ControlCmd::HideBrowser,
+                windows,
+                bus,
+                layout,
+                control_flow,
+                proxy,
+            ),
             WinTarget::Lab | WinTarget::All => {
                 *control_flow = ControlFlow::Exit;
                 Ok(())
@@ -2010,6 +2364,7 @@ fn apply_cmd(
                     WinTarget::Stream => p.role == Role::Stream,
                     WinTarget::Agent => p.role == Role::Agent,
                     WinTarget::Launch => p.role == Role::Launch,
+                    WinTarget::Browser => p.role == Role::Browser,
                 })
                 .map(|p| p.window.id())
                 .collect();
@@ -2061,6 +2416,7 @@ fn apply_cmd(
                     WinTarget::Stream => p.role == Role::Stream,
                     WinTarget::Agent => p.role == Role::Agent,
                     WinTarget::Launch => p.role == Role::Launch,
+                    WinTarget::Browser => p.role == Role::Browser,
                 })
                 .map(|p| p.window.id())
                 .collect();
@@ -2070,7 +2426,11 @@ fn apply_cmd(
                     if p.webview.is_none()
                         && matches!(
                             p.role,
-                            Role::Chat | Role::Stream | Role::Agent | Role::Launch
+                            Role::Chat
+                                | Role::Stream
+                                | Role::Agent
+                                | Role::Launch
+                                | Role::Browser
                         )
                     {
                         if let Err(e) = ensure_webview(p, proxy) {

@@ -54,11 +54,11 @@ pub fn lab_round_css() -> &'static str {
 /* ── Shell: all native float surfaces ─────────────────────────────── */
 html.lab-native, html.lab-float,
 html.lab-chat-surface, html.lab-stream-surface,
-html.lab-agent-surface, html.lab-launch-surface,
+html.lab-agent-surface, html.lab-launch-surface, html.lab-browser-surface,
 body.lab-native, body.lab-float,
 body.lab-chat-window, body.stream-window,
-body.lab-agent-surface, body.lab-launch-surface,
-body.ac-body, body.lp-body {
+body.lab-agent-surface, body.lab-launch-surface, body.lab-browser-surface,
+body.ac-body, body.lp-body, body.br-body {
   border-radius: 18px !important;
   overflow: hidden !important;
   background-clip: padding-box !important;
@@ -67,14 +67,14 @@ body.ac-body, body.lp-body {
 /* Transparent host + solid interior so corners don't show square fill */
 html.lab-native, html.lab-float,
 html.lab-chat-surface, html.lab-stream-surface,
-html.lab-agent-surface, html.lab-launch-surface {
+html.lab-agent-surface, html.lab-launch-surface, html.lab-browser-surface {
   background: transparent !important;
 }
 
 body.lab-native, body.lab-float,
 body.lab-chat-window, body.stream-window,
-body.lab-agent-surface, body.lab-launch-surface,
-body.ac-body, body.lp-body {
+body.lab-agent-surface, body.lab-launch-surface, body.lab-browser-surface,
+body.ac-body, body.lp-body, body.br-body {
   position: relative !important;
   /* soft hairline + depth so glow reads against desktop */
   box-shadow:
@@ -86,8 +86,8 @@ body.ac-body, body.lp-body {
    sits just inside the 18px radius so it wraps each corner. */
 body.lab-native::before, body.lab-float::before,
 body.lab-chat-window::before, body.stream-window::before,
-body.lab-agent-surface::before, body.lab-launch-surface::before,
-body.ac-body::before, body.lp-body::before {
+body.lab-agent-surface::before, body.lab-launch-surface::before, body.lab-browser-surface::before,
+body.ac-body::before, body.lp-body::before, body.br-body::before {
   content: "" !important;
   pointer-events: none !important; /* never block wheel/scroll */
   position: fixed !important;
@@ -113,8 +113,8 @@ body.ac-body::before, body.lp-body::before {
 /* ── Continuous rainbow rim (chat-orb palette) ───────────────────── */
 body.lab-native::after, body.lab-float::after,
 body.lab-chat-window::after, body.stream-window::after,
-body.lab-agent-surface::after, body.lab-launch-surface::after,
-body.ac-body::after, body.lp-body::after {
+body.lab-agent-surface::after, body.lab-launch-surface::after, body.lab-browser-surface::after,
+body.ac-body::after, body.lp-body::after, body.br-body::after {
   content: "" !important;
   pointer-events: none !important; /* never block wheel/scroll */
   position: fixed !important;

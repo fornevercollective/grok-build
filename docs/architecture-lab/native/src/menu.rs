@@ -143,6 +143,15 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
             Code::KeyO,
         )),
     );
+    let open_browser = MenuItem::with_id(
+        "open_browser",
+        "Open Browser",
+        true,
+        Some(Accelerator::new(
+            Some(Modifiers::META | Modifiers::SHIFT),
+            Code::KeyB,
+        )),
+    );
     let open_agent = MenuItem::with_id(
         "open_agent",
         "Open Agent Console",
@@ -170,6 +179,7 @@ pub fn install_menu(proxy: EventLoopProxy<ControlCmd>) -> MenuIds {
         &win_both,
         &PredefinedMenuItem::separator(),
         &open_launch,
+        &open_browser,
         &open_agent,
         &open_panda,
         &PredefinedMenuItem::separator(),
@@ -329,6 +339,9 @@ fn dispatch_menu_event(id: &str, proxy: &EventLoopProxy<ControlCmd>) {
         }
         "open_launch" => {
             let _ = proxy.send_event(ControlCmd::ShowLaunch);
+        }
+        "open_browser" => {
+            let _ = proxy.send_event(ControlCmd::ShowBrowser);
         }
         "open_panda" => {
             // Spawn Panda off the menu thread — no window ControlCmd required.

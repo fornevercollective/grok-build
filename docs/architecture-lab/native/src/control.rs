@@ -31,6 +31,13 @@ pub enum ControlCmd {
     HideLaunch,
     FocusLaunch,
     ToggleLaunch,
+    /// Lightweight browser (WKWebView host — Ladybird-style: Rust shell + system engine)
+    ShowBrowser,
+    HideBrowser,
+    FocusBrowser,
+    ToggleBrowser,
+    /// Navigate a window's webview (browser / any target with webview)
+    Navigate { target: WinTarget, url: String },
     /// Dock / undock satellite windows relative to lab
     Dock { target: WinTarget },
     Undock { target: WinTarget },
@@ -93,6 +100,7 @@ pub enum WinTarget {
     Stream,
     Agent,
     Launch,
+    Browser,
     All,
 }
 
@@ -235,6 +243,8 @@ pub struct ControlRequest {
     pub on: Option<bool>,
     pub script: Option<String>,
     pub message: Option<String>,
+    /// Navigation URL for browse / navigate actions
+    pub url: Option<String>,
     /// Panda fleet splits (open_panda / spawn_fleet)
     pub splits: Option<u8>,
 }
@@ -263,6 +273,26 @@ impl ControlRequest {
             "hide_launch" | "close_launch" => Ok(ControlCmd::HideLaunch),
             "toggle_launch" => Ok(ControlCmd::ToggleLaunch),
             "focus_launch" => Ok(ControlCmd::FocusLaunch),
+            "show_browser" | "open_browser" | "browser" | "web" => Ok(ControlCmd::ShowBrowser),
+            "hide_browser" | "close_browser" => Ok(ControlCmd::HideBrowser),
+            "toggle_browser" => Ok(ControlCmd::ToggleBrowser),
+            "focus_browser" => Ok(ControlCmd::FocusBrowser),
+            "navigate" | "browse" | "goto" | "open_url" => {
+                let url = self
+                    .url
+                    .clone()
+                    .or_else(|| self.script.clone())
+                    .or_else(|| self.message.clone())
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| "url required (url / script / message field)".to_string())?;
+                Ok(ControlCmd::Navigate {
+                    target: match self.target {
+                        WinTarget::Lab | WinTarget::All => WinTarget::Browser,
+                        t => t,
+                    },
+                    url,
+                })
+            }
             "dock" | "dock_window" => Ok(ControlCmd::Dock {
                 target: self.target,
             }),

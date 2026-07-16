@@ -56,7 +56,7 @@ echo "    /workbench.html   Center agent + live αβγ xterm  ← Option B prima
 echo "    /                 Lab docs + multi-term"
 echo "    /agent.html       Agent console"
 echo "    /launch.html      Launch pad"
-echo "    /chat.html · /stream.html"
+echo "    /chat.html · /stream.html · /browser.html"
 echo "  Option A: native Lab Dock/Arrange + Multi (Panda αβγ OS terms)"
 echo "  Option C: see content/24-abc-path.md (Panda/Mu host pipe)"
 echo "  APIs: /api/pty/* · /api/shells · /api/panda/open · /api/health · …"
