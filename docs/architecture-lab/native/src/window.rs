@@ -1112,7 +1112,7 @@ fn float_chrome_js(role: &str) -> String {
   document.addEventListener("mousedown", function(e){{
     if (e.button !== 0) return;
     var t = e.target;
-    if (t && t.closest && t.closest("button, a, input, textarea, select, pre, [data-no-drag], .ac-scroll, .ac-feed-body")) return;
+    if (t && t.closest && t.closest("button, a, input, textarea, select, pre, [data-no-drag], .ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll")) return;
     var dragEl = t && t.closest ? t.closest("[data-drag-region]") : null;
     if (dragEl) {{
       if (e.detail === 2) {{

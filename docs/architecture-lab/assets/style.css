@@ -43,6 +43,9 @@ body.lab-desktop {
   overflow: hidden !important;
   height: 100% !important;
   max-height: 100% !important;
+  /* Prefer dynamic viewport when available (WKWebView / float shell) */
+  max-height: 100dvh !important;
+  height: 100dvh !important;
 }
 
 a {
@@ -56,8 +59,11 @@ a:hover {
 
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
-  min-height: 100vh;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  /* Never force min-height:100vh — that overflows body (padding + chrome)
+     and clips the center scrollport under overflow:hidden. */
+  min-height: 0;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
@@ -67,10 +73,10 @@ a:hover {
 body.lab-native .app,
 body.lab-float .app,
 body.lab-desktop .app {
-  /* native float chrome bar is injected at top (40px) */
-  height: 100%;
-  max-height: 100%;
-  min-height: 0;
+  /* Fill body content box only (padding-top chrome + padding-bottom term) */
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
 }
 
 /* Sidebar stays on all pages; collapse shrinks rail to edge toggle */
@@ -608,15 +614,17 @@ body.listen-active .xai-logo-react .logo-glow {
   color: #52525b;
 }
 
-/* Main — scroll lives here (not body) */
+/* Main — center column; scroll lives in .content-wrap (not body) */
 .main {
   min-width: 0;
-  min-height: 0;
+  min-height: 0 !important;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden !important;
   height: 100%;
   max-height: 100%;
+  /* grid item must be allowed to shrink */
+  align-self: stretch;
 }
 
 .topbar {
@@ -936,19 +944,36 @@ body.mode-tools .filter-nav-block {
   color: var(--text-dim);
 }
 
-.content-wrap {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: scroll !important;
+/* Docs scrollport — flex:1 1 0% + height:0 is the WKWebView-safe pattern
+   (auto basis sizes to content and never creates a scroll container). */
+.content-wrap,
+#panel-docs.content-wrap,
+body.mode-docs #panel-docs {
+  flex: 1 1 0% !important;
+  flex-basis: 0% !important;
+  height: 0 !important; /* grow via flex, not content height */
+  min-height: 0 !important;
+  max-height: none;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   padding: 1.5rem 2rem 4rem;
   max-width: 900px;
+  width: 100%;
   position: relative;
-  z-index: 5;
-  pointer-events: auto;
+  z-index: 6; /* above corner glow (0–1) */
+  pointer-events: auto !important;
+  will-change: scroll-position;
+}
+
+/* When tools tabs hide docs, don't leave a zero-height ghost */
+body.mode-tools .content-wrap,
+body.mode-tools #panel-docs {
+  display: none !important;
+  height: auto !important;
+  flex: none !important;
 }
 
 .article {
@@ -1152,8 +1177,12 @@ body.lab-float {
 
 body.lab-native .app,
 body.lab-float .app {
-  min-height: calc(100vh - var(--float-chrome-h, 0px));
+  /* Fill remaining body after padding-top (native bar); do NOT min-height 100vh */
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 /* Collapse MUST beat the lab-float grid rule above */
@@ -1308,14 +1337,29 @@ body.lab-float .glyph-pin-rail-bar {
   background: rgba(14, 16, 22, 0.55);
 }
 
-/* More room for the article — this was the main goal */
+/* More room for the article + force scrollport in float shell */
 body.lab-native .content-wrap,
-body.lab-float .content-wrap {
-  padding: 0.55rem 0.85rem 2rem;
+body.lab-float .content-wrap,
+body.lab-native #panel-docs,
+body.lab-float #panel-docs {
+  padding: 0.55rem 0.85rem calc(var(--term-footer-h, 44px) + 1.25rem);
   max-width: min(820px, 100%);
-  overflow-y: scroll !important;
-  min-height: 0;
-  flex: 1 1 auto;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  flex-basis: 0% !important;
+  height: 0 !important;
+  z-index: 6;
+  pointer-events: auto !important;
+}
+
+/* Tabs + topbar never steal flex growth from the scrollport */
+body.lab-native .app-tabs,
+body.lab-float .app-tabs,
+body.lab-native .topbar,
+body.lab-float .topbar {
+  flex: 0 0 auto;
 }
 
 /* tool panels also scroll when active */

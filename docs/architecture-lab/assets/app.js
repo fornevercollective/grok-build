@@ -154,7 +154,10 @@ async function loadPage(id) {
       a.target = "_blank";
       a.rel = "noopener noreferrer";
     });
-    window.scrollTo(0, 0);
+    // Scroll the center docs pane (body is overflow:hidden in native)
+    const wrap = document.getElementById("panel-docs") || $(".content-wrap");
+    if (wrap) wrap.scrollTop = 0;
+    else window.scrollTo(0, 0);
     $("#crumb").textContent = id;
     // Single walkthrough hook (avoid double annotate)
     window.dispatchEvent(
@@ -272,7 +275,47 @@ async function wireGyBrandLinks() {
   void ok;
 }
 
+/**
+ * Keep the center docs pane scrollable under native (body overflow:hidden).
+ * CSS does the real work; this is a belt-and-suspenders wheel redirect if the
+ * event lands on a non-scrolling ancestor.
+ */
+function ensureDocsScrollport() {
+  const wrap = document.getElementById("panel-docs");
+  if (!wrap || wrap.dataset.scrollBound === "1") return;
+  wrap.dataset.scrollBound = "1";
+  wrap.tabIndex = 0; // allow focus for keyboard scroll
+  // If wheel hits .main / topbar residual chrome, still scroll the docs pane
+  const main = document.querySelector(".main");
+  const onWheel = (e) => {
+    if (!document.body.classList.contains("mode-docs")) return;
+    if (wrap.scrollHeight <= wrap.clientHeight + 2) return;
+    const t = e.target;
+    if (t && t.closest) {
+      if (
+        t.closest(
+          ".term-footer, .sidebar, .multi-term, .hist-float-panel, input, textarea, select"
+        )
+      ) {
+        return;
+      }
+      // Pointer is already over the docs scrollport — let the browser scroll it
+      if (t === wrap || wrap.contains(t)) return;
+    }
+    // Redirect from .main dead zones (tabs/topbar gap, empty flex space)
+    if (e.currentTarget === main) {
+      const atTop = wrap.scrollTop <= 0;
+      const atBot = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 1;
+      if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBot)) return;
+      wrap.scrollTop += e.deltaY;
+      e.preventDefault();
+    }
+  };
+  if (main) main.addEventListener("wheel", onWheel, { passive: false });
+}
+
 async function boot() {
+  ensureDocsScrollport();
   // Menu toggle is owned by tools.js (LabNav) when present; fallback for docs-only
   $("#menu-btn")?.addEventListener("click", () => {
     if (window.LabNav?.toggleSidebar) return; // tools.js already bound

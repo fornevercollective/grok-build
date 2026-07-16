@@ -46,16 +46,19 @@
 }
 
 /* When tools active, hide docs article chrome density */
-body.mode-tools .content-wrap {
-  display: none;
+body.mode-tools .content-wrap,
+body.mode-tools #panel-docs {
+  display: none !important;
 }
 
 body.mode-docs .tool-panel {
   display: none !important;
 }
 
+/* Keep #panel-docs in the flex column so height:0 + flex:1 creates a scrollport.
+   display:block (old) was fine for flex items, but block + content height broke scroll. */
 body.mode-docs #panel-docs {
-  display: block !important;
+  display: block !important; /* flex item; scroll rules live in style.css */
 }
 
 #panel-docs.active {
