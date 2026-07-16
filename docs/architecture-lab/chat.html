@@ -204,25 +204,36 @@
         z-index: 2;
         flex: 1 1 auto;
         min-height: 0;
+        max-height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        gap: 0.75rem;
-        padding: 1rem 0.85rem 1rem;
-        overflow: auto;
+        gap: 0.45rem;
+        padding: 0.65rem 0.7rem 0.75rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
         background: transparent;
+        /* Keep terminal/dialogue growth from blowing the float bounds */
+        contain: layout paint;
       }
 
-      /* Perfect square orb stage — smart scale with window + soft halo bed */
+      /* lab-ship face: LARGE orb pinned at TOP; pins nest tightly around it */
       .chat-stage {
         flex: 0 0 auto;
-        width: clamp(132px, 42vmin, 220px);
+        order: 0;
+        width: min(260px, 78%);
+        max-width: 260px;
         aspect-ratio: 1 / 1;
         height: auto;
-        position: relative;
-        margin: 0.25rem auto 0;
+        position: sticky;
+        top: 0;
+        z-index: 8;
+        margin: 0.1rem auto 0.2rem;
         container-type: size;
+        overflow: visible;
+        background: radial-gradient(circle at 50% 50%, rgba(11, 12, 15, 0.55), transparent 72%);
       }
       .chat-stage::before {
         content: "";
@@ -340,16 +351,376 @@
         aspect-ratio: 1 / 1;
       }
 
-      /* Controls under orb — not inside siri shell (avoids height distortion) */
+      /* Controls directly under orb (still near top) */
       .chat-controls {
-        width: min(300px, 92%);
+        width: min(320px, 94%);
         flex-shrink: 0;
+        order: 1;
         padding: 0.55rem 0.65rem;
         border-radius: 12px;
-        background: rgba(14, 16, 22, 0.75);
+        background: rgba(14, 16, 22, 0.82);
         border: 1px solid rgba(255, 255, 255, 0.07);
         backdrop-filter: blur(12px);
+        z-index: 5;
       }
+      /* Grok Voice · eve — after play thumbs (order set with play-rail) */
+      .voice-constellation {
+        width: min(340px, 96%) !important;
+        flex-shrink: 0;
+        margin-top: 0.15rem !important;
+      }
+      .chat-dialogue {
+        width: min(320px, 94%);
+        order: 5;
+        max-height: 10vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 10px;
+        background: rgba(8, 10, 14, 0.88);
+        border: 1px solid rgba(110, 203, 255, 0.12);
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.62rem;
+        line-height: 1.35;
+        -webkit-overflow-scrolling: touch;
+      }
+      .dlg-line { color: #9aa3b5; word-break: break-word; }
+      .dlg-line.you { color: #e8eaed; }
+      .dlg-line.lab { color: #6ecbff; }
+      .dlg-line.sys { color: #71717a; }
+      .dlg-who {
+        font-size: 0.52rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #52525b;
+        margin-right: 0.25rem;
+      }
+      .persona-chip {
+        order: -1; /* strip above large orb */
+        width: min(320px, 94%);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        padding: 0.35rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(16, 18, 24, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        font-size: 0.6rem;
+        color: #9aa3b5;
+      }
+      .pc-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        box-shadow: 0 0 8px currentColor;
+        flex-shrink: 0;
+      }
+      .pc-name { color: #e8eaed; font-weight: 600; }
+      .pc-traits { color: #6ecbff; flex: 1; min-width: 4rem; }
+      .pc-n { color: #52525b; }
+      /* Nest floating pins tightly behind/near main orb; drag to reflow */
+      .chat-pin-rail {
+        position: absolute;
+        inset: -6% -8%;
+        z-index: 4;
+        pointer-events: none;
+      }
+      .chat-pin {
+        pointer-events: auto;
+        position: absolute;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 1.5px solid hsla(var(--pin-hue, 200), 80%, 65%, 0.7);
+        background: #0b0c0f;
+        padding: 0;
+        overflow: hidden;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.45),
+          0 2px 10px rgba(0, 0, 0, 0.4),
+          0 0 12px hsla(var(--pin-hue, 200), 80%, 55%, 0.28);
+        transition: box-shadow 0.15s ease, width 0.15s ease, height 0.15s ease;
+        /* default nest — JS overrides with --pin-x/--pin-y */
+        left: var(--pin-x, 50%);
+        top: var(--pin-y, 50%);
+        transform: translate(-50%, -50%) scale(var(--pin-scale, 1));
+        z-index: var(--pin-z, 2);
+      }
+      .chat-pin:active { cursor: grabbing; }
+      .chat-pin.dragging {
+        z-index: 20;
+        box-shadow: 0 0 0 2px #6ecbff, 0 6px 20px rgba(0, 0, 0, 0.55);
+      }
+      .chat-pin.study {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        opacity: 0.92;
+        --pin-z: 1;
+      }
+      .chat-pin.study img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .chat-pin:hover { --pin-scale: 1.08; }
+      .chat-pin video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #12141a;
+        pointer-events: none;
+      }
+      .chat-pin .pin-lab {
+        position: absolute;
+        left: 50%;
+        bottom: 1px;
+        transform: translateX(-50%);
+        font: 0.42rem/1 "IBM Plex Mono", monospace;
+        color: #fff;
+        text-shadow: 0 1px 2px #000;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+      }
+      .chat-pin .pin-dot {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #52525b;
+        pointer-events: none;
+      }
+      .chat-pin.live .pin-dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+      .chat-pin.offline { opacity: 0.55; }
+
+      /* SpaceX play thumbnails under orb */
+      .chat-play-rail {
+        order: 2;
+        width: min(340px, 96%);
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-height: 0;
+      }
+      .chat-play-head {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font: 0.58rem/1 "IBM Plex Mono", monospace;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0 0.1rem;
+      }
+      .chat-play-head strong {
+        margin-left: auto;
+        color: #6ecbff;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        max-width: 50%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .chat-play-thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        gap: 0.35rem;
+        max-height: 28vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.1rem 0.05rem 0.2rem;
+      }
+      .chat-play-thumb {
+        appearance: none;
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 12px;
+        border: 1px solid hsla(var(--thumb-hue, 200), 70%, 55%, 0.35);
+        background:
+          radial-gradient(
+            circle at 30% 25%,
+            hsla(var(--thumb-hue, 200), 80%, 55%, 0.35),
+            transparent 55%
+          ),
+          #12141a;
+        color: #e8eaed;
+        cursor: pointer;
+        padding: 0.35rem 0.25rem 0.3rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        overflow: hidden;
+        min-height: 0;
+      }
+      .chat-play-thumb:hover {
+        border-color: hsla(var(--thumb-hue, 200), 80%, 65%, 0.7);
+        box-shadow: 0 0 16px hsla(var(--thumb-hue, 200), 80%, 50%, 0.25);
+      }
+      .chat-play-thumb.on {
+        outline: 2px solid #6ecbff;
+        outline-offset: 1px;
+      }
+      .chat-play-thumb.live {
+        border-color: rgba(74, 222, 128, 0.4);
+      }
+      .chat-play-thumb .cpt-ico {
+        font-size: 1.15rem;
+        line-height: 1;
+        opacity: 0.95;
+      }
+      .chat-play-thumb .cpt-lab {
+        font: 0.5rem/1.15 "IBM Plex Mono", monospace;
+        color: #9aa3b5;
+        text-align: center;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .chat-play-thumb .cpt-live {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        font: 0.42rem/1 "IBM Plex Mono", monospace;
+        color: #052e16;
+        background: #4ade80;
+        border-radius: 4px;
+        padding: 0.12rem 0.2rem;
+        letter-spacing: 0.02em;
+      }
+      /* Grok Voice constellation after play rail */
+      .voice-constellation {
+        order: 3 !important;
+      }
+
+      /* MOCAP face-study feed — searchable, doesn't blow window bounds */
+      .mocap-feed {
+        order: 4;
+        width: min(340px, 96%);
+        max-height: 22vh;
+        flex: 0 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 12px;
+        background: rgba(10, 12, 16, 0.88);
+        border: 1px solid rgba(110, 203, 255, 0.14);
+        overflow: hidden;
+      }
+      .mocap-feed-head {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font: 0.58rem/1 "IBM Plex Mono", monospace;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        flex-shrink: 0;
+      }
+      .mocap-feed-head strong { color: #6ecbff; font-weight: 500; text-transform: none; }
+      .mocap-feed-head .mf-count { margin-left: auto; color: #52525b; }
+      .mocap-feed-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex-shrink: 0;
+      }
+      .mocap-feed-tools input[type="search"] {
+        flex: 1 1 7rem;
+        min-width: 0;
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #0d0f14;
+        color: #e8eaed;
+        border-radius: 8px;
+        font: 0.62rem/1.2 "IBM Plex Mono", monospace;
+        padding: 0.28rem 0.45rem;
+      }
+      .mocap-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+        gap: 0.3rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        min-height: 0;
+        flex: 1 1 auto;
+        max-height: 12vh;
+        padding-right: 2px;
+      }
+      .mocap-card {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #12141a;
+        cursor: pointer;
+        padding: 0;
+      }
+      .mocap-card img, .mocap-card canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .mocap-card .mc-lab {
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        font: 0.42rem/1.2 "IBM Plex Mono", monospace;
+        color: #fff;
+        background: linear-gradient(transparent, rgba(0,0,0,0.75));
+        padding: 0.25rem 0.2rem 0.15rem;
+        text-align: center;
+      }
+      .mocap-card.selected { outline: 2px solid #6ecbff; }
+      .mocap-empty {
+        grid-column: 1 / -1;
+        font: 0.58rem/1.35 "IBM Plex Mono", monospace;
+        color: #52525b;
+        text-align: center;
+        padding: 0.5rem;
+      }
+
+      /* order: persona -1 · orb 0 · controls 1 · voice 2 · readout 3 · mocap 4 · dialogue 5 · compose 6 · … */
+      .voice-readout { order: 3; width: min(320px, 94%); max-height: 10vh; overflow: auto; overscroll-behavior: contain; }
+      .chat-dialogue {
+        max-height: 10vh !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        order: 5 !important;
+      }
+      .chat-compose { order: 6; flex-shrink: 0; }
+      .chat-turns {
+        order: 7;
+        max-height: 12vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        min-height: 0;
+        width: min(320px, 94%);
+      }
+      .chat-meta { order: 8; flex-shrink: 0; }
       .chat-controls .status {
         margin: 0 0 0.45rem;
         font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -673,11 +1044,71 @@
           Str
         </button>
         <button type="button" class="act" id="btn-lab" title="Show lab workspace">Lab</button>
+        <button type="button" class="act" id="btn-standalone" title="Undock chat as free float">Solo</button>
+        <button type="button" class="act" id="btn-recover-chrome" title="Recover from crash / mis-hear">↻</button>
       </div>
     </header>
 
     <main class="chat-body">
+      <!-- Persona grows from vision + dialogue -->
+      <div class="persona-chip" id="persona-chip" title="User persona (vision + chat)">
+        <span class="pc-dot"></span>
+        <span class="pc-name">You</span>
+        <span class="pc-traits">learning…</span>
+        <span class="pc-n">0 samples</span>
+      </div>
+
+      <!-- Controls ABOVE the orb -->
+      <div class="chat-controls">
+        <p class="status" id="siri-burst-status">hold orb to talk · Cam for vision · pins = feeds</p>
+        <div class="actions">
+          <button type="button" class="btn-mini primary" id="siri-btn-hold" title="Hold to talk">
+            Hold
+          </button>
+          <button type="button" class="btn-mini" id="siri-btn-cam" title="Open / close camera">
+            Cam
+          </button>
+          <button type="button" class="btn-mini" id="btn-listen" title="Listen for voice intent">
+            Listen
+          </button>
+          <button type="button" class="btn-mini" id="btn-recognize" title="Recognize / sample persona (AIto)">
+            See me
+          </button>
+          <button type="button" class="btn-mini" id="btn-study" title="Capture movement study (short face GIF)">
+            Study
+          </button>
+          <button type="button" class="btn-mini" id="btn-recover" title="Recover session">
+            Recover
+          </button>
+        </div>
+      </div>
+
+      <!-- Back-and-forth under controls, above orb -->
+      <div class="chat-dialogue" id="chat-dialogue" aria-live="polite" role="log">
+        <div class="dlg-line sys">
+          <span class="dlg-who">sys</span> Cam · pins · hold orb · recover when stuck
+        </div>
+      </div>
+
+      <div class="voice-readout" id="voice-readout">
+        <div class="voice-level" id="voice-level" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div>
+          <span class="voice-label">heard</span>
+          <p class="voice-heard" id="voice-heard">Tap Listen · talk to Grok</p>
+        </div>
+        <div>
+          <span class="voice-label">intent</span>
+          <p class="voice-intent" id="voice-intent">idle</p>
+        </div>
+        <div class="voice-action-row" id="voice-action-row" hidden></div>
+        <ul class="voice-turns" id="voice-turns"></ul>
+      </div>
+
+      <!-- Orb + GY-style video pins -->
       <div class="chat-stage" id="chat-stage">
+        <div class="chat-pin-rail" id="chat-pin-rail" aria-label="Video feed pins"></div>
         <div class="siri-burst chat-owned" id="siri-burst" data-mode="idle">
           <div class="siri-burst-aura" aria-hidden="true"></div>
           <div class="siri-burst-shell">
@@ -712,30 +1143,39 @@
         </div>
       </div>
 
-      <div class="chat-controls">
-        <p class="status" id="siri-burst-status">hold orb to talk · Listen for intent</p>
-        <div class="actions">
-          <button type="button" class="btn-mini primary" id="siri-btn-hold">Hold</button>
-          <button type="button" class="btn-mini" id="siri-btn-cam">Cam</button>
-          <button type="button" class="btn-mini" id="btn-listen">Listen</button>
+      <!-- SpaceX / multi play thumbnails (same family as phone feed rail) -->
+      <section class="chat-play-rail" id="chat-play-rail" aria-label="Play feeds">
+        <div class="chat-play-head">
+          <span>Play · SpaceX feeds</span>
+          <strong id="chat-play-now">idle</strong>
         </div>
-      </div>
+        <div class="chat-play-thumbs" id="chat-play-thumbs" role="list"></div>
+      </section>
 
-      <div class="voice-readout" id="voice-readout">
-        <div class="voice-level" id="voice-level" aria-hidden="true">
-          <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <!-- MOCAP face-study feed (movement GIFs · search · post to X compose) -->
+      <section class="mocap-feed" id="mocap-feed" aria-label="MOCAP face study feed">
+        <div class="mocap-feed-head">
+          <span>MOCAP · face study</span>
+          <strong id="mocap-selected-label">—</strong>
+          <span class="mf-count" id="mocap-count">0</span>
         </div>
-        <div>
-          <span class="voice-label">heard</span>
-          <p class="voice-heard" id="voice-heard">Tap Listen · talk to Grok</p>
+        <div class="mocap-feed-tools">
+          <input type="search" id="mocap-search" placeholder="search studies…" autocomplete="off" />
+          <button type="button" class="btn-mini primary" id="btn-study-cap" title="Capture movement study">
+            + Study
+          </button>
+          <button type="button" class="btn-mini" id="btn-study-nest" title="Nest pins close behind orb">
+            Nest
+          </button>
+          <button type="button" class="btn-mini" id="btn-study-x" title="Open X compose for selected study">
+            Post X
+          </button>
+          <button type="button" class="btn-mini" id="btn-study-dl" title="Download selected study">
+            DL
+          </button>
         </div>
-        <div>
-          <span class="voice-label">intent</span>
-          <p class="voice-intent" id="voice-intent">idle</p>
-        </div>
-        <div class="voice-action-row" id="voice-action-row" hidden></div>
-        <ul class="voice-turns" id="voice-turns"></ul>
-      </div>
+        <div class="mocap-grid" id="mocap-grid"></div>
+      </section>
 
       <div class="chat-compose" id="chat-compose">
         <div class="chat-compose-row">
@@ -757,13 +1197,16 @@
         </div>
       </div>
       <ul class="chat-turns" id="chat-turns" aria-live="polite"></ul>
-      <p class="chat-meta">text + voice · /api/control · SpaceXAI</p>
+      <p class="chat-meta">
+        cam · nest pins · movement study · MOCAP feed · Post X · recover
+      </p>
     </main>
 
     <div class="chat-error" id="chat-error" role="alert"></div>
 
     <!-- Stubs for walkie-dock / listen -->
     <div id="burst-orb" hidden></div>
+    <button type="button" id="btn-cam" hidden aria-hidden="true"></button>
     <canvas id="face-canvas" width="1" height="1" hidden></canvas>
     <canvas id="ring-canvas" width="1" height="1" hidden></canvas>
     <span id="listen-status" hidden>off</span>
@@ -778,7 +1221,7 @@
         shell: "chat-window",
       });
       document.documentElement.classList.add("lab-native", "lab-chat-surface");
-      document.body.classList.add("lab-native", "lab-chat-surface", "listen-active");
+      document.body.classList.add("lab-native", "lab-chat-surface");
 
       async function control(action, extra) {
         try {
@@ -828,7 +1271,8 @@
       });
       document.getElementById("btn-lab")?.addEventListener("click", (e) => {
         e.stopPropagation();
-        control("focus_lab");
+        // Restore prior multi-window layout (stream/agent/etc), not bare lab
+        control("restore_workspace");
       });
       document.getElementById("btn-stream")?.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -992,10 +1436,43 @@
           intent = "notes";
           reply = "Opening Notes";
           openTool("notes");
+        } else if (/\b(open|start|enable)\s+cam(era)?\b/.test(low) || /\bcam\s+on\b/.test(low)) {
+          intent = "cam-on";
+          reply = "Opening camera…";
+          window.LabChatVision?.openCam?.().catch(function () {});
+        } else if (/\b(close|stop|disable)\s+cam(era)?\b/.test(low) || /\bcam\s+off\b/.test(low)) {
+          intent = "cam-off";
+          reply = "Closing camera";
+          window.LabChatVision?.closeCam?.();
+        } else if (/\b(see\s+me|recognize|who\s+am\s+i|persona)\b/.test(low)) {
+          intent = "recognize";
+          reply = "Sampling vision + persona…";
+          window.LabChatVision?.recognize?.();
+        } else if (/\b(recover|reset\s+chat|misheard|wrong)\b/.test(low)) {
+          intent = "recover";
+          reply = "Running recover…";
+          window.LabChatVision?.recover?.(t);
+        } else if (/\b(standalone|solo|undock\s+chat)\b/.test(low)) {
+          intent = "standalone";
+          reply = "Chat standalone float";
+          control("open_chat_independent");
+        } else if (/\b(open|show)\s+(agent|stream|lab|launch|browser)\b/.test(low)) {
+          intent = "window";
+          const m = low.match(/\b(agent|stream|lab|launch|browser)\b/);
+          const w = m ? m[1] : "lab";
+          const map = {
+            agent: "show_agent",
+            stream: "show_stream",
+            lab: "focus_lab",
+            launch: "show_launch",
+            browser: "show_browser",
+          };
+          reply = "Opening " + w;
+          control(map[w] || "focus_lab");
         } else if (/\b(help|what can you)\b/.test(low)) {
           intent = "help";
           reply =
-            "Try: open ship · open plan · hey grok · open history · open notes · or hold the orb to talk.";
+            "Cam · See me · hold orb · recover · standalone · open agent/stream/lab · ship · persona.";
         } else if (/\b(status|health)\b/.test(low)) {
           intent = "health";
           reply = "Checking lab health…";
@@ -1012,6 +1489,10 @@
 
         setIntent(intent + " · " + reply, intent === "message" ? "miss" : "hit");
         pushTurn("lab", reply);
+        try {
+          window.LabChatVision?.noteDialogue?.("you", t);
+          window.LabChatVision?.noteDialogue?.("lab", reply);
+        } catch (_) {}
       }
 
       function sendChat() {
@@ -1047,10 +1528,13 @@
         listen: () => document.getElementById("btn-listen")?.click(),
         send: routeText,
         turns: loadTurns,
+        cam: () => window.LabChatVision?.toggleCam?.(),
+        recover: (r) => window.LabChatVision?.recover?.(r),
       };
     </script>
+    <script src="assets/chat-vision.js?v=cv4" defer></script>
     <script src="assets/walkie-dock.js?v=wave3" defer></script>
-    <script src="assets/grok-listen.js?v=wave4" defer></script>
-    <script src="assets/voice-spheres.js?v=v5" defer></script>
+    <script src="assets/grok-listen.js?v=stt2" defer></script>
+    <script src="assets/voice-spheres.js?v=v6" defer></script>
   </body>
 </html>

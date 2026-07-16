@@ -26,7 +26,8 @@ Inspired by timeline/history ops surfaces:
 | grok not running | **Summon grok** / Listen “hey grok” |
 | API down | Restart `./serve.sh` |
 
-APIs: `/api/processes` · `/api/events` · `/api/mitigate` · `/api/git-log`
+APIs: `/api/processes` · `/api/events` · `/api/mitigate` · `/api/git-log`  
+History sources: **`upstream`** (`xai-org/grok-build`) · **fork** (fornevercollective) · **gy** (GrokYtalkY)
 
 ## Broadcast (separate tab)
 

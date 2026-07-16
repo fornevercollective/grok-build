@@ -72,6 +72,26 @@ fi
 # port 0 = free port (avoids crash when ./serve.sh already holds :8765)
 export RUST_LOG="${RUST_LOG:-grok_build_lab=info,architecture_lab=info}"
 export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
+# Grok TTS free voices (eve/ara/…) need SpaceXAI key — pull from shell env or common files
+if [[ -z "${XAI_API_KEY:-}" ]]; then
+  for f in \
+    "${HOME}/.grok/xai_api_key" \
+    "${HOME}/.config/xai/api_key" \
+    "${HOME}/.xai/api_key"
+  do
+    if [[ -f "$f" ]]; then
+      # shellcheck disable=SC2162
+      read -r XAI_API_KEY < "$f" || true
+      XAI_API_KEY="$(echo "${XAI_API_KEY:-}" | tr -d '[:space:]')"
+      export XAI_API_KEY
+      break
+    fi
+  done
+fi
+# Optional: GROK_API_KEY alias
+if [[ -z "${XAI_API_KEY:-}" && -n "${GROK_API_KEY:-}" ]]; then
+  export XAI_API_KEY="$GROK_API_KEY"
+fi
 exec "$BIN" --mode "$MODE" --root "$ARCH_LAB_ROOT" --port 0
 WRAP
 chmod +x "$MACOS/Grok Build Lab"
@@ -141,7 +161,9 @@ cat > "$APP_DIR/Contents/Info.plist" << PLIST
   <key>NSCameraUsageDescription</key>
   <string>Walkie burst camera for the glyph orb.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Listen mode for voice intents.</string>
+  <string>Listen mode and Grok speech-to-text use the microphone for voice intents.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Optional system speech recognition; native Listen uses Grok STT when Web Speech is blocked.</string>
   <key>LSUIElement</key>
   <false/>
 </dict>

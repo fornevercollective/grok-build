@@ -28,6 +28,23 @@
     micStream: null,
     raf: 0,
     level: 0,
+    // STT fallback (WKWebView: Web Speech → service-not-allowed)
+    sttMode: false, // true = Grok /api/stt via MediaRecorder
+    webspeechBlocked: false,
+    preferStt: false,
+    mediaRec: null,
+    mediaChunks: [],
+    sttBusy: false,
+    speechOpen: false, // VAD: currently capturing an utterance
+    silenceMs: 0,
+    speechStartedAt: 0,
+    lastVadTs: 0,
+    sttPoll: 0,
+    // Anti-false-intent: Spaces / TV / chart scripts in the room
+    pttActive: false, // Hold pressed → always act
+    wakeArmedUntil: 0, // after "hey grok", accept tools briefly
+    pausedBg: false, // tab hidden / window blurred
+    fromPttClip: false, // next STT blob came from hold
   };
 
   function el(id) {
@@ -309,6 +326,85 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "kill-ffmpeg" }),
+          }).catch(() => {}),
+      };
+    }
+
+    // Dev playpen — manage / explore / mitigate / research / voice
+    if (
+      /\b(soft[-\s]?recover|recover\s+(session|lab)|playpen\s+recover)\b/.test(t)
+    ) {
+      return {
+        id: "soft-recover",
+        label: "playpen soft-recover",
+        conf: 0.93,
+        run: () =>
+          fetch("/api/playpen", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ domain: "mitigate", action: "soft-recover" }),
+          }).catch(() => {}),
+      };
+    }
+    if (/\b(diagnose|playpen\s+status|lab\s+health)\b/.test(t)) {
+      return {
+        id: "playpen-diagnose",
+        label: "playpen diagnose",
+        conf: 0.9,
+        run: () =>
+          fetch("/api/playpen", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ domain: "mitigate", action: "diagnose" }),
+          })
+            .then((r) => r.json())
+            .then((j) => {
+              const rec = (j.recommend || []).join("; ");
+              setIntent(rec || "diagnose ok", j.ok ? "ok" : "err");
+            })
+            .catch(() => {}),
+      };
+    }
+    if (
+      /\b(say\s+status|announce\s+status|voice\s+status)\b/.test(t) ||
+      /^\/voice\b/.test(t)
+    ) {
+      const speakMatch = t.match(/speak\s+(.+)$/i) || t.match(/say\s+(.+)$/i);
+      const payload = speakMatch
+        ? { action: "speak", text: speakMatch[1] }
+        : { action: "say-status" };
+      return {
+        id: "voice-playpen",
+        label: payload.action === "speak" ? "voice speak" : "voice say-status",
+        conf: 0.94,
+        run: () =>
+          fetch("/api/voice", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }).catch(() => {}),
+      };
+    }
+    if (/\b(open\s+)?playpen\b/.test(t) || /\bdev\s+playpen\b/.test(t)) {
+      return {
+        id: "playpen-docs",
+        label: "open playpen docs",
+        conf: 0.88,
+        run: () => {
+          location.hash = "#/30-playpen";
+        },
+      };
+    }
+    if (/\bresearch\s+crash/.test(t) || /\bcrash\s+(log|report)\b/.test(t)) {
+      return {
+        id: "research-crash",
+        label: "research crash log",
+        conf: 0.9,
+        run: () =>
+          fetch("/api/playpen", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ domain: "research", action: "crash" }),
           }).catch(() => {}),
       };
     }
@@ -735,21 +831,344 @@
     if (state.rec) {
       try {
         state.rec.onend = null;
+        state.rec.onerror = null;
         state.rec.stop();
       } catch (_) {}
       state.rec = null;
     }
   }
 
-  function startRec() {
-    const SR = SpeechRec();
-    if (!SR) {
-      setStatus("no speech API", "err");
-      setIntent("speech API unavailable · use Chrome/Edge", "err");
-      setLogoVoice("err", 0.4);
-      toast("Speech recognition not available in this browser");
+  function stopStt() {
+    state.sttMode = false;
+    state.speechOpen = false;
+    state.silenceMs = 0;
+    if (state.sttPoll) {
+      clearInterval(state.sttPoll);
+      state.sttPoll = 0;
+    }
+    if (state.mediaRec) {
+      try {
+        state.mediaRec.ondataavailable = null;
+        state.mediaRec.onstop = null;
+        if (state.mediaRec.state === "recording") state.mediaRec.stop();
+      } catch (_) {}
+      state.mediaRec = null;
+    }
+    state.mediaChunks = [];
+  }
+
+  function pickRecorderMime() {
+    if (!window.MediaRecorder) return "";
+    const cands = [
+      "audio/mp4",
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/wav",
+    ];
+    for (let i = 0; i < cands.length; i++) {
+      try {
+        if (MediaRecorder.isTypeSupported(cands[i])) return cands[i];
+      } catch (_) {}
+    }
+    return "";
+  }
+
+  /**
+   * Continuous Listen hears the room (X Spaces, music, terminals).
+   * Only auto-act on: Hold/PTT, wake phrase, or short window after wake.
+   * Everything else is shown as "heard" but does not run tools.
+   */
+  function shouldActOnTranscript(text) {
+    if (state.pttActive || state.fromPttClip) return true;
+    const t = String(text || "").trim();
+    if (!t) return false;
+    if (isWake(t) || /\bhey\s+grok\b/i.test(t)) {
+      state.wakeArmedUntil = Date.now() + 14000;
+      return true;
+    }
+    // "grok … tool" mid-utterance while already armed or with explicit vocative
+    if (Date.now() < state.wakeArmedUntil) return true;
+    if (/\bhey\s+grok\b/i.test(t) || /^grok[,:\s]/i.test(t)) {
+      state.wakeArmedUntil = Date.now() + 14000;
+      return true;
+    }
+    return false;
+  }
+
+  /** Feed final transcript into the same intent router as Web Speech. */
+  function handleFinalTranscript(raw) {
+    const final = String(raw || "").trim();
+    if (!final) return;
+    setHeard(final, false);
+    setStatus("heard", "on");
+    setLogoVoice("talk", Math.max(state.level, 0.55));
+
+    const act = shouldActOnTranscript(final);
+    state.fromPttClip = false;
+    if (!act) {
+      // Background speech (broadcast, charts log noise in the room, etc.)
+      setIntent("heard · Hold or “hey grok” to act", "miss");
+      pushTurn(final.slice(0, 80), "background · no act", false);
+      return;
+    }
+
+    const intent = interpret(final);
+    if (!intent) return;
+    setIntent(
+      intent.label + " · " + Math.round((intent.conf || 0) * 100) + "%",
+      intent.id === "unknown" ? "miss" : "hit"
+    );
+    if (intent.conf >= 0.72 && intent.run) {
+      runIntent(intent, final);
+    } else if (intent.id === "unknown") {
+      setActionChips([
+        {
+          label: "summon Grok",
+          primary: true,
+          run: () => summonGrok(final),
+        },
+        {
+          label: "open notes",
+          run: () => {
+            location.hash = "#/tool/notes";
+          },
+        },
+        {
+          label: "play demo",
+          run: () => {
+            const chip = document.querySelector('.sv-chip[data-preset="demo"]');
+            if (chip) chip.click();
+          },
+        },
+      ]);
+      pushTurn(final, intent.label, false);
+    } else {
+      runIntent(intent, final);
+    }
+  }
+
+  function handleInterimTranscript(raw) {
+    const interim = String(raw || "").trim();
+    if (!interim) return;
+    setHeard(interim, true);
+    const guess = interpret(interim);
+    if (guess && guess.id !== "unknown") {
+      setIntent("… " + guess.label, "hot");
+    } else {
+      setIntent("listening…", "hot");
+    }
+  }
+
+  async function sendSttBlob(blob) {
+    if (!blob || blob.size < 600 || state.sttBusy) return;
+    state.sttBusy = true;
+    setStatus("transcribing…", "on");
+    setIntent("Grok STT…", "hot");
+    const mime = (blob.type || "audio/webm").split(";")[0] || "audio/webm";
+    try {
+      const r = await fetch("/api/stt", {
+        method: "POST",
+        headers: {
+          "Content-Type": mime,
+          "X-Language": "en",
+        },
+        body: blob,
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const err = String(j.error || j.message || "STT HTTP " + r.status);
+        setStatus("stt err", "err");
+        let short = err;
+        if (/credit|spending limit|monthly/i.test(err)) {
+          short = "STT credits exhausted · top up xAI or type intents";
+        } else if (/XAI_API_KEY|not set/i.test(err)) {
+          short = "set XAI_API_KEY for Grok STT";
+        }
+        setIntent(short.slice(0, 72), "err");
+        if (r.status === 503 || /XAI_API_KEY|not set/i.test(err)) {
+          toast("Set XAI_API_KEY for Grok STT (Web Speech blocked in native)");
+        } else if (/credit|spending limit/i.test(err)) {
+          toast("xAI STT credits / spend limit hit — type or top up console.x.ai");
+        } else {
+          toast("STT: " + short.slice(0, 48));
+        }
+        return;
+      }
+      const text = String(j.text || j.transcript || "").trim();
+      if (text) {
+        handleFinalTranscript(text);
+        setStatus(state.sttMode ? "listening · grok stt" : "listening", "on");
+      } else {
+        setStatus(state.sttMode ? "listening · grok stt" : "listening", "on");
+        setIntent("no speech in clip · try again", "miss");
+      }
+    } catch (e) {
+      setStatus("stt err", "err");
+      setIntent("STT network error", "err");
+      console.warn("[voice] stt", e);
+    } finally {
+      state.sttBusy = false;
+    }
+  }
+
+  function beginUtteranceRecord() {
+    if (!state.on || !state.sttMode || state.sttBusy) return;
+    if (state.mediaRec && state.mediaRec.state === "recording") return;
+    const stream = state.micStream;
+    if (!stream || !stream.active) return;
+    if (!window.MediaRecorder) {
+      setIntent("MediaRecorder missing · type instead", "err");
+      return;
+    }
+    const mime = pickRecorderMime();
+    let rec;
+    try {
+      rec = mime
+        ? new MediaRecorder(stream, { mimeType: mime })
+        : new MediaRecorder(stream);
+    } catch (e) {
+      console.warn("[voice] MediaRecorder", e);
+      setIntent("could not record audio", "err");
+      return;
+    }
+    state.mediaChunks = [];
+    state.mediaRec = rec;
+    state.speechOpen = true;
+    state.speechStartedAt = Date.now();
+    state.silenceMs = 0;
+    rec.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) state.mediaChunks.push(ev.data);
+    };
+    rec.onstop = () => {
+      const type = rec.mimeType || mime || "audio/webm";
+      const blob = new Blob(state.mediaChunks, { type: type });
+      state.mediaChunks = [];
+      state.mediaRec = null;
+      state.speechOpen = false;
+      if (state.on && state.sttMode) sendSttBlob(blob);
+    };
+    try {
+      rec.start(250);
+      setHeard("…", true);
+      setIntent("capturing…", "hot");
+      setLogoVoice("talk", Math.max(state.level, 0.5));
+    } catch (e) {
+      state.mediaRec = null;
+      state.speechOpen = false;
+      console.warn("[voice] rec.start", e);
+    }
+  }
+
+  function endUtteranceRecord() {
+    if (!state.mediaRec || state.mediaRec.state !== "recording") {
+      state.speechOpen = false;
+      return;
+    }
+    try {
+      state.mediaRec.requestData?.();
+      state.mediaRec.stop();
+    } catch (_) {
+      state.mediaRec = null;
+      state.speechOpen = false;
+    }
+  }
+
+  /** Voice-activity: open clip when talking, close after short silence. */
+  function tickSttVad() {
+    if (!state.on || !state.sttMode || state.sttBusy) return;
+    // Don't burn STT / mis-hear broadcast while tab is backgrounded
+    if (state.pausedBg && !state.pttActive) {
+      if (state.speechOpen) endUtteranceRecord();
+      return;
+    }
+    // Hold path records only while pttActive — skip free VAD during hold
+    if (state.pttActive) return;
+    const now = Date.now();
+    const dt = state.lastVadTs ? Math.min(200, now - state.lastVadTs) : 80;
+    state.lastVadTs = now;
+    const level = state.level || 0;
+    // Higher thresholds so room/TV/Spaces hum does not open clips constantly
+    const speaking = level > 0.22;
+    const quiet = level < 0.08;
+
+    if (!state.speechOpen) {
+      if (speaking) beginUtteranceRecord();
+      return;
+    }
+    // hard cap utterance length
+    if (now - state.speechStartedAt > 7000) {
+      endUtteranceRecord();
+      return;
+    }
+    if (quiet) {
+      state.silenceMs += dt;
+      if (state.silenceMs > 850) endUtteranceRecord();
+    } else {
+      state.silenceMs = 0;
+    }
+  }
+
+  async function startSttFallback(reason) {
+    stopRec();
+    state.webspeechBlocked = true;
+    state.sttMode = true;
+    state.lastVadTs = 0;
+    state.silenceMs = 0;
+    const why = reason || "service-not-allowed";
+    setStatus("listening · grok stt", "on");
+    setIntent("Hold or “hey grok” · room audio ignored", "hot");
+    setLogoVoice("listen", 0.28);
+    if (why !== "hold" && why !== "native-wkwebview") {
+      toast("Grok STT · Hold to talk or say hey grok");
+    } else if (why === "native-wkwebview") {
+      toast("Listen armed · Hold or “hey grok” (broadcast ignored)");
+    }
+    if (!state.micStream) {
+      try {
+        await startMicLevel();
+      } catch (_) {}
+    }
+    if (!state.micStream) {
+      setStatus("mic needed", "err");
+      setIntent("mic required for Grok STT", "err");
+      toast("Allow microphone for Listen");
       state.on = false;
       syncBtn();
+      stopStt();
+      return;
+    }
+    if (state.sttPoll) clearInterval(state.sttPoll);
+    state.sttPoll = setInterval(tickSttVad, 80);
+  }
+
+  function isNativeShell() {
+    return !!(
+      window.LabDesktop?.isNative ||
+      window.LabDesktop?.isDesktop ||
+      document.body?.classList?.contains("lab-native") ||
+      document.documentElement?.classList?.contains("lab-native") ||
+      /GrokBuildLab|architecture-lab|grok-build-lab/i.test(navigator.userAgent || "")
+    );
+  }
+
+  function startRec() {
+    // Prefer Grok STT when Web Speech already failed in this session
+    if (state.webspeechBlocked || state.preferStt) {
+      startSttFallback(state.webspeechBlocked ? "service-not-allowed" : "prefer-stt");
+      return;
+    }
+    // WKWebView almost always returns service-not-allowed for Web Speech —
+    // skip the flash and use Grok STT immediately in the native shell.
+    if (isNativeShell()) {
+      state.preferStt = true;
+      startSttFallback("native-wkwebview");
+      return;
+    }
+    const SR = SpeechRec();
+    if (!SR) {
+      // No SpeechRecognition — go straight to Grok STT
+      startSttFallback("no-speech-api");
       return;
     }
     stopRec();
@@ -761,7 +1180,7 @@
     rec.maxAlternatives = 1;
 
     rec.onresult = (ev) => {
-      if (!state.on) return;
+      if (!state.on || state.sttMode) return;
       let final = "";
       let interim = "";
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
@@ -772,57 +1191,19 @@
       const live = (final || interim).trim();
       if (live) {
         setHeard(live, !final);
-        setLogoVoice(final ? "talk" : "talk", Math.max(state.level, 0.55));
+        setLogoVoice("talk", Math.max(state.level, 0.55));
       }
       if (final) {
-        setStatus("heard", "on");
-        const intent = interpret(final);
-        if (intent) {
-          setIntent(
-            intent.label + " · " + Math.round((intent.conf || 0) * 100) + "%",
-            intent.id === "unknown" ? "miss" : "hit"
-          );
-          // Auto-run high-confidence intents; show chips for low conf
-          if (intent.conf >= 0.72 && intent.run) {
-            runIntent(intent, final.trim());
-          } else if (intent.id === "unknown") {
-            setActionChips([
-              {
-                label: "summon Grok",
-                primary: true,
-                run: () => summonGrok(final.trim()),
-              },
-              {
-                label: "open notes",
-                run: () => {
-                  location.hash = "#/tool/notes";
-                },
-              },
-              {
-                label: "play demo",
-                run: () => {
-                  const chip = document.querySelector('.sv-chip[data-preset="demo"]');
-                  if (chip) chip.click();
-                },
-              },
-            ]);
-            pushTurn(final.trim(), intent.label, false);
-          } else {
-            runIntent(intent, final.trim());
-          }
-        }
+        handleFinalTranscript(final);
       } else if (interim) {
-        const guess = interpret(interim);
-        if (guess && guess.id !== "unknown") {
-          setIntent("… " + guess.label, "hot");
-        } else {
-          setIntent("listening…", "hot");
-        }
+        handleInterimTranscript(interim);
       }
     };
 
     rec.onerror = (ev) => {
-      if (ev.error === "not-allowed") {
+      const err = String(ev.error || "");
+      // Mic permission denied
+      if (err === "not-allowed") {
         setStatus("mic denied", "err");
         setIntent("mic permission denied", "err");
         setLogoVoice("err", 0.3);
@@ -833,18 +1214,33 @@
         toast("Mic permission denied for listening");
         return;
       }
-      if (ev.error === "no-speech" || ev.error === "aborted") return;
-      setStatus(ev.error || "error", "err");
-      setIntent(ev.error || "recognition error", "err");
+      // WKWebView / Safari: recognition service blocked (mic can still work)
+      if (
+        err === "service-not-allowed" ||
+        err === "service_not_allowed" ||
+        err === "network" ||
+        err === "language-not-supported"
+      ) {
+        stopRec();
+        startSttFallback(err || "service-not-allowed");
+        return;
+      }
+      if (err === "no-speech" || err === "aborted") return;
+      // Unknown errors: surface once, then fall back so Listen keeps working
+      console.warn("[voice] speech error", err);
+      stopRec();
+      startSttFallback(err || "speech-error");
     };
 
     rec.onend = () => {
-      if (!state.on) return;
+      if (!state.on || state.sttMode) return;
       state.restartTimer = setTimeout(() => {
-        if (state.on) {
+        if (state.on && !state.sttMode) {
           try {
             startRec();
-          } catch (_) {}
+          } catch (_) {
+            startSttFallback("restart-failed");
+          }
         }
       }, 280);
     };
@@ -855,12 +1251,9 @@
       setIntent("listening · say “hey grok” or a tool", "hot");
       setLogoVoice("listen", 0.25);
     } catch (err) {
-      setStatus("failed", "err");
-      setIntent("could not start recognition", "err");
-      toast("Could not start listening");
-      state.on = false;
-      syncBtn();
-      stopMicLevel();
+      // start() can throw when service is blocked
+      console.warn("[voice] rec.start failed", err);
+      startSttFallback("start-failed");
     }
   }
 
@@ -885,12 +1278,12 @@
     if (state.on) {
       setReadoutVisible(true);
       setStatus("starting…", "on");
-      setHeard("listening…", true);
-      setIntent("say “hey grok” or a tool", "hot");
+      setHeard("armed…", true);
+      setIntent("Hold or “hey grok” · room audio ignored", "hot");
       setLogoVoice("listen", 0.2);
       startMicLevel();
       startRec();
-      toast("Listening · talk to the logo · walkthrough on hover");
+      toast("Listen armed · Hold to talk or say hey grok");
       setActionChips([
         {
           label: "summon",
@@ -913,7 +1306,11 @@
         },
       ]);
     } else {
+      state.pttActive = false;
+      state.fromPttClip = false;
+      state.wakeArmedUntil = 0;
       stopRec();
+      stopStt();
       stopMicLevel();
       setStatus("off");
       setHeard("");
@@ -925,7 +1322,61 @@
     }
   }
 
+  /** Hold-to-talk: record while pressed, STT on release (orb Hold / walkie). */
+  function pttDown() {
+    state.pttActive = true;
+    state.fromPttClip = true;
+    state.pausedBg = false;
+    if (!state.on) {
+      state.on = true;
+      syncBtn();
+      setReadoutVisible(true);
+      startMicLevel().then(() => {
+        if (!state.sttMode) startSttFallback("hold");
+        beginUtteranceRecord();
+      });
+      return;
+    }
+    if (!state.sttMode) {
+      // Force STT path for hold (more reliable than Web Speech in native)
+      stopRec();
+      startSttFallback("hold");
+    }
+    beginUtteranceRecord();
+  }
+
+  function pttUp() {
+    state.pttActive = false;
+    state.fromPttClip = true; // next blob is intentional PTT
+    if (state.speechOpen) endUtteranceRecord();
+  }
+
   function bind() {
+    // Never leave listen-active sticky from HTML — only when Listen is on
+    if (!state.on) document.body.classList.remove("listen-active");
+
+    // Pause free VAD when user is watching Spaces / other apps
+    const onVis = () => {
+      state.pausedBg = !!document.hidden;
+      if (state.pausedBg && state.speechOpen && !state.pttActive) {
+        try {
+          endUtteranceRecord();
+        } catch (_) {}
+      }
+      if (state.on && state.pausedBg) {
+        setIntent("paused (tab hidden) · Hold still works", "miss");
+      } else if (state.on && !state.pausedBg) {
+        setIntent("Hold or “hey grok” · room audio ignored", "hot");
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("blur", () => {
+      if (!state.pttActive) state.pausedBg = true;
+    });
+    window.addEventListener("focus", () => {
+      state.pausedBg = !!document.hidden;
+    });
+
     el("btn-listen")?.addEventListener("click", toggle);
     // Click logo while listening → manual summon pulse
     el("xai-logo-react")?.addEventListener("click", (e) => {
@@ -935,6 +1386,26 @@
       setLogoVoice("talk", 0.6);
     });
 
+    // Hold button on orb/chat — push-to-talk via Grok STT
+    const holdBtn = el("siri-btn-hold") || el("btn-hold");
+    if (holdBtn) {
+      holdBtn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        try {
+          holdBtn.setPointerCapture?.(e.pointerId);
+        } catch (_) {}
+        pttDown();
+      });
+      const up = (e) => {
+        pttUp();
+        try {
+          holdBtn.releasePointerCapture?.(e.pointerId);
+        } catch (_) {}
+      };
+      holdBtn.addEventListener("pointerup", up);
+      holdBtn.addEventListener("pointercancel", up);
+    }
+
     window.LabGrokListen = {
       toggle: toggle,
       summon: () => summonGrok("manual"),
@@ -942,6 +1413,14 @@
       interpret: interpret,
       setHeard: setHeard,
       setIntent: setIntent,
+      pttDown: pttDown,
+      pttUp: pttUp,
+      useStt: () => {
+        state.preferStt = true;
+        state.webspeechBlocked = true;
+        if (state.on) startSttFallback("manual");
+      },
+      mode: () => (state.sttMode ? "grok-stt" : "webspeech"),
     };
   }
 

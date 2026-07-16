@@ -9,6 +9,29 @@
   const LS_HISTORY = "lab.media.history.v1";
 
   const PRESETS = {
+    starship: {
+      label: "Starship",
+      url: "https://x.com/i/broadcasts/1MKgNNXAZdmxL",
+      note: "X broadcast · Starship flight test (restream)",
+    },
+    sxlive: {
+      label: "SpaceX live",
+      url: "https://www.youtube.com/@SpaceX/live",
+      note: "YouTube · @SpaceX/live",
+      preferBlank: true,
+    },
+    sxyt: {
+      label: "SpaceX YT",
+      url: "https://www.youtube.com/@SpaceX",
+      note: "YouTube · @SpaceX",
+      preferBlank: true,
+    },
+    spacex: {
+      label: "SpaceX X",
+      url: "https://x.com/SpaceX",
+      note: "X · @SpaceX",
+      preferBlank: true,
+    },
     spacexai: {
       label: "SpaceXAI",
       url: "https://x.com/spacexai",
@@ -19,6 +42,42 @@
       label: "xAI",
       url: "https://x.com/xai",
       note: "X · @xai",
+      preferBlank: true,
+    },
+    nasa: {
+      label: "NASA live",
+      url: "https://www.youtube.com/@NASA/live",
+      note: "YouTube · @NASA/live",
+      preferBlank: true,
+    },
+    nasatv: {
+      label: "NASA TV",
+      url: "https://www.youtube.com/@NASAtelevision/live",
+      note: "YouTube · NASA television live",
+      preferBlank: true,
+    },
+    sfn: {
+      label: "SFN",
+      url: "https://www.youtube.com/@SpaceflightNow/live",
+      note: "Spaceflight Now live",
+      preferBlank: true,
+    },
+    nsf: {
+      label: "NSF",
+      url: "https://www.youtube.com/@NASASpaceflight/live",
+      note: "NASASpaceflight live",
+      preferBlank: true,
+    },
+    everyday: {
+      label: "Everyday Astro",
+      url: "https://www.youtube.com/@EverydayAstronaut/live",
+      note: "Everyday Astronaut live",
+      preferBlank: true,
+    },
+    tesla: {
+      label: "Tesla",
+      url: "https://www.youtube.com/@Tesla/live",
+      note: "Tesla YouTube live",
       preferBlank: true,
     },
     overview: {
@@ -46,6 +105,20 @@
       label: "Cam",
       url: "device:0",
       note: "local camera via ffmpeg avfoundation/v4l2",
+    },
+    /** Continuity / tethered iPhone (macOS Continuity Camera → device index) */
+    phone: {
+      label: "Phone",
+      url: "device:0",
+      note: "Continuity Camera / UVC · or GY ingest device:0",
+      preferBlank: false,
+    },
+    /** GrokYtalkY hub HLS pipe (multi-stream / HDRI ladder) */
+    gydev: {
+      label: "GY cam",
+      url: "gy:device:0",
+      note: "gy serve ingest → HLS · multi HDRI streams",
+      preferBlank: false,
     },
   };
 
@@ -189,7 +262,24 @@
     const onReady = () => {
       if (stage) stage.classList.add("has-src", "playing");
       state.playing = true;
-      video.play().catch(() => {});
+      // WKWebView / browser autoplay policy: start muted, then play
+      try {
+        video.muted = true;
+        video.setAttribute("muted", "");
+        video.playsInline = true;
+      } catch (_) {}
+      const p = video.play();
+      if (p && typeof p.then === "function") {
+        p.catch(() => {
+          // retry once after a tick (common after HLS attach)
+          setTimeout(() => {
+            try {
+              video.muted = true;
+              video.play().catch(() => {});
+            } catch (_) {}
+          }, 200);
+        });
+      }
     };
 
     const onError = () => {
@@ -212,9 +302,22 @@
         hls.attachMedia(video);
         hls.on(window.Hls.Events.MANIFEST_PARSED, onReady);
         hls.on(window.Hls.Events.ERROR, (_, data) => {
-          if (data?.fatal) {
-            setStatus("HLS error — try Pop blank / ffplay", "err");
-          }
+          if (!data) return;
+          if (!data.fatal) return;
+          // Recover common X/broadcast glitches instead of dying
+          try {
+            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+              setStatus("HLS network glitch · recovering…", "warn");
+              hls.startLoad();
+              return;
+            }
+            if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              setStatus("HLS media glitch · recovering…", "warn");
+              hls.recoverMediaError();
+              return;
+            }
+          } catch (_) {}
+          setStatus("HLS error — try Pop blank / ffplay", "err");
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = playUrl;
@@ -287,6 +390,18 @@
       );
       histPush({ url: url, title: title, t: Date.now(), via: via });
       state.lastMeta = r;
+      // Publish active feed so chat Stream pin can pipe a low-res preview
+      publishActiveFeed({
+        playing: true,
+        play: play,
+        input: url,
+        title: title,
+        jobId: r.jobId || state.jobId || "",
+        via: via,
+        live: !!r.live,
+        quality: r.quality || quality,
+        streamKind: r.streamKind || (/\.m3u8/i.test(play) ? "hls" : "progressive"),
+      });
     } catch (e) {
       setStatus(
         (e.message || String(e)) + " — is native Lab up? Media API required.",
@@ -313,7 +428,40 @@
       });
     } catch (_) {}
     state.jobId = null;
+    publishActiveFeed({ playing: false, play: "" });
     setStatus("stopped", "");
+  }
+
+  /** Bus for chat Stream pin low-res pipe (same-origin HLS when restreamed). */
+  function publishActiveFeed(payload) {
+    const body = Object.assign(
+      {
+        playing: !!payload.playing,
+        play: payload.play || "",
+        input: payload.input || "",
+        title: payload.title || "",
+        jobId: payload.jobId || "",
+        via: payload.via || "stream",
+        live: !!payload.live,
+        quality: payload.quality || "",
+      },
+      payload
+    );
+    try {
+      localStorage.setItem("lab.media.active.v1", JSON.stringify(body));
+    } catch (_) {}
+    // Broadcast to other lab windows (chat pin)
+    try {
+      window.dispatchEvent(
+        new CustomEvent("lab:media-active", { detail: body })
+      );
+    } catch (_) {}
+    fetch("/api/media/active", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    }).catch(() => {});
   }
 
   async function openFfplay() {
@@ -546,6 +694,17 @@
     window.addEventListener("lab:media-stop", () => stopStream());
   }
 
+  function autoplayFromQuery() {
+    try {
+      const q = new URLSearchParams(location.search || "");
+      const u = (q.get("url") || q.get("play") || q.get("src") || "").trim();
+      if (!u) return;
+      if ($("sv-url")) $("sv-url").value = u;
+      // Slight delay so hls.js / form are wired
+      setTimeout(() => playUrl(u, { preferBlank: false }), 120);
+    } catch (_) {}
+  }
+
   function init() {
     wireCollapsibleSections();
     wirePresets();
@@ -555,7 +714,8 @@
     refreshTools();
     // Default SpaceXAI feed into the field for discoverability
     if ($("sv-url") && !$("sv-url").value) {
-      $("sv-url").placeholder = "https://x.com/spacexai  ·  @spacexai  ·  x:spacexai  ·  paste URL";
+      $("sv-url").placeholder =
+        "https://x.com/i/broadcasts/… · @spacexai · x:spacexai · paste";
     }
     window.LabVideo = {
       play: playUrl,
@@ -565,7 +725,15 @@
       copy: copyUrl,
       paste: pasteUrl,
       presets: PRESETS,
+      active: () => ({
+        playing: state.playing,
+        play: state.lastPlay,
+        meta: state.lastMeta,
+        jobId: state.jobId,
+      }),
+      publishActive: publishActiveFeed,
     };
+    autoplayFromQuery();
   }
 
   if (document.readyState === "loading") {

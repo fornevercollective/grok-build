@@ -17,6 +17,143 @@ use wry::{http::Request, WebViewBuilder};
 
 const DOCK_GAP: i32 = 10;
 
+/// Detected monitor work area in **physical** pixels (menu bar / dock excluded when possible).
+#[derive(Clone, Copy, Debug)]
+struct WorkArea {
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    /// Device scale (2.0 on Retina). Sizes stay physical for tao APIs.
+    scale: f64,
+}
+
+impl WorkArea {
+    fn fallback() -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            w: 1440,
+            h: 900,
+            scale: 1.0,
+        }
+    }
+
+    /// Logical points (CSS-like) for proportion math.
+    fn logical_w(self) -> f64 {
+        self.w as f64 / self.scale.max(0.5)
+    }
+
+    fn logical_h(self) -> f64 {
+        self.h as f64 / self.scale.max(0.5)
+    }
+
+    fn phys(self, logical: f64) -> u32 {
+        (logical * self.scale).round().max(1.0) as u32
+    }
+
+    fn phys_i(self, logical: f64) -> i32 {
+        (logical * self.scale).round() as i32
+    }
+}
+
+/// Read visible frame from NSScreen when available; else tao monitor size.
+fn detect_work_area(window: &Window) -> WorkArea {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(wa) = macos_visible_frame(window) {
+            return wa;
+        }
+    }
+    if let Some(m) = window.current_monitor() {
+        let s = m.size();
+        let p = m.position();
+        let scale = m.scale_factor();
+        // Reserve ~menu bar + small dock margin when we only have full frame.
+        let menu = (28.0 * scale) as i32;
+        let dock = (8.0 * scale) as i32;
+        return WorkArea {
+            x: p.x,
+            y: p.y + menu,
+            w: s.width as i32,
+            h: (s.height as i32 - menu - dock).max(400),
+            scale,
+        };
+    }
+    WorkArea::fallback()
+}
+
+#[cfg(target_os = "macos")]
+fn macos_visible_frame(window: &Window) -> Option<WorkArea> {
+    use cocoa::base::{id, nil};
+    use cocoa::foundation::NSRect;
+    use objc::{class, msg_send, sel, sel_impl};
+    use tao::platform::macos::WindowExtMacOS;
+
+    unsafe {
+        let ns_win = window.ns_window() as id;
+        if ns_win == nil {
+            return None;
+        }
+        let screen: id = msg_send![ns_win, screen];
+        let screen = if screen == nil {
+            let screens: id = msg_send![class!(NSScreen), screens];
+            if screens == nil {
+                return None;
+            }
+            let count: usize = msg_send![screens, count];
+            if count == 0 {
+                return None;
+            }
+            msg_send![screens, objectAtIndex: 0usize]
+        } else {
+            screen
+        };
+        if screen == nil {
+            return None;
+        }
+        let vis: NSRect = msg_send![screen, visibleFrame];
+        let full: NSRect = msg_send![screen, frame];
+        // Cocoa origin is bottom-left; tao/winit use top-left of primary.
+        // Convert visibleFrame to top-left physical matching tao monitor coords.
+        let scale: f64 = msg_send![screen, backingScaleFactor];
+        let scale = if scale < 0.5 { 1.0 } else { scale };
+
+        // Prefer tao monitor origin for multi-display consistency.
+        let (mx, my, mw, mh) = if let Some(m) = window.current_monitor() {
+            let p = m.position();
+            let s = m.size();
+            (p.x, p.y, s.width as i32, s.height as i32)
+        } else {
+            (
+                (full.origin.x * scale) as i32,
+                0,
+                (full.size.width * scale) as i32,
+                (full.size.height * scale) as i32,
+            )
+        };
+
+        // Insets from full frame to visible (points → physical).
+        let left_pt = vis.origin.x - full.origin.x;
+        let bottom_pt = vis.origin.y - full.origin.y;
+        let right_pt = (full.origin.x + full.size.width) - (vis.origin.x + vis.size.width);
+        let top_pt = (full.origin.y + full.size.height) - (vis.origin.y + vis.size.height);
+
+        let left = (left_pt * scale).round() as i32;
+        let right = (right_pt * scale).round() as i32;
+        let top = (top_pt * scale).round() as i32;
+        let bottom = (bottom_pt * scale).round() as i32;
+
+        Some(WorkArea {
+            x: mx + left,
+            y: my + top,
+            w: (mw - left - right).max(480),
+            h: (mh - top - bottom).max(360),
+            scale,
+        })
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Role {
     Lab,
@@ -53,6 +190,21 @@ struct WinPair {
     entry_url: String,
 }
 
+/// Snapshot of which satellites were open before chat-only / orb focus.
+#[derive(Clone, Debug, Default)]
+struct WorkspaceSnap {
+    chat: bool,
+    stream: bool,
+    agent: bool,
+    launch: bool,
+    browser: bool,
+    chat_docked: bool,
+    stream_docked: bool,
+    /// "orb" | "full" | ""
+    chat_surface: String,
+    taken: bool,
+}
+
 /// Dock/undock layout — satellites snap to lab when docked.
 struct LayoutState {
     chat_docked: bool,
@@ -61,6 +213,8 @@ struct LayoutState {
     suppressing_move: bool,
     /// First-launch cluster applied (resolution-aware positions).
     clustered: bool,
+    /// Last multi-window layout (restored by Lab / restore_workspace).
+    snap: WorkspaceSnap,
 }
 
 pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) -> Result<()> {
@@ -246,18 +400,28 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         },
     );
 
-    // Initial dock snap + resolution cluster (hidden until shown)
+    // Initial dock snap + resolution cluster (geometry only; show after AppKit Init)
     {
         let mut layout = LayoutState {
             chat_docked: true,
             stream_docked: true,
             suppressing_move: false,
             clustered: false,
+            snap: WorkspaceSnap::default(),
         };
         apply_launch_cluster(&mut windows, &mut layout, float);
         snap_docked(&mut windows, &mut layout);
         layout.clustered = true;
     }
+
+    // Default: lab only. Opt in with LAB_NATIVE_SHOW_ALL=1 for chat+stream on launch.
+    // (Avoid surprising "all windows open" when Grok just wants chat.)
+    let show_all_on_launch = std::env::var("LAB_NATIVE_SHOW_ALL")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+        || std::env::var("LAB_NATIVE_MINIMAL")
+            .map(|v| v == "0" || v.eq_ignore_ascii_case("false"))
+            .unwrap_or(false);
 
     tracing::info!(
         lab_url = %lab_entry,
@@ -268,6 +432,7 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         browser_url = %browser_url,
         float,
         eager,
+        show_all_on_launch,
         "lab webview up · chat/stream/agent/launch/browser {}",
         if eager { "eager" } else { "lazy-on-show" }
     );
@@ -279,7 +444,9 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         stream_docked: true,
         suppressing_move: false,
         clustered: true,
+        snap: WorkspaceSnap::default(),
     };
+    let mut did_launch_show = false;
 
     event_loop.run(move |event, _target, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -291,6 +458,26 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
                 snap_docked(&mut windows, &mut layout);
                 layout.suppressing_move = false;
                 layout.clustered = true;
+
+                if show_all_on_launch && !did_launch_show {
+                    did_launch_show = true;
+                    // Attach + show chat/stream so the full triple fits the display.
+                    for p in windows.values_mut() {
+                        if matches!(p.role, Role::Chat | Role::Stream) {
+                            if let Err(e) = ensure_webview(p, &proxy_loop) {
+                                tracing::warn!(role = ?p.role, %e, "launch show: webview attach failed");
+                                continue;
+                            }
+                            p.window.set_visible(true);
+                        }
+                    }
+                    bus_loop.set_chat_visible(true);
+                    bus_loop.set_stream_visible(true);
+                    layout.suppressing_move = true;
+                    snap_docked(&mut windows, &mut layout);
+                    layout.suppressing_move = false;
+                    tracing::info!("launch show-all: lab + chat + stream fitted to work area");
+                }
             }
             Event::UserEvent(cmd) => {
                 // Menu / HTTP control must never panic across AppKit.
@@ -375,10 +562,11 @@ fn build_lab_window(
     float: bool,
 ) -> Result<Window> {
     // Frameless + custom HTML chrome — same float language as chat.
+    // Min sizes are logical points (tao scales); keep modest so small laptops can resize.
     let (w, h, min_w, min_h) = if float {
-        (980.0, 720.0, 640.0, 480.0)
+        (980.0, 720.0, 480.0, 360.0)
     } else {
-        (1280.0, 860.0, 800.0, 560.0)
+        (1280.0, 860.0, 640.0, 420.0)
     };
 
     // ASCII-only titles — avoid rare NSString edge cases with punctuation glyphs.
@@ -409,15 +597,316 @@ fn build_lab_window(
     Ok(win)
 }
 
+/// Chat window presentation: full panel vs Siri-scale orb.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ChatSurface {
+    Full,
+    Orb,
+}
+
+// Full lab-ship chat: tall enough for large orb (top) + Grok Voice · eve below
+const CHAT_FULL_W: f64 = 360.0;
+const CHAT_FULL_H: f64 = 720.0;
+// chrome 36 + controls ~70 + orb 128 + waveform ~72 + padding ≈ 340
+const CHAT_ORB_W: f64 = 220.0;
+const CHAT_ORB_H: f64 = 340.0;
+
+/// Remember which windows were open before chat-only / orb focus.
+fn snapshot_workspace(windows: &HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
+    let mut snap = WorkspaceSnap {
+        chat_docked: layout.chat_docked,
+        stream_docked: layout.stream_docked,
+        taken: true,
+        ..Default::default()
+    };
+    for p in windows.values() {
+        let vis = p.window.is_visible();
+        match p.role {
+            Role::Chat => {
+                snap.chat = vis;
+                if p.entry_url.contains("orb.html") {
+                    snap.chat_surface = "orb".into();
+                } else {
+                    snap.chat_surface = "full".into();
+                }
+            }
+            Role::Stream => snap.stream = vis,
+            Role::Agent => snap.agent = vis,
+            Role::Launch => snap.launch = vis,
+            Role::Browser => snap.browser = vis,
+            Role::Lab => {}
+        }
+    }
+    // Prefer keeping chat in restore set when we're about to solo-chat
+    if !snap.chat {
+        snap.chat = true;
+    }
+    layout.snap = snap;
+    tracing::info!(
+        chat = layout.snap.chat,
+        stream = layout.snap.stream,
+        agent = layout.snap.agent,
+        surface = %layout.snap.chat_surface,
+        "workspace snapshot taken"
+    );
+}
+
+/// Lab button: show lab + re-open satellites that were visible before solo chat/orb.
+fn restore_workspace(
+    windows: &mut HashMap<WindowId, WinPair>,
+    layout: &mut LayoutState,
+    bus: &ControlBus,
+    proxy: &EventLoopProxy<ControlCmd>,
+) -> Result<(), String> {
+    let snap = layout.snap.clone();
+    // Always bring lab back
+    for p in windows.values_mut() {
+        if p.role == Role::Lab {
+            ensure_webview(p, proxy)?;
+            p.window.set_minimized(false);
+            p.window.set_visible(true);
+            p.window.set_focus();
+        }
+    }
+
+    if !snap.taken {
+        // No snapshot — arrange visible lab + any already-open satellites
+        layout.suppressing_move = true;
+        arrange_workspace(windows, layout);
+        layout.suppressing_move = false;
+        tracing::info!("restore_workspace: no snap · arranged lab");
+        return Ok(());
+    }
+
+    layout.chat_docked = snap.chat_docked;
+    layout.stream_docked = snap.stream_docked;
+    bus.set_chat_docked(snap.chat_docked);
+    bus.set_stream_docked(snap.stream_docked);
+
+    let show = |role: Role, on: bool| -> bool { on };
+
+    for p in windows.values_mut() {
+        match p.role {
+            Role::Chat if show(Role::Chat, snap.chat) => {
+                // Keep current chat surface (orb/full) from snap
+                let base = {
+                    let u = p.entry_url.as_str();
+                    if let Some(i) = u.rfind('/') {
+                        u[..=i].to_string()
+                    } else {
+                        u.to_string()
+                    }
+                };
+                let want_orb = snap.chat_surface == "orb";
+                let url = if want_orb {
+                    format!("{base}orb.html")
+                } else {
+                    format!("{base}chat.html")
+                };
+                if p.entry_url != url {
+                    p.entry_url = url.clone();
+                    ensure_webview(p, proxy)?;
+                    if let Some(wv) = p.webview.as_ref() {
+                        let _ = wv.load_url(&url);
+                    }
+                } else {
+                    ensure_webview(p, proxy)?;
+                }
+                p.window.set_minimized(false);
+                p.window.set_visible(true);
+                bus.set_chat_visible(true);
+            }
+            Role::Stream if show(Role::Stream, snap.stream) => {
+                ensure_webview(p, proxy)?;
+                p.window.set_minimized(false);
+                p.window.set_visible(true);
+                bus.set_stream_visible(true);
+            }
+            Role::Agent if show(Role::Agent, snap.agent) => {
+                ensure_webview(p, proxy)?;
+                p.window.set_minimized(false);
+                p.window.set_visible(true);
+            }
+            Role::Launch if show(Role::Launch, snap.launch) => {
+                ensure_webview(p, proxy)?;
+                p.window.set_minimized(false);
+                p.window.set_visible(true);
+            }
+            Role::Browser if show(Role::Browser, snap.browser) => {
+                ensure_webview(p, proxy)?;
+                p.window.set_minimized(false);
+                p.window.set_visible(true);
+            }
+            Role::Chat if !snap.chat => {
+                p.window.set_visible(false);
+                bus.set_chat_visible(false);
+            }
+            Role::Stream if !snap.stream => {
+                p.window.set_visible(false);
+                bus.set_stream_visible(false);
+            }
+            Role::Agent if !snap.agent => p.window.set_visible(false),
+            Role::Launch if !snap.launch => p.window.set_visible(false),
+            Role::Browser if !snap.browser => p.window.set_visible(false),
+            _ => {}
+        }
+    }
+
+    layout.suppressing_move = true;
+    if layout.chat_docked || layout.stream_docked {
+        snap_docked(windows, layout);
+    } else {
+        arrange_workspace(windows, layout);
+    }
+    layout.suppressing_move = false;
+    tracing::info!(
+        chat = snap.chat,
+        stream = snap.stream,
+        agent = snap.agent,
+        launch = snap.launch,
+        browser = snap.browser,
+        "workspace restored"
+    );
+    Ok(())
+}
+
+fn apply_chat_surface(
+    windows: &mut HashMap<WindowId, WinPair>,
+    layout: &mut LayoutState,
+    bus: &ControlBus,
+    proxy: &EventLoopProxy<ControlCmd>,
+    surface: ChatSurface,
+) -> Result<(), String> {
+    // Capture multi-window state so Lab button can restore it
+    snapshot_workspace(windows, layout);
+
+    layout.chat_docked = false;
+    layout.stream_docked = false;
+    bus.set_chat_docked(false);
+    bus.set_stream_docked(false);
+    bus.set_stream_visible(false);
+
+    // Base URL from chat entry (…/chat.html or …/orb.html → …/)
+    let base = windows
+        .values()
+        .find(|p| p.role == Role::Chat)
+        .map(|p| {
+            let u = p.entry_url.as_str();
+            // Strip last path segment
+            if let Some(i) = u.rfind('/') {
+                u[..=i].to_string()
+            } else {
+                u.to_string()
+            }
+        })
+        .unwrap_or_else(|| "http://127.0.0.1:8765/".into());
+
+    let (url, w, h, min_w, min_h) = match surface {
+        ChatSurface::Orb => (
+            format!("{base}orb.html"),
+            CHAT_ORB_W,
+            CHAT_ORB_H,
+            200.0,
+            300.0,
+        ),
+        ChatSurface::Full => (
+            format!("{base}chat.html"),
+            CHAT_FULL_W,
+            CHAT_FULL_H,
+            220.0,
+            320.0,
+        ),
+    };
+
+    for p in windows.values_mut() {
+        match p.role {
+            Role::Chat => {
+                p.entry_url = url.clone();
+                ensure_webview(p, proxy)?;
+                if let Some(wv) = p.webview.as_ref() {
+                    let _ = wv.load_url(&url);
+                }
+
+                // Size in logical points first (tao/macOS DPI-safe), then re-assert
+                // physical after show so Retina doesn't keep a stale full-chat size.
+                let scale = p
+                    .window
+                    .current_monitor()
+                    .map(|m| m.scale_factor())
+                    .unwrap_or(1.0)
+                    .max(0.5);
+                p.window
+                    .set_min_inner_size(Some(LogicalSize::new(min_w, min_h)));
+                // Clear any huge max from prior full-chat session
+                p.window.set_max_inner_size::<LogicalSize<f64>>(None);
+                p.window.set_inner_size(LogicalSize::new(w, h));
+                // Explicit physical pass (avoids 0×0 / stale after load_url)
+                let pw = (w * scale).round().max(1.0) as u32;
+                let ph = (h * scale).round().max(1.0) as u32;
+                p.window.set_inner_size(PhysicalSize::new(pw, ph));
+
+                if let Some(m) = p.window.current_monitor() {
+                    // Prefer visible work area so menu bar / dock don't clip.
+                    let wa = detect_work_area(&p.window);
+                    let margin_x = wa.phys_i(16.0).max(12);
+                    // Full chat: pin to TOP of work area (above terminal feeds / agent band).
+                    // Orb chat: keep lower-right float so it stays Siri-thumb reachable.
+                    let (x, y) = match surface {
+                        ChatSurface::Full => {
+                            let x = (wa.x + wa.w as i32 - pw as i32 - margin_x).max(wa.x + 8);
+                            let y = wa.y + wa.phys_i(10.0).max(8);
+                            (x, y)
+                        }
+                        ChatSurface::Orb => {
+                            let x = (wa.x + wa.w as i32 - pw as i32 - margin_x).max(wa.x + 8);
+                            let y = (wa.y + wa.h as i32 - ph as i32 - wa.phys_i(20.0)).max(wa.y + 40);
+                            (x, y)
+                        }
+                    };
+                    p.window
+                        .set_outer_position(PhysicalPosition::new(x, y));
+                }
+
+                p.window.set_visible(true);
+                p.window.set_minimized(false);
+                p.window.set_always_on_top(true);
+                // Second size assert after visibility (AppKit sometimes ignores pre-show)
+                p.window.set_inner_size(LogicalSize::new(w, h));
+                p.window.set_focus();
+                bus.set_chat_visible(true);
+                #[cfg(target_os = "macos")]
+                crate::macos_style::apply_lab_window_shape(&p.window);
+                tracing::info!(
+                    surface = ?surface,
+                    w,
+                    h,
+                    scale,
+                    url = %url,
+                    "chat surface sized"
+                );
+            }
+            Role::Lab => {
+                p.window.set_minimized(false);
+                p.window.set_visible(false);
+            }
+            Role::Stream | Role::Agent | Role::Launch | Role::Browser => {
+                p.window.set_visible(false);
+            }
+        }
+    }
+    Ok(())
+}
+
 fn build_chat_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
     let mut wb = WindowBuilder::new()
-        .with_title("Grok Build Lab - Chat")
+        .with_title("Grok")
         .with_decorations(false)
         .with_always_on_top(true)
         .with_resizable(true)
         .with_transparent(true)
-        .with_inner_size(LogicalSize::new(340.0, 580.0))
-        .with_min_inner_size(LogicalSize::new(300.0, 480.0))
+        // Default small; ChatOrb / ChatFull resize on demand
+        .with_inner_size(LogicalSize::new(CHAT_ORB_W, CHAT_ORB_H))
+        .with_min_inner_size(LogicalSize::new(160.0, 200.0))
         .with_visible(false);
 
     #[cfg(target_os = "macos")]
@@ -445,7 +934,7 @@ fn build_agent_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Re
         .with_resizable(true)
         .with_transparent(true)
         .with_inner_size(LogicalSize::new(1180.0, 760.0))
-        .with_min_inner_size(LogicalSize::new(900.0, 560.0))
+        .with_min_inner_size(LogicalSize::new(640.0, 420.0))
         .with_visible(false);
 
     #[cfg(target_os = "macos")]
@@ -485,7 +974,7 @@ fn build_launch_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> R
         .with_resizable(true)
         .with_transparent(true)
         .with_inner_size(LogicalSize::new(520.0, 640.0))
-        .with_min_inner_size(LogicalSize::new(400.0, 480.0))
+        .with_min_inner_size(LogicalSize::new(320.0, 360.0))
         .with_visible(false);
 
     #[cfg(target_os = "macos")]
@@ -637,8 +1126,9 @@ window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
     )
 }
 
-/// Resolution-aware first-launch cluster — positions all shells for current monitor.
-/// Does not show satellites; only seeds geometry so open/dock feels intentional.
+/// Resolution-aware first-launch cluster — fills the **visible** work area.
+/// Uses logical proportions × scale so Retina displays get full-size shells
+/// (not half-size from treating physical px as points).
 fn apply_launch_cluster(
     windows: &mut HashMap<WindowId, WinPair>,
     layout: &mut LayoutState,
@@ -647,29 +1137,41 @@ fn apply_launch_cluster(
     let Some(lab) = lab_pair(windows) else {
         return;
     };
-    let mon = lab.window.current_monitor();
-    let (sw, sh, mx, my) = if let Some(m) = mon {
-        let s = m.size();
-        let p = m.position();
-        (s.width as i32, s.height as i32, p.x, p.y)
+    let wa = detect_work_area(&lab.window);
+    let margin_l = 12.0_f64; // logical points
+    let gap_l = 10.0_f64;
+    let lw_pts = wa.logical_w();
+    let lh_pts = wa.logical_h();
+
+    // Side shells scale with display width (logical).
+    let side_pts = if lw_pts >= 1600.0 {
+        380.0
+    } else if lw_pts >= 1400.0 {
+        340.0
+    } else if lw_pts >= 1200.0 {
+        300.0
+    } else if lw_pts >= 1000.0 {
+        260.0
     } else {
-        (1440, 900, 0, 0)
+        220.0
     };
-    let margin = 16i32;
-    let gap = DOCK_GAP;
-    let side_w = if sw >= 1600 {
-        360
-    } else if sw >= 1280 {
-        320
-    } else {
-        280
-    };
-    // Lab main cluster — leave flanks for stream (left) + chat (right)
-    let lab_w = ((sw - side_w * 2 - gap * 2 - margin * 2) as u32)
-        .clamp(if float { 720 } else { 900 }, 1280);
-    let lab_h = ((sh as f32 * if float { 0.72 } else { 0.78 }) as u32).clamp(520, 900);
-    let lab_x = mx + margin + side_w + gap;
-    let lab_y = my + 48;
+
+    // Main lab: remaining width after two flanks; height ~78–86% of work area.
+    let lab_w_pts = (lw_pts - side_pts * 2.0 - gap_l * 2.0 - margin_l * 2.0)
+        .clamp(if float { 520.0 } else { 640.0 }, if float { 1400.0 } else { 1600.0 });
+    let lab_h_pts = (lh_pts * if float { 0.82 } else { 0.88 })
+        .clamp(420.0, lh_pts - margin_l * 2.0 - 40.0);
+
+    let side_w = wa.phys(side_pts);
+    let lab_w = wa.phys(lab_w_pts);
+    let lab_h = wa.phys(lab_h_pts);
+    let gap = wa.phys_i(gap_l).max(DOCK_GAP);
+    let margin = wa.phys_i(margin_l).max(8);
+
+    // Center the triple cluster in the work area.
+    let cluster_w = side_w as i32 * 2 + lab_w as i32 + gap * 2;
+    let lab_x = wa.x + ((wa.w - cluster_w) / 2).max(margin) + side_w as i32 + gap;
+    let lab_y = wa.y + margin;
 
     for p in windows.values() {
         match p.role {
@@ -680,54 +1182,67 @@ fn apply_launch_cluster(
                     .set_outer_position(PhysicalPosition::new(lab_x, lab_y));
             }
             Role::Chat => {
-                let ch = lab_h.saturating_sub(8).max(420);
+                let ch = lab_h.saturating_sub(wa.phys(4.0)).max(wa.phys(360.0));
                 p.window
-                    .set_inner_size(PhysicalSize::new(side_w as u32, ch));
+                    .set_inner_size(PhysicalSize::new(side_w, ch));
                 p.window.set_outer_position(PhysicalPosition::new(
                     lab_x + lab_w as i32 + gap,
                     lab_y,
                 ));
             }
             Role::Stream => {
-                let shh = lab_h.saturating_sub(8).max(360);
+                let shh = lab_h.saturating_sub(wa.phys(4.0)).max(wa.phys(320.0));
                 p.window
-                    .set_inner_size(PhysicalSize::new(side_w as u32, shh));
+                    .set_inner_size(PhysicalSize::new(side_w, shh));
                 p.window.set_outer_position(PhysicalPosition::new(
-                    (lab_x - side_w - gap).max(mx + margin),
+                    (lab_x - side_w as i32 - gap).max(wa.x + margin),
                     lab_y,
                 ));
             }
             Role::Agent => {
-                let aw = (lab_w + side_w as u32 * 2 + gap as u32 * 2).min(sw as u32 - 40);
-                let ah = ((sh - lab_y - lab_h as i32 - 80).max(280) as u32).min(380);
+                // Park below lab, full cluster width, remaining height.
+                let aw = (cluster_w as u32).min((wa.w - margin * 2) as u32);
+                let rest = (wa.y + wa.h - (lab_y + lab_h as i32) - gap - margin).max(0) as u32;
+                let ah = rest.clamp(wa.phys(240.0), wa.phys(420.0));
+                let ax = (lab_x - side_w as i32 - gap).max(wa.x + margin);
+                let ay = lab_y + lab_h as i32 + gap;
                 p.window.set_inner_size(PhysicalSize::new(aw, ah));
-                p.window.set_outer_position(PhysicalPosition::new(
-                    (lab_x - side_w - gap).max(mx + margin),
-                    lab_y + lab_h as i32 + gap,
-                ));
+                p.window
+                    .set_outer_position(PhysicalPosition::new(ax, ay));
             }
             Role::Launch => {
-                p.window
-                    .set_inner_size(PhysicalSize::new(480, 560));
+                let lw = wa.phys(420.0).min(wa.phys(lw_pts * 0.28));
+                let lh = wa.phys(520.0).min((wa.h as u32).saturating_sub(wa.phys(80.0)));
+                p.window.set_inner_size(PhysicalSize::new(lw, lh));
                 p.window.set_outer_position(PhysicalPosition::new(
-                    mx + sw - 500,
-                    my + 56,
+                    wa.x + wa.w - lw as i32 - margin,
+                    wa.y + margin,
                 ));
             }
             Role::Browser => {
-                let bw = ((sw as f32 * 0.42) as u32).clamp(640, 1000);
-                let bh = ((sh as f32 * 0.55) as u32).clamp(480, 780);
+                let bw = wa.phys((lw_pts * 0.48).clamp(560.0, 1100.0));
+                let bh = wa.phys((lh_pts * 0.62).clamp(420.0, 860.0));
                 p.window.set_inner_size(PhysicalSize::new(bw, bh));
                 p.window.set_outer_position(PhysicalPosition::new(
-                    mx + sw - bw as i32 - margin,
-                    my + sh / 2 - bh as i32 / 2,
+                    wa.x + wa.w - bw as i32 - margin,
+                    wa.y + ((wa.h - bh as i32) / 2).max(margin),
                 ));
             }
         }
     }
     layout.chat_docked = true;
     layout.stream_docked = true;
-    tracing::info!(sw, sh, lab_w, lab_h, side_w, "launch cluster applied");
+    tracing::info!(
+        wa_w = wa.w,
+        wa_h = wa.h,
+        scale = wa.scale,
+        lab_w,
+        lab_h,
+        side_w,
+        lab_w_pts,
+        lab_h_pts,
+        "launch cluster applied (work-area fit)"
+    );
 }
 
 fn build_stream_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> Result<Window> {
@@ -738,7 +1253,7 @@ fn build_stream_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> R
         .with_resizable(true)
         .with_transparent(true)
         .with_inner_size(LogicalSize::new(420.0, 520.0))
-        .with_min_inner_size(LogicalSize::new(320.0, 360.0))
+        .with_min_inner_size(LogicalSize::new(220.0, 280.0))
         .with_visible(false);
 
     #[cfg(target_os = "macos")]
@@ -1095,34 +1610,45 @@ fn float_chrome_js(role: &str) -> String {
 
   // Throttle edge cursor probes — full-document mousemove flooded the event loop
   // and contributed to freezes/crashes with multiple WKWebViews.
-  // Wider edge (14px) so top corners near stoplights still get resize hits.
+  // Edge band for resize (CSS px). Keep narrow so scrollports near edges still work.
   var __labMoveAt = 0;
-  var EDGE = 14;
+  var EDGE = 10;
+  function isScrollPort(t) {{
+    return !!(t && t.closest && t.closest(
+      ".ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll, .stream-body, .sv-stage, .sv-list, pre, code, textarea, [data-scroll], .lp-scroll, .br-frame"
+    ));
+  }}
+  function nearEdge(e) {{
+    var m = EDGE;
+    var w = window.innerWidth || 0;
+    var h = window.innerHeight || 0;
+    return e.clientX <= m || e.clientX >= w - m || e.clientY <= m || e.clientY >= h - m;
+  }}
   document.addEventListener("mousemove", function(e){{
     var now = Date.now();
     if (now - __labMoveAt < 40) return;
     __labMoveAt = now;
-    var m = EDGE;
-    var w = window.innerWidth || 0;
-    var h = window.innerHeight || 0;
-    if (e.clientX > m && e.clientX < w - m && e.clientY > m && e.clientY < h - m) {{
-      return; // interior — no edge resize cursor needed
-    }}
+    if (!nearEdge(e)) return;
+    // Don't fight scrollports with resize cursors
+    if (isScrollPort(e.target) && !nearEdge(e)) return;
     try {{ ipc("mousemove:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
   }}, true);
 
   document.addEventListener("mousedown", function(e){{
     if (e.button !== 0) return;
     var t = e.target;
+    // Never steal wheel/scroll interactions inside scrollports (unless true rim).
+    if (isScrollPort(t) && !nearEdge(e)) return;
     // Stoplights / chrome controls: never steal for drag; allow button handlers
     if (t && t.closest && t.closest("[data-no-drag], .tl, .lnb-tl, .lights, .lnb-lights, button, a, input, textarea, select, pre, video, .ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll, .stream-body, .sv-stage")) {{
       // Still allow pure edge resize if press is on the very rim (not on a button)
       if (t.closest && t.closest("button, a, input, textarea, select, .tl, .lnb-tl")) return;
+      // Scrollport interior: leave alone (let wheel / drag-select work)
+      if (isScrollPort(t) && !nearEdge(e)) return;
     }}
     // Explicit resize grips
     var grip = t && t.closest ? t.closest("[data-resize]") : null;
     if (grip) {{
-      var dir = grip.getAttribute("data-resize") || "se";
       try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
       e.preventDefault();
       e.stopPropagation();
@@ -1130,11 +1656,7 @@ fn float_chrome_js(role: &str) -> String {
     }}
     var dragEl = t && t.closest ? t.closest("[data-drag-region]") : null;
     if (dragEl) {{
-      // Top-edge resize: if pointer is within EDGE of window edge, prefer resize over drag
-      var m = EDGE;
-      var w = window.innerWidth || 0;
-      var h = window.innerHeight || 0;
-      if (e.clientX <= m || e.clientX >= w - m || e.clientY <= m || e.clientY >= h - m) {{
+      if (nearEdge(e)) {{
         try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
         e.preventDefault();
         return;
@@ -1147,11 +1669,8 @@ fn float_chrome_js(role: &str) -> String {
       e.preventDefault();
       return;
     }}
-    // Edge resize only near borders
-    var m2 = EDGE;
-    var w2 = window.innerWidth || 0;
-    var h2 = window.innerHeight || 0;
-    if (e.clientX <= m2 || e.clientX >= w2 - m2 || e.clientY <= m2 || e.clientY >= h2 - m2) {{
+    // Edge resize only on true border (not deep into scroll content)
+    if (nearEdge(e)) {{
       try {{ ipc("edge_down:" + e.clientX + "," + e.clientY); }} catch (err) {{}}
     }}
   }}, true);
@@ -1427,24 +1946,40 @@ fn snap_role(windows: &mut HashMap<WindowId, WinPair>, layout: &LayoutState, rol
     let Some(lab) = lab_pair(windows) else {
         return;
     };
-    let lab_pos = lab.window.outer_position().unwrap_or(PhysicalPosition::new(80, 60));
+    let wa = detect_work_area(&lab.window);
+    let lab_pos = lab
+        .window
+        .outer_position()
+        .unwrap_or(PhysicalPosition::new(80, 60));
     let lab_size = lab.window.outer_size();
     let lx = lab_pos.x;
     let ly = lab_pos.y;
     let lw = lab_size.width as i32;
     let lh = lab_size.height as i32;
+    let gap = wa.phys_i(10.0).max(DOCK_GAP);
+    let min_side = wa.phys(220.0);
+    let max_side = wa.phys(400.0);
 
     match role {
         Role::Chat if layout.chat_docked => {
-            if let Some(p) = windows.values().find(|p| p.role == Role::Chat && p.window.is_visible())
+            if let Some(p) = windows
+                .values()
+                .find(|p| p.role == Role::Chat && p.window.is_visible())
             {
                 let sz = p.window.outer_size();
-                let side_w = sz.width.clamp(300, 380);
-                let side_h = (lh as u32).saturating_sub(8).max(420);
-                let x = lx + lw + DOCK_GAP;
+                // Wider side panel so the large orb + Grok Voice · eve stay visible
+                // (agent terminal feeds sit below lab — do not bury the orb off-screen).
+                let side_w = sz.width.clamp(min_side.max(wa.phys(300.0)), max_side.max(wa.phys(420.0)));
+                // Prefer top of lab band (not full stretch under terminal strip)
+                let side_h = (lh as u32)
+                    .saturating_sub(4)
+                    .min(wa.phys(760.0))
+                    .max(wa.phys(480.0));
+                let x = lx + lw + gap;
+                let y = ly; // top-align with lab — orb stays at top of panel
                 for p in windows.values() {
                     if p.role == Role::Chat && p.window.is_visible() {
-                        p.window.set_outer_position(PhysicalPosition::new(x, ly));
+                        p.window.set_outer_position(PhysicalPosition::new(x, y));
                         p.window
                             .set_inner_size(PhysicalSize::new(side_w, side_h));
                     }
@@ -1452,14 +1987,18 @@ fn snap_role(windows: &mut HashMap<WindowId, WinPair>, layout: &LayoutState, rol
             }
         }
         Role::Stream if layout.stream_docked => {
-            if let Some(p) = windows
+            if windows
                 .values()
-                .find(|p| p.role == Role::Stream && p.window.is_visible())
+                .any(|p| p.role == Role::Stream && p.window.is_visible())
             {
-                let sz = p.window.outer_size();
-                let side_w = sz.width.clamp(340, 420);
-                let side_h = (lh as u32).saturating_sub(8).max(360);
-                let x = (lx - side_w as i32 - DOCK_GAP).max(12);
+                let sz = windows
+                    .values()
+                    .find(|p| p.role == Role::Stream)
+                    .map(|p| p.window.outer_size())
+                    .unwrap_or(PhysicalSize::new(min_side, wa.phys(400.0)));
+                let side_w = sz.width.clamp(min_side, max_side);
+                let side_h = (lh as u32).saturating_sub(4).max(wa.phys(300.0));
+                let x = (lx - side_w as i32 - gap).max(wa.x + 8);
                 for p in windows.values() {
                     if p.role == Role::Stream && p.window.is_visible() {
                         p.window.set_outer_position(PhysicalPosition::new(x, ly));
@@ -1479,7 +2018,7 @@ fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutStat
     snap_role(windows, layout, Role::Stream);
 }
 
-/// Smart workspace layout for **all visible** surfaces.
+/// Smart workspace layout for **all visible** surfaces — fills work area.
 ///
 /// ```text
 /// ┌─ Stream ─┬────── Lab ──────┬─ Chat ─┐
@@ -1488,62 +2027,57 @@ fn snap_docked(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutStat
 /// │ Launch (TR)        Agent (below)    │
 /// └─────────────────────────────────────┘
 /// ```
-/// Undocked chat/stream keep free corners; Agent/Launch always get a slot.
 fn arrange_workspace(windows: &mut HashMap<WindowId, WinPair>, layout: &mut LayoutState) {
     let Some(lab) = lab_pair(windows) else {
         return;
     };
-    let mon = lab.window.current_monitor();
-    let (screen_w, screen_h, mon_x, mon_y) = if let Some(m) = mon {
-        let s = m.size();
-        let p = m.position();
-        (s.width as i32, s.height as i32, p.x, p.y)
+    let wa = detect_work_area(&lab.window);
+    let margin = wa.phys_i(12.0).max(8);
+    let gap = wa.phys_i(10.0).max(DOCK_GAP);
+    let side_w = wa.phys(if wa.logical_w() >= 1400.0 {
+        340.0
+    } else if wa.logical_w() >= 1100.0 {
+        300.0
     } else {
-        (1440, 900, 0, 0)
-    };
-    let margin = 12i32;
-    let gap = DOCK_GAP;
-
-    // Ensure lab is on-screen and leave room for side docks when those are visible+docked
-    let lab_size = lab.window.outer_size();
-    let mut lw = lab_size.width as i32;
-    let mut lh = lab_size.height as i32;
-    let mut lx;
-    let mut ly;
+        240.0
+    }) as i32;
 
     let chat_vis = role_visible(windows, Role::Chat);
     let stream_vis = role_visible(windows, Role::Stream);
     let agent_vis = role_visible(windows, Role::Agent);
     let launch_vis = role_visible(windows, Role::Launch);
+    let browser_vis = role_visible(windows, Role::Browser);
 
-    let side_w = 340i32;
     let need_left = stream_vis && layout.stream_docked;
     let need_right = chat_vis && layout.chat_docked;
 
-    // Fit lab into remaining work area
     let left_reserve = if need_left { side_w + gap } else { margin };
     let right_reserve = if need_right { side_w + gap } else { margin };
-    let max_lab_w = (screen_w - left_reserve - right_reserve - margin).max(480);
-    let top_reserve = mon_y + 48;
-    let bottom_reserve = if agent_vis { 280 + gap } else { margin + 24 };
-    let max_lab_h = (screen_h - (top_reserve - mon_y) - bottom_reserve).max(400);
+    let bottom_reserve = if agent_vis {
+        wa.phys_i(280.0) + gap
+    } else {
+        margin
+    };
+    let max_lab_w = (wa.w - left_reserve - right_reserve - margin).max(wa.phys_i(480.0));
+    let max_lab_h = (wa.h - margin - bottom_reserve).max(wa.phys_i(360.0));
 
-    if lw > max_lab_w {
-        lw = max_lab_w;
+    // Grow lab to fill free band (arrange = fit display).
+    let lw = max_lab_w;
+    let mut lh = max_lab_h;
+    // Leave a little headroom on very tall displays.
+    if wa.logical_h() > 1000.0 {
+        lh = (max_lab_h as f64 * 0.92) as i32;
     }
-    if lh > max_lab_h {
-        lh = max_lab_h;
-    }
-    lx = mon_x + left_reserve;
-    ly = top_reserve;
-    // Center lab horizontally in free band when only one side dock
+
+    let mut lx = wa.x + left_reserve;
+    let ly = wa.y + margin;
     if !need_left && need_right {
-        lx = mon_x + margin + ((screen_w - margin - right_reserve - lw) / 2).max(0);
+        lx = wa.x + margin + ((wa.w - margin - right_reserve - lw) / 2).max(0);
     } else if need_left && !need_right {
-        let free = screen_w - left_reserve - margin;
-        lx = mon_x + left_reserve + ((free - lw) / 2).max(0);
+        let free = wa.w - left_reserve - margin;
+        lx = wa.x + left_reserve + ((free - lw) / 2).max(0);
     } else if !need_left && !need_right {
-        lx = mon_x + ((screen_w - lw) / 2).max(margin);
+        lx = wa.x + ((wa.w - lw) / 2).max(margin);
     }
 
     for p in windows.values() {
@@ -1555,26 +2089,50 @@ fn arrange_workspace(windows: &mut HashMap<WindowId, WinPair>, layout: &mut Layo
         }
     }
 
-    // Re-read lab frame after resize
     let (lx, ly, lw, lh) = {
         let lab = lab_pair(windows).unwrap();
-        let pos = lab.window.outer_position().unwrap_or(PhysicalPosition::new(lx, ly));
+        let pos = lab
+            .window
+            .outer_position()
+            .unwrap_or(PhysicalPosition::new(lx, ly));
         let sz = lab.window.outer_size();
         (pos.x, pos.y, sz.width as i32, sz.height as i32)
     };
 
-    // Docked flanks (visible only)
-    snap_docked(windows, layout);
+    // Resize + snap docked flanks to lab height
+    if need_right {
+        for p in windows.values() {
+            if p.role == Role::Chat && p.window.is_visible() {
+                p.window
+                    .set_inner_size(PhysicalSize::new(side_w as u32, lh as u32));
+                p.window
+                    .set_outer_position(PhysicalPosition::new(lx + lw + gap, ly));
+            }
+        }
+    }
+    if need_left {
+        for p in windows.values() {
+            if p.role == Role::Stream && p.window.is_visible() {
+                p.window
+                    .set_inner_size(PhysicalSize::new(side_w as u32, lh as u32));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    (lx - side_w - gap).max(wa.x + margin),
+                    ly,
+                ));
+            }
+        }
+    }
 
-    // Free-float undocked chat / stream → corners, clear of lab
     if chat_vis && !layout.chat_docked {
         for p in windows.values() {
             if p.role == Role::Chat {
                 let sz = p.window.outer_size();
-                let x = mon_x + screen_w - sz.width as i32 - margin;
-                let y = mon_y + screen_h - sz.height as i32 - margin - 28;
-                p.window
-                    .set_outer_position(PhysicalPosition::new(x.max(mon_x + margin), y.max(ly)));
+                let x = wa.x + wa.w - sz.width as i32 - margin;
+                let y = wa.y + wa.h - sz.height as i32 - margin;
+                p.window.set_outer_position(PhysicalPosition::new(
+                    x.max(wa.x + margin),
+                    y.max(wa.y + margin),
+                ));
             }
         }
     }
@@ -1582,41 +2140,38 @@ fn arrange_workspace(windows: &mut HashMap<WindowId, WinPair>, layout: &mut Layo
         for p in windows.values() {
             if p.role == Role::Stream {
                 let sz = p.window.outer_size();
-                let x = mon_x + margin;
-                let y = mon_y + screen_h - sz.height as i32 - margin - 28;
+                let x = wa.x + margin;
+                let y = wa.y + wa.h - sz.height as i32 - margin;
                 p.window
-                    .set_outer_position(PhysicalPosition::new(x, y.max(ly)));
+                    .set_outer_position(PhysicalPosition::new(x, y.max(wa.y + margin)));
             }
         }
     }
 
-    // Launch pad — top-right of lab (or screen right if chat docked there)
     if launch_vis {
-        let launch_w = 480u32;
-        let launch_h = 560u32;
+        let launch_w = wa.phys(420.0);
+        let launch_h = wa.phys(520.0);
         let x = if need_right {
-            // above chat column slightly inset
             lx + lw + gap
         } else {
-            mon_x + screen_w - launch_w as i32 - margin
+            wa.x + wa.w - launch_w as i32 - margin
         };
-        let y = mon_y + 48;
         for p in windows.values() {
             if p.role == Role::Launch {
-                p.window.set_inner_size(PhysicalSize::new(launch_w, launch_h));
+                p.window
+                    .set_inner_size(PhysicalSize::new(launch_w, launch_h));
                 p.window.set_outer_position(PhysicalPosition::new(
-                    x.min(mon_x + screen_w - launch_w as i32 - margin)
-                        .max(mon_x + margin),
-                    y,
+                    x.min(wa.x + wa.w - launch_w as i32 - margin)
+                        .max(wa.x + margin),
+                    wa.y + margin,
                 ));
             }
         }
     }
 
-    // Agent — below lab spanning lab width (+ side docks if present)
     if agent_vis {
         let left = if need_left {
-            (lx - side_w - gap).max(mon_x + margin)
+            (lx - side_w - gap).max(wa.x + margin)
         } else {
             lx
         };
@@ -1625,27 +2180,49 @@ fn arrange_workspace(windows: &mut HashMap<WindowId, WinPair>, layout: &mut Layo
         } else {
             lx + lw
         };
-        let agent_w = ((right - left) as u32).clamp(720, 1400);
-        let agent_h = 320u32;
-        let x = left;
+        let agent_w = ((right - left) as u32).max(wa.phys(480.0));
+        let rest = (wa.y + wa.h - (ly + lh) - gap - margin).max(0) as u32;
+        let agent_h = rest.clamp(wa.phys(220.0), wa.phys(400.0));
         let y = ly + lh + gap;
-        // If below would fall off screen, park right of lab under chat/stream free zone
-        let y = if y + agent_h as i32 > mon_y + screen_h - margin {
-            (mon_y + screen_h - agent_h as i32 - margin).max(ly)
+        let y = if y + agent_h as i32 > wa.y + wa.h - margin {
+            (wa.y + wa.h - agent_h as i32 - margin).max(ly)
         } else {
             y
         };
         for p in windows.values() {
             if p.role == Role::Agent {
                 p.window
-                    .set_inner_size(PhysicalSize::new(agent_w, agent_h.min(420)));
+                    .set_inner_size(PhysicalSize::new(agent_w, agent_h));
                 p.window.set_outer_position(PhysicalPosition::new(
-                    x.max(mon_x + margin),
+                    left.max(wa.x + margin),
                     y,
                 ));
             }
         }
     }
+
+    if browser_vis {
+        let bw = wa.phys((wa.logical_w() * 0.45).clamp(520.0, 1000.0));
+        let bh = wa.phys((wa.logical_h() * 0.55).clamp(400.0, 800.0));
+        for p in windows.values() {
+            if p.role == Role::Browser {
+                p.window.set_inner_size(PhysicalSize::new(bw, bh));
+                p.window.set_outer_position(PhysicalPosition::new(
+                    wa.x + wa.w - bw as i32 - margin,
+                    wa.y + ((wa.h - bh as i32) / 2).max(margin),
+                ));
+            }
+        }
+    }
+
+    tracing::info!(
+        wa_w = wa.w,
+        wa_h = wa.h,
+        scale = wa.scale,
+        lw,
+        lh,
+        "arrange workspace (work-area fit)"
+    );
 }
 
 /// Place Agent / Launch near lab **without** resizing the lab (safer on show).
@@ -1782,8 +2359,9 @@ enum Hit {
 }
 
 fn hit_test(size: PhysicalSize<u32>, x: i32, y: i32, scale: f64) -> Hit {
-    const INSET: f64 = 6.0;
-    let inset = (INSET * scale) as i32;
+    // 8 CSS-px edge band; scale converts to physical for hit testing.
+    const INSET: f64 = 8.0;
+    let inset = (INSET * scale).round().max(6.0) as i32;
     let w = size.width as i32;
     let h = size.height as i32;
     let left = x < inset;
@@ -1888,6 +2466,24 @@ fn apply_cmd(
                     bus.set_chat_visible(true);
                 }
             }
+            Ok(())
+        }
+        ControlCmd::ChatOnly => {
+            // Full chat panel only — lab hidden (not dock-minimized), satellites off.
+            apply_chat_surface(windows, layout, bus, proxy, ChatSurface::Full)?;
+            tracing::info!("chat-only workspace (lab hidden, full chat float)");
+            Ok(())
+        }
+        ControlCmd::ChatOrb => {
+            // Siri-scale orb — tiny always-on-top float, orb.html
+            apply_chat_surface(windows, layout, bus, proxy, ChatSurface::Orb)?;
+            tracing::info!("chat-orb workspace (Siri-scale · lab hidden)");
+            Ok(())
+        }
+        ControlCmd::ChatFull => {
+            // Expand orb → full chat.html without reopening lab
+            apply_chat_surface(windows, layout, bus, proxy, ChatSurface::Full)?;
+            tracing::info!("chat expanded to full panel");
             Ok(())
         }
         ControlCmd::HideChat => {
@@ -2274,13 +2870,22 @@ fn apply_cmd(
             Ok(())
         }
         ControlCmd::FocusLab => {
-            for p in windows.values() {
+            // Prefer full restore when we have a snapshot from chat-only/orb
+            if layout.snap.taken {
+                return restore_workspace(windows, layout, bus, proxy);
+            }
+            for p in windows.values_mut() {
                 if p.role == Role::Lab {
+                    ensure_webview(p, proxy)?;
+                    p.window.set_minimized(false);
                     p.window.set_visible(true);
                     p.window.set_focus();
                 }
             }
             Ok(())
+        }
+        ControlCmd::RestoreWorkspace => {
+            restore_workspace(windows, layout, bus, proxy)
         }
         ControlCmd::SetAlwaysOnTop { target, on } => {
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {

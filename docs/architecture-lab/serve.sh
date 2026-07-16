@@ -59,9 +59,10 @@ echo "    /launch.html      Launch pad"
 echo "    /chat.html · /stream.html · /browser.html"
 echo "  Option A: native Lab Dock/Arrange + Multi (Panda αβγ OS terms)"
 echo "  Option C: see content/24-abc-path.md (Panda/Mu host pipe)"
-echo "  APIs: /api/pty/* · /api/shells · /api/agent/iterate · /api/lts · /api/health · …"
+echo "  APIs: /api/pty/* · /api/shells · /api/agent/iterate · /api/agent/chain · /api/lts · /api/health · …"
 echo "  LTS:  Colossus/Dojo · ./scripts/colossus-dojo-lts.sh status"
-echo "  AI:   POST /api/agent/iterate  {prompt, role}  → grok -p (overview-style host hook)"
+echo "  AI:   POST /api/agent/iterate  {prompt, role}  → grok -p + fat pack"
+echo "  AI:   POST /api/agent/chain    {prompt}        → iterate → handoff → Panda αβγ"
 echo ""
 
 # Desktop shell sets LAB_DESKTOP=1 — never open a browser tab for localhost
@@ -1169,6 +1170,69 @@ def shells_spawn_recipe(shell_id, task=""):
     }
 
 
+def _lab_pack_dir():
+    d = Path.home() / ".panda" / "packs"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    return d
+
+
+def _write_fat_pack(summary, from_s, to_s, payload=None, act_id=None):
+    """Mirror native fat pack to ~/.panda/packs for Terminal/Panda panes."""
+    pack = {
+        "version": "lab.pack.v1",
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "summary": str(summary or "")[:2000],
+        "from": from_s,
+        "to": to_s,
+        "source": "serve.sh",
+    }
+    if isinstance(payload, dict):
+        for k in (
+            "prompt",
+            "iterate_text",
+            "role",
+            "files",
+            "tests",
+            "tool_trace",
+            "messages",
+            "via",
+        ):
+            if k in payload and payload[k] is not None:
+                pack[k] = payload[k]
+        # drop secrets
+        for bad in ("api_key", "apiKey", "token", "authorization", "password", "secret"):
+            pack.pop(bad, None)
+    pack_path = None
+    try:
+        pdir = _lab_pack_dir()
+        last = pdir / "last.json"
+        text = json.dumps(pack, indent=2) + "\n"
+        last.write_text(text, encoding="utf-8")
+        pack_path = str(last)
+        if act_id:
+            (pdir / f"{act_id}.json").write_text(text, encoding="utf-8")
+        # also mirror handoff bus for native Multi button parity
+        hh = Path.home() / ".panda" / "lab-handoff.json"
+        try:
+            state_m = {}
+            if hh.is_file():
+                state_m = json.loads(hh.read_text(encoding="utf-8"))
+            if not isinstance(state_m, dict):
+                state_m = {}
+            state_m["last_pack"] = pack
+            state_m["updated_at"] = pack["created_at"]
+            hh.parent.mkdir(parents=True, exist_ok=True)
+            hh.write_text(json.dumps(state_m, indent=2) + "\n", encoding="utf-8")
+        except Exception:
+            pass
+    except Exception as e:
+        log_event("warn", f"fat pack write failed: {e}")
+    return pack, pack_path
+
+
 def shells_handoff(from_s, to_s, summary="", payload=None, loop=None):
     from_s = str(from_s or "").lower().strip()
     to_s = str(to_s or "").lower().strip()
@@ -1195,12 +1259,14 @@ def shells_handoff(from_s, to_s, summary="", payload=None, loop=None):
             "state": state,
         }
     act_id = f"act-{int(time.time())}-{len(state['queue'])+1}"
+    pack, pack_path = _write_fat_pack(summary, from_s, to_s, payload=payload, act_id=act_id)
     activity = {
         "id": act_id,
         "from": from_s,
         "to": to_s,
         "summary": str(summary or "")[:2000],
         "payload": payload if isinstance(payload, dict) else {},
+        "pack_path": pack_path,
         "status": "pending",
         "loop": loop,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -1208,11 +1274,14 @@ def shells_handoff(from_s, to_s, summary="", payload=None, loop=None):
     }
     state["queue"].append(activity)
     state["active_id"] = act_id
+    state["last_pack"] = pack
     state["shells"][from_s]["status"] = "done"
     state["shells"][from_s]["last_activity"] = act_id
     state["shells"][to_s]["status"] = "running"
     state["shells"][to_s]["last_activity"] = act_id
     state["shells"][to_s]["recipe"] = activity["recipe"]
+    if pack_path:
+        state["shells"][to_s]["pack_path"] = pack_path
     save_shells_state(state)
     log_event(
         "info",
@@ -1221,7 +1290,13 @@ def shells_handoff(from_s, to_s, summary="", payload=None, loop=None):
         loop=loop,
         summary=activity["summary"][:120],
     )
-    return {"ok": True, "activity": activity, "state": state}
+    return {
+        "ok": True,
+        "activity": activity,
+        "state": state,
+        "pack_path": pack_path,
+        "fat": True,
+    }
 
 
 def shells_advance(act_id=None, status="done", next_to=None, summary=""):
@@ -1461,6 +1536,73 @@ def summon_grok(phrase="", multi=True, triple=False):
         }
 
 
+def agent_record_iterate_pack(prompt, role, text, via="serve"):
+    """Write fat pack side-effect (native parity)."""
+    pack, pack_path = _write_fat_pack(
+        f"iterate · {role}",
+        role,
+        role,
+        payload={
+            "prompt": (prompt or "")[:8000],
+            "iterate_text": (text or "")[:16000],
+            "role": role,
+            "via": via,
+        },
+    )
+    return {"ok": True, "pack": pack, "pack_path": pack_path}
+
+
+def agent_chain(prompt, role="plan", from_s="plan", to_s="build",
+                iterate=True, open_fleet=True, iterate_text=None,
+                max_turns=6, files=None, tests=None):
+    """Rocket chain: iterate → fat handoff → triple Terminal/Panda."""
+    prompt = (prompt or "").strip()
+    from_s = (from_s or "plan").lower()
+    to_s = (to_s or "build").lower()
+    role = (role or "plan").lower()
+    iter_out = None
+    text = iterate_text or ""
+    if iterate and not text and prompt:
+        iter_out = agent_iterate(prompt, role=role, max_turns=max_turns)
+        text = str(iter_out.get("text") or "")
+    elif text:
+        agent_record_iterate_pack(prompt, role, text, via="chain-precomputed")
+    payload = {
+        "prompt": prompt,
+        "iterate_text": text,
+        "role": to_s,
+        "files": files if isinstance(files, list) else None,
+        "tests": tests if isinstance(tests, list) else None,
+        "via": "agent_chain",
+    }
+    payload = {k: v for k, v in payload.items() if v is not None}
+    hop = shells_handoff(
+        from_s,
+        to_s,
+        summary=(prompt[:400] if prompt else f"chain {from_s}→{to_s}"),
+        payload=payload,
+    )
+    fleet = None
+    if open_fleet:
+        fleet = summon_triple_shells(prompt or f"{from_s}→{to_s}")
+    return {
+        "ok": bool(hop.get("ok")),
+        "via": "agent_chain",
+        "iterate": iter_out,
+        "chain": {
+            "ok": hop.get("ok"),
+            "handoff": hop,
+            "fleet": fleet,
+            "message": f"chain {from_s}→{to_s} · fat pack · fleet "
+            + ("opened" if fleet and fleet.get("launched") else "skipped/pending"),
+        },
+        "from": from_s,
+        "to": to_s,
+        "role": role,
+        "message": f"chain {from_s}→{to_s}",
+    }
+
+
 def agent_iterate(prompt, role="agent", max_turns=8, timeout_ms=120000):
     """
     Overview-style host AI hook: Lab never embeds API keys in the client.
@@ -1477,19 +1619,22 @@ def agent_iterate(prompt, role="agent", max_turns=8, timeout_ms=120000):
     timeout_s = max(5, min(int(timeout_ms or 120000) / 1000.0, 300))
     if not bin_path:
         log_event("warn", "agent_iterate: grok not found")
+        stub_text = (
+            "[stub · grok not on PATH]\n"
+            f"role={role} max_turns={max_turns}\n"
+            "Install: curl -fsSL https://x.ai/cli/install.sh | bash\n"
+            f"Would run: grok -p … --max-turns {max_turns}\n\n"
+            f"Prompt:\n{prompt[:800]}"
+        )
+        pack = agent_record_iterate_pack(prompt, role, stub_text, via="stub")
         return {
             "ok": True,
             "via": "stub",
             "stub": True,
-            "text": (
-                "[stub · grok not on PATH]\n"
-                f"role={role} max_turns={max_turns}\n"
-                "Install: curl -fsSL https://x.ai/cli/install.sh | bash\n"
-                f"Would run: grok -p … --max-turns {max_turns}\n\n"
-                f"Prompt:\n{prompt[:800]}"
-            ),
+            "text": stub_text,
             "role": role,
             "bin": None,
+            "pack": pack,
         }
     # Role-flavored system preamble (railway / fleet kinship — not a monorepo agent)
     preamble = {
@@ -1522,6 +1667,7 @@ def agent_iterate(prompt, role="agent", max_turns=8, timeout_ms=120000):
             code=proc.returncode,
             n=len(text),
         )
+        pack = agent_record_iterate_pack(prompt, role, text, via="grok-p")
         return {
             "ok": proc.returncode == 0 or bool(out),
             "via": "grok-p",
@@ -1531,6 +1677,7 @@ def agent_iterate(prompt, role="agent", max_turns=8, timeout_ms=120000):
             "role": role,
             "max_turns": max_turns,
             "stderr_tail": err[-400:] if err and out else None,
+            "pack": pack,
         }
     except subprocess.TimeoutExpired:
         log_event("warn", "agent_iterate timeout", s=timeout_s)
@@ -1734,26 +1881,151 @@ def list_processes():
     }
 
 
-def git_log(limit=40, repo=None):
-    path = Path(repo) if repo else REPO
-    if not (path / ".git").exists():
-        return {"ok": False, "commits": [], "message": f"no git repo at {path}"}
+def _git_has_ref(path: Path, ref: str) -> bool:
     try:
-        out = subprocess.check_output(
-            [
-                "git",
-                "-C",
-                str(path),
-                "log",
-                f"-{int(limit)}",
-                "--pretty=format:%H|%h|%an|%ae|%ad|%s",
-                "--date=iso-strict",
-            ],
+        subprocess.check_output(
+            ["git", "-C", str(path), "rev-parse", "--verify", ref],
+            stderr=subprocess.DEVNULL,
             text=True,
-            errors="replace",
         )
+        return True
+    except Exception:
+        return False
+
+
+def _ensure_upstream_ref(path):
+    """Return (ref, note). Prefer upstream/main for xai-org/grok-build history."""
+    for ref in ("upstream/main", "upstream/master", "xai/main"):
+        if _git_has_ref(path, ref):
+            return ref, None
+    try:
+        remotes = subprocess.check_output(
+            ["git", "-C", str(path), "remote"], text=True, errors="replace"
+        ).split()
+        if "upstream" not in remotes:
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(path),
+                    "remote",
+                    "add",
+                    "upstream",
+                    "https://github.com/xai-org/grok-build.git",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        r = subprocess.run(
+            ["git", "-C", str(path), "fetch", "upstream", "main", "--depth=120"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if r.returncode == 0 and _git_has_ref(path, "upstream/main"):
+            return "upstream/main", "fetched upstream/main"
+        subprocess.run(
+            ["git", "-C", str(path), "fetch", "upstream", "--depth=120"],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if _git_has_ref(path, "upstream/main"):
+            return "upstream/main", "fetched upstream"
     except Exception as e:
-        return {"ok": False, "commits": [], "message": str(e)}
+        return None, "upstream fetch failed: %s" % (e,)
+    return None, "no upstream/main — run: git fetch upstream"
+
+
+def resolve_git_source(which):
+    """Map UI repo id → (path, rev_or_None, label)."""
+    w = (which or "upstream").strip().lower()
+    if w in ("gy", "grokytalky", "gy-repo"):
+        return GY_REPO, None, "GrokYtalkY"
+    if w in (
+        "upstream",
+        "xai",
+        "xai-org",
+        "xai-grok-build",
+        "xai-grok",
+        "official",
+    ):
+        ref, _note = _ensure_upstream_ref(REPO)
+        return REPO, ref, "xai-org/grok-build"
+    return REPO, None, "fork · fornevercollective/grok-build"
+
+
+def git_log(limit=40, repo=None, which=None):
+    """which/repo aliases: upstream | grok-build | gy (or a filesystem path)."""
+    note = None
+    aliases = {
+        "grok-build",
+        "fork",
+        "origin",
+        "upstream",
+        "xai",
+        "xai-org",
+        "xai-grok-build",
+        "xai-grok",
+        "official",
+        "gy",
+        "grokytalky",
+        "gy-repo",
+    }
+    key = (which or repo or "upstream")
+    key_s = str(key).strip()
+    if key_s.lower() in aliases or which is not None:
+        path, rev, label = resolve_git_source(key_s)
+        if key_s.lower() in (
+            "upstream",
+            "xai",
+            "xai-org",
+            "xai-grok-build",
+            "xai-grok",
+            "official",
+        ):
+            if rev is None:
+                _ref, note = _ensure_upstream_ref(REPO)
+                return {
+                    "ok": False,
+                    "commits": [],
+                    "repo": str(REPO),
+                    "label": "xai-org/grok-build",
+                    "rev": None,
+                    "message": note
+                    or "upstream/main missing — git remote add upstream https://github.com/xai-org/grok-build.git && git fetch upstream",
+                }
+    else:
+        path = Path(key_s) if key_s else REPO
+        rev = None
+        label = str(path)
+
+    path = Path(path)
+    if not (path / ".git").exists() and not (path / "HEAD").exists():
+        return {"ok": False, "commits": [], "message": "no git repo at %s" % (path,)}
+    try:
+        cmd = [
+            "git",
+            "-C",
+            str(path),
+            "log",
+            "-%d" % int(limit),
+            "--pretty=format:%H|%h|%an|%ae|%ad|%s",
+            "--date=iso-strict",
+        ]
+        if rev:
+            cmd.append(rev)
+        out = subprocess.check_output(cmd, text=True, errors="replace")
+    except Exception as e:
+        return {
+            "ok": False,
+            "commits": [],
+            "repo": str(path),
+            "label": label,
+            "rev": rev,
+            "message": str(e),
+        }
     commits = []
     for line in out.splitlines():
         if not line.strip():
@@ -1774,9 +2046,15 @@ def git_log(limit=40, repo=None):
         )
     return {
         "ok": True,
-        "repo": str(path),
+        "repo": "%s @ %s" % (path, rev) if rev else str(path),
+        "label": label,
+        "rev": rev,
+        "source": "upstream"
+        if rev
+        else ("gy" if "GrokYtalkY" in str(label) else "fork"),
         "commits": commits,
         "head": commits[0]["short"] if commits else None,
+        "note": note,
     }
 
 
@@ -2108,15 +2386,48 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"ok": True, "events": LOG_BUF[-200:]})
         if path == "/api/git-log":
             limit = int((q.get("limit") or ["40"])[0])
-            which = (q.get("repo") or ["grok-build"])[0]
-            repo = REPO if which != "gy" else GY_REPO
-            return self._json(200, git_log(limit, repo))
+            which = (q.get("repo") or ["upstream"])[0]
+            # which aliases: upstream|xai-org|xai-grok-build · grok-build · gy
+            return self._json(200, git_log(limit, which=which, repo=which))
         if path == "/api/summon-grok":
             multi = (q.get("multi") or ["1"])[0] != "0"
             triple = (q.get("triple") or ["0"])[0] != "0"
             return self._json(200, summon_grok("GET", multi=multi, triple=triple))
         if path == "/api/shells":
             return self._json(200, load_shells_state())
+        if path == "/api/shells/pack":
+            last = Path.home() / ".panda" / "packs" / "last.json"
+            pack = None
+            if last.is_file():
+                try:
+                    pack = json.loads(last.read_text(encoding="utf-8"))
+                except Exception:
+                    pack = None
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "pack": pack,
+                    "path": str(last),
+                    "fat": isinstance(pack, dict),
+                },
+            )
+        if path in ("/api/agent/chain", "/api/ai/chain"):
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "method": "POST",
+                    "contract": "lab-rocket-chain",
+                    "body": {
+                        "prompt": "string",
+                        "role": "plan",
+                        "from": "plan",
+                        "to": "build",
+                        "open_fleet": True,
+                    },
+                },
+            )
         if path == "/api/shells/recipes":
             task = (q.get("task") or [""])[0]
             return self._json(
@@ -2182,6 +2493,22 @@ class Handler(SimpleHTTPRequestHandler):
                     timeout_ms=data.get("timeout_ms") or data.get("timeoutMs") or 120000,
                 ),
             )
+        if path in ("/api/agent/chain", "/api/ai/chain"):
+            return self._json(
+                200,
+                agent_chain(
+                    str(data.get("prompt") or data.get("message") or data.get("text") or ""),
+                    role=str(data.get("role") or "plan"),
+                    from_s=str(data.get("from") or "plan"),
+                    to_s=str(data.get("to") or "build"),
+                    iterate=data.get("iterate", True),
+                    open_fleet=data.get("open_fleet", data.get("openFleet", True)),
+                    iterate_text=data.get("iterate_text") or data.get("iterateText"),
+                    max_turns=data.get("max_turns") or data.get("maxTurns") or 6,
+                    files=data.get("files"),
+                    tests=data.get("tests"),
+                ),
+            )
         if path in ("/api/session/export", "/api/session"):
             # Accept client snapshot; never store secrets; echo + stamp
             body = data if isinstance(data, dict) else {}
@@ -2222,15 +2549,62 @@ class Handler(SimpleHTTPRequestHandler):
                 )
             return self._json(200, load_shells_state())
         if path == "/api/shells/handoff":
+            # Accept fat pack fields on body (native parity)
+            payload = data.get("payload") or data.get("pack") or {}
+            if not isinstance(payload, dict):
+                payload = {}
+            for k in (
+                "prompt",
+                "iterate_text",
+                "iterateText",
+                "text",
+                "role",
+                "files",
+                "tests",
+                "tool_trace",
+                "messages",
+            ):
+                if k in data and data[k] is not None and k not in payload:
+                    key = "iterate_text" if k in ("iterateText", "text") else k
+                    payload[key] = data[k]
             return self._json(
                 200,
                 shells_handoff(
                     data.get("from"),
                     data.get("to"),
                     summary=str(data.get("summary") or data.get("msg") or ""),
-                    payload=data.get("payload"),
+                    payload=payload or None,
                     loop=data.get("loop"),
                 ),
+            )
+        if path == "/api/shells/pack":
+            # Write or read last fat pack
+            if data:
+                summary = str(data.get("summary") or "manual pack")
+                pack, pack_path = _write_fat_pack(
+                    summary,
+                    str(data.get("from") or data.get("role") or "agent"),
+                    str(data.get("to") or data.get("role") or "agent"),
+                    payload=data,
+                )
+                return self._json(
+                    200, {"ok": True, "pack": pack, "path": pack_path, "fat": True}
+                )
+            last = Path.home() / ".panda" / "packs" / "last.json"
+            pack = None
+            if last.is_file():
+                try:
+                    pack = json.loads(last.read_text(encoding="utf-8"))
+                except Exception:
+                    pack = None
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "pack": pack,
+                    "path": str(last),
+                    "fat": isinstance(pack, dict),
+                },
             )
         if path == "/api/shells/advance":
             return self._json(

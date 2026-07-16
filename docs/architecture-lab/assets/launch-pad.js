@@ -98,6 +98,66 @@
         );
         return j;
       }
+      if (action === "playpen_status") {
+        const j = await api("/api/playpen");
+        setStatus(j.ok ? "playpen" : "err", j.ok ? "ok" : "err");
+        const alerts = j.alerts || {};
+        log(
+          "Playpen · git " +
+            ((j.git && j.git.branch) || "?") +
+            "@" +
+            ((j.git && j.git.sha_short) || "?") +
+            " · procs " +
+            ((j.processes && j.processes.length) || 0) +
+            " · mitigate? " +
+            (alerts.needs_mitigate ? "YES" : "no") +
+            "\n" +
+            (j.hint || "POST /api/playpen")
+        );
+        return j;
+      }
+      if (action === "playpen_diagnose") {
+        const j = await api("/api/playpen", {
+          domain: "mitigate",
+          action: "diagnose",
+        });
+        setStatus(j.ok ? "diag" : "err", j.ok ? "ok" : "err");
+        log(
+          "Diagnose · " +
+            ((j.recommend && j.recommend.join(" · ")) || JSON.stringify(j).slice(0, 200))
+        );
+        return j;
+      }
+      if (action === "playpen_recover") {
+        const j = await api("/api/playpen", {
+          domain: "mitigate",
+          action: "soft-recover",
+        });
+        setStatus(j.ok ? "recover" : "err", j.ok ? "ok" : "err");
+        log(j.message || "soft-recover");
+        await api("/api/control", { action: "arrange" }).catch(() => {});
+        return j;
+      }
+      if (action === "voice_say_status") {
+        const j = await api("/api/voice", { action: "say-status" });
+        setStatus(j.ok ? "voice" : "err", j.ok ? "ok" : "err");
+        log((j.via || "voice") + ": " + (j.message || "speaking"));
+        return j;
+      }
+      if (action === "research_crash") {
+        const j = await api("/api/playpen", {
+          domain: "research",
+          action: "crash",
+        });
+        setStatus(j.ok ? "crash" : "err", j.ok ? "ok" : "err");
+        log(
+          "Crash research · " +
+            (j.launch_log || "") +
+            "\n" +
+            String(j.tail || "").split("\n").slice(-6).join("\n")
+        );
+        return j;
+      }
       if (action === "about") {
         // Best-effort: control bus may ignore; log version
         const h = await api("/api/health").catch(() => ({}));

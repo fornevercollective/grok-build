@@ -16,8 +16,8 @@ Works **locally** and on **GitHub Pages**. Open tabs auto-reload when a new depl
 | [content/06-plugin-anatomy.md](content/06-plugin-anatomy.md) | Plugin packaging rules |
 | [content/12-brand.md](content/12-brand.md) | SpaceXAI / Grok brand |
 
-**Lab version (package):** `0.3.2` · **Native crate:** `0.3.2` · **Pages clients:** git SHA in `version.json`  
-**Ship deck:** `#/tool/ship` · **Plugin pack:** `plugin/lab-ship/` · **Launch Pad:** `launch.html` · **Agent Console:** `agent.html` · **Multi-term:** Panda · **Matrix:** [content/17-ship-everything.md](content/17-ship-everything.md)
+**Lab version (package):** `0.4.0` · **Native crate:** `0.3.20` · **lab-ship (orb + phone):** `0.2.1` · **Pages clients:** git SHA in `version.json`  
+**lab-ship** = chat orb + **phone PWA** (`phone.html` · Chat/Agent/Stream/Prompt/Docs) · control `lab-ship` · **Ship deck** `#/tool/ship` · **Plugin** `plugin/lab-ship/` · **Matrix** [17-ship-everything](content/17-ship-everything.md)
 
 ### Go / no-go before big pushes
 
@@ -35,7 +35,8 @@ npm run install-pre-push --prefix docs/architecture-lab  # git pre-push hook
 |------|--------|
 | Upstream `CONTRIBUTING.md` — no external PRs to SpaceXAI tree | Met (lab is local/fork work) |
 | Prefer plugins over forking the pager | Met |
-| `gy-glyph-pins` plugin anatomy + `grok plugin validate` | Met (enable in TUI if missing) |
+| **lab-ship = chat orb** + plugin pack | Met (orb UI + `/lab-ship` · control `lab-ship`) |
+| `gy-glyph-pins` plugin anatomy + validate | Met when present under `~/.grok/plugins/` |
 | Brand: unaltered official marks | Met (watch composite dock icon policy) |
 | Native license Apache-2.0 | Met (aligned with monorepo) |
 
@@ -68,7 +69,7 @@ cargo build --release
 |-------|------|
 | Window | **tao + wry** → system **WKWebView** (macOS) |
 | HTTP | **axum** in-process (static + control API) |
-| Menu | **muda** |
+| Menu | **Cocoa** (muda removed — ZeroWidth abort on About) |
 | Terminal | **ratatui** (`--mode tui`) |
 
 Electron under `desktop/` is optional **deprecated** fallback (`ARCH_LAB_FORCE_ELECTRON=1`).
@@ -99,8 +100,11 @@ docs/architecture-lab/          # historical path · product name = Grok Build L
   nav.json            # sidebar sections / page ids
   serve.sh            # local server + ops APIs
   version.json        # local placeholder; Pages overwrites with SHA
-  package.json        # lab semver 0.3.2 (not Grok CLI version)
-  plugin/lab-ship/    # installable Grok plugin (skills · agents · hooks)
+  package.json        # lab semver 0.3.11 (not Grok CLI / not native crate)
+  plugin/lab-ship/    # lab-ship = chat orb product + Grok pack (/lab-ship)
+  orb.html            # lab-ship UI face (desktop mini)
+  phone.html          # lab-ship phone PWA (Chat·Agent·Stream·Prompt·Docs)
+  chat.html           # lab-ship full panel
   scripts/
     status-xai-check.sh       # status.x.ai go/no-go
     install-pre-push-hook.sh  # git push gate

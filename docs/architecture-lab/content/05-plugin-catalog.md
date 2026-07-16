@@ -6,11 +6,11 @@ Compliance + install details: [Dev build · versions · forks](#/14-dev-build-an
 
 ## In play
 
-| Plugin | Bundle | Role | Guideline status |
-|--------|--------|------|------------------|
-| **lab-ship** | skills · commands · agents · hooks | Plan loop · Q&A · `/ship-check` · lab-explorer / lab-tester · SessionStart | In-tree under `docs/architecture-lab/plugin/lab-ship/`. Install + validate below. |
-| **gy-glyph-pins** | skills · commands · hooks | Multi-user mesh pins above Grok; `/glyph-pins`, `/with-grok` | Manifest valid (`grok plugin validate`). Enable in TUI if not listed. Source: **GrokYtalkY** (not monorepo). |
-| **cloudflare** | marketplace skills | Workers / CF platform (official marketplace) | Marketplace install path |
+| Plugin | Bundle | Role | Readiness (honest) |
+|--------|--------|------|--------------------|
+| **lab-ship** | **chat orb** + skills · commands · agents · hooks | **Product face = orb** (`orb.html`). `/lab-ship` opens it. Also `/plan-loop` · `/ship-check` · `/triple-handoff` | **v0.2.1** — lab-ship **is** the chat orb + Grok pack. Control: `lab-ship` / `chat_orb`. |
+| **gy-glyph-pins** | skills · commands · hooks | Multi-user mesh pins above Grok; `/glyph-pins`, `/with-grok` | Usually present under `~/.grok/plugins/`. Source: **GrokYtalkY** (not monorepo). Enable in TUI if missing. |
+| **cloudflare** | marketplace skills | Workers / CF platform (official marketplace) | Marketplace install path (separate from lab-ship). |
 
 ### lab-ship install
 
@@ -19,13 +19,23 @@ Compliance + install details: [Dev build · versions · forks](#/14-dev-build-an
 ln -sfn "$(pwd)/docs/architecture-lab/plugin/lab-ship" ~/.grok/plugins/lab-ship
 grok plugin validate ~/.grok/plugins/lab-ship
 # TUI: Ctrl+L → Plugins → enable lab-ship
+# or: grok plugin install ./docs/architecture-lab/plugin/lab-ship --trust
 ```
 
-Skills: `plan-loop` · `lab-review` · `ship-checklist`  
-Commands: `/plan-loop` · `/ship-check`  
-Agents: `lab-explorer` · `lab-tester`
+**lab-ship = chat orb + phone PWA**
 
-Interactive lab UI: **Ship** tab (`#/tool/ship`) · doc [Ship everything](#/17-ship-everything).
+| Surface | Path |
+|---------|------|
+| Phone | `phone.html` — Chat · Agent · Stream · Prompt · Docs |
+| Mini orb | `orb.html` · control `lab-ship` / `chat_orb` |
+| Full chat | `chat.html` |
+
+Skills: `lab-ship-orb` · `plan-loop` · `lab-review` · `ship-checklist` · `triple-handoff`  
+Commands: **`/lab-ship`** · `/plan-loop` · `/ship-check` · `/triple-handoff`  
+Agents: `lab-explorer` · `lab-tester`  
+Hook: SessionStart (*chat orb ready*)  
+
+Plugin README: `plugin/lab-ship/README.md`.
 
 ### GY install
 
@@ -39,7 +49,8 @@ Interactive lab UI: **Ship** tab (`#/tool/ship`) · doc [Ship everything](#/17-s
 #   grok plugin validate ~/.grok/plugins/gy-glyph-pins
 ```
 
-**Grok Build Lab is not a plugin.** It is a companion docs + float shell under `docs/architecture-lab/`. The **lab-ship** plugin is the installable Grok extension that pairs with the lab UI.
+**Grok Build Lab.app** is the host (docs + stream + agent windows).  
+**lab-ship** is the **chat orb product** (plus Grok plugin pack). Not the whole Lab shell; not gy-glyph-pins; not the stream window.
 
 ## Build next (high value)
 

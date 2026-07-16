@@ -75,6 +75,10 @@
             <span class="lp-card-k">Workbench</span>
             <span class="lp-card-d">Browser · live PTY αβγ + agent</span>
           </a>
+          <a class="lp-card accent" href="phone.html" style="text-decoration: none">
+            <span class="lp-card-k">lab-ship phone</span>
+            <span class="lp-card-d">PWA · Chat · Agent · Stream · Prompt · Docs</span>
+          </a>
           <a class="lp-card" href="chat.html" target="_blank" rel="noopener" style="text-decoration: none">
             <span class="lp-card-k">Chat</span>
             <span class="lp-card-d">Voice + text float</span>
@@ -242,6 +246,26 @@ LTS · click status to probe /api/lts</pre>
         </div>
       </section>
 
+      <!-- Playpen · voice · mitigate -->
+      <section class="lp-section" aria-label="Dev playpen">
+        <h2>Dev playpen · /voice</h2>
+        <div class="lp-row">
+          <button type="button" class="lp-btn primary" data-action="playpen_status">
+            Playpen status
+          </button>
+          <button type="button" class="lp-btn" data-action="playpen_diagnose">Diagnose</button>
+          <button type="button" class="lp-btn" data-action="playpen_recover">Soft recover</button>
+          <button type="button" class="lp-btn primary" data-action="voice_say_status">
+            /voice say-status
+          </button>
+          <button type="button" class="lp-btn" data-action="research_crash">Research crash</button>
+        </div>
+        <p class="lp-hint">
+          Grok’s local room: manage · explore · mitigate · research · voice · pair with
+          <a href="https://grok.com/automations" target="_blank" rel="noopener">Automations</a>
+        </p>
+      </section>
+
       <!-- Help -->
       <section class="lp-section" aria-label="Help">
         <h2>Help</h2>
@@ -251,10 +275,10 @@ LTS · click status to probe /api/lts</pre>
           </button>
           <button type="button" class="lp-btn" data-action="about">About Grok Build Lab</button>
         </div>
-        <p class="lp-hint" id="lp-log">Ready · actions go through /api/control + /api/panda/open</p>
+        <p class="lp-hint" id="lp-log">Ready · /api/playpen · /api/voice · /api/control</p>
       </section>
     </main>
 
-    <script src="assets/launch-pad.js?v=lp4"></script>
+    <script src="assets/launch-pad.js?v=lp5"></script>
   </body>
 </html>

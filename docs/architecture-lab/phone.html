@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <meta name="theme-color" content="#0b0c0f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="lab-ship" />
+    <title>lab-ship · phone</title>
+    <meta
+      name="description"
+      content="lab-ship phone — Chat · Agent · Stream · Prompt · Docs (GrokYtalkY-style handset for Grok Build Lab)"
+    />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/brand/grok-logomark-dark.png" />
+    <link rel="stylesheet" href="assets/phone-shell.css?v=ph1" />
+  </head>
+  <body class="phone-body">
+    <div class="phone-app" id="phone-app">
+      <!-- Top -->
+      <header class="phone-top">
+        <img
+          class="ph-mark"
+          src="assets/brand/grok-logomark-light.svg"
+          width="22"
+          height="22"
+          alt=""
+        />
+        <div class="ph-title">lab-ship · <span id="ph-mode">chat</span></div>
+        <div class="ph-host" id="ph-host" title="Lab host">…</div>
+        <button type="button" class="ph-btn" id="ph-btn-desktop" title="Open desktop orb">
+          Orb
+        </button>
+        <button type="button" class="ph-btn" id="ph-btn-lab" title="Show lab">Lab</button>
+      </header>
+
+      <!-- Face strip -->
+      <section class="phone-face" aria-label="lab-ship face">
+        <div class="phone-orb" id="phone-orb">
+          <video class="orb-cam" id="phone-cam" playsinline muted autoplay></video>
+          <img
+            class="orb-logo"
+            src="assets/brand/grok-logomark-light.svg"
+            alt="Grok"
+            width="48"
+            height="48"
+            draggable="false"
+          />
+        </div>
+        <div class="phone-face-meta">
+          <div class="ph-mode" id="ph-face-mode">chat orb</div>
+          <p class="ph-status" id="ph-status">boot…</p>
+          <div class="phone-quick">
+            <button type="button" class="primary" id="ph-btn-hold" title="Hold to talk">
+              Hold
+            </button>
+            <button type="button" id="ph-btn-cam" title="Camera">Cam</button>
+            <button type="button" id="ph-btn-study" title="Movement study">Study</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panes -->
+      <main class="phone-panes">
+        <!-- Chat: lite log + stream peek + optional full iframe -->
+        <section class="phone-pane on" data-pane="chat" id="pane-chat">
+          <div class="phone-chat-lite">
+            <div class="phone-stream-peek" title="Active stream low-res pipe">
+              <video id="ph-stream-peek-video" playsinline muted></video>
+              <span class="sp-lab" id="ph-stream-peek-lab">pick a SpaceX feed</span>
+            </div>
+            <!-- SpaceX / xAI / NASA multi-feed rail (main play page) -->
+            <div class="phone-feed-rail" id="ph-feed-rail" aria-label="SpaceX video feeds">
+              <div class="phone-feed-head">
+                <span>SpaceX feeds</span>
+                <strong id="ph-feed-now">idle</strong>
+              </div>
+              <div class="phone-feed-chips" id="ph-feed-chips" role="group"></div>
+            </div>
+            <div class="pcl-log" id="ph-chat-log" role="log"></div>
+            <iframe
+              title="Full chat"
+              data-src="chat.html"
+              loading="lazy"
+              style="display: none"
+              id="ph-chat-iframe"
+            ></iframe>
+          </div>
+        </section>
+
+        <section class="phone-pane" data-pane="agent" id="pane-agent">
+          <iframe title="Agent console" data-src="agent.html" loading="lazy"></iframe>
+        </section>
+
+        <section class="phone-pane" data-pane="stream" id="pane-stream">
+          <iframe title="Stream feed" data-src="stream.html" loading="lazy"></iframe>
+        </section>
+
+        <section class="phone-pane" data-pane="prompt" id="pane-prompt">
+          <div class="phone-prompt">
+            <div class="phone-prompt-modes" role="group" aria-label="Prompt mode">
+              <button type="button" data-prompt-mode="talk">Talk</button>
+              <button type="button" data-prompt-mode="plan" class="on">Plan</button>
+              <button type="button" data-prompt-mode="chain">Chain</button>
+              <button type="button" data-prompt-mode="ship">Ship</button>
+            </div>
+            <div class="phone-prompt-log" id="ph-prompt-log" role="log"></div>
+          </div>
+        </section>
+
+        <section class="phone-pane" data-pane="docs" id="pane-docs">
+          <iframe
+            title="Docs"
+            data-src="index.html?embed=phone"
+            loading="lazy"
+          ></iframe>
+        </section>
+      </main>
+
+      <!-- Shared composer -->
+      <footer class="phone-compose">
+        <div class="phone-compose-row">
+          <textarea
+            id="ph-input"
+            rows="2"
+            maxlength="4000"
+            placeholder="Message · plan · chain · ship…"
+            aria-label="Composer"
+          ></textarea>
+          <button type="button" class="ph-send" id="ph-send" title="Send">Go</button>
+        </div>
+        <div class="phone-compose-meta">
+          <span>route</span>
+          <select id="ph-compose-mode" aria-label="Composer mode">
+            <option value="talk">talk → chat</option>
+            <option value="plan" selected>plan → agent</option>
+            <option value="chain">chain → rocket</option>
+            <option value="ship">ship → lab</option>
+          </select>
+          <span>· Enter send · Hold = PTT</span>
+        </div>
+      </footer>
+
+      <!-- Bottom nav -->
+      <nav class="phone-nav" aria-label="Primary">
+        <button type="button" data-tab="chat" class="on">
+          <span class="ico" aria-hidden="true">◎</span>
+          Chat
+        </button>
+        <button type="button" data-tab="agent">
+          <span class="ico" aria-hidden="true">α</span>
+          Agent
+        </button>
+        <button type="button" data-tab="stream">
+          <span class="ico" aria-hidden="true">▶</span>
+          Stream
+        </button>
+        <button type="button" data-tab="prompt">
+          <span class="ico" aria-hidden="true">✎</span>
+          Prompt
+        </button>
+        <button type="button" data-tab="docs">
+          <span class="ico" aria-hidden="true">≡</span>
+          Docs
+        </button>
+      </nav>
+    </div>
+
+    <div class="phone-toast" id="phone-toast" role="status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js" defer></script>
+    <script src="assets/phone-shell.js?v=ph4" defer></script>
+  </body>
+</html>

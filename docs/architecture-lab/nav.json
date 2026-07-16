@@ -44,7 +44,9 @@
         { "id": "26-dev-off-grok-cli-overview", "label": "Dev-off · grok-cli · overview · xai-org" },
         { "id": "27-upstream-tools-sync", "label": "Upstream tools sync · Lab 1–4+" },
         { "id": "28-versioning-upstream", "label": "Versioning · DotSlash · SOURCE_REV" },
-        { "id": "29-grok-voice-spheres", "label": "Grok Voice · spheres · x.ai/voice" }
+        { "id": "29-grok-voice-spheres", "label": "Grok Voice · spheres · x.ai/voice" },
+        { "id": "30-playpen", "label": "Dev playpen · mitigate · /voice · Automations" },
+        { "id": "31-phone-gy-tether", "label": "Phone · GY tether · Pages" }
       ]
     },
     {

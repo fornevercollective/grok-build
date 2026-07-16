@@ -34,7 +34,7 @@ import json, pathlib, re, sys
 site, sha, short, ref, built, run_id, url = sys.argv[1:8]
 site = pathlib.Path(site)
 # Keep marketing semver in sync with docs/architecture-lab/package.json when bumping.
-lab_semver = "0.2.0"
+lab_semver = "0.4.0"
 ver = {
     "ok": True,
     "sha": sha,
@@ -58,7 +58,11 @@ if sw.is_file():
     )
     sw.write_text(text2)
 assert (site / "index.html").is_file(), "missing index.html"
+assert (site / "phone.html").is_file(), "missing phone.html (lab-ship PWA)"
+assert (site / "manifest.webmanifest").is_file(), "missing manifest"
+# Point version stamp at phone install surface
 print("site ready", short, url)
+print("phone", url.rstrip("/") + "/phone.html")
 print((site / "version.json").read_text())
 PY
 

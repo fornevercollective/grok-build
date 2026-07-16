@@ -476,7 +476,7 @@
     if (!root) return;
     root.innerHTML =
       '<article class="ship-plugin">' +
-      '<header><strong>lab-ship</strong><span class="pill">local</span></header>' +
+      '<header><strong>lab-ship</strong><span class="pill">chat orb</span></header>' +
       "<p>Plan loop · Q&A · review · ship-check · lab-explorer / lab-tester agents · SessionStart hook.</p>" +
       '<pre class="ship-pre">ln -sfn "$(pwd)/docs/architecture-lab/plugin/lab-ship" ~/.grok/plugins/lab-ship\n' +
       "grok plugin validate ~/.grok/plugins/lab-ship</pre>" +

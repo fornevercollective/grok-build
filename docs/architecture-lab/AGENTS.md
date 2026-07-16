@@ -7,7 +7,7 @@ Historical folder name: `architecture-lab`. Product name: **Grok Build Lab**.
 
 - Package workflows as **plugins / skills / hooks / MCP / agents** — not pager forks.
 - Official TUI source: repo `crates/codegen/*`. Upstream `xai-org/grok-build` does **not** accept external PRs; ship on the fork.
-- Installable pack for this lab: `plugin/lab-ship/`.
+- **lab-ship = chat orb** (`orb.html` + `plugin/lab-ship/`). Control: `lab-ship` / `chat_orb`. Not the whole Lab.app.
 
 ## When editing the lab UI
 

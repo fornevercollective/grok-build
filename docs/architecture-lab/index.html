@@ -28,7 +28,7 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="assets/style.css?v=scroll5" />
+    <link rel="stylesheet" href="assets/style.css?v=phone-nav1" />
     <link rel="stylesheet" href="assets/walkie-dock.css?v=wave3" />
     <link rel="stylesheet" href="assets/video-feed.css?v=sb2" />
     <link rel="stylesheet" href="assets/tools.css?v=scroll5" />
@@ -43,12 +43,12 @@
       src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"
       defer
     ></script>
-    <script src="assets/app.js?v=scroll5" defer></script>
+    <script src="assets/app.js?v=phone-nav1" defer></script>
     <script src="assets/walkthrough.js?v=wt5" defer></script>
     <script src="assets/video-feed.js?v=sb3" defer></script>
     <script src="assets/walkie-dock.js?v=wave3" defer></script>
-    <script src="assets/grok-listen.js?v=wave3" defer></script>
-    <script src="assets/tools.js?v=mt3" defer></script>
+    <script src="assets/grok-listen.js?v=stt2" defer></script>
+    <script src="assets/tools.js?v=phone-nav1" defer></script>
     <script src="assets/ship-deck.js?v=ship4" defer></script>
     <script src="assets/mesh-collab.js" defer></script>
     <script src="assets/mobile-pwa.js" defer></script>
@@ -881,8 +881,9 @@
           <div class="tool-head">
             <h2>Version history</h2>
             <span class="spacer"></span>
-            <select id="hist-repo" class="btn-mini" style="padding:0.3rem 0.4rem">
-              <option value="grok-build">grok-build</option>
+            <select id="hist-repo" class="btn-mini" style="padding:0.3rem 0.4rem" title="Git history source">
+              <option value="upstream">xai-org/grok-build (upstream)</option>
+              <option value="grok-build">fork · fornevercollective</option>
               <option value="gy">GrokYtalkY</option>
             </select>
             <button type="button" class="btn-mini primary" id="btn-hist-refresh">Refresh</button>

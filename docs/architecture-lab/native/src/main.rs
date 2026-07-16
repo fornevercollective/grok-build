@@ -11,6 +11,7 @@ mod control;
 mod fleet;
 mod media;
 mod menu;
+mod playpen;
 #[cfg(target_os = "macos")]
 mod macos_style;
 mod tui;

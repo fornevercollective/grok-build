@@ -296,6 +296,105 @@
     });
   }
 
+  /** Fat handoff with prompt/iterate pack (falls back to thin handoff). */
+  async function fatHandoff(from, to, summary, pack, signal) {
+    const body = {
+      from: from,
+      to: to,
+      summary: summary || from + " → " + to,
+    };
+    if (pack) {
+      if (pack.prompt) body.prompt = pack.prompt;
+      if (pack.iterate_text || pack.iterateText || pack.text) {
+        body.iterate_text = pack.iterate_text || pack.iterateText || pack.text;
+      }
+      if (pack.role) body.role = pack.role;
+      if (pack.files) body.files = pack.files;
+      if (pack.tests) body.tests = pack.tests;
+      if (pack.messages) body.messages = pack.messages;
+    }
+    // Attach last chat snippet as messages
+    try {
+      const list = loadChat().slice(-12).map((m) => ({
+        role: m.role || "agent",
+        body: String(m.text || "").slice(0, 1500),
+      }));
+      if (list.length) body.messages = list;
+    } catch (_) {}
+    if (window.LabAiIterate && LabAiIterate.handoff) {
+      return LabAiIterate.handoff(Object.assign({ signal: signal }, body));
+    }
+    return api("/api/shells/handoff", body, signal).catch((e) => ({
+      ok: false,
+      error: String(e.message || e),
+    }));
+  }
+
+  async function runRocketChain(promptText) {
+    const t =
+      String(promptText || lastUserText() || "").trim() ||
+      "Plan the current lab task, then hand off to build";
+    const controller =
+      typeof AbortController !== "undefined" ? new AbortController() : null;
+    const signal = controller ? controller.signal : null;
+    if (activeTurn) {
+      toast("Turn in progress — Cancel first", true);
+      return;
+    }
+    pushMsg("user", "🚀 " + t, "chain");
+    setStatus("🚀 chain…", "busy");
+    setBusy(true);
+    activeTurn = { id: ++turnSeq, aborted: false, controller: controller };
+    try {
+      let ch;
+      if (window.LabAiIterate && LabAiIterate.chain) {
+        ch = await LabAiIterate.chain({
+          prompt: t,
+          role: "plan",
+          from: "plan",
+          to: "build",
+          openFleet: true,
+          signal: signal,
+        });
+      } else {
+        ch = await api(
+          "/api/agent/chain",
+          {
+            prompt: t,
+            role: "plan",
+            from: "plan",
+            to: "build",
+            open_fleet: true,
+          },
+          signal
+        );
+      }
+      const text =
+        (ch && ch.text) ||
+        (ch && ch.message) ||
+        "Chain complete · pack at ~/.panda/packs/last.json";
+      pushMsg(
+        "agent",
+        "**🚀 Rocket chain**\n\n" +
+          text +
+          "\n\n· plan→build fat pack\n· Multi/Panda αβγ auto-role panes\n· cat $LAB_LAST_PACK in each pane",
+        "plan→build"
+      );
+      setFeedStatus("plan", "done");
+      setFeedStatus("build", "running");
+      appendFeed("build", "rocket: pack ready");
+      setStatus("live", "live");
+      toast(ch && ch.ok ? "Chain launched" : "Chain partial", !(ch && ch.ok));
+    } catch (e) {
+      pushMsg("agent", "Chain error: " + (e.message || e));
+      setStatus("err", "err");
+      toast(String(e.message || e), true);
+    } finally {
+      activeTurn = null;
+      setBusy(false);
+    }
+  }
+
   function cancelTurn() {
     if (!activeTurn) {
       toast("No active turn");
@@ -389,37 +488,96 @@
           }).join("\n") +
           "\nHandoff: ~/.panda/lab-handoff.json · Multi for live PTYs.";
         ROLES.forEach((r) => appendFeed(r, "status poll"));
+      } else if (
+        /\brocket\b/.test(low) ||
+        /\bfull\s+chain\b/.test(low) ||
+        (/\bchain\b/.test(low) && /\b(panda|fleet|loop|handoff)\b/.test(low)) ||
+        /^rocket\s+chain/i.test(t)
+      ) {
+        // Full rocket: iterate → fat pack → Panda αβγ
+        setStatus("🚀 chain…", "busy");
+        setFeedStatus("plan", "running");
+        setFeedStatus("build", "running");
+        appendFeed("plan", "rocket: iterate…");
+        let ch = null;
+        if (window.LabAiIterate && LabAiIterate.chain) {
+          ch = await LabAiIterate.chain({
+            prompt: t.replace(/^rocket\s+chain:\s*/i, "").trim() || t,
+            role: "plan",
+            from: "plan",
+            to: "build",
+            openFleet: true,
+            signal: signal,
+          });
+        } else {
+          ch = await api(
+            "/api/agent/chain",
+            {
+              prompt: t,
+              role: "plan",
+              from: "plan",
+              to: "build",
+              open_fleet: true,
+            },
+            signal
+          ).catch((e) => ({ ok: false, message: String(e.message || e) }));
+        }
+        check();
+        const fleetOk =
+          ch &&
+          ch.fleet &&
+          (ch.fleet.launched || ch.fleet.ok);
+        reply =
+          "**🚀 Rocket chain** " +
+          (ch && ch.ok ? "ok" : "partial") +
+          " via " +
+          ((ch && ch.via) || "chain") +
+          "\n\n" +
+          ((ch && ch.text) || (ch && ch.message) || "") +
+          "\n\n" +
+          "Handoff plan→build · fat pack ~/.panda/packs/last.json\n" +
+          (fleetOk
+            ? "Panda/Terminal αβγ opened with **auto-role** panes."
+            : "Fleet: " + ((ch && ch.fleet && ch.fleet.message) || "open Multi manually"));
+        appendFeed("build", "rocket handoff ready");
+        hop = { from: "plan", to: "build", summary: "rocket chain" };
       } else if (/\bplan\b/.test(low) && !/\bbuild\b/.test(low)) {
         hop = { from: "verify", to: "plan", summary: t.slice(0, 200) };
         reply =
-          "Routing to **α plan**.\n1) Explore read-only\n2) Write plan\n3) Approve → β build.\nTip: Multi → source ~/.panda/profiles/plan.env";
+          "Routing to **α plan**.\n1) Explore read-only\n2) Write plan\n3) Approve → β build.\nTip: Multi opens **auto-role** panes (no manual source).";
         setFeedStatus("plan", "running");
         appendFeed("plan", "task: " + t.slice(0, 240));
-        await api(
-          "/api/shells/handoff",
-          { from: "build", to: "plan", summary: "console → plan: " + t.slice(0, 120) },
+        await fatHandoff(
+          "build",
+          "plan",
+          "console → plan: " + t.slice(0, 120),
+          { prompt: t, role: "plan" },
           signal
-        ).catch(() => {});
+        );
       } else if (/\bbuild\b|\bimplement\b/.test(low)) {
         reply =
           "Routing to **β build**.\nWorktree isolation · tools/workspace.\nWhen done: Build → Verify.";
         setFeedStatus("build", "running");
         appendFeed("build", "task: " + t.slice(0, 240));
-        await api(
-          "/api/shells/handoff",
-          { from: "plan", to: "build", summary: "console → build: " + t.slice(0, 120) },
+        await fatHandoff(
+          "plan",
+          "build",
+          "console → build: " + t.slice(0, 120),
+          { prompt: t, role: "build" },
           signal
-        ).catch(() => {});
+        );
       } else if (/\bverify\b|\btest\b|\breview\b/.test(low)) {
         reply =
           "Routing to **γ verify**.\nSandbox tests · review only.\nFail → hand back to build.";
         setFeedStatus("verify", "running");
         appendFeed("verify", "task: " + t.slice(0, 240));
-        await api(
-          "/api/shells/handoff",
-          { from: "build", to: "verify", summary: "console → verify: " + t.slice(0, 120) },
+        await fatHandoff(
+          "build",
+          "verify",
+          "console → verify: " + t.slice(0, 120),
+          { prompt: t, role: "verify" },
           signal
-        ).catch(() => {});
+        );
       } else if (targetRole) {
         // Role-targeted: handoff note + optional headless iterate into that role flavor
         setFeedStatus(targetRole, "running");
@@ -451,13 +609,21 @@
             "\n\n" +
             iter.text;
           appendFeed(targetRole, (iter.text || "").slice(0, 400));
+          // Seed fat pack for next hop
+          await fatHandoff(
+            targetRole === "plan" ? "build" : targetRole === "build" ? "plan" : "build",
+            targetRole,
+            "iterate → " + targetRole,
+            { prompt: t, iterate_text: iter.text, role: targetRole },
+            signal
+          ).catch(() => {});
         } else {
           reply =
             "Queued for **" +
             targetRole +
-            "**.\nPanda: source ~/.panda/profiles/" +
+            "**.\nMulti opens auto-role **" +
             targetRole +
-            ".env then `grok`.";
+            "** pane · pack at ~/.panda/packs/last.json";
         }
       } else {
         // Center agent: overview onAiIterate contract → grok -p
@@ -724,29 +890,44 @@
       pushMsg(
         "system",
         j.launched
-          ? "Multi-term (Panda) launching — αβγ PTYs."
+          ? "Multi-term launching — **auto-role** α Plan · β Build · γ Verify panes" +
+              (j.last_pack ? " · pack " + j.last_pack : "")
           : "Multi-term: " + (j.message || j.mitigation || "failed")
       );
       setStatus(j.launched ? "live" : "idle", j.launched ? "live" : "");
     });
 
     $("btn-handoff-pb")?.addEventListener("click", async () => {
-      const j = await api("/api/shells/handoff", {
-        from: "plan",
-        to: "build",
-        summary: "Agent console: plan → build",
+      const j = await fatHandoff("plan", "build", "Agent console: plan → build", {
+        prompt: lastUserText(),
+        role: "build",
       });
-      pushMsg("system", j.ok ? "Handoff plan → build" : j.error || "handoff failed");
+      pushMsg(
+        "system",
+        j.ok
+          ? "Fat handoff plan → build" +
+              (j.pack_path ? " · " + j.pack_path : "")
+          : j.error || "handoff failed"
+      );
       refreshFeeds();
     });
     $("btn-handoff-bv")?.addEventListener("click", async () => {
-      const j = await api("/api/shells/handoff", {
-        from: "build",
-        to: "verify",
-        summary: "Agent console: build → verify",
+      const j = await fatHandoff("build", "verify", "Agent console: build → verify", {
+        prompt: lastUserText(),
+        role: "verify",
       });
-      pushMsg("system", j.ok ? "Handoff build → verify" : j.error || "handoff failed");
+      pushMsg(
+        "system",
+        j.ok
+          ? "Fat handoff build → verify" +
+              (j.pack_path ? " · " + j.pack_path : "")
+          : j.error || "handoff failed"
+      );
       refreshFeeds();
+    });
+    $("btn-rocket-chain")?.addEventListener("click", () => {
+      const v = ($("ac-input") && $("ac-input").value.trim()) || lastUserText();
+      runRocketChain(v);
     });
 
     $("btn-close")?.addEventListener("click", () => {

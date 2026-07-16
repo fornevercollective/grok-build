@@ -1,15 +1,24 @@
 {
   "name": "lab-ship",
-  "version": "0.1.0",
-  "description": "Grok Build Lab ship pack — plan loop, Q&A, subagent recipes, review, and status.x.ai go/no-go. Bundles skills, commands, agents, and hooks for the full plan→build→test→deploy workflow.",
+  "version": "0.2.1",
+  "description": "lab-ship is the Grok Build Lab chat orb — Siri-scale float (Hold · Cam · Mic · intents) plus plan-loop, ship-check, and triple-handoff. Open the orb with /lab-ship or control action chat_orb. Extension pack for the xAI Grok Build ecosystem; does not replace the pager.",
+  "author": {
+    "name": "fornevercollective",
+    "url": "https://github.com/fornevercollective/grok-build"
+  },
+  "homepage": "https://github.com/fornevercollective/grok-build/tree/main/docs/architecture-lab/plugin/lab-ship",
   "keywords": [
+    "lab-ship",
+    "chat-orb",
+    "orb",
+    "grok-build",
+    "xai",
+    "voice",
     "plan",
-    "skills",
-    "subagents",
-    "qa",
     "ship",
-    "lab",
-    "hooks",
-    "review"
-  ]
+    "handoff",
+    "siri"
+  ],
+  "skills": ["./skills"],
+  "commands": ["./commands"]
 }

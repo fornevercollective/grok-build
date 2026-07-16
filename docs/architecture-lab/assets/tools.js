@@ -154,6 +154,35 @@
         : "#/tool/" + mode;
   }
 
+  /** Phone PWA iframe / narrow shell — always use drawer nav, never sticky column */
+  function isPhoneEmbed() {
+    try {
+      if (/[?&]embed=phone\b/.test(location.search || "")) return true;
+      if (document.documentElement.classList.contains("lab-phone-embed")) return true;
+      if (window.self === window.top) return false;
+      // Same-origin phone shell
+      try {
+        const p = window.parent && window.parent.location && window.parent.location.pathname;
+        if (p && /phone\.html/i.test(p)) return true;
+        if (window.parent.document?.body?.classList?.contains("phone-body")) return true;
+      } catch (_) {
+        /* cross-origin iframe still counts as embed */
+        return true;
+      }
+      return true; // any iframe: prefer collapsible drawer for docs
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function isCompactNav() {
+    return (
+      isPhoneEmbed() ||
+      document.documentElement.classList.contains("lab-phone-embed") ||
+      window.matchMedia("(max-width: 860px)").matches
+    );
+  }
+
   function setSidebarCollapsed(coll) {
     document.body.classList.toggle("sidebar-collapsed", !!coll);
     const sidebar = document.getElementById("sidebar");
@@ -161,9 +190,10 @@
     const edge = document.getElementById("sidebar-edge-toggle");
     if (sidebar) {
       sidebar.classList.toggle("collapsed", !!coll);
-      // mobile drawer closed when collapsed on small screens
-      if (window.matchMedia("(max-width: 860px)").matches) {
+      // drawer: open only when expanded
+      if (isCompactNav()) {
         sidebar.classList.toggle("open", !coll);
+        document.getElementById("backdrop")?.classList.toggle("show", !coll);
       }
     }
     if (btn) {
@@ -181,13 +211,19 @@
       edge.textContent = coll ? "›" : "‹";
       edge.title = coll ? "Expand menu" : "Collapse menu";
     }
-    localStorage.setItem("lab.sidebarCollapsed", coll ? "1" : "0");
+    // Don't clobber desktop preference when embedded in phone
+    if (!isPhoneEmbed()) {
+      localStorage.setItem("lab.sidebarCollapsed", coll ? "1" : "0");
+    } else {
+      try {
+        localStorage.setItem("lab.phone.sidebarCollapsed", coll ? "1" : "0");
+      } catch (_) {}
+    }
   }
 
   function toggleSidebar() {
-    const coll = !document.body.classList.contains("sidebar-collapsed");
-    // On mobile: "collapsed" means drawer closed; open when expanding
-    if (window.matchMedia("(max-width: 860px)").matches) {
+    // Drawer mode (phone embed + mobile): open/close overlay
+    if (isCompactNav()) {
       const sidebar = document.getElementById("sidebar");
       const isOpen = sidebar?.classList.contains("open");
       if (isOpen) {
@@ -201,10 +237,11 @@
       }
       return;
     }
+    const coll = !document.body.classList.contains("sidebar-collapsed");
     setSidebarCollapsed(coll);
   }
 
-  window.LabNav = { setSidebarCollapsed, toggleSidebar };
+  window.LabNav = { setSidebarCollapsed, toggleSidebar, isPhoneEmbed, isCompactNav };
 
   /* ── Terminal / processes ─────────────────────────── */
   function termLine(cls, text) {
@@ -1572,12 +1609,16 @@ gy space mute all`;
     });
   }
 
+  function histRepoWhich() {
+    return $("hist-repo")?.value || "upstream";
+  }
+
   async function refreshHistory() {
     const ul = $("hist-list");
     if (!ul) return;
     ul.innerHTML = "<li>loading…</li>";
     try {
-      const which = $("hist-repo")?.value || "grok-build";
+      const which = histRepoWhich();
       const data = await api(
         "/api/git-log?limit=120&repo=" + encodeURIComponent(which)
       );
@@ -1599,8 +1640,16 @@ gy space mute all`;
         li.onclick = () => applyCommitIndex(i, false);
         ul.appendChild(li);
       });
-      if ($("hist-head")) $("hist-head").textContent = data.head || "—";
-      if ($("hist-repo-path")) $("hist-repo-path").textContent = data.repo || "";
+      const label = data.label || data.source || which;
+      if ($("hist-head")) {
+        $("hist-head").textContent =
+          (data.head || "—") + (data.rev ? " · " + data.rev : "");
+      }
+      if ($("hist-repo-path")) {
+        $("hist-repo-path").textContent =
+          (label ? label + " · " : "") + (data.repo || "") +
+          (data.note ? " · " + data.note : "");
+      }
       bindHistTimelines();
       applyCommitIndex(0, false);
     } catch (e) {
@@ -1612,15 +1661,23 @@ gy space mute all`;
 
   async function loadHistorySlider() {
     try {
-      const data = await api("/api/git-log?limit=80&repo=grok-build");
+      const which = histRepoWhich();
+      const data = await api(
+        "/api/git-log?limit=80&repo=" + encodeURIComponent(which)
+      );
       if (!data.ok || !data.commits?.length) {
-        if ($("hist-slider-meta")) $("hist-slider-meta").textContent = "no git";
+        if ($("hist-slider-meta"))
+          $("hist-slider-meta").textContent = data.message || "no git";
         drawAllHistTimelines();
         return;
       }
       state.commits = data.commits;
       histTl.center = 0;
       histTl.zoom = 1;
+      if ($("hist-slider-meta")) {
+        $("hist-slider-meta").textContent =
+          (data.label || which) + " · " + (data.head || state.commits.length + " commits");
+      }
       bindHistTimelines();
       applyCommitIndex(0, false);
     } catch {
@@ -1654,15 +1711,34 @@ gy space mute all`;
     // Left menu: always available + collapsible on every page
     $("menu-btn")?.addEventListener("click", toggleSidebar);
     $("sidebar-edge-toggle")?.addEventListener("click", toggleSidebar);
-    // Float shell: default collapsed (more content room) unless user saved preference
-    const saved = localStorage.getItem("lab.sidebarCollapsed");
-    const isFloat =
-      document.body.classList.contains("lab-float") ||
-      document.body.classList.contains("lab-native");
-    if (saved === "1" || (saved === null && isFloat)) {
-      setSidebarCollapsed(true);
+    $("backdrop")?.addEventListener("click", () => {
+      if (isCompactNav()) {
+        document.getElementById("sidebar")?.classList.remove("open");
+        document.getElementById("backdrop")?.classList.remove("show");
+        setSidebarCollapsed(true);
+      }
+    });
+
+    // Phone PWA iframe: force drawer + default collapsed so docs content is full width
+    if (isPhoneEmbed()) {
+      document.documentElement.classList.add("lab-phone-embed");
+      document.body.classList.add("lab-phone-embed");
+      let phoneSaved = null;
+      try {
+        phoneSaved = localStorage.getItem("lab.phone.sidebarCollapsed");
+      } catch (_) {}
+      setSidebarCollapsed(phoneSaved !== "0"); // default collapsed
     } else {
-      setSidebarCollapsed(false);
+      // Float shell: default collapsed (more content room) unless user saved preference
+      const saved = localStorage.getItem("lab.sidebarCollapsed");
+      const isFloat =
+        document.body.classList.contains("lab-float") ||
+        document.body.classList.contains("lab-native");
+      if (saved === "1" || (saved === null && isFloat)) {
+        setSidebarCollapsed(true);
+      } else {
+        setSidebarCollapsed(false);
+      }
     }
 
     $("btn-term-refresh")?.addEventListener("click", refreshTerminal);

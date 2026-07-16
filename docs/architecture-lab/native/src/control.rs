@@ -14,9 +14,17 @@ pub enum ControlCmd {
     HideChat,
     FocusChat,
     FocusLab,
+    /// Show lab and restore satellites that were open before chat-only / orb focus
+    RestoreWorkspace,
     ToggleChat,
     /// Open chat only (focus chat; lab can stay minimized/background)
     OpenChatIndependent,
+    /// Chat-only workspace: hide satellites, hide lab (no dock tile), show chat float
+    ChatOnly,
+    /// Siri-scale orb chat (tiny window, orb.html)
+    ChatOrb,
+    /// Expand orb → full chat.html in chat window
+    ChatFull,
     ShowStream,
     HideStream,
     FocusStream,
@@ -256,11 +264,18 @@ impl ControlRequest {
             "show_chat" | "open_chat" => Ok(ControlCmd::ShowChat),
             "hide_chat" | "close_chat" => Ok(ControlCmd::HideChat),
             "toggle_chat" => Ok(ControlCmd::ToggleChat),
-            "open_chat_independent" | "chat_only" | "independent_chat" => {
+            "open_chat_independent" | "independent_chat" | "undock_chat_open" => {
                 Ok(ControlCmd::OpenChatIndependent)
             }
+            "chat_only" | "only_chat" | "solo_chat" | "just_chat" => Ok(ControlCmd::ChatOnly),
+            // lab-ship IS the chat orb (product face)
+            "chat_orb" | "orb" | "siri_orb" | "orb_chat" | "mini_chat"
+            | "lab_ship" | "labship" | "ship_orb" | "lab_ship_orb" => Ok(ControlCmd::ChatOrb),
+            "chat_full" | "full_chat" | "expand_chat" => Ok(ControlCmd::ChatFull),
             "focus_chat" => Ok(ControlCmd::FocusChat),
             "focus_lab" | "focus" => Ok(ControlCmd::FocusLab),
+            "show_lab" | "open_lab" | "restore_workspace" | "restore" | "back_to_lab"
+            | "lab" => Ok(ControlCmd::RestoreWorkspace),
             "show_stream" | "open_stream" | "stream" => Ok(ControlCmd::ShowStream),
             "hide_stream" | "close_stream" => Ok(ControlCmd::HideStream),
             "toggle_stream" => Ok(ControlCmd::ToggleStream),

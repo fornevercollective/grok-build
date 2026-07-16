@@ -1,12 +1,12 @@
 {
-  "name": "Grok Build Lab",
-  "short_name": "Grok Lab",
-  "description": "Grok Build Lab — architecture map, tools, mesh-aware pins, and leverage — local + GitHub Pages.",
-  "start_url": "./",
+  "name": "lab-ship",
+  "short_name": "lab-ship",
+  "description": "lab-ship phone — Chat · Agent · Stream · Prompt · Docs for Grok Build Lab (GrokYtalkY-style handset).",
+  "start_url": "./phone.html",
   "scope": "./",
-  "id": "./",
+  "id": "./phone",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "background_color": "#0b0c0f",
   "theme_color": "#0b0c0f",
   "lang": "en",
@@ -24,17 +24,32 @@
       "purpose": "any"
     }
   ],
-  "categories": ["developer", "productivity"],
+  "categories": ["developer", "productivity", "utilities"],
   "shortcuts": [
     {
-      "name": "Notes",
-      "url": "./#/tool/notes",
-      "description": "Notebook + inspect rail"
+      "name": "Chat",
+      "url": "./phone.html#/chat",
+      "description": "lab-ship chat face"
     },
     {
-      "name": "Broadcast",
-      "url": "./#/tool/broadcast",
-      "description": "X Spaces / RTMP tools"
+      "name": "Agent",
+      "url": "./phone.html#/agent",
+      "description": "Agent console"
+    },
+    {
+      "name": "Stream",
+      "url": "./phone.html#/stream",
+      "description": "Stream feed"
+    },
+    {
+      "name": "Docs",
+      "url": "./phone.html#/docs",
+      "description": "Architecture lab docs"
+    },
+    {
+      "name": "Lab desktop",
+      "url": "./index.html",
+      "description": "Full desktop docs SPA"
     }
   ]
 }

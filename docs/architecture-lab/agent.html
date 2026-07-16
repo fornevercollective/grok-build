@@ -85,11 +85,19 @@
             <button type="button" class="ac-btn sm" id="btn-export-chat" title="Export JSON">
               Export
             </button>
-            <button type="button" class="ac-btn sm primary" id="btn-handoff-pb" title="Plan → Build">
+            <button type="button" class="ac-btn sm primary" id="btn-handoff-pb" title="Fat handoff plan → build">
               P→B
             </button>
-            <button type="button" class="ac-btn sm" id="btn-handoff-bv" title="Build → Verify">
+            <button type="button" class="ac-btn sm" id="btn-handoff-bv" title="Fat handoff build → verify">
               B→V
+            </button>
+            <button
+              type="button"
+              class="ac-btn sm primary"
+              id="btn-rocket-chain"
+              title="Iterate → fat pack → Panda αβγ (full rocket chain)"
+            >
+              🚀 Chain
             </button>
           </div>
         </div>
@@ -119,6 +127,9 @@
                 </button>
                 <button type="button" data-chip="Summarize status of α β γ and next hop">
                   Status
+                </button>
+                <button type="button" data-chip="rocket chain: iterate plan then handoff to build and open panda">
+                  Rocket
                 </button>
                 <button type="button" data-chip="open ship">Ship</button>
                 <button type="button" data-chip="open plan">Plan loop</button>
@@ -194,7 +205,7 @@
     </main>
 
     <div class="ac-toast" id="ac-toast" role="status" hidden></div>
-    <script src="assets/lab-ai-iterate.js?v=ai1"></script>
+    <script src="assets/lab-ai-iterate.js?v=ai2"></script>
     <script src="assets/agent-console.js?v=ac6"></script>
   </body>
 </html>

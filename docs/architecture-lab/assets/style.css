@@ -955,7 +955,7 @@ body.mode-docs #panel-docs {
   min-height: 0 !important;
   max-height: none;
   overflow-x: hidden !important;
-  overflow-y: auto !important;
+  overflow-y: scroll !important; /* force scrollport on WKWebView */
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
@@ -966,6 +966,8 @@ body.mode-docs #panel-docs {
   z-index: 6; /* above corner glow (0–1) */
   pointer-events: auto !important;
   will-change: scroll-position;
+  /* Keep scroll free of native edge-resize chrome */
+  box-sizing: border-box;
 }
 
 /* When tools tabs hide docs, don't leave a zero-height ghost */
@@ -1089,6 +1091,74 @@ body.mode-tools #panel-docs {
   border: 1px solid rgba(248, 113, 113, 0.35);
   background: rgba(248, 113, 113, 0.08);
   border-radius: 8px;
+}
+
+/* Phone PWA iframe embed — always drawer; never permanent left column */
+html.lab-phone-embed .app,
+html.lab-phone-embed body .app,
+body.lab-phone-embed .app {
+  grid-template-columns: 1fr !important;
+}
+
+html.lab-phone-embed .sidebar,
+body.lab-phone-embed .sidebar {
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(86vw, var(--sidebar-w)) !important;
+  max-width: 280px;
+  height: 100% !important;
+  max-height: 100% !important;
+  z-index: 40 !important;
+  transform: translateX(-105%);
+  transition: transform 0.18s ease;
+  box-shadow: var(--shadow);
+  opacity: 1 !important;
+  pointer-events: auto;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+}
+
+html.lab-phone-embed body.sidebar-collapsed .sidebar:not(.open),
+body.lab-phone-embed.sidebar-collapsed .sidebar:not(.open),
+html.lab-phone-embed .sidebar:not(.open) {
+  transform: translateX(-105%) !important;
+  pointer-events: none !important;
+}
+
+html.lab-phone-embed .sidebar.open,
+body.lab-phone-embed .sidebar.open {
+  transform: translateX(0) !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
+html.lab-phone-embed .menu-btn,
+body.lab-phone-embed .menu-btn {
+  display: inline-flex !important;
+  position: relative;
+  z-index: 45;
+}
+
+/* Edge chevron always available when collapsed in phone embed */
+html.lab-phone-embed body.sidebar-collapsed .sidebar-edge-toggle,
+body.lab-phone-embed.sidebar-collapsed .sidebar-edge-toggle {
+  display: flex !important;
+  z-index: 45;
+}
+
+html.lab-phone-embed body:not(.sidebar-collapsed) .sidebar-edge-toggle,
+body.lab-phone-embed:not(.sidebar-collapsed) .sidebar-edge-toggle {
+  display: none !important;
+}
+
+html.lab-phone-embed .backdrop.show,
+body.lab-phone-embed .backdrop.show {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 35;
 }
 
 /* Mobile — left menu is a collapsible drawer on all pages */

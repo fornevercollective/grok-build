@@ -512,12 +512,16 @@
       "</div>" +
       '<p class="chat-meta" id="voice-constellation-status" style="margin-top:0.35rem">Variations · original / flagship / clone · <a href="https://x.ai/voice" target="_blank" rel="noopener">x.ai/voice</a></p>';
 
+    // Always place Grok Voice · eve *below* the large lab-ship orb (top of panel).
+    // CSS order also pins constellation after .chat-stage; DOM order matches.
     const stage = document.getElementById("chat-stage");
-    if (stage && stage.nextSibling) {
-      host.insertBefore(wrap, stage.nextSibling);
+    if (stage) {
+      if (stage.nextSibling) host.insertBefore(wrap, stage.nextSibling);
+      else host.appendChild(wrap);
     } else {
       host.appendChild(wrap);
     }
+    wrap.style.order = "2";
     return true;
   }
 

@@ -1,8 +1,8 @@
 {
   "name": "grok-build-lab",
   "private": true,
-  "version": "0.3.11",
-  "description": "Grok Build Lab — local docs + native float shell + Ship deck for Grok Build (SpaceXAI). Path docs/architecture-lab is historical; product name is Grok Build Lab.",
+  "version": "0.4.0",
+  "description": "Grok Build Lab — lab-ship (orb + phone PWA) · native float shell · Stream/Agent · Ship deck. Path docs/architecture-lab is historical; product name is Grok Build Lab.",
   "license": "Apache-2.0",
   "scripts": {
     "start": "bash ./serve.sh",

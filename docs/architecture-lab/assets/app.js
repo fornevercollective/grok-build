@@ -218,13 +218,26 @@ function escapeHtml(s) {
 function closeMobileNav() {
   $("#sidebar")?.classList.remove("open");
   $("#backdrop")?.classList.remove("show");
-  // keep collapsed state in sync for mobile drawer
-  if (window.matchMedia("(max-width: 860px)").matches) {
+  // keep collapsed state in sync for mobile drawer / phone embed
+  const compact =
+    document.documentElement.classList.contains("lab-phone-embed") ||
+    document.body.classList.contains("lab-phone-embed") ||
+    window.matchMedia("(max-width: 860px)").matches;
+  if (compact) {
     document.body.classList.add("sidebar-collapsed");
     const btn = $("#menu-btn");
     if (btn) {
-      btn.textContent = "Menu";
+      // Never replace SpaceXAI logo with text
       btn.setAttribute("aria-expanded", "false");
+      btn.classList.add("menu-collapsed");
+      btn.title = "Show left menu";
+      if (!btn.querySelector(".menu-btn-mark")) {
+        btn.innerHTML =
+          '<img class="menu-btn-mark" src="assets/brand/spacexai-symbol-white-transparent.svg" width="22" height="22" alt="SpaceXAI" draggable="false" />';
+      }
+    }
+    if (window.LabNav?.setSidebarCollapsed) {
+      window.LabNav.setSidebarCollapsed(true);
     }
   }
 }
@@ -235,8 +248,16 @@ function openMobileNav() {
   document.body.classList.remove("sidebar-collapsed");
   const btn = $("#menu-btn");
   if (btn) {
-    btn.textContent = "Hide";
     btn.setAttribute("aria-expanded", "true");
+    btn.classList.remove("menu-collapsed");
+    btn.title = "Hide left menu";
+    if (!btn.querySelector(".menu-btn-mark")) {
+      btn.innerHTML =
+        '<img class="menu-btn-mark" src="assets/brand/spacexai-symbol-white-transparent.svg" width="22" height="22" alt="SpaceXAI" draggable="false" />';
+    }
+  }
+  if (window.LabNav?.setSidebarCollapsed) {
+    window.LabNav.setSidebarCollapsed(false);
   }
 }
 
