@@ -96,13 +96,32 @@
   function addToolCard(name, detail) {
     const root = $("wb-tools");
     if (!root) return;
+    const meta =
+      (window.LabToolsCatalog && LabToolsCatalog.lookup(name)) || null;
     const el = document.createElement("div");
-    el.className = "wb-tool";
+    el.className = "wb-tool" + (meta && meta.readOnly ? " ro" : "");
+    el.setAttribute("data-tool", name || "");
     el.innerHTML =
-      "<strong>" + escapeHtml(name) + "</strong><span>" + escapeHtml(detail) + "</span>";
+      "<strong>" +
+      escapeHtml((meta && meta.label) || name || "tool") +
+      "</strong>" +
+      (detail
+        ? '<span class="wb-tool-ns">' + escapeHtml(String(detail).slice(0, 48)) + "</span>"
+        : "") +
+      (meta && meta.namespace
+        ? '<span class="wb-tool-ns">' + escapeHtml(meta.namespace) + "</span>"
+        : "");
     root.prepend(el);
-    while (root.children.length > 8) root.removeChild(root.lastChild);
+    while (root.children.length > 24) root.removeChild(root.lastChild);
+    return el;
   }
+
+  function paintToolsFromText(text) {
+    if (!window.LabToolsCatalog || !LabToolsCatalog.extractFromText) return;
+    const found = LabToolsCatalog.extractFromText(text);
+    found.forEach((t) => addToolCard(t.id, t.label));
+  }
+
 
   async function api(path, body) {
     const opts = body
@@ -379,7 +398,8 @@
           reply =
             (iter.via ? "via " + iter.via + (iter.stub ? " · stub" : "") + "\n\n" : "") +
             (iter.text || iter.message || "(empty)");
-          addToolCard("grok-p", iter.via || "done");
+          addToolCard("agent.iterate", iter.via || "done");
+          paintToolsFromText(reply);
           await writeLine(
             "plan",
             "echo '[iterate " +
@@ -484,6 +504,34 @@
       );
       a.download = "workbench-" + Date.now() + ".json";
       a.click();
+    });
+    $("btn-session")?.addEventListener("click", () => {
+      if (!window.LabSession) {
+        push("system", "lab-session.js not loaded");
+        return;
+      }
+      const snap = LabSession.buildSnapshot({
+        abcPath: "B",
+        source: "workbench",
+        prompt: ($("wb-input") && $("wb-input").value) || "",
+      });
+      LabSession.saveDraft(snap);
+      LabSession.download(snap, "lab-session-" + Date.now() + ".json");
+      push("system", "Exported " + LabSession.VERSION + " (" + (snap.messages || []).length + " msgs)");
+      addToolCard("lab.session", "export");
+    });
+    $("btn-tools-cat")?.addEventListener("click", () => {
+      const root = $("wb-tools");
+      if (root) root.innerHTML = "";
+      const list =
+        (window.LabToolsCatalog && LabToolsCatalog.list && LabToolsCatalog.list()) || [];
+      list.slice(0, 28).forEach((t) => addToolCard(t.id, t.label));
+      push(
+        "system",
+        "Tool catalog (" +
+          list.length +
+          ") from monorepo xai-grok-tools / grok_build pack — path-checkout upstream."
+      );
     });
     $("btn-scroll-end")?.addEventListener("click", () => {
       stickBottom = true;

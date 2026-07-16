@@ -41,7 +41,8 @@
         { "id": "23-fleet-funnel", "label": "Fleet funnel · build order" },
         { "id": "24-abc-path", "label": "A·B·C path · center + 3 feeds" },
         { "id": "25-colossus-dojo-lts", "label": "Colossus/Dojo LTS · public-folder" },
-        { "id": "26-dev-off-grok-cli-overview", "label": "Dev-off · grok-cli · overview · xai-org" }
+        { "id": "26-dev-off-grok-cli-overview", "label": "Dev-off · grok-cli · overview · xai-org" },
+        { "id": "27-upstream-tools-sync", "label": "Upstream tools sync · Lab 1–4+" }
       ]
     },
     {

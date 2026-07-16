@@ -13,7 +13,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css"
     />
-    <link rel="stylesheet" href="assets/workbench.css?v=wb1" />
+    <link rel="stylesheet" href="assets/workbench.css?v=wb3" />
   </head>
   <body class="wb-body">
     <header class="wb-chrome" data-drag-region="1">
@@ -34,8 +34,10 @@
         <a href="launch.html" target="_blank" rel="noopener">Launch</a>
         <a href="workbench.html" class="on">Workbench</a>
       </nav>
-      <button type="button" class="wb-btn" id="btn-boot" data-no-drag>Boot αβγ</button>
+      <button type="button" class="wb-btn" id="btn-boot" data-no-drag title="Boot live PTYs">Boot αβγ</button>
       <button type="button" class="wb-btn primary" id="btn-panda" data-no-drag>Panda</button>
+      <button type="button" class="wb-btn" id="btn-tools-cat" data-no-drag title="Show monorepo tool catalog">Tools</button>
+      <button type="button" class="wb-btn" id="btn-session" data-no-drag title="Export lab.session.v1 JSON">Session</button>
       <button type="button" class="wb-btn danger" id="btn-cancel" data-no-drag disabled>Cancel</button>
     </header>
 
@@ -45,13 +47,13 @@
           <div>
             <h1>Main agent</h1>
             <p class="wb-muted">
-              grok.com-style center · tool cards · drives αβγ live PTYs via handoff bus
+              center + tool stream · monorepo tools via grok -p · αβγ TerminalPane PTYs
             </p>
           </div>
           <div class="wb-center-acts">
             <button type="button" class="wb-btn sm" id="btn-scroll-end">↓ End</button>
             <button type="button" class="wb-btn sm" id="btn-clear">Clear</button>
-            <button type="button" class="wb-btn sm" id="btn-export">Export</button>
+            <button type="button" class="wb-btn sm" id="btn-export">Export chat</button>
             <button type="button" class="wb-btn sm" id="btn-handoff-pb">P→B</button>
             <button type="button" class="wb-btn sm" id="btn-handoff-bv">B→V</button>
           </div>
@@ -80,36 +82,45 @@
       </section>
 
       <aside class="wb-feeds" aria-label="Live terminal feeds">
-        <article class="wb-feed" data-role="plan">
-          <header>
+        <article class="wb-feed wb-term-pane" data-role="plan">
+          <header class="wb-term-chrome">
+            <span class="wb-term-dot plan" aria-hidden="true"></span>
             <span class="wb-role plan">α plan</span>
+            <span class="wb-term-title">TerminalPane</span>
             <span class="wb-feed-st" id="st-plan">idle</span>
-            <button type="button" class="wb-btn sm" data-restart="plan">↻</button>
+            <button type="button" class="wb-btn sm" data-restart="plan" title="Restart PTY">↻</button>
           </header>
           <div class="wb-xterm" id="term-plan"></div>
-          <footer>
+          <footer class="wb-term-foot">
+            <span class="wb-term-prompt">α›</span>
             <input type="text" class="wb-line" data-write="plan" placeholder="type → plan PTY…" />
           </footer>
         </article>
-        <article class="wb-feed" data-role="build">
-          <header>
+        <article class="wb-feed wb-term-pane" data-role="build">
+          <header class="wb-term-chrome">
+            <span class="wb-term-dot build" aria-hidden="true"></span>
             <span class="wb-role build">β build</span>
+            <span class="wb-term-title">TerminalPane</span>
             <span class="wb-feed-st" id="st-build">idle</span>
-            <button type="button" class="wb-btn sm" data-restart="build">↻</button>
+            <button type="button" class="wb-btn sm" data-restart="build" title="Restart PTY">↻</button>
           </header>
           <div class="wb-xterm" id="term-build"></div>
-          <footer>
+          <footer class="wb-term-foot">
+            <span class="wb-term-prompt">β›</span>
             <input type="text" class="wb-line" data-write="build" placeholder="type → build PTY…" />
           </footer>
         </article>
-        <article class="wb-feed" data-role="verify">
-          <header>
+        <article class="wb-feed wb-term-pane" data-role="verify">
+          <header class="wb-term-chrome">
+            <span class="wb-term-dot verify" aria-hidden="true"></span>
             <span class="wb-role verify">γ verify</span>
+            <span class="wb-term-title">TerminalPane</span>
             <span class="wb-feed-st" id="st-verify">idle</span>
-            <button type="button" class="wb-btn sm" data-restart="verify">↻</button>
+            <button type="button" class="wb-btn sm" data-restart="verify" title="Restart PTY">↻</button>
           </header>
           <div class="wb-xterm" id="term-verify"></div>
-          <footer>
+          <footer class="wb-term-foot">
+            <span class="wb-term-prompt">γ›</span>
             <input
               type="text"
               class="wb-line"
@@ -123,7 +134,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+    <script src="assets/lab-tools-catalog.js?v=tc1"></script>
+    <script src="assets/lab-session.js?v=ss1"></script>
     <script src="assets/lab-ai-iterate.js?v=ai1"></script>
-    <script src="assets/workbench.js?v=wb2"></script>
+    <script src="assets/workbench.js?v=wb3"></script>
   </body>
 </html>

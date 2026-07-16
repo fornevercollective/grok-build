@@ -2032,6 +2032,58 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, list_processes())
         if path in ("/api/lts", "/api/lts/status"):
             return self._json(200, lts_status())
+        if path in ("/api/tools/catalog", "/api/tools"):
+            # Presentation catalog aligned with xai-grok-tools ToolKind after path-checkout
+            tools = [
+                {"id": n, "label": lab, "readOnly": ro, "namespace": "grok_build"}
+                for n, lab, ro in [
+                    ("read_file", "Read", True),
+                    ("search_replace", "Edit", False),
+                    ("list_dir", "List Files", True),
+                    ("grep", "Search", True),
+                    ("bash", "Run Command", False),
+                    ("web_search", "Web Search", True),
+                    ("web_fetch", "Web Fetch", True),
+                    ("image_gen", "Generate Image", False),
+                    ("image_edit", "Edit Image", False),
+                    ("video_gen", "Generate Video", False),
+                    ("monitor", "Monitor", False),
+                    ("task", "Subagent", False),
+                    ("task_output", "Background Task", True),
+                    ("kill_task", "Kill Task", False),
+                    ("enter_plan_mode", "Enter Plan Mode", True),
+                    ("exit_plan_mode", "Exit Plan Mode", True),
+                    ("ask_user_question", "Ask User", True),
+                    ("update_goal", "Update Goal", False),
+                    ("lsp", "Code Intelligence", True),
+                    ("search_tool", "Search Tools", True),
+                    ("use_tool", "Use Tool", False),
+                    ("memory_search", "Memory Search", True),
+                    ("memory_get", "Memory Read", True),
+                    ("skill", "Skill", False),
+                    ("deploy_app", "Deploy App", False),
+                    ("scheduler_create", "Scheduler", False),
+                ]
+            ]
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "source": "xai-grok-tools · path-checkout from xai-org",
+                    "count": len(tools),
+                    "tools": tools,
+                },
+            )
+        if path in ("/api/session", "/api/session/export"):
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "method": "POST to export",
+                    "version": "lab.session.v1",
+                    "note": "overview-style interchange · no secrets",
+                },
+            )
         if path in ("/api/agent/iterate", "/api/ai/iterate"):
             # GET help
             return self._json(
@@ -2127,6 +2179,32 @@ class Handler(SimpleHTTPRequestHandler):
                     timeout_ms=data.get("timeout_ms") or data.get("timeoutMs") or 120000,
                 ),
             )
+        if path in ("/api/session/export", "/api/session"):
+            # Accept client snapshot; never store secrets; echo + stamp
+            body = data if isinstance(data, dict) else {}
+            if body.get("aiConfig") and isinstance(body["aiConfig"], dict):
+                # strip any accidental key fields
+                for k in list(body["aiConfig"].keys()):
+                    if "key" in k.lower() or "secret" in k.lower() or "token" in k.lower():
+                        body["aiConfig"].pop(k, None)
+            out = {
+                "ok": True,
+                "version": body.get("version") or "lab.session.v1",
+                "exportedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "snapshot": body,
+                "path_hint": str(Path.home() / ".panda" / "lab-session.json"),
+            }
+            try:
+                panda = Path.home() / ".panda"
+                panda.mkdir(parents=True, exist_ok=True)
+                (panda / "lab-session.json").write_text(
+                    json.dumps(body, indent=2) + "\n", encoding="utf-8"
+                )
+                out["written"] = str(panda / "lab-session.json")
+            except Exception as e:
+                out["written"] = None
+                out["write_error"] = str(e)
+            return self._json(200, out)
         if path == "/api/shells":
             # update one shell status
             sid = data.get("id") or data.get("shell")

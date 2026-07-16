@@ -421,12 +421,66 @@ body.wb-body {
   overflow-y: scroll !important;
 }
 
-.wb-feed footer {
+.wb-feed footer,
+.wb-term-foot {
   flex-shrink: 0;
   padding: 0.25rem;
   border-top: 1px solid var(--wb-border);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* notes/railway TerminalPane chrome (pattern — not monorepo UI) */
+.wb-term-pane {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.wb-term-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.4rem !important;
+  background: linear-gradient(180deg, #14141a 0%, #0e0e12 100%);
+  border-bottom: 1px solid var(--wb-border);
+}
+.wb-term-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.wb-term-dot.plan {
+  background: var(--wb-plan);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.55);
+}
+.wb-term-dot.build {
+  background: var(--wb-build);
+  box-shadow: 0 0 6px rgba(167, 139, 250, 0.55);
+}
+.wb-term-dot.verify {
+  background: var(--wb-verify);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.55);
+}
+.wb-term-title {
+  font-family: var(--wb-mono);
+  font-size: 0.52rem;
+  color: var(--wb-dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.wb-term-prompt {
+  font-family: var(--wb-mono);
+  font-size: 0.62rem;
+  color: var(--wb-accent);
+  flex-shrink: 0;
 }
 .wb-line {
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
   border: 1px solid var(--wb-border);
   border-radius: 6px;
@@ -436,4 +490,36 @@ body.wb-body {
   font-size: 0.62rem;
   padding: 0.3rem 0.4rem;
   outline: none;
+}
+.wb-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--wb-mono);
+  font-size: 0.58rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--wb-accent);
+  margin: 0.15rem;
+}
+.wb-tool.ro {
+  border-color: rgba(74, 222, 128, 0.28);
+  background: rgba(74, 222, 128, 0.08);
+  color: var(--wb-verify);
+}
+.wb-tool .wb-tool-ns {
+  opacity: 0.55;
+  font-size: 0.5rem;
+}
+.wb-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  padding: 0.25rem 0.5rem;
+  max-height: 5.5rem;
+  overflow-y: auto;
+  border-top: 1px solid var(--wb-border);
+  flex-shrink: 0;
 }

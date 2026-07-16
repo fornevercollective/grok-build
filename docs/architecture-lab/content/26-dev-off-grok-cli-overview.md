@@ -151,6 +151,7 @@ Keywords plan/build/verify still route to PTY/handoff first; general turns call 
 
 ## Related
 
+- [Upstream tools sync · Lab 1–4+](#/27-upstream-tools-sync) — path-checkout inventory
 - [A · B · C path](#/24-abc-path)
 - [Colossus/Dojo LTS](#/25-colossus-dojo-lts)
 - [Fleet funnel](#/23-fleet-funnel)
