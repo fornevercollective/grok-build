@@ -1,6 +1,7 @@
 /**
  * Launch Pad — mirrors native View + Window menu actions
  * Multi-term = Panda fleet (prompt / multi-PTY αβγ)
+ * LTS = Colossus/Dojo (GOJO/DOLOSUS) via StageForge + public-folder
  */
 (function () {
   "use strict";
@@ -19,6 +20,12 @@
     if (el) el.textContent = msg;
   }
 
+  function ltsLog(msg) {
+    const el = $("lp-lts");
+    if (el) el.textContent = msg;
+    log(msg.split("\n")[0] || msg);
+  }
+
   async function api(path, body) {
     const opts = body
       ? {
@@ -32,9 +39,52 @@
     return { ok: r.ok, status: r.status, ...j };
   }
 
+  function formatLts(j) {
+    if (!j || j.ok === false) return "LTS probe failed";
+    const p = j.paths || {};
+    const r = j.ready || {};
+    const flag = (k, v) => (v ? "OK  " : "—   ") + k;
+    return [
+      "Colossus/Dojo LTS · " + (j.pipe || "colossus_dojo_lts"),
+      flag("public-folder", r.public_folder || p.public_folder) +
+        (p.public_folder ? "  " + p.public_folder : ""),
+      flag("repo-template", r.repo_template || p.repo_template) +
+        (p.repo_template ? "  " + p.repo_template : ""),
+      flag("stageforge", r.stageforge || p.stageforge) +
+        (p.stageforge_bin || p.stageforge
+          ? "  " + (p.stageforge_bin || p.stageforge)
+          : ""),
+      flag("manifest", r.lab_manifest || p.manifest) +
+        (p.manifest ? "  stageforge.yaml" : ""),
+      "",
+      "Pipe: imagine → public-folder → Resolve 4K → repo-template (train/dojo)",
+      "Cmd:  ./scripts/colossus-dojo-lts.sh status | up | upstream",
+    ].join("\n");
+  }
+
   async function control(action, extra) {
     setStatus("…", "busy");
     try {
+      if (action === "lts_status") {
+        const j = await api("/api/lts");
+        const ok = j && j.ok !== false;
+        setStatus(ok ? "lts" : "err", ok ? "ok" : "err");
+        ltsLog(formatLts(j));
+        return j;
+      }
+      if (action === "lts_copy_up") {
+        const cmd =
+          "cd docs/architecture-lab && ./scripts/colossus-dojo-lts.sh up\n# or: stageforge up";
+        try {
+          await navigator.clipboard.writeText(cmd);
+          setStatus("copied", "ok");
+          ltsLog("Copied:\n" + cmd);
+        } catch (e) {
+          setStatus("err", "err");
+          ltsLog(cmd + "\n(clipboard: " + e + ")");
+        }
+        return { ok: true };
+      }
       if (action === "open_panda" || action === "spawn_fleet") {
         const j = await api("/api/panda/open", {
           splits: (extra && extra.splits) || 3,
@@ -130,7 +180,7 @@
       control("maximize", { target: "launch" });
     });
 
-    // Poll health for status pill
+    // Poll health for status pill; soft-probe LTS once
     async function tick() {
       try {
         const h = await api("/api/health");
@@ -141,7 +191,16 @@
         /* static offline */
       }
     }
+    async function probeLts() {
+      try {
+        const j = await api("/api/lts");
+        if (j && j.ok !== false) ltsLog(formatLts(j));
+      } catch (_) {
+        /* serve may be down; native still works for control */
+      }
+    }
     tick();
+    probeLts();
     setInterval(tick, 8000);
     setStatus("ready", "ok");
   }

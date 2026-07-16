@@ -75,6 +75,7 @@ docs/architecture-lab/./serve.sh                 # workbench on free port
 
 ## Related
 
+- [Colossus/Dojo LTS](#/25-colossus-dojo-lts) — public-folder · repo-template · StageForge
 - [Fleet funnel](#/23-fleet-funnel)
 - [Panda shell](#/22-panda-shell)
 - [Ship everything](#/17-ship-everything)

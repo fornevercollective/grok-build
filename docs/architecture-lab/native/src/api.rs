@@ -29,6 +29,9 @@ pub fn router(state: Arc<LabState>) -> Router {
         .route("/api/summon-grok", get(summon_get).post(summon_post))
         .route("/api/mitigate", get(mitigate_get).post(mitigate_post))
         .route("/api/media/tools", get(media_tools))
+        // Colossus/Dojo LTS (GOJO/DOLOSUS) path resolution
+        .route("/api/lts", get(lts_status))
+        .route("/api/lts/status", get(lts_status))
         // Fleet: Panda host + handoff bus (Mu-class product path)
         .route("/api/panda/open", get(panda_open_get).post(panda_open_post))
         .route("/api/panda/status", get(panda_status_get))
@@ -773,6 +776,110 @@ async fn media_tools() -> Json<Value> {
         "gy_hub": false,
         "gy_bin": which("gy"),
         "native": true,
+    }))
+}
+
+/// Colossus / Dojo LTS path status (aliases: GOJO / DOLOSUS).
+/// Resolves public-folder · repo-template · stageforge without cloning.
+async fn lts_status(State(st): State<Arc<LabState>>) -> Json<Value> {
+    let home = dirs_home();
+    let expand = |p: &str| -> Option<std::path::PathBuf> {
+        if p.starts_with("~/") {
+            home.as_ref().map(|h| h.join(&p[2..]))
+        } else if !p.is_empty() {
+            Some(std::path::PathBuf::from(p))
+        } else {
+            None
+        }
+    };
+    let first_existing = |cands: &[&str]| -> Option<String> {
+        for c in cands {
+            if c.is_empty() {
+                continue;
+            }
+            if let Some(p) = expand(c) {
+                if p.is_dir() {
+                    return Some(p.display().to_string());
+                }
+            }
+        }
+        None
+    };
+
+    let env_pub = std::env::var("GROK_PUBLIC_FOLDER").unwrap_or_default();
+    let env_tpl = std::env::var("GROK_REPO_TEMPLATE").unwrap_or_default();
+    let env_sf = std::env::var("STAGEFORGE_HOME").unwrap_or_default();
+
+    let public = first_existing(&[
+        env_pub.as_str(),
+        "~/projects/grok-public-folder",
+        "~/dev/projects/grok-public-folder",
+        "/Volumes/qbitOS/github/grok-public-folder",
+        "/Volumes/qbitOS/00.dev/projects/grok-public-folder",
+    ]);
+    let template = first_existing(&[
+        env_tpl.as_str(),
+        "~/projects/grok-repo-template",
+        "~/dev/projects/grok-repo-template",
+        "/Volumes/qbitOS/github/grok-repo-template",
+        "/Volumes/qbitOS/00.dev/projects/grok-repo-template",
+    ]);
+    let stageforge_home = first_existing(&[
+        env_sf.as_str(),
+        "~/dev/stageforge",
+        "~/Dev/stageforge",
+    ]);
+    let stageforge_bin = which("stageforge").or_else(|| {
+        stageforge_home.as_ref().and_then(|h| {
+            let p = std::path::Path::new(h).join("bin/stageforge");
+            if p.is_file() {
+                Some(p.display().to_string())
+            } else {
+                None
+            }
+        })
+    });
+
+    let script = st.root.join("scripts/colossus-dojo-lts.sh");
+    let manifest = st.root.join("stageforge.yaml");
+    let meta = st.root.join("metadata.yaml");
+
+    Json(json!({
+        "ok": true,
+        "pipe": "colossus_dojo_lts",
+        "alias": ["gojo", "dolosus", "colossus", "dojo"],
+        "native": true,
+        "paths": {
+            "lab": st.root.display().to_string(),
+            "repo": st.repo.display().to_string(),
+            "public_folder": public,
+            "repo_template": template,
+            "stageforge": stageforge_home,
+            "stageforge_bin": stageforge_bin,
+            "script": if script.is_file() { Some(script.display().to_string()) } else { None::<String> },
+            "manifest": if manifest.is_file() { Some(manifest.display().to_string()) } else { None::<String> },
+            "metadata": if meta.is_file() { Some(meta.display().to_string()) } else { None::<String> },
+        },
+        "repos": {
+            "public_folder": "https://github.com/fornevercollective/grok-public-folder",
+            "repo_template": "https://github.com/fornevercollective/grok-repo-template",
+            "upstream_compare": "https://github.com/fornevercollective/grok-build/compare/main...xai-org%3Agrok-build%3Amain",
+            "upstream": "https://github.com/xai-org/grok-build",
+        },
+        "pipe_stages": [
+            "imagine preset → public-folder generate",
+            "Resolve 4K export",
+            "repo-template train / colossus-launch / rust-dojo",
+        ],
+        "commands": {
+            "status": "./scripts/colossus-dojo-lts.sh status",
+            "up": "./scripts/colossus-dojo-lts.sh up",
+            "upstream": "./scripts/colossus-dojo-lts.sh upstream",
+            "stageforge": "stageforge up",
+        },
+        "policy": "path-checkout only · no monorepo merge · no PRs to xai-org",
+        "doc": "#/25-colossus-dojo-lts",
+        "ts": now_secs(),
     }))
 }
 

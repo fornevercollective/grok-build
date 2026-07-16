@@ -1,0 +1,96 @@
+# Grok Build Lab — ecosystem routing (Colossus/Dojo LTS)
+# Cherry-pick: patterns + paths only · no monorepo merge · no xai-org PRs
+
+project:
+  name: grok-build-lab
+  path: docs/architecture-lab
+  brand_title: "Grok Build Lab — A/B shell · Colossus/Dojo LTS"
+  grok_optimized: true
+  colossus_compatible: true
+  dojo_pipeline: true
+  license: Apache-2.0
+  pages: https://fornevercollective.github.io/grok-build/
+  native_crate: docs/architecture-lab/native
+  lab_semver_file: version.json
+
+entrypoints:
+  serve: ./serve.sh
+  native: ./native/launch.sh
+  stageforge: stageforge up
+  workbench: /workbench.html
+  agent: /agent.html
+  browser: /browser.html
+  lts_status: ./scripts/colossus-dojo-lts.sh status
+  lts_up: ./scripts/colossus-dojo-lts.sh up
+  sync_upstream_note: ./scripts/colossus-dojo-lts.sh upstream
+
+ecosystem_paths:
+  # Imagine → generate → Resolve → Colossus/Dojo
+  grok_public_folder:
+    repo: https://github.com/fornevercollective/grok-public-folder
+    pages: https://fornevercollective.github.io/grok-public-folder/
+    role: media_pipe
+    local_candidates:
+      - ~/projects/grok-public-folder
+      - ~/dev/projects/grok-public-folder
+      - /Volumes/qbitOS/00.dev/projects/grok-public-folder
+      - /Volumes/qbitOS/github/grok-public-folder
+    entrypoints:
+      - bin/startup
+      - bin/bridge
+      - bin/grok
+      - install-resolve.sh
+      - grok_story.py
+  # Training / Dojo assembly line
+  grok_repo_template:
+    repo: https://github.com/fornevercollective/grok-repo-template
+    pages: https://fornevercollective.github.io/grok-repo-template/
+    role: colossus_dojo_template
+    local_candidates:
+      - ~/projects/grok-repo-template
+      - ~/dev/projects/grok-repo-template
+      - /Volumes/qbitOS/00.dev/projects/grok-repo-template
+      - /Volumes/qbitOS/github/grok-repo-template
+    entrypoints:
+      - scripts/train.py
+      - scripts/colossus-launch.sh
+      - configs/colossus.yaml
+      - examples/rust-dojo/
+      - examples/jax-colossus/
+      - dvc.yaml
+  # Local iterative launch / deploy
+  stageforge:
+    path: ~/dev/stageforge
+    role: lts_orchestrator
+    bin: bin/stageforge
+    manifest: stageforge.yaml
+    notes: >
+      StageForge at ~/dev/stageforge may be a local tree (no remote commits).
+      Use make build && make install; bin/stageforge up from architecture-lab.
+  # Prior dev-off trees (patterns only)
+  grok_cli:
+    path: ~/projects/grok-cli
+    role: notes_terminal_axum_ws
+  overview:
+    path: ~/projects/overview
+    role: research_onAiIterate_snapshot
+
+pipe:
+  name: colossus_dojo_lts
+  alias: [gojo_dojo, gojo_dolosus, colossus_dojo]
+  stages:
+    - id: lab
+      label: Lab shell (native + serve PTY)
+    - id: public_folder
+      label: Imagine presets → generate → Resolve 4K
+    - id: template
+      label: grok-repo-template train / colossus-launch
+    - id: dojo
+      label: rust-dojo / jax-colossus examples
+
+upstream:
+  xai_org: https://github.com/xai-org/grok-build
+  note: >
+    GitHub compare main...xai-org:main reports unrelated histories.
+    Use path-checkout / scripts — never force-merge; no external PRs (CONTRIBUTING.md).
+  last_fetch_hint: git fetch upstream && git log --oneline main..upstream/main

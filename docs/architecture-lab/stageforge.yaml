@@ -1,0 +1,105 @@
+# Grok Build Lab — StageForge LTS manifest
+# Colossus/Dojo path via local services (not xai-org PR)
+#
+#   stageforge up          # from this directory
+#   stageforge run
+#   ./scripts/colossus-dojo-lts.sh status
+#
+# Port policy: bump if :8765 held by native Lab (see serve.sh auto-pick).
+
+version: 1
+project: grok-build-lab
+loop:
+  enabled: true
+  mode: health
+  interval: 30s
+  on_fail: retry
+  max_retry: 3
+  watch:
+    - content/**
+    - assets/**
+    - native/src/**
+    - serve.sh
+
+services:
+  # Option B — PTY hub + static lab (browser workbench)
+  - name: lab-serve
+    command: bash ./serve.sh 8765
+    port: 8765
+    health: /api/health
+    conflict: bump
+    skip_if_healthy: true
+    env:
+      LAB_DESKTOP: "1"
+      HOST: "127.0.0.1"
+
+  # Optional: native float shell (opens UI; holds its own port when free)
+  # Uncomment when you want StageForge to boot the Rust app too:
+  # - name: lab-native
+  #   command: bash ./native/launch.sh float
+  #   port: 8765
+  #   conflict: bump
+  #   skip_if_healthy: true
+
+integrations:
+  - id: lab-control
+    label: Lab control bus
+    base_url: "http://127.0.0.1:8765"
+    probe: /api/control
+  - id: lab-pty
+    label: Lab PTY hub
+    base_url: "http://127.0.0.1:8765"
+    probe: /api/health
+  - id: grok-public-folder
+    label: Imagine → Resolve → Colossus/Dojo public folder
+    base_url: "env:GROK_PUBLIC_FOLDER_URL"
+    probe: /
+  - id: grok-repo-template
+    label: Colossus/Dojo assembly template
+    base_url: "env:GROK_REPO_TEMPLATE_URL"
+    probe: /
+  - id: stageforge
+    label: StageForge orchestrator
+    version: "0.1"
+    base_url: "env:STAGEFORGE_META"
+    probe: /
+
+jobs:
+  - id: plan
+    kind: agent
+    label: α Plan fleet handoff
+    stage: plan
+    command: ./scripts/colossus-dojo-lts.sh status
+  - id: boot-pty
+    kind: agent
+    label: Boot workbench αβγ PTYs
+    stage: boot
+  - id: colossus-route
+    kind: agent
+    label: Route exports → Colossus/Dojo (repo-template)
+    stage: jobs
+    command: ./scripts/colossus-dojo-lts.sh paths
+  - id: ship
+    kind: agent
+    label: Ship deck / status.x.ai gate
+    stage: ready
+    command: ./scripts/colossus-dojo-lts.sh upstream
+
+stages:
+  - id: plan
+    label: Plan · Lab docs + handoff bus
+    actions: []
+  - id: ports
+    label: Resolve ports (serve may bump off native)
+    actions:
+      - lab-serve
+  - id: boot
+    label: Boot lab-serve (PTY + static)
+    actions:
+      - lab-serve
+  - id: jobs
+    label: Colossus/Dojo LTS wire-up
+    actions: []
+  - id: ready
+    label: Ready · workbench + Multi
+    actions: []

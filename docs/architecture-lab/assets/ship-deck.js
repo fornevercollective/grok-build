@@ -143,6 +143,13 @@
       lab: "lab-ship · gy-glyph-pins",
     },
     {
+      id: "lts",
+      title: "Colossus / Dojo LTS",
+      blurb: "GOJO/DOLOSUS path · StageForge · public-folder → Resolve → train template",
+      tui: "stageforge up · colossus-dojo-lts.sh",
+      lab: "/api/lts · Launch Pad · #/25-colossus-dojo-lts",
+    },
+    {
       id: "qa",
       title: "Q&A",
       blurb: "Ambiguous tasks get quick multiple-choice",

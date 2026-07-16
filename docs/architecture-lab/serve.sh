@@ -59,7 +59,8 @@ echo "    /launch.html      Launch pad"
 echo "    /chat.html · /stream.html · /browser.html"
 echo "  Option A: native Lab Dock/Arrange + Multi (Panda αβγ OS terms)"
 echo "  Option C: see content/24-abc-path.md (Panda/Mu host pipe)"
-echo "  APIs: /api/pty/* · /api/shells · /api/panda/open · /api/health · …"
+echo "  APIs: /api/pty/* · /api/shells · /api/lts · /api/panda/open · /api/health · …"
+echo "  LTS:  Colossus/Dojo · ./scripts/colossus-dojo-lts.sh status"
 echo ""
 
 # Desktop shell sets LAB_DESKTOP=1 — never open a browser tab for localhost
@@ -1456,6 +1457,92 @@ def summon_grok(phrase="", multi=True, triple=False):
         }
 
 
+def lts_status():
+    """Colossus/Dojo LTS (GOJO/DOLOSUS) path resolution for Launch Pad / agents."""
+    home = Path.home()
+
+    def first_dir(*cands):
+        for c in cands:
+            if not c:
+                continue
+            p = Path(str(c)).expanduser()
+            if p.is_dir():
+                return str(p.resolve())
+        return None
+
+    public = first_dir(
+        os.environ.get("GROK_PUBLIC_FOLDER"),
+        home / "projects/grok-public-folder",
+        home / "dev/projects/grok-public-folder",
+        "/Volumes/qbitOS/00.dev/projects/grok-public-folder",
+        "/Volumes/qbitOS/github/grok-public-folder",
+    )
+    template = first_dir(
+        os.environ.get("GROK_REPO_TEMPLATE"),
+        home / "projects/grok-repo-template",
+        home / "dev/projects/grok-repo-template",
+        "/Volumes/qbitOS/00.dev/projects/grok-repo-template",
+        "/Volumes/qbitOS/github/grok-repo-template",
+    )
+    sf_home = first_dir(
+        os.environ.get("STAGEFORGE_HOME"),
+        home / "dev/stageforge",
+        home / "Dev/stageforge",
+    )
+    sf_bin = shutil.which("stageforge")
+    if not sf_bin and sf_home:
+        p = Path(sf_home) / "bin/stageforge"
+        if p.is_file():
+            sf_bin = str(p)
+    script = ROOT / "scripts/colossus-dojo-lts.sh"
+    manifest = ROOT / "stageforge.yaml"
+    meta = ROOT / "metadata.yaml"
+    return {
+        "ok": True,
+        "pipe": "colossus_dojo_lts",
+        "alias": ["gojo", "dolosus", "colossus", "dojo"],
+        "native": False,
+        "paths": {
+            "lab": str(ROOT),
+            "repo": str(REPO),
+            "public_folder": public,
+            "repo_template": template,
+            "stageforge": sf_home,
+            "stageforge_bin": sf_bin,
+            "script": str(script) if script.is_file() else None,
+            "manifest": str(manifest) if manifest.is_file() else None,
+            "metadata": str(meta) if meta.is_file() else None,
+        },
+        "repos": {
+            "public_folder": "https://github.com/fornevercollective/grok-public-folder",
+            "repo_template": "https://github.com/fornevercollective/grok-repo-template",
+            "upstream_compare": "https://github.com/fornevercollective/grok-build/compare/main...xai-org%3Agrok-build%3Amain",
+            "upstream": "https://github.com/xai-org/grok-build",
+        },
+        "pipe_stages": [
+            "imagine preset → public-folder generate",
+            "Resolve 4K export",
+            "repo-template train / colossus-launch / rust-dojo",
+        ],
+        "commands": {
+            "status": "./scripts/colossus-dojo-lts.sh status",
+            "up": "./scripts/colossus-dojo-lts.sh up",
+            "upstream": "./scripts/colossus-dojo-lts.sh upstream",
+            "json": "./scripts/colossus-dojo-lts.sh json",
+            "stageforge": "stageforge up",
+        },
+        "ready": {
+            "public_folder": bool(public),
+            "repo_template": bool(template),
+            "stageforge": bool(sf_bin or sf_home),
+            "lab_manifest": manifest.is_file(),
+        },
+        "policy": "path-checkout only · no monorepo merge · no PRs to xai-org",
+        "doc": "#/25-colossus-dojo-lts",
+        "ts": time.time(),
+    }
+
+
 def list_processes():
     """Snapshot of lab-relevant processes + heuristics for errors/mitigations."""
     interesting = re.compile(
@@ -1849,6 +1936,8 @@ class Handler(SimpleHTTPRequestHandler):
             )
         if path == "/api/processes":
             return self._json(200, list_processes())
+        if path in ("/api/lts", "/api/lts/status"):
+            return self._json(200, lts_status())
         if path == "/api/events":
             return self._json(200, {"ok": True, "events": LOG_BUF[-200:]})
         if path == "/api/git-log":
