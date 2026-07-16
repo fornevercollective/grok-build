@@ -9,4 +9,5 @@ docs/architecture-lab/native/target/
 docs/architecture-lab/desktop/node_modules/
 docs/architecture-lab/.lab-shells.json
 docs/architecture-lab/**/*.log
+experiments/**/target/
 .DS_Store

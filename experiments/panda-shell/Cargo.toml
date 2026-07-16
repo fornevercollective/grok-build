@@ -1,0 +1,35 @@
+[package]
+name = "panda-shell"
+version = "0.2.0"
+edition.workspace = true
+license = "Apache-2.0"
+description = "Panda — glass multi-terminal shell experiment toward a new Mu-class app (detach/reattach, model strip, frost window). Not part of xai-org/grok-build."
+publish = false
+authors = ["fornevercollective"]
+
+[[bin]]
+name = "panda"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+crossterm = { workspace = true, features = ["event-stream"] }
+dirs = { workspace = true }
+futures-util = { workspace = true }
+portable-pty = { workspace = true }
+# Live next to monorepo ptyctl (upstream crate) — PTY VT core
+ptyctl = { path = "../../crates/codegen/ptyctl" }
+ratatui = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+# Hybrid frost window (Mu-direction glass shell)
+winit = "0.30"
+softbuffer = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
+[lints]
+workspace = true

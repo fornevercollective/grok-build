@@ -36,6 +36,7 @@ This lab maps its architecture, extension surfaces, plugin ideas, and how to lev
 - [Leverage further](#/07-leverage)
 - [**Lab shells · native vs Electron**](#/15-lab-shells) — speed, footprint, control API
 - [**Fork leverage map**](#/19-fork-leverage) — community trees with real tools
+- [**Panda shell · new terminal app**](#/22-panda-shell) — multi-pane glass shell experiment (Mu-class)
 - [GrokYtalkY companion](#/10-gy-companion)
 - [SpaceXAI / Grok brand](#/12-brand)
 - [**Dev build · versions · forks · compliance**](#/14-dev-build-and-forks)

@@ -18,7 +18,8 @@ Local path (Mini): `/Volumes/qbitOS/00.dev/projects/grok-build`
 |------|--------|
 | **Remotes** | `origin` + `upstream` configured |
 | **Pages** | Deploys lab from `docs/architecture-lab/**` on push to `main` |
-| **Upstream sync (2026-07-16)** | Path-checkout of `upstream/main` into `crates/`, `third_party/`, `prod/`, root manifests — **lab `docs/` kept**. Removed fork-only `panda-shell`. Verified `cargo check -p xai-grok-pager-bin`. |
+| **Upstream sync (2026-07-16)** | Path-checkout of `upstream/main` into `crates/`, `third_party/`, `prod/`, root manifests — **lab `docs/` kept**. Verified `cargo check -p xai-grok-pager-bin`. |
+| **Panda shell** | Rescued to **`experiments/panda-shell`** (not under `crates/`). After overwriting root `Cargo.toml` from upstream, re-add member `"experiments/panda-shell"`. See [Panda shell](#/22-panda-shell). |
 | **Still no merge-base** | Histories remain unrelated; future updates use the same path-checkout recipe (B below). |
 
 ```bash

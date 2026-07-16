@@ -107,6 +107,15 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 | Distro packages | grok-oss packaging |
 | Multi-provider design | open-grok goals docs |
 | Local docs + float shell | **This lab** · [Lab shells](#/15-lab-shells) |
+| New multi-terminal host | **Panda** · [Panda shell](#/22-panda-shell) · `experiments/panda-shell` |
+
+### Natural next build (fleet)
+
+1. **Panda** multi-tab PTY host (this repo) + GrokPtah UX patterns — not Tauri wholesale  
+2. Lab **Open in Panda** for α/β/γ triple shell  
+3. gork / no-telemetry as optional child-process privacy later  
+4. grok-oss-style `sync-upstream` discipline (already path-checkout)  
+5. agent-tui-style dual home: `~/.panda` vs `~/.grok`  
 
 ---
 
@@ -115,6 +124,7 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 - [How to leverage further](#/07-leverage)  
 - [Ship everything · x.ai/cli](#/17-ship-everything)  
 - [Triple shell · handoffs](#/21-triple-shell)  
+- [Panda shell · new terminal app](#/22-panda-shell)  
 - [Official xAI · legal · models](#/18-official-xai)  
 - [Dev build · versions · forks](#/14-dev-build-and-forks)  
 - [Merge · conflicts · updates](#/20-merge-and-conflicts)  

@@ -18,6 +18,7 @@ Living board — check items off, add new ones freely.
 - [x] Native first-launch fix — lazy chat/stream WKWebViews (0.2.1)  
 - [x] Triple shell bus — α plan · β build · γ verify handoffs (`/api/shells` · Ship panel · `21-triple-shell`)  
 - [x] Fork leverage map (`19-fork-leverage`) + merge/conflicts handoff page (`20-merge-and-conflicts`)  
+- [x] **Panda shell** rescued to `experiments/panda-shell` + lab page `#/22-panda-shell` (Mu-class terminal product)  
 
 ## Next
 
