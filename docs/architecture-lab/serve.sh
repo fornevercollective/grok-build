@@ -11,17 +11,25 @@ command -v python3 >/dev/null || { echo "python3 required" >&2; exit 1; }
 echo ""
 echo "  Grok Build Lab"
 echo "  http://${HOST}:${PORT}"
+echo "  Surfaces:"
+echo "    /                 Lab docs + multi-term"
+echo "    /workbench.html   Center agent + live αβγ xterm PTYs  ← primary layout"
+echo "    /agent.html       Agent console"
+echo "    /launch.html      Launch pad (all windows)"
+echo "    /chat.html        Chat float"
+echo "    /stream.html      Stream feed"
 echo "  Pages: https://fornevercollective.github.io/grok-build/  (auto-deploy on push)"
 echo "  APIs: /api/health · /api/processes · /api/git-log · /api/summon-grok · /api/mitigate"
 echo "        /api/shells · handoff · advance · spawn · reset  (triple shell bus)"
-echo "        /api/pty/open · write · poll · resize · close  (in-browser interactive PTYs)"
+echo "        /api/pty/open · write · poll · resize · close · open-triple  (live PTYs)"
 echo "        /api/voices · /api/tts  (SpaceXAI Grok Voice spheres)"
 echo "        /api/media/tools · resolve · stop · ffplay · hls/*  (yt-dlp · ffmpeg · blank · gy)"
 echo ""
 
 # Desktop shell sets LAB_DESKTOP=1 — never open a browser tab for localhost
 if [[ -z "${LAB_DESKTOP:-}" ]] && command -v open >/dev/null 2>&1; then
-  (sleep 0.35 && open "http://${HOST}:${PORT}/") >/dev/null 2>&1 || true
+  # Default to workbench (center + live αβγ) when available
+  (sleep 0.35 && open "http://${HOST}:${PORT}/workbench.html") >/dev/null 2>&1 || true
 fi
 
 exec python3 - "$HOST" "$PORT" "$ROOT" <<'PY'

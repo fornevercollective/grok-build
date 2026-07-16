@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Build Lab · Workbench</title>
+    <meta
+      name="description"
+      content="Center agent + three live PTY feeds (α plan · β build · γ verify) — browser workbench"
+    />
+    <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css"
+    />
+    <link rel="stylesheet" href="assets/workbench.css?v=wb1" />
+  </head>
+  <body class="wb-body">
+    <header class="wb-chrome" data-drag-region="1">
+      <div class="wb-lights" data-no-drag>
+        <span class="wb-tl close"></span>
+        <span class="wb-tl min"></span>
+        <span class="wb-tl max"></span>
+      </div>
+      <img src="assets/brand/grok-logomark-light.svg" width="18" height="18" alt="" />
+      <strong class="wb-title">Workbench</strong>
+      <span class="wb-pill" id="wb-status">boot</span>
+      <span class="wb-spacer"></span>
+      <nav class="wb-surfaces" data-no-drag aria-label="Lab surfaces">
+        <a href="./">Lab</a>
+        <a href="agent.html">Agent</a>
+        <a href="chat.html" target="_blank" rel="noopener">Chat</a>
+        <a href="stream.html" target="_blank" rel="noopener">Stream</a>
+        <a href="launch.html" target="_blank" rel="noopener">Launch</a>
+        <a href="workbench.html" class="on">Workbench</a>
+      </nav>
+      <button type="button" class="wb-btn" id="btn-boot" data-no-drag>Boot αβγ</button>
+      <button type="button" class="wb-btn primary" id="btn-panda" data-no-drag>Panda</button>
+      <button type="button" class="wb-btn danger" id="btn-cancel" data-no-drag disabled>Cancel</button>
+    </header>
+
+    <main class="wb-layout">
+      <section class="wb-center">
+        <div class="wb-center-head">
+          <div>
+            <h1>Main agent</h1>
+            <p class="wb-muted">
+              grok.com-style center · tool cards · drives αβγ live PTYs via handoff bus
+            </p>
+          </div>
+          <div class="wb-center-acts">
+            <button type="button" class="wb-btn sm" id="btn-scroll-end">↓ End</button>
+            <button type="button" class="wb-btn sm" id="btn-clear">Clear</button>
+            <button type="button" class="wb-btn sm" id="btn-export">Export</button>
+            <button type="button" class="wb-btn sm" id="btn-handoff-pb">P→B</button>
+            <button type="button" class="wb-btn sm" id="btn-handoff-bv">B→V</button>
+          </div>
+        </div>
+        <div class="wb-scroll" id="wb-scroll" role="log" tabindex="0"></div>
+        <div class="wb-tools" id="wb-tools" aria-label="Tool cards"></div>
+        <form class="wb-prompt" id="wb-form">
+          <textarea
+            id="wb-input"
+            rows="3"
+            maxlength="8000"
+            placeholder="Message agent… Plan JWT · Implement in worktree · Run tests · status"
+          ></textarea>
+          <div class="wb-prompt-bar">
+            <div class="wb-chips">
+              <button type="button" data-chip="Plan a safe approach for the current task">Plan</button>
+              <button type="button" data-chip="Implement the approved plan in a worktree">Build</button>
+              <button type="button" data-chip="Run tests and review regressions only">Verify</button>
+              <button type="button" data-chip="status">Status</button>
+              <button type="button" data-chip="open ship">Ship</button>
+            </div>
+            <button type="button" class="wb-btn danger sm" id="btn-stop" disabled>Stop</button>
+            <button type="submit" class="wb-send" id="wb-send">Send</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="wb-feeds" aria-label="Live terminal feeds">
+        <article class="wb-feed" data-role="plan">
+          <header>
+            <span class="wb-role plan">α plan</span>
+            <span class="wb-feed-st" id="st-plan">idle</span>
+            <button type="button" class="wb-btn sm" data-restart="plan">↻</button>
+          </header>
+          <div class="wb-xterm" id="term-plan"></div>
+          <footer>
+            <input type="text" class="wb-line" data-write="plan" placeholder="type → plan PTY…" />
+          </footer>
+        </article>
+        <article class="wb-feed" data-role="build">
+          <header>
+            <span class="wb-role build">β build</span>
+            <span class="wb-feed-st" id="st-build">idle</span>
+            <button type="button" class="wb-btn sm" data-restart="build">↻</button>
+          </header>
+          <div class="wb-xterm" id="term-build"></div>
+          <footer>
+            <input type="text" class="wb-line" data-write="build" placeholder="type → build PTY…" />
+          </footer>
+        </article>
+        <article class="wb-feed" data-role="verify">
+          <header>
+            <span class="wb-role verify">γ verify</span>
+            <span class="wb-feed-st" id="st-verify">idle</span>
+            <button type="button" class="wb-btn sm" data-restart="verify">↻</button>
+          </header>
+          <div class="wb-xterm" id="term-verify"></div>
+          <footer>
+            <input
+              type="text"
+              class="wb-line"
+              data-write="verify"
+              placeholder="type → verify PTY…"
+            />
+          </footer>
+        </article>
+      </aside>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+    <script src="assets/workbench.js?v=wb1"></script>
+  </body>
+</html>

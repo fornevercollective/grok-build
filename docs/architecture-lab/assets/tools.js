@@ -394,6 +394,10 @@
       clearInterval(state.mtTimer);
       state.mtTimer = 0;
     }
+    if (state.mtPtyTimer) {
+      clearInterval(state.mtPtyTimer);
+      state.mtPtyTimer = 0;
+    }
     setMtStatus("idle");
   }
 
@@ -582,10 +586,83 @@
     }
   }
 
+  /* Live in-browser PTY for α|β|γ (serve.sh /api/pty/*) */
+  const mtPty = { plan: { offset: 0 }, build: { offset: 0 }, verify: { offset: 0 } };
+
+  function b64ToUtf8(b64) {
+    if (!b64) return "";
+    try {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    } catch {
+      return "";
+    }
+  }
+
+  async function bootLivePtyFeeds() {
+    try {
+      const trip = await api("/api/pty/open-triple", {
+        method: "POST",
+        body: JSON.stringify({ cols: 88, rows: 20 }),
+      });
+      if (!trip || !trip.ok) return false;
+      ["plan", "build", "verify"].forEach((id) => {
+        mtPty[id] = { offset: 0 };
+        const s = trip.sessions && trip.sessions[id];
+        writeMtBody(
+          id,
+          "── live PTY · " +
+            id +
+            " ──\n" +
+            (s && s.ok ? "session ready · type via Workbench for full xterm\n" : "open failed\n") +
+            "Open workbench.html for interactive keyboard PTY columns.\n"
+        );
+      });
+      if (!state.mtPtyTimer) {
+        state.mtPtyTimer = setInterval(pollLivePtyFeeds, 200);
+      }
+      setMtStatus("live PTY · 3", "ok");
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function pollLivePtyFeeds() {
+    if (!state.mtOpen) return;
+    for (const id of ["plan", "build", "verify"]) {
+      const st = mtPty[id] || { offset: 0 };
+      try {
+        const r = await fetch(
+          "/api/pty/poll?id=" + encodeURIComponent(id) + "&offset=" + (st.offset || 0),
+          { cache: "no-store" }
+        ).then((res) => res.json());
+        if (r && r.ok && r.data) {
+          const chunk = b64ToUtf8(r.data);
+          st.offset = r.offset || st.offset;
+          mtPty[id] = st;
+          if (chunk) {
+            const pane = state.mtPanes.find((p) => p.id === id);
+            const prev = (pane && pane.body) || "";
+            // Strip most ANSI for pre body readability
+            const clean = chunk.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, "");
+            writeMtBody(id, (prev + clean).slice(-12000));
+            const el = $("mt-body-" + id);
+            if (el) el.scrollTop = el.scrollHeight;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   async function summonGrokMulti(phrase) {
     setMtStatus("summoning…", "hot");
     openMultiTermUiOnly();
     setMtCols(3);
+    // Prefer in-browser live PTYs when serve hub is present
+    const live = await bootLivePtyFeeds();
     try {
       // Prefer triple shells so α|β|γ map to three OS terminals + three web columns
       const r = await api("/api/summon-grok", {
@@ -644,9 +721,21 @@
       }
 
       setMtStatus(
-        r.launched ? "live · 3 shells" : r.message || "check",
-        r.launched ? "ok" : "warn"
+        live
+          ? "live PTY · browser"
+          : r.launched
+            ? "live · 3 shells"
+            : r.message || "check",
+        live || r.launched ? "ok" : "warn"
       );
+      if (live) {
+        writeMtBody(
+          "events",
+          "Live browser PTYs active · full interactive keyboard: open workbench.html\n" +
+            "OS multi-term: " +
+            (r.launched ? "also launched" : "not launched")
+        );
+      }
       await api("/api/events", {
         method: "POST",
         body: JSON.stringify({
@@ -675,6 +764,7 @@
     document.body.classList.add("multi-term-open");
     renderMultiTerm();
     if (!state.mtTimer) state.mtTimer = setInterval(refreshMultiTerm, 2500);
+    bootLivePtyFeeds();
   }
 
   function addMtPane() {
@@ -1600,6 +1690,7 @@ gy space mute all`;
     $("btn-mt-refresh")?.addEventListener("click", () => {
       refreshMultiTerm();
       refreshTerminal();
+      bootLivePtyFeeds();
     });
     $("btn-mt-cols-3")?.addEventListener("click", () => {
       setMtCols(3);
@@ -1613,6 +1704,17 @@ gy space mute all`;
     $("btn-mt-open-term")?.addEventListener("click", () =>
       openMultiTerm({ summon: true, phrase: "triple shells" })
     );
+    // Live browser workbench (center agent + interactive αβγ xterm)
+    const mtChrome = document.querySelector(".multi-term-actions");
+    if (mtChrome && !document.getElementById("btn-mt-workbench")) {
+      const a = document.createElement("a");
+      a.id = "btn-mt-workbench";
+      a.className = "btn-mini primary";
+      a.href = "workbench.html";
+      a.textContent = "Workbench";
+      a.title = "Center agent + interactive αβγ xterm PTYs";
+      mtChrome.insertBefore(a, mtChrome.firstChild);
+    }
 
     // Voice / Listen “hey grok” and any lab summon → center multi-term (3 cols)
     window.addEventListener("lab:summon-grok", (ev) => {

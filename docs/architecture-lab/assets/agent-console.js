@@ -15,6 +15,66 @@
   let pinned = false;
   let docked = true;
   let stickToBottom = true;
+  const ptyOff = { plan: 0, build: 0, verify: 0 };
+  let ptyTimer = 0;
+
+  function b64ToUtf8(b64) {
+    if (!b64) return "";
+    try {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    } catch {
+      return "";
+    }
+  }
+
+  async function bootAgentPtys() {
+    try {
+      const trip = await api("/api/pty/open-triple", { cols: 80, rows: 18 });
+      if (!trip || !trip.ok) {
+        toast("PTY hub offline — use ./serve.sh or Workbench", true);
+        return false;
+      }
+      ROLES.forEach((r) => {
+        ptyOff[r] = 0;
+        const el = $("feed-" + r + "-body");
+        if (el) el.textContent = "── live PTY " + r + " ──\n";
+        setFeedStatus(r, "running");
+      });
+      if (ptyTimer) clearInterval(ptyTimer);
+      ptyTimer = setInterval(pollAgentPtys, 150);
+      toast("Booted αβγ live PTYs");
+      setStatus("pty live", "live");
+      return true;
+    } catch (e) {
+      toast("PTY boot failed", true);
+      return false;
+    }
+  }
+
+  async function pollAgentPtys() {
+    for (const r of ROLES) {
+      try {
+        const res = await fetch(
+          "/api/pty/poll?id=" + encodeURIComponent(r) + "&offset=" + (ptyOff[r] || 0),
+          { cache: "no-store" }
+        ).then((x) => x.json());
+        if (res && res.ok && res.data) {
+          const chunk = b64ToUtf8(res.data).replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, "");
+          ptyOff[r] = res.offset || ptyOff[r];
+          if (chunk) {
+            const el = $("feed-" + r + "-body");
+            if (el) {
+              el.textContent = ((el.textContent || "") + chunk).slice(-10000);
+              el.scrollTop = el.scrollHeight;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
 
   function loadChat() {
     try {
@@ -587,8 +647,17 @@
         location.href = "./";
       });
     });
+    $("btn-boot-pty")?.addEventListener("click", () => bootAgentPtys());
+
     $("btn-panda")?.addEventListener("click", async () => {
       setStatus("panda…", "busy");
+      // Prefer in-browser PTY when serve hub is available
+      const live = await bootAgentPtys();
+      if (live) {
+        pushMsg("system", "Booted in-browser αβγ PTYs. Workbench for full xterm keyboard.");
+        setStatus("pty live", "live");
+        return;
+      }
       const j = await api("/api/panda/open", { splits: 3 }).catch((e) => ({
         message: String(e),
       }));

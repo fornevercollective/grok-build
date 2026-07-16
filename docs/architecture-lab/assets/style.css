@@ -1184,6 +1184,23 @@ body.lab-float .app-tabs {
   border-bottom: none;
 }
 
+.app-tab-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 0.2rem;
+  align-self: center;
+}
+a.app-tab-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+a.app-tab-link:hover {
+  color: var(--accent, #6ecbff);
+}
+
 body.lab-native .app-tab,
 body.lab-float .app-tab {
   font-size: 0.6rem;

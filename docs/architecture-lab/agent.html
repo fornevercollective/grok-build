@@ -9,7 +9,7 @@
       content="agentcn-inspired agent console: center chat + α/β/γ terminal feeds"
     />
     <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/agent-console.css?v=ac4" />
+    <link rel="stylesheet" href="assets/agent-console.css?v=ac5" />
   </head>
   <body class="ac-body">
     <header class="ac-chrome" data-drag-region="1">
@@ -38,6 +38,10 @@
         <button type="button" class="ac-btn" id="btn-new" title="New conversation">New</button>
         <button type="button" class="ac-btn" id="btn-dock" title="Snap into workspace layout">Dock</button>
         <button type="button" class="ac-btn" id="btn-pin" title="Always on top">Pin</button>
+        <a class="ac-btn" href="workbench.html" title="Live PTY workbench">Workbench</a>
+        <button type="button" class="ac-btn" id="btn-boot-pty" title="Boot live αβγ PTY feeds">
+          Boot PTY
+        </button>
         <button type="button" class="ac-btn" id="btn-chat" title="Open chat">Chat</button>
         <button type="button" class="ac-btn" id="btn-stream" title="Open stream">Stream</button>
         <button type="button" class="ac-btn" id="btn-lab" title="Focus lab">Lab</button>
@@ -190,6 +194,6 @@
     </main>
 
     <div class="ac-toast" id="ac-toast" role="status" hidden></div>
-    <script src="assets/agent-console.js?v=ac4"></script>
+    <script src="assets/agent-console.js?v=ac5"></script>
   </body>
 </html>

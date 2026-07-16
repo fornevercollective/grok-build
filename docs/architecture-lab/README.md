@@ -94,6 +94,7 @@ docs/architecture-lab/          # historical path · product name = Grok Build L
   chat.html           # float chat · voice + text
   stream.html         # stream feed window
   agent.html          # Agent Console · center chat + α/β/γ feeds (agentcn scaffold)
+  workbench.html      # Browser workbench · center agent + live xterm PTYs (needs ./serve.sh)
   launch.html         # Launch Pad · View + Window menu controls
   nav.json            # sidebar sections / page ids
   serve.sh            # local server + ops APIs

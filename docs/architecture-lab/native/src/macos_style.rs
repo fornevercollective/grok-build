@@ -89,11 +89,11 @@ body.lab-chat-window::before, body.stream-window::before,
 body.lab-agent-surface::before, body.lab-launch-surface::before,
 body.ac-body::before, body.lp-body::before {
   content: "" !important;
-  pointer-events: none !important;
+  pointer-events: none !important; /* never block wheel/scroll */
   position: fixed !important;
   inset: 0 !important;
   border-radius: 18px !important;
-  z-index: 398 !important;
+  z-index: 0 !important; /* below scrollports (z-index 2–5) */
   background:
     radial-gradient(ellipse 55% 48% at 0% 0%, rgba(110, 203, 255, 0.42), transparent 62%),
     radial-gradient(ellipse 55% 48% at 100% 0%, rgba(167, 139, 250, 0.36), transparent 62%),
@@ -116,11 +116,11 @@ body.lab-chat-window::after, body.stream-window::after,
 body.lab-agent-surface::after, body.lab-launch-surface::after,
 body.ac-body::after, body.lp-body::after {
   content: "" !important;
-  pointer-events: none !important;
+  pointer-events: none !important; /* never block wheel/scroll */
   position: fixed !important;
   inset: 0 !important;
   border-radius: 18px !important;
-  z-index: 401 !important;
+  z-index: 1 !important; /* rim above glow, below interactive UI */
   padding: 1.25px !important;
   background: conic-gradient(
     from 180deg,
