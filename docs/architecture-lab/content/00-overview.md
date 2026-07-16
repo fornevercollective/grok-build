@@ -39,6 +39,7 @@ This lab maps its architecture, extension surfaces, plugin ideas, and how to lev
 - [GrokYtalkY companion](#/10-gy-companion)
 - [SpaceXAI / Grok brand](#/12-brand)
 - [**Dev build · versions · forks · compliance**](#/14-dev-build-and-forks)
+- [**Merge · conflicts · updates**](#/20-merge-and-conflicts) — Mini ↔ laptop ↔ upstream handoff
 - [**X / xAI · HackerOne bounty**](#/16-hackerone-x) — rewards, scope, our prize scorecard
 - [Riffing on docs](#/99-contributing-docs)
 

@@ -17,6 +17,7 @@ Living board — check items off, add new ones freely.
 - [x] Official xAI iterate page — subprocessors · brand · models · use cases (`18-official-xai`)  
 - [x] Native first-launch fix — lazy chat/stream WKWebViews (0.2.1)  
 - [x] Triple shell bus — α plan · β build · γ verify handoffs (`/api/shells` · Ship panel · `21-triple-shell`)  
+- [x] Fork leverage map (`19-fork-leverage`) + merge/conflicts handoff page (`20-merge-and-conflicts`)  
 
 ## Next
 

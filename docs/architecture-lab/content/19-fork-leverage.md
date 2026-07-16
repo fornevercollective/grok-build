@@ -117,6 +117,7 @@ Scan of **[xai-org/grok-build forks](https://github.com/xai-org/grok-build/forks
 - [Triple shell · handoffs](#/21-triple-shell)  
 - [Official xAI · legal · models](#/18-official-xai)  
 - [Dev build · versions · forks](#/14-dev-build-and-forks)  
+- [Merge · conflicts · updates](#/20-merge-and-conflicts)  
 - [Lab shells · native vs Electron](#/15-lab-shells)  
 - [Extension surfaces](#/04-extension-surfaces)  
 - [Plugin catalog](#/05-plugin-catalog)  

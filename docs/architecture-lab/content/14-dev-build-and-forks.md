@@ -82,6 +82,8 @@ fornevercollective/GrokYtalkY   (separate repo)
 
 **Community fork tools (desktop · privacy · packaging · providers):** [Fork leverage map](#/19-fork-leverage).
 
+**Unrelated histories · path-checkout sync · Mini/laptop loop:** [Merge · conflicts · updates](#/20-merge-and-conflicts).
+
 ### status.x.ai go/no-go (big pushes)
 
 | Check | Command |

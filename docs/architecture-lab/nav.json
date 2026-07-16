@@ -46,6 +46,7 @@
         { "id": "18-official-xai", "label": "Official xAI · legal · models · use cases" },
         { "id": "13-tools", "label": "Lab tools workspace" },
         { "id": "14-dev-build-and-forks", "label": "Dev build · versions · forks" },
+        { "id": "20-merge-and-conflicts", "label": "Merge · conflicts · updates" },
         { "id": "16-hackerone-x", "label": "X / xAI · HackerOne bounty" },
         { "id": "99-contributing-docs", "label": "Riffing on these docs" }
       ]
