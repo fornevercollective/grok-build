@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Grok Build Architecture Lab</title>
+    <meta
+      name="description"
+      content="Grok Build Architecture Lab — map, plugins, leverage. Local + GitHub Pages."
+    />
+    <meta name="theme-color" content="#0b0c0f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Open Graph / share (works on GitHub Pages) -->
+    <meta property="og:title" content="Grok Build Architecture Lab" />
+    <meta
+      property="og:description"
+      content="Architecture map · plugins · tools · mesh. Auto-updates on Pages deploy."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/brand/grok-logomark-dark.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/style.css?v=voice2" />
+    <link rel="stylesheet" href="assets/walkie-dock.css?v=siri2" />
+    <link rel="stylesheet" href="assets/video-feed.css?v=sb2" />
+    <link rel="stylesheet" href="assets/tools.css?v=hist2" />
+    <link rel="stylesheet" href="assets/walkthrough.css?v=wt1" />
+    <link rel="stylesheet" href="assets/mobile-pwa.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"
+      defer
+    ></script>
+    <script src="assets/app.js?v=wt1" defer></script>
+    <script src="assets/walkthrough.js?v=wt1" defer></script>
+    <script src="assets/video-feed.js?v=sb3" defer></script>
+    <script src="assets/walkie-dock.js?v=siri2" defer></script>
+    <script src="assets/grok-listen.js?v=wt1" defer></script>
+    <script src="assets/tools.js?v=hist2" defer></script>
+    <script src="assets/mesh-collab.js" defer></script>
+    <script src="assets/mobile-pwa.js" defer></script>
+    <script src="assets/lab-update.js?v=pages1" defer></script>
+  </head>
+  <body class="mode-docs pins-idle">
+    <!-- Pull-to-refresh affordance (mobile) -->
+    <div class="ptr-indicator" id="ptr-indicator" aria-hidden="true">
+      <span id="ptr-label">Pull to refresh</span>
+    </div>
+    <div class="offline-banner" id="offline-banner" hidden>Offline · serving cached lab shell</div>
+    <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+    <!-- Desktop edge toggle when left menu collapsed -->
+    <button
+      type="button"
+      class="sidebar-edge-toggle"
+      id="sidebar-edge-toggle"
+      aria-label="Toggle left menu"
+      title="Expand menu"
+    >
+      ›
+    </button>
+    <div class="app">
+      <aside class="sidebar" id="sidebar" aria-label="Left menu">
+        <!-- Voice head: reactive Grok logo + Listen + live readout under logo -->
+        <div class="sidebar-voice-head" id="sidebar-voice-head">
+          <div class="sidebar-brand-row">
+            <div
+              class="xai-logo-react"
+              id="xai-logo-react"
+              data-voice="idle"
+              title="Grok · lights up when you talk"
+            >
+              <span class="logo-glow" aria-hidden="true"></span>
+              <span class="logo-ring" aria-hidden="true"></span>
+              <a
+                class="xai-brand-block"
+                href="#/12-brand"
+                title="SpaceXAI / Grok brand · local lab"
+              >
+                <img
+                  class="xai-grok-mark"
+                  src="assets/brand/grok-logomark-light.svg"
+                  width="36"
+                  height="36"
+                  alt="Grok"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="xai-grok-word"
+                  src="assets/brand/grok-wordmark-light.svg"
+                  height="18"
+                  alt="Grok"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </a>
+            </div>
+            <div class="listen-bar" id="listen-bar">
+              <button
+                type="button"
+                class="btn-mini listen-toggle"
+                id="btn-listen"
+                aria-pressed="false"
+                title="Active listening · say hey grok · tools · docs"
+              >
+                Listen
+              </button>
+              <span class="listen-status" id="listen-status">off</span>
+            </div>
+          </div>
+
+          <!-- Live transcript — hidden until Listen is summoned/active -->
+          <div
+            class="voice-readout"
+            id="voice-readout"
+            aria-live="polite"
+            hidden
+          >
+            <div class="voice-level" id="voice-level" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="voice-heard-block">
+              <span class="voice-label">heard</span>
+              <p class="voice-heard" id="voice-heard">Listening…</p>
+            </div>
+            <div class="voice-intent-block">
+              <span class="voice-label">intent</span>
+              <p class="voice-intent" id="voice-intent">waiting</p>
+            </div>
+            <div class="voice-action-row" id="voice-action-row" hidden></div>
+            <ul class="voice-turns" id="voice-turns" aria-label="Recent voice turns"></ul>
+            <p class="voice-hint" id="voice-hint">
+              “hey grok” · “open notes” · “walkthrough” · “highlight next” ·
+              <a
+                href="https://x.ai/news/grok-voice-agent-builder"
+                target="_blank"
+                rel="noopener"
+                >Voice Agent Builder</a
+              >
+              ·
+              <a href="https://docs.x.ai/overview" target="_blank" rel="noopener">docs.x.ai</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- High-res stream feed ABOVE Architecture Lab (yt-dlp · ffmpeg · blank · gy) -->
+        <details class="sb-section sb-video" id="sb-sec-video" data-sb-key="video">
+          <summary class="sb-summary">
+            <span class="sb-chev" aria-hidden="true"></span>
+            <span class="sb-summary-label">Stream feed</span>
+            <span class="sb-summary-meta" id="video-feed-pill">idle</span>
+          </summary>
+          <div class="sb-section-body">
+            <div class="sidebar-video" id="sidebar-video">
+              <div class="sv-stage">
+                <video
+                  id="sidebar-video-el"
+                  class="sv-video"
+                  playsinline
+                  controls
+                  muted
+                  poster=""
+                ></video>
+                <div class="sv-overlay" id="sv-overlay">
+                  <span>URL · @handle · blank · cam</span>
+                </div>
+              </div>
+              <div class="sv-presets" id="sv-presets" role="group" aria-label="Stream presets">
+                <button type="button" class="sv-chip" data-preset="overview" title="Architecture overview clip">Overview</button>
+                <button type="button" class="sv-chip" data-preset="blank" title="Resolve via blank / gy blank-lite">Blank</button>
+                <button type="button" class="sv-chip" data-preset="demo" title="High-res demo (Big Buck Bunny)">Demo</button>
+                <button type="button" class="sv-chip" data-preset="live" title="YouTube live sample">Live</button>
+                <button type="button" class="sv-chip" data-preset="cam" title="Local camera via ffmpeg">Cam</button>
+              </div>
+              <form class="sv-form" id="sv-form" autocomplete="off">
+                <input
+                  type="text"
+                  id="sv-url"
+                  class="sv-input"
+                  placeholder="https://…  or  @handle  or  device:0"
+                  spellcheck="false"
+                  aria-label="Stream URL or handle"
+                />
+                <div class="sv-row">
+                  <select id="sv-quality" class="sv-select" title="Max resolution" aria-label="Quality">
+                    <option value="1080" selected>1080p</option>
+                    <option value="720">720p</option>
+                    <option value="best">best</option>
+                    <option value="480">480p</option>
+                  </select>
+                  <button type="submit" class="btn-mini primary" id="sv-play">Play</button>
+                  <button type="button" class="btn-mini" id="sv-stop" title="Stop stream">Stop</button>
+                  <button type="button" class="btn-mini" id="sv-ffplay" title="Open in ffplay">ffplay</button>
+                </div>
+              </form>
+              <p class="sv-status" id="sv-status">yt-dlp · ffmpeg · blank · gy hub</p>
+              <div class="sv-history" id="sv-history" aria-label="Recent stream requests"></div>
+            </div>
+          </div>
+        </details>
+
+        <div class="brand-lab">
+          <h1>Architecture Lab</h1>
+          <p>Map · plugins · leverage · riff zone</p>
+        </div>
+
+        <!-- Walkie burst UNDER Architecture Lab title -->
+        <details class="sb-section" id="sb-sec-walkie" data-sb-key="walkie">
+          <summary class="sb-summary">
+            <span class="sb-chev" aria-hidden="true"></span>
+            <span class="sb-summary-label">Walkie burst</span>
+          </summary>
+          <div class="sb-section-body">
+            <section
+              class="walkie-burst-only"
+              id="walkie-dock"
+              aria-label="Walkie burst"
+            >
+              <div class="walkie-burst-row">
+                <div class="burst-stage-mini">
+                  <div
+                    class="burst-orb"
+                    id="burst-orb"
+                    role="button"
+                    aria-label="Hold to walkie burst"
+                    tabindex="0"
+                  >
+                    <img
+                      class="orb-logo"
+                      src="assets/brand/grok-logomark-light.svg"
+                      alt=""
+                      width="176"
+                      height="176"
+                      draggable="false"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <!-- Live camera fill (shown when Cam is on) -->
+                    <video
+                      class="orb-cam"
+                      id="burst-cam-video"
+                      playsinline
+                      muted
+                      autoplay
+                      disablepictureinpicture
+                      aria-hidden="true"
+                    ></video>
+                    <canvas class="ring" id="ring-canvas" width="176" height="176"></canvas>
+                    <canvas class="face" id="face-canvas" width="25" height="25"></canvas>
+                    <span class="orb-label" id="orb-label">hold</span>
+                  </div>
+                </div>
+                <div class="walkie-burst-side">
+                  <p class="burst-meta" id="burst-meta">idle · walkie burst</p>
+                  <div class="burst-actions">
+                    <button type="button" class="btn-mini primary" id="btn-hold">Hold</button>
+                    <button type="button" class="btn-mini" id="btn-cam" title="Enable camera in burst orb">
+                      Cam
+                    </button>
+                  </div>
+                  <p class="walkie-hint" id="walkie-hint">
+                    hold / space · Cam for live face ·
+                    <button type="button" class="btn-mini" id="btn-siri-burst" title="Siri-style floating orb">
+                      Float
+                    </button>
+                    ·
+                    <a href="http://127.0.0.1:8766/burst.html" target="_blank" rel="noopener">burst →</a>
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <!-- Mesh collab -->
+        <details class="sb-section" id="sb-sec-mesh" data-sb-key="mesh">
+          <summary class="sb-summary">
+            <span class="sb-chev" aria-hidden="true"></span>
+            <span class="sb-summary-label">Mesh collab</span>
+          </summary>
+          <div class="sb-section-body">
+            <div class="mesh-status" id="mesh-status" title="Pins activate when other devices collaborate">
+              <span class="mesh-dot" id="mesh-dot"></span>
+              <span id="mesh-label">solo · pins idle</span>
+              <button type="button" class="btn-mini" id="btn-mesh-join" title="Announce this device on lab mesh">Join mesh</button>
+            </div>
+          </div>
+        </details>
+
+        <!-- Companion -->
+        <details class="sb-section" id="sb-sec-companion" data-sb-key="companion">
+          <summary class="sb-summary">
+            <span class="sb-chev" aria-hidden="true"></span>
+            <span class="sb-summary-label">Companion</span>
+          </summary>
+          <div class="sb-section-body">
+            <a
+              class="gy-brand"
+              id="gy-brand"
+              href="http://127.0.0.1:8766/burst.html"
+              data-fallback="https://fornevercollective.github.io/GrokYtalkY/burst.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="GrokYtalkY companion · Burst"
+            >
+              <span class="brand-mark" aria-hidden="true">◈</span>
+              <span class="brand-name">GrokYtalkY</span>
+              <span class="brand-sub">companion</span>
+            </a>
+          </div>
+        </details>
+
+        <details class="sb-section sb-nav" id="sb-sec-docs" data-sb-key="docs">
+          <summary class="sb-summary">
+            <span class="sb-chev" aria-hidden="true"></span>
+            <span class="sb-summary-label">Docs</span>
+            <span class="sb-summary-meta" id="sb-docs-meta"></span>
+          </summary>
+          <div class="sb-section-body">
+            <nav id="nav" aria-label="Docs"></nav>
+          </div>
+        </details>
+
+        <div class="sidebar-foot">
+          <div class="brand-legal">
+            <img
+              src="assets/brand/spacexai-symbol-white-transparent.svg"
+              width="72"
+              height="28"
+              alt="SpaceXAI"
+              class="xai-symbol-foot"
+            />
+            <p>
+              Marks © xAI ·
+              <a href="https://x.ai/legal/brand-guidelines" target="_blank" rel="noopener"
+                >Brand guidelines</a
+              >
+            </p>
+            <p class="faint">Local + GitHub Pages · not an official xAI product page</p>
+            <p class="faint">
+              build <code id="lab-version-meta" title="Deploy version">…</code>
+            </p>
+          </div>
+          Edit <code>content/*.md</code> + <code>nav.json</code><br />
+          Local: <code>./serve.sh</code><br />
+          Pages: auto-deploys on push · auto-reloads
+        </div>
+      </aside>
+
+      <div class="main">
+        <!-- App-level tabs -->
+        <nav class="app-tabs" aria-label="Workspace">
+          <button type="button" class="app-tab active" data-mode="docs">Docs</button>
+          <button type="button" class="app-tab" data-mode="notes">Notes</button>
+          <button type="button" class="app-tab" data-mode="table">Table</button>
+          <button type="button" class="app-tab" data-mode="xdesk">X desk</button>
+          <button type="button" class="app-tab" data-mode="broadcast">Broadcast</button>
+          <button type="button" class="app-tab" data-mode="history">History</button>
+        </nav>
+
+        <header class="topbar">
+          <div class="topbar-row">
+            <button class="menu-btn" id="menu-btn" type="button" aria-label="Menu">
+              Menu
+            </button>
+            <a
+              class="gy-brand gy-brand-inline"
+              href="http://127.0.0.1:8766/burst.html"
+              data-fallback="https://fornevercollective.github.io/GrokYtalkY/burst.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="GrokYtalkY · Burst"
+            >
+              <span class="brand-mark" aria-hidden="true">◈</span>
+              <span class="brand-name">GrokYtalkY</span>
+            </a>
+
+            <div class="filter-nav-block">
+              <input
+                class="search"
+                id="search"
+                type="search"
+                placeholder="Filter nav…"
+                autocomplete="off"
+              />
+              <!-- mueee-style scrub timeline under filter nav -->
+              <div class="hist-timeline-wrap" id="hist-slider-bar" title="Scrub version history · drag · wheel zoom · click">
+                <div class="hist-timeline-chrome">
+                  <span class="hist-slider-label">history</span>
+                  <span class="hist-slider-meta" id="hist-slider-meta">—</span>
+                  <div class="hist-tl-zoom" id="hist-tl-zoom-mini">
+                    <button type="button" class="btn-mini" data-hist-zoom="out" title="Zoom out">−</button>
+                    <button type="button" class="btn-mini" data-hist-zoom="in" title="Zoom in">+</button>
+                    <button type="button" class="btn-mini" data-hist-zoom="reset" title="Reset">↺</button>
+                  </div>
+                  <button type="button" class="btn-mini" id="btn-hist-slider-open" title="Open History tab">
+                    ↗
+                  </button>
+                </div>
+                <div class="hist-timeline-strip hist-timeline-mini" id="hist-timeline-mini">
+                  <canvas id="hist-timeline-canvas-mini" aria-label="Commit timeline scrubber"></canvas>
+                  <span class="hist-tl-hover" id="hist-tl-hover-mini" hidden></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pins stay collapsed until multi-device collaboration -->
+            <section
+              class="glyph-pin-rail-bar pins-gated"
+              id="glyph-pin-rail"
+              aria-label="Glyph pins — active when collaborating"
+              data-collab="0"
+            >
+              <div class="glyph-pin-idle-msg" id="glyph-pin-idle-msg">
+                pins idle · join mesh from another device to collaborate
+              </div>
+              <div class="glyph-pin-live" id="glyph-pin-live" hidden>
+                <div class="glyph-pin-rail-head">
+                  <span>pins · <strong id="glyph-pin-focus">you</strong></span>
+                  <span class="glyph-pin-chat-hint" id="glyph-pin-chat-hint" hidden></span>
+                  <div class="glyph-pin-rail-actions">
+                    <button type="button" class="btn-mini" id="glyph-pin-prev" title="Previous pin">◀</button>
+                    <button type="button" class="btn-mini" id="glyph-pin-next" title="Next pin">▶</button>
+                    <button type="button" class="btn-mini" id="glyph-pin-btn" title="Lock focused peer">Pin</button>
+                  </div>
+                </div>
+                <div class="glyph-pin-strip" id="glyph-pin-strip" role="group" aria-label="Live glyph pin thumbnails"></div>
+                <span class="glyph-pin-status-inline" id="glyph-pin-status">collaborating</span>
+              </div>
+            </section>
+
+            <div class="walk-toolbar" id="walk-toolbar" title="Grok walkthrough · hover page sections">
+              <button
+                type="button"
+                class="btn-mini"
+                id="btn-walk-hover"
+                aria-pressed="true"
+                title="Highlight sections on mouse over"
+              >
+                Hover
+              </button>
+              <button
+                type="button"
+                class="btn-mini"
+                id="btn-walkthrough"
+                aria-pressed="false"
+                title="Guided tour of this page"
+              >
+                Tour
+              </button>
+              <button
+                type="button"
+                class="btn-mini"
+                id="btn-walk-next"
+                title="Next section"
+              >
+                Next
+              </button>
+            </div>
+            <span class="topbar-meta">page <code id="crumb">…</code></span>
+          </div>
+        </header>
+
+        <div class="summon-toast" id="summon-toast" hidden role="status" aria-live="polite"></div>
+
+        <!-- Multi-terminal workspace (center) — opens on Summon / Open Grok -->
+        <section
+          class="multi-term"
+          id="multi-term"
+          hidden
+          aria-label="Multi-terminal Grok workspace"
+        >
+          <div class="multi-term-chrome">
+            <div class="multi-term-title">
+              <img
+                src="assets/brand/spacexai-symbol-white-transparent.svg"
+                width="48"
+                height="18"
+                alt=""
+                class="multi-term-mark"
+              />
+              <strong>Grok terminals</strong>
+              <span class="pill" id="multi-term-status">idle</span>
+            </div>
+            <div class="multi-term-actions">
+              <button type="button" class="btn-mini" id="btn-mt-add">+ Pane</button>
+              <button type="button" class="btn-mini" id="btn-mt-refresh">Refresh all</button>
+              <button type="button" class="btn-mini primary" id="btn-mt-open-grok">Open Grok</button>
+              <button type="button" class="btn-mini primary" id="btn-mt-open-term">Open Grok Terminal</button>
+              <button type="button" class="btn-mini" id="btn-mt-close" title="Close multi-terminal">✕</button>
+            </div>
+          </div>
+          <div class="multi-term-tabs" id="multi-term-tabs" role="tablist"></div>
+          <div class="multi-term-grid" id="multi-term-grid"></div>
+        </section>
+
+        <!-- Docs panel -->
+        <div class="content-wrap" id="panel-docs" data-mode="docs">
+          <article class="article" id="article">
+            <p class="status">Loading lab…</p>
+          </article>
+        </div>
+
+        <!-- Notes · main + right Inspect/Search/Ask column (history-style) -->
+        <section class="tool-panel" data-mode="notes" id="panel-notes">
+          <div class="tool-head">
+            <h2>Notes · iterative surface</h2>
+            <span class="spacer"></span>
+            <button type="button" class="btn-mini" id="btn-note-md">+ MD</button>
+            <button type="button" class="btn-mini" id="btn-note-code">+ Code</button>
+            <button type="button" class="btn-mini primary" id="btn-note-funnel">▶ Funnel</button>
+            <button type="button" class="btn-mini" id="btn-note-export">Export .md</button>
+          </div>
+          <div class="notes-layout">
+            <div class="notes-main">
+              <div class="notes-toolbar">
+                <span class="pill">drag cells to reorder · funnel = row-major with prev</span>
+              </div>
+              <div class="note-cells" id="note-cells"></div>
+            </div>
+            <aside class="notes-rail" aria-label="Inspect Search Ask">
+              <div class="panel-card rail-card">
+                <h3>Inspect</h3>
+                <div class="rail-tabs">
+                  <button type="button" class="btn-mini rail-tab active" data-rail="inspect">Inspect</button>
+                  <button type="button" class="btn-mini rail-tab" data-rail="search">Search</button>
+                  <button type="button" class="btn-mini rail-tab" data-rail="ask">Ask</button>
+                </div>
+                <div class="rail-pane active" id="notes-inspect">
+                  <p class="rail-muted" id="notes-inspect-empty">Select a cell to inspect</p>
+                  <div id="notes-inspect-body" hidden>
+                    <p><span class="pill" id="notes-inspect-kind">md</span></p>
+                    <pre class="rail-pre" id="notes-inspect-meta"></pre>
+                    <pre class="rail-pre" id="notes-inspect-preview"></pre>
+                  </div>
+                </div>
+                <div class="rail-pane" id="notes-search" hidden>
+                  <input
+                    type="search"
+                    id="notes-search-input"
+                    class="rail-input"
+                    placeholder="Search notes…"
+                    autocomplete="off"
+                  />
+                  <ul class="rail-results" id="notes-search-results"></ul>
+                </div>
+                <div class="rail-pane" id="notes-ask" hidden>
+                  <textarea
+                    id="notes-ask-input"
+                    class="rail-input"
+                    rows="3"
+                    placeholder="Ask about selection / notes…"
+                  ></textarea>
+                  <button type="button" class="btn-mini primary" id="notes-ask-run">Ask</button>
+                  <pre class="rail-pre" id="notes-ask-out">Local ask — uses selected cell + funnel prev context.</pre>
+                </div>
+              </div>
+              <div class="panel-card rail-card">
+                <h3>Selection</h3>
+                <p class="rail-muted" id="notes-sel-label">none</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- Data table + section rearrange -->
+        <section class="tool-panel" data-mode="table" id="panel-table">
+          <div class="tool-head">
+            <h2>Pad · data table</h2>
+            <span class="spacer"></span>
+            <button type="button" class="btn-mini" id="btn-dt-add-row">+ Row</button>
+            <button type="button" class="btn-mini" id="btn-dt-add-col">+ Col</button>
+            <button type="button" class="btn-mini" id="btn-dt-csv">Export CSV</button>
+            <button type="button" class="btn-mini" id="btn-dt-json">Export JSON</button>
+          </div>
+          <div class="tool-grid">
+            <div class="panel-card">
+              <h3>Editable grid</h3>
+              <div class="dt-wrap" id="dt-table"></div>
+            </div>
+            <div class="panel-card">
+              <h3>Rearrange doc sections</h3>
+              <p style="font-size:0.75rem;color:var(--text-dim)">Drag to reorder · edit titles · saved locally</p>
+              <ul class="section-list" id="section-list"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- X desk -->
+        <section class="tool-panel" data-mode="xdesk" id="panel-xdesk">
+          <div class="tool-head">
+            <h2>X desk · articles · code · discussions</h2>
+            <span class="spacer"></span>
+            <button type="button" class="btn-mini primary" id="btn-x-add">Add</button>
+            <button type="button" class="btn-mini" id="btn-x-export">Export JSON</button>
+          </div>
+          <div class="panel-card x-compose">
+            <select id="x-kind">
+              <option value="article">article</option>
+              <option value="code">code</option>
+              <option value="discussion">discussion</option>
+            </select>
+            <input id="x-title" type="text" placeholder="Title" />
+            <input id="x-url" type="url" placeholder="https://x.com/… or article URL" />
+            <textarea id="x-body" placeholder="Body · code · discussion notes"></textarea>
+          </div>
+          <div class="panel-card">
+            <h3>Table</h3>
+            <div class="dt-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Kind</th>
+                    <th>Title</th>
+                    <th>Preview</th>
+                    <th>Link</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="x-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Broadcast (burst → X) -->
+        <section class="tool-panel" data-mode="broadcast" id="panel-broadcast">
+          <div class="tool-head">
+            <h2>Broadcast · X Spaces + RTMP</h2>
+            <span class="spacer"></span>
+            <a class="btn-mini" href="http://127.0.0.1:8766/burst.html" target="_blank" rel="noopener">Open burst.html</a>
+          </div>
+          <div class="bcast-grid">
+            <div class="panel-card">
+              <h3>Space · bind &amp; seat</h3>
+              <label>Space URL
+                <input id="space-url" type="url" spellcheck="false"
+                  value="https://x.com/i/spaces/1AJEmmANrPeJL?s=20" />
+              </label>
+              <div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin:0.4rem 0">
+                <button type="button" class="btn-mini primary" id="btn-space-apply">Bind</button>
+                <button type="button" class="btn-mini" id="btn-space-open">Open on X</button>
+              </div>
+              <p id="space-meta" style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim)">unbound</p>
+              <p style="font-size:0.75rem;color:var(--text-dim)">
+                Full stage (hosts · speakers · listeners) runs on
+                <a href="http://127.0.0.1:8766/burst.html" target="_blank" rel="noopener">burst.html</a>.
+                CLI: <code>gy burst</code> · <code>gy space mute all</code>
+              </p>
+            </div>
+            <div class="panel-card">
+              <h3>RTMP · Media Studio producer</h3>
+              <label>Protocol
+                <select id="rtmp-proto">
+                  <option value="rtmps" selected>RTMPS</option>
+                  <option value="rtmp">RTMP</option>
+                </select>
+              </label>
+              <p style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);margin:0.35rem 0">Ingest base</p>
+              <div id="rtmp-base" style="font-family:var(--mono);font-size:0.78rem">rtmps://ca.pscp.tv:443/x</div>
+              <label style="margin-top:0.45rem">Stream key
+                <input id="rtmp-key" type="password" autocomplete="off" placeholder="available when ready" />
+              </label>
+              <label>Token (GY_SPACE_TOKEN)
+                <input id="space-token" type="password" placeholder="optional auto-pull" />
+              </label>
+              <div style="display:flex;gap:0.35rem;margin-top:0.45rem;flex-wrap:wrap">
+                <button type="button" class="btn-mini primary" id="btn-key-pull">Auto-pull key</button>
+              </div>
+              <p class="rtmp-status wait" id="rtmp-status" style="font-family:var(--mono);font-size:0.72rem;margin-top:0.45rem">stream key available when ready</p>
+              <code class="rtmp-cmd" id="rtmp-cmd"></code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Version history · timeline + right inspect/search/ask -->
+        <section class="tool-panel" data-mode="history" id="panel-history">
+          <div class="tool-head">
+            <h2>Version history</h2>
+            <span class="spacer"></span>
+            <select id="hist-repo" class="btn-mini" style="padding:0.3rem 0.4rem">
+              <option value="grok-build">grok-build</option>
+              <option value="gy">GrokYtalkY</option>
+            </select>
+            <button type="button" class="btn-mini primary" id="btn-hist-refresh">Refresh</button>
+          </div>
+          <div class="history-layout">
+            <div class="history-main panel-card">
+              <h3>HEAD <span id="hist-head">—</span></h3>
+              <p style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim)" id="hist-repo-path"></p>
+              <!-- Full scrub strip (mueee history.html parity: drag pan · wheel zoom · click select) -->
+              <div class="hist-timeline-wrap hist-timeline-panel">
+                <div class="hist-timeline-chrome">
+                  <span class="hist-slider-label">scrub timeline</span>
+                  <span class="hist-slider-meta" id="hist-slider-panel-meta">—</span>
+                  <span class="hist-tl-hint">drag · wheel · click</span>
+                  <div class="hist-tl-zoom">
+                    <button type="button" class="btn-mini" data-hist-zoom="out" title="Zoom out">−</button>
+                    <button type="button" class="btn-mini" data-hist-zoom="in" title="Zoom in">+</button>
+                    <button type="button" class="btn-mini" data-hist-zoom="reset" title="Fit all">↺</button>
+                  </div>
+                </div>
+                <div class="hist-timeline-strip" id="hist-timeline-panel">
+                  <canvas id="hist-timeline-canvas-panel" aria-label="Version history timeline"></canvas>
+                  <span class="hist-tl-hover" id="hist-tl-hover-panel" hidden></span>
+                  <div class="hist-tl-playhead" aria-hidden="true"></div>
+                </div>
+                <!-- Fallback fine control (optional range still synced) -->
+                <input
+                  type="range"
+                  class="hist-slider hist-slider-fine"
+                  id="hist-slider-panel"
+                  min="0"
+                  max="0"
+                  value="0"
+                  aria-label="Fine scrub"
+                />
+              </div>
+              <ul class="hist-list" id="hist-list"></ul>
+            </div>
+            <aside class="notes-rail" aria-label="History inspect">
+              <div class="panel-card rail-card">
+                <h3>Inspect · Search · Ask</h3>
+                <div class="rail-tabs">
+                  <button type="button" class="btn-mini rail-tab active" data-hrail="inspect">Inspect</button>
+                  <button type="button" class="btn-mini rail-tab" data-hrail="search">Search</button>
+                  <button type="button" class="btn-mini rail-tab" data-hrail="ask">Ask</button>
+                </div>
+                <div class="rail-pane active" id="hist-inspect">
+                  <p class="rail-muted" id="hist-inspect-empty">
+                    Scrub the timeline (drag / wheel / click) or pick a commit
+                  </p>
+                  <div id="hist-inspect-body" hidden>
+                    <p><span class="pill" id="hist-inspect-hash">—</span></p>
+                    <pre class="rail-pre" id="hist-inspect-meta"></pre>
+                    <pre class="rail-pre" id="hist-inspect-subject"></pre>
+                  </div>
+                </div>
+                <div class="rail-pane" id="hist-search" hidden>
+                  <input type="search" id="hist-search-input" class="rail-input" placeholder="Search commits…" />
+                  <ul class="rail-results" id="hist-search-results"></ul>
+                </div>
+                <div class="rail-pane" id="hist-ask" hidden>
+                  <textarea id="hist-ask-input" class="rail-input" rows="3" placeholder="Ask about this commit…"></textarea>
+                  <button type="button" class="btn-mini primary" id="hist-ask-run">Ask</button>
+                  <pre class="rail-pre" id="hist-ask-out">Local summary of selected commit metadata.</pre>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Siri-style floating walkie burst (hover · drag · hold to TX) -->
+    <div
+      class="siri-burst"
+      id="siri-burst"
+      data-mode="idle"
+      aria-label="Floating walkie burst · hover like Siri"
+    >
+      <div class="siri-burst-aura" aria-hidden="true"></div>
+      <div class="siri-burst-shell">
+        <div
+          class="burst-orb siri-orb"
+          id="siri-burst-orb"
+          role="button"
+          aria-label="Hold to walkie burst · drag to move"
+          tabindex="0"
+        >
+          <img
+            class="orb-logo"
+            src="assets/brand/grok-logomark-light.svg"
+            alt=""
+            width="176"
+            height="176"
+            draggable="false"
+          />
+          <video
+            class="orb-cam"
+            id="siri-cam-video"
+            playsinline
+            muted
+            autoplay
+            disablepictureinpicture
+            aria-hidden="true"
+          ></video>
+          <canvas class="ring" id="siri-ring-canvas" width="176" height="176"></canvas>
+          <canvas class="face" id="siri-face-canvas" width="25" height="25"></canvas>
+          <span class="orb-label" id="siri-orb-label">hey</span>
+        </div>
+        <div class="siri-burst-panel" id="siri-burst-panel">
+          <p class="siri-burst-status" id="siri-burst-status">Grok walkie · hold to talk</p>
+          <div class="siri-burst-actions">
+            <button type="button" class="btn-mini primary" id="siri-btn-hold">Hold</button>
+            <button type="button" class="btn-mini" id="siri-btn-cam" title="Camera">Cam</button>
+            <button type="button" class="btn-mini" id="siri-btn-listen" title="Toggle Listen">Listen</button>
+            <button type="button" class="btn-mini" id="siri-btn-dock" title="Snap to center of page">Center</button>
+            <button type="button" class="btn-mini" id="siri-btn-hide" title="Hide floating burst">✕</button>
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="siri-burst-peek"
+        id="siri-burst-peek"
+        hidden
+        title="Show floating walkie"
+      >
+        ◈
+      </button>
+    </div>
+
+    <!-- Global process terminal — full viewport width, below left column + main -->
+    <footer
+      class="term-footer"
+      id="term-footer"
+      aria-label="Process terminal"
+    >
+      <div class="term-footer-bar">
+        <button
+          type="button"
+          class="term-footer-toggle"
+          id="btn-term-toggle"
+          aria-expanded="true"
+          title="Collapse / expand terminal"
+        >
+          <img
+            class="term-toggle-logo"
+            src="assets/brand/spacexai-symbol-white-transparent.svg"
+            width="56"
+            height="22"
+            alt="SpaceXAI"
+            draggable="false"
+          />
+          <span class="term-toggle-chevron" id="term-toggle-chevron" aria-hidden="true">▾</span>
+        </button>
+        <span class="term-footer-label">dev terminal</span>
+        <span class="term-footer-stat" id="term-footer-stat">—</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn-mini" id="btn-term-refresh">Refresh</button>
+        <button type="button" class="btn-mini" id="btn-term-poll">Auto-poll</button>
+        <button type="button" class="btn-mini primary" id="btn-mit-ffmpeg">Kill ffmpeg</button>
+        <button type="button" class="btn-mini primary" id="btn-mit-grok" title="Summon Grok · open multi-terminals">
+          Summon grok
+        </button>
+        <button type="button" class="btn-mini" id="btn-open-mt" title="Show multi-terminals">
+          Multi-term
+        </button>
+      </div>
+      <div class="term-footer-body" id="term-footer-body">
+        <div class="term-footer-grid">
+          <div class="term-out" id="term-out">starting…</div>
+          <div class="term-footer-errors">
+            <h3>Errors · mitigations</h3>
+            <ul class="err-list" id="term-errors"></ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

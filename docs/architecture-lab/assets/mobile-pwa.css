@@ -1,0 +1,170 @@
+/* Mobile / PWA / mesh affordances */
+
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: var(--ptr, 0px);
+  max-height: 120px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  background: linear-gradient(180deg, rgba(110, 203, 255, 0.12), transparent);
+}
+
+.ptr-indicator.show {
+  opacity: 1;
+}
+
+.ptr-indicator #ptr-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  padding: 0.35rem 0.75rem 0.5rem;
+}
+
+.ptr-indicator.ready #ptr-label {
+  color: var(--ok);
+}
+
+/* Mesh collab chip under title / walkie */
+.mesh-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0e0e14;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.mesh-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3f3f46;
+  flex-shrink: 0;
+}
+
+.mesh-dot.on {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+}
+
+.mesh-dot.live {
+  background: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.mesh-status #mesh-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pins gated until collab */
+.glyph-pin-rail-bar.pins-gated {
+  min-height: 2.2rem;
+}
+
+.glyph-pin-idle-msg {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  padding: 0.25rem 0.15rem;
+  opacity: 0.9;
+}
+
+body.pins-idle .glyph-pin-live {
+  display: none !important;
+}
+
+body.pins-live .glyph-pin-idle-msg {
+  display: none !important;
+}
+
+body.pins-live .glyph-pin-live {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  width: 100%;
+}
+
+.glyph-pin-live {
+  display: none;
+  width: 100%;
+}
+
+.pwa-install-chip {
+  appearance: none;
+  border: 1px solid rgba(110, 203, 255, 0.4);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+/* Safe area for notched phones when standalone */
+@supports (padding: env(safe-area-inset-top)) {
+  .app-tabs {
+    padding-top: max(0.45rem, env(safe-area-inset-top));
+  }
+  .sidebar {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+  }
+  .article,
+  .note-cell textarea,
+  .dt-wrap td,
+  .x-compose input,
+  .x-compose textarea {
+    user-select: text;
+  }
+}
+
+/* Touch targets */
+@media (pointer: coarse) {
+  .app-tab,
+  .btn-mini,
+  .nav-item {
+    min-height: 2.25rem;
+  }
+  .burst-stage-mini {
+    width: 96px;
+    height: 96px;
+  }
+}

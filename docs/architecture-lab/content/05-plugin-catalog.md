@@ -1,0 +1,61 @@
+# Plugin catalog
+
+Ideas and real plugins mapped to Grok Build surfaces.
+
+## In play
+
+| Plugin | Bundle | Role |
+|--------|--------|------|
+| **gy-glyph-pins** | skills · commands · hooks | Multi-user mesh pins above Grok; `/glyph-pins`, `/with-grok` |
+| **cloudflare** | marketplace skills | Workers / CF platform (official marketplace) |
+
+Install path for GY:
+
+```text
+~/.grok/plugins/gy-glyph-pins
+# source of truth often:
+#   ~/Projects/GrokYtalkY/grok-plugin/gy-glyph-pins
+```
+
+## Build next (high value)
+
+| Plugin | Bundle | Why |
+|--------|--------|-----|
+| **gy-mesh-ops** | skills · commands · hooks | Hub doctor, room join, mesh allowlist |
+| **security-fence** | hooks | Deny `rm -rf`, secret dumps, unscoped pipes |
+| **repo-ship** | skills · hooks | `/ship`; PostToolUse fmt/test |
+| **review-gate** | agents · hooks | Review subagent; Stop → ticket MCP |
+| **dojo-colossus** | skills · agents · MCP | Cluster jobs, GPU queue, log tail |
+| **design-loop** | skills · agents | `/design` + plan agent |
+| **mcp-browser-lab** | `.mcp.json` | Playwright verify after UI edits |
+| **mcp-data** | `.mcp.json` | Postgres / Notion / Jira tools |
+| **lsp-rust-suite** | `.lsp.json` | rust-analyzer (+ gopls, …) |
+| **ci-babysit** | skills · commands | PR CI poll / restack notes |
+| **voice-walkie** | skills · hooks | GY burst status into SessionStart |
+| **theme-team** | commands | Shared config/theme snippets |
+
+## Scoring rubric (riff here)
+
+When evaluating a plugin idea, score 1–5:
+
+| Axis | Question |
+|------|----------|
+| **ROI** | Saves repeated prompt/tool pain? |
+| **Fit** | Uses existing surfaces (not a core fork)? |
+| **Trust** | Safe as user vs project plugin? |
+| **Ops** | Easy to install/update/document? |
+| **Compose** | Plays with GY / MCP / subagents? |
+
+## Anti-patterns
+
+- Reimplementing mesh chat inside Grok (keep in GY)  
+- Baking SaaS APIs into Rust core (use MCP)  
+- Giant always-on skills that bloat every session (prefer on-demand)  
+- Hooks that block everything without escape hatch  
+
+## Catalog backlog (edit me)
+
+- [ ] security-fence v0.1  
+- [ ] repo-ship fmt hook  
+- [ ] internal jobs MCP  
+- [ ] team marketplace `plugin-index.json`  

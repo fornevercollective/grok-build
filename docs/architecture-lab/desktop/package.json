@@ -1,0 +1,59 @@
+{
+  "name": "architecture-lab-desktop",
+  "productName": "Architecture Lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone Mac/Windows app shell for Grok Build Architecture Lab",
+  "main": "main.js",
+  "author": "local lab",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "start:float": "LAB_WINDOW_MODE=float electron .",
+    "start:lab": "LAB_WINDOW_MODE=lab electron .",
+    "dev": "LAB_DEBUG=1 electron .",
+    "pack:mac": "electron-builder --mac dir",
+    "dist:mac": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ai.x.architecture-lab",
+    "productName": "Architecture Lab",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "..",
+        "to": "lab",
+        "filter": [
+          "**/*",
+          "!desktop/**",
+          "!**/node_modules/**"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "dir"
+      ],
+      "icon": "icon.icns",
+      "darkModeSupport": true,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Architecture Lab"
+    }
+  }
+}

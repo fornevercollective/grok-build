@@ -1,0 +1,15 @@
+{
+  "name": "grok-build-architecture-lab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local static docs lab for Grok Build architecture, plugins, and leverage",
+  "scripts": {
+    "start": "bash ./serve.sh",
+    "serve": "bash ./serve.sh",
+    "desktop": "bash ./native/launch.sh float",
+    "desktop:lab": "bash ./native/launch.sh lab",
+    "desktop:tui": "bash ./native/launch.sh tui",
+    "desktop:app": "bash ./native/build-mac-app.sh",
+    "desktop:electron": "ARCH_LAB_FORCE_ELECTRON=1 bash ./desktop/launch-mac.sh"
+  }
+}

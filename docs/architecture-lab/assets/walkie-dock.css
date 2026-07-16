@@ -1,0 +1,948 @@
+/* Walkie burst (sidebar top-left, ABOVE title) + Glyph pins (topbar right of filter) */
+
+.walkie-burst-only {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(110, 203, 255, 0.08), transparent 55%),
+    #0e0e14;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Glyph pins in topbar (right of filter nav) ── */
+.glyph-pin-rail-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(520px, 46vw);
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0e0e14;
+}
+
+.glyph-pin-rail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  width: 100%;
+}
+
+.glyph-pin-rail-head strong {
+  color: var(--accent);
+}
+
+.glyph-pin-chat-hint {
+  color: var(--accent-2);
+  font-size: 0.62rem;
+}
+
+.glyph-pin-rail-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.glyph-pin-rail-actions .btn-mini {
+  font-size: 0.62rem;
+  padding: 0.15rem 0.35rem;
+  min-width: 1.5rem;
+}
+
+.glyph-pin-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  align-items: flex-start;
+  overflow-x: auto;
+  max-width: 100%;
+  padding-bottom: 0.1rem;
+}
+
+.glyph-pin-status-inline {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.gpin {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  width: 46px;
+  padding: 0.2rem 0.1rem 0.25rem;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: #0a0a10;
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  flex-shrink: 0;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+.gpin:hover {
+  border-color: rgba(110, 203, 255, 0.35);
+}
+
+.gpin.focus {
+  border-color: rgba(110, 203, 255, 0.7);
+  box-shadow: 0 0 0 1px rgba(110, 203, 255, 0.2), 0 0 16px rgba(110, 203, 255, 0.12);
+}
+
+.gpin.locked {
+  border-color: rgba(167, 139, 250, 0.75);
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.15);
+}
+
+.gpin.tx {
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.gpin-canvas {
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
+  image-rendering: pixelated;
+  background: #050508;
+  display: block;
+}
+
+.gpin-nick {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  max-width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.gpin.focus .gpin-nick {
+  color: var(--accent);
+}
+
+.gpin.locked .gpin-nick {
+  color: var(--accent-2);
+}
+
+.gpin-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--danger);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  line-height: 13px;
+  text-align: center;
+}
+
+/* ── Walkie burst orb (sidebar) ── */
+.walkie-burst-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.burst-stage-mini {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+}
+
+.burst-orb {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Dark disc; Grok logomark paints the circle face */
+  background: radial-gradient(circle at 50% 45%, #1a1a1f 0%, #0a0a0a 72%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 10px 28px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.burst-orb.tx {
+  border-color: rgba(248, 113, 113, 0.7);
+  box-shadow: 0 0 28px rgba(248, 113, 113, 0.22);
+  transform: scale(1.03);
+}
+
+/* Official Grok mark fills the circular bg (exact SVG) */
+.burst-orb .orb-logo {
+  position: absolute;
+  inset: 12%;
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.92;
+  /* keep mark crisp inside the disc */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  transition: opacity 0.2s ease;
+}
+
+.burst-orb.tx .orb-logo {
+  opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.25));
+}
+
+/* Live camera — full-bleed circular crop, mirrored selfie */
+.burst-orb .orb-cam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transform: scaleX(-1);
+  background: #050508;
+  transition: opacity 0.2s ease;
+}
+
+.burst-orb.cam-on .orb-cam {
+  opacity: 1;
+}
+
+.burst-orb.cam-on .orb-logo {
+  opacity: 0.12;
+  filter: drop-shadow(0 0 6px rgba(110, 203, 255, 0.2));
+}
+
+.burst-orb.cam-on {
+  border-color: rgba(110, 203, 255, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(110, 203, 255, 0.15),
+    0 0 22px rgba(110, 203, 255, 0.18);
+}
+
+.burst-orb.cam-on.tx {
+  border-color: rgba(248, 113, 113, 0.75);
+  box-shadow: 0 0 28px rgba(248, 113, 113, 0.28);
+}
+
+/* Glyph face pin (optional overlay when cam; smaller corner badge) */
+.burst-orb canvas.face {
+  position: absolute;
+  inset: 28%;
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  image-rendering: pixelated;
+  background: rgba(5, 5, 8, 0.55);
+  z-index: 2;
+  opacity: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: opacity 0.15s ease;
+}
+
+/* When cam is live, glyph face becomes a small HUD corner (mesh-style) */
+.burst-orb.cam-on canvas.face {
+  inset: auto;
+  right: 6%;
+  bottom: 18%;
+  width: 28%;
+  height: 28%;
+  opacity: 0.92;
+  border: 1px solid rgba(110, 203, 255, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* TX without cam — full center synth face */
+.burst-orb.tx:not(.cam-on) canvas.face {
+  opacity: 0.9;
+}
+
+.burst-orb canvas.ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.burst-orb .orb-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8%;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  pointer-events: none;
+  z-index: 4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.burst-orb.cam-on .orb-label {
+  color: var(--accent);
+  background: rgba(5, 5, 8, 0.45);
+  border-radius: 4px;
+  margin: 0 18%;
+  padding: 0.05rem 0;
+}
+
+.burst-orb.tx .orb-label {
+  color: #f87171;
+}
+
+.walkie-burst-side {
+  flex: 1;
+  min-width: 0;
+}
+
+.burst-meta {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin: 0 0 0.4rem;
+}
+
+.burst-meta em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.burst-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.btn-mini {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 0.28rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.btn-mini:hover {
+  color: var(--text);
+  border-color: rgba(110, 203, 255, 0.4);
+}
+
+.btn-mini.primary {
+  background: var(--accent-soft);
+  border-color: rgba(110, 203, 255, 0.35);
+  color: var(--accent);
+}
+
+.btn-mini.primary:hover {
+  color: var(--text);
+}
+
+.walkie-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.6rem;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  opacity: 0.8;
+  line-height: 1.35;
+}
+
+:root {
+  --sidebar-w: 280px;
+}
+
+/* ── Active listening (hey grok) — top-left, right of Grok logo ── */
+.listen-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.sidebar-brand-row .listen-status {
+  max-width: 4.5rem;
+}
+
+.sidebar-brand-row .listen-toggle {
+  white-space: nowrap;
+}
+
+.listen-toggle.active {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: var(--ok);
+}
+
+.listen-status {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listen-status.on {
+  color: var(--ok);
+}
+
+.listen-status.hot {
+  color: var(--accent-2);
+}
+
+.listen-status.err {
+  color: var(--danger);
+}
+
+body.listen-active .listen-bar {
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.15);
+  border-radius: 8px;
+  padding: 0.1rem 0.2rem;
+}
+
+/* ── Voice readout under logo — only after Listen summoned ── */
+.voice-readout {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.35rem 0.15rem;
+  border-radius: 10px;
+  background: #080a0f;
+  border: 1px solid var(--border);
+  display: none;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.voice-readout:not([hidden]) {
+  display: flex;
+}
+
+body:not(.listen-active) .voice-readout {
+  display: none !important;
+}
+
+body.listen-active .voice-readout {
+  border-color: rgba(110, 203, 255, 0.28);
+  box-shadow: inset 0 0 20px rgba(110, 203, 255, 0.04);
+}
+
+body.voice-talking .voice-readout {
+  border-color: rgba(110, 203, 255, 0.45);
+  box-shadow:
+    inset 0 0 24px rgba(110, 203, 255, 0.08),
+    0 0 12px rgba(110, 203, 255, 0.08);
+}
+
+.voice-level {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+  padding: 0 0.1rem;
+}
+
+.voice-level i {
+  display: block;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: #1a1e28;
+  transition: height 0.06s ease, background 0.08s;
+}
+
+.voice-level i.on {
+  height: calc(4px + var(--h, 0.4) * 12px);
+  background: linear-gradient(
+    180deg,
+    rgba(110, 203, 255, 0.95),
+    rgba(74, 222, 128, 0.65)
+  );
+}
+
+.voice-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.1rem;
+}
+
+.voice-heard,
+.voice-intent {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--text);
+  word-break: break-word;
+  min-height: 1.1em;
+}
+
+.voice-heard.interim {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.voice-heard.empty {
+  color: var(--text-dim);
+}
+
+.voice-intent.hit {
+  color: #4ade80;
+}
+
+.voice-intent.hot {
+  color: var(--accent);
+}
+
+.voice-intent.miss {
+  color: var(--text-dim);
+}
+
+.voice-intent.err {
+  color: #f87171;
+}
+
+.voice-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.voice-chip {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #101218;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.voice-chip:hover {
+  color: var(--text);
+  border-color: rgba(110, 203, 255, 0.35);
+}
+
+.voice-chip.primary {
+  color: var(--accent);
+  border-color: rgba(110, 203, 255, 0.4);
+  background: var(--accent-soft);
+}
+
+.voice-turns {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  max-height: 4.8rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.voice-turns li {
+  display: grid;
+  grid-template-columns: 3.4rem 1fr;
+  gap: 0.15rem 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  padding: 0.15rem 0.2rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.voice-turns li .vt-intent {
+  grid-column: 2;
+  color: var(--accent);
+}
+
+.voice-turns li.ok .vt-intent {
+  color: #4ade80;
+}
+
+.voice-turns li.miss .vt-intent {
+  color: var(--text-dim);
+}
+
+.voice-turns .vt-heard {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.55rem;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.voice-hint a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.voice-hint a:hover {
+  text-decoration: underline;
+}
+
+body.grok-summoned {
+  animation: summon-flash 0.9s ease;
+}
+
+@keyframes summon-flash {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(110, 203, 255, 0);
+  }
+  30% {
+    box-shadow: inset 0 0 80px 0 rgba(110, 203, 255, 0.12);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(110, 203, 255, 0);
+  }
+}
+
+.summon-toast {
+  position: fixed;
+  top: 3.6rem;
+  right: 1.25rem;
+  z-index: 40;
+  max-width: min(360px, 90vw);
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(110, 203, 255, 0.35);
+  background: rgba(18, 20, 26, 0.95);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.18s, transform 0.18s;
+  pointer-events: none;
+}
+
+.summon-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 1100px) {
+  .glyph-pin-rail-bar {
+    max-width: 100%;
+    order: 5;
+    flex-basis: 100%;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 860px) {
+  .walkie-burst-only {
+    margin-bottom: 0.65rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Siri-style floating walkie burst (hover · drag · hold)
+   ═══════════════════════════════════════════════════════════ */
+
+.siri-burst {
+  /* Center of page by default (left/top + translate); drag overrides via inline left/top */
+  --siri-size: 72px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 80;
+  width: var(--siri-size);
+  height: var(--siri-size);
+  pointer-events: none;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.siri-burst.siri-positioned {
+  /* After user drag: use absolute left/top without centering transform on the dock */
+  transform: none;
+}
+
+.siri-burst:not(.siri-hidden) {
+  pointer-events: auto;
+}
+
+.siri-burst.siri-hidden {
+  width: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.siri-burst.siri-hidden .siri-burst-shell {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.4);
+}
+
+.siri-burst-aura {
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    rgba(110, 203, 255, 0.55),
+    rgba(167, 139, 250, 0.5),
+    rgba(248, 113, 113, 0.45),
+    rgba(74, 222, 128, 0.5),
+    rgba(110, 203, 255, 0.55)
+  );
+  filter: blur(18px);
+  opacity: 0.35;
+  animation: siri-spin 8s linear infinite;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  z-index: 0;
+}
+
+@keyframes siri-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.siri-burst-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+}
+
+/* Core orb — larger than sidebar mini */
+.siri-burst .siri-orb {
+  position: relative;
+  width: var(--siri-size);
+  height: var(--siri-size);
+  inset: auto;
+  flex-shrink: 0;
+  cursor: grab;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(110, 203, 255, 0.15);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease,
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.siri-burst .siri-orb:active {
+  cursor: grabbing;
+}
+
+/* Hover like Siri — expand, brighter aura, float up slightly */
+.siri-burst.siri-hover,
+.siri-burst:hover,
+.siri-burst.siri-expanded {
+  --siri-size: 108px;
+}
+
+.siri-burst.siri-hover .siri-burst-aura,
+.siri-burst:hover .siri-burst-aura,
+.siri-burst.siri-expanded .siri-burst-aura {
+  opacity: 0.75;
+  filter: blur(22px);
+  inset: -55%;
+}
+
+.siri-burst.siri-hover .siri-orb,
+.siri-burst:hover .siri-orb,
+.siri-burst.siri-expanded .siri-orb {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 0 0 1px rgba(110, 203, 255, 0.35),
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 60px rgba(110, 203, 255, 0.28),
+    0 0 90px rgba(167, 139, 250, 0.18);
+}
+
+/* Centered dock: keep shell transform independent of dock centering */
+.siri-burst:not(.siri-positioned).siri-hover,
+.siri-burst:not(.siri-positioned):hover,
+.siri-burst:not(.siri-positioned).siri-expanded {
+  transform: translate(-50%, -50%);
+}
+
+/* Listening / voice reactive */
+body.listen-active .siri-burst .siri-burst-aura {
+  opacity: 0.65;
+  animation-duration: 5s;
+}
+
+body.voice-talking .siri-burst .siri-burst-aura {
+  opacity: 0.9;
+  animation-duration: 2.2s;
+  filter: blur(26px);
+}
+
+body.voice-talking .siri-burst .siri-orb {
+  box-shadow:
+    0 0 0 2px rgba(110, 203, 255, 0.5),
+    0 0 48px rgba(110, 203, 255, 0.4),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.siri-burst .siri-orb.tx {
+  transform: scale(1.06);
+  border-color: rgba(248, 113, 113, 0.8);
+  box-shadow:
+    0 0 0 2px rgba(248, 113, 113, 0.5),
+    0 0 50px rgba(248, 113, 113, 0.35),
+    0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+.siri-burst .siri-orb.tx .orb-label {
+  color: #f87171;
+}
+
+/* Expand panel under orb on hover (Siri chrome) */
+.siri-burst-panel {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transform: translateY(8px) scale(0.92);
+  transform-origin: top center;
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.35s ease;
+  min-width: 200px;
+  padding: 0;
+  border-radius: 16px;
+  background: rgba(14, 16, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.siri-burst.siri-hover .siri-burst-panel,
+.siri-burst:hover .siri-burst-panel,
+.siri-burst.siri-expanded .siri-burst-panel,
+.siri-burst.siri-pinned .siri-burst-panel {
+  opacity: 1;
+  max-height: 120px;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  padding: 0.55rem 0.65rem 0.6rem;
+}
+
+.siri-burst-status {
+  margin: 0 0 0.4rem;
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.62rem;
+  color: var(--text-dim, #9aa3b5);
+  text-align: center;
+  line-height: 1.35;
+}
+
+.siri-burst-status em {
+  color: var(--accent, #6ecbff);
+  font-style: normal;
+}
+
+.siri-burst-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+/* Peek FAB when floating burst is hidden */
+.siri-burst-peek {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--term-footer-h, 200px) + 16px);
+  z-index: 81;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(110, 203, 255, 0.35);
+  background: rgba(14, 16, 22, 0.9);
+  color: var(--accent, #6ecbff);
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.siri-burst.siri-hidden .siri-burst-peek {
+  display: flex;
+}
+
+.siri-burst-peek:hover {
+  border-color: rgba(110, 203, 255, 0.6);
+  box-shadow: 0 0 24px rgba(110, 203, 255, 0.25);
+  transform: scale(1.06);
+}
+
+/* Dragging */
+.siri-burst.siri-dragging {
+  transition: none;
+}
+
+.siri-burst.siri-dragging .siri-orb {
+  transition: none;
+  cursor: grabbing;
+}
+
+@media (max-width: 640px) {
+  .siri-burst {
+    --siri-size: 64px;
+  }
+  .siri-burst.siri-hover,
+  .siri-burst:hover,
+  .siri-burst.siri-expanded {
+    --siri-size: 88px;
+  }
+}

@@ -1,0 +1,108 @@
+# Deploy Architecture Lab to GitHub Pages on every push that touches the lab
+# (and on manual workflow_dispatch). Site: https://<org>.github.io/<repo>/
+name: Deploy Architecture Lab (Pages)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "docs/architecture-lab/**"
+      - ".github/workflows/pages-architecture-lab.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-architecture-lab
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stamp deploy version + nojekyll
+        working-directory: docs/architecture-lab
+        env:
+          SHORT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          SHORT="$(echo "${SHORT}" | cut -c1-7)"
+          export SHORT
+          BUILT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          cat > version.json <<EOF
+          {
+            "ok": true,
+            "sha": "${{ github.sha }}",
+            "short": "${SHORT}",
+            "ref": "${{ github.ref_name }}",
+            "built_at": "${BUILT}",
+            "source": "github-pages",
+            "run_id": "${{ github.run_id }}",
+            "url": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          }
+          EOF
+          # Keep SW cache name in sync with deploy so clients drop stale shells
+          if [ -f sw.js ]; then
+            python3 - <<'PY'
+import pathlib, os, re
+p = pathlib.Path("sw.js")
+short = os.environ.get("SHORT") or "pages"
+text = p.read_text()
+text2 = re.sub(
+    r'const CACHE = "grok-lab-[^"]*"',
+    f'const CACHE = "grok-lab-{short}"',
+    text,
+    count=1,
+)
+p.write_text(text2)
+print("CACHE -> grok-lab-" + short)
+PY
+          fi
+          touch .nojekyll
+          ls -la version.json .nojekyll
+          cat version.json
+
+      - name: Prepare static site (exclude node_modules / target / .app)
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/architecture-lab-site
+          mkdir -p /tmp/architecture-lab-site
+          rsync -a \
+            --exclude 'desktop/node_modules' \
+            --exclude 'desktop/dist' \
+            --exclude 'desktop/*.app' \
+            --exclude 'native/target' \
+            --exclude 'native/*.app' \
+            --exclude '**/*.app' \
+            --exclude '.git' \
+            docs/architecture-lab/ /tmp/architecture-lab-site/
+          # Ensure SPA + Pages markers
+          touch /tmp/architecture-lab-site/.nojekyll
+          test -f /tmp/architecture-lab-site/index.html
+          ls -la /tmp/architecture-lab-site | head -30
+          du -sh /tmp/architecture-lab-site
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/architecture-lab-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

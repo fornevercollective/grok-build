@@ -1,0 +1,10 @@
+# Heavy / generated — never ship to git or Pages
+desktop/node_modules/
+desktop/dist/
+desktop/Architecture Lab.app/
+desktop/icon.icns
+native/target/
+native/Architecture Lab.app/
+**/Architecture Lab.app/
+*.log
+.DS_Store

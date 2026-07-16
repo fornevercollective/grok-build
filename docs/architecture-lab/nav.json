@@ -1,0 +1,47 @@
+{
+  "title": "Grok Build Architecture Lab",
+  "subtitle": "Map · plugins · leverage · riff zone",
+  "home": "00-overview",
+  "sections": [
+    {
+      "title": "Start here",
+      "items": [
+        { "id": "00-overview", "label": "Overview" },
+        { "id": "01-architecture", "label": "System architecture" },
+        { "id": "02-runtime-modes", "label": "Runtime modes" },
+        { "id": "03-crate-layers", "label": "Crate layers & turn flow" }
+      ]
+    },
+    {
+      "title": "Extend",
+      "items": [
+        { "id": "04-extension-surfaces", "label": "Extension surfaces" },
+        { "id": "05-plugin-catalog", "label": "Plugin catalog" },
+        { "id": "06-plugin-anatomy", "label": "Plugin anatomy" }
+      ]
+    },
+    {
+      "title": "Leverage",
+      "items": [
+        { "id": "07-leverage", "label": "How to leverage further" },
+        { "id": "08-decision-guide", "label": "Decision guide" },
+        { "id": "09-roadmap", "label": "Roadmap & riff backlog" }
+      ]
+    },
+    {
+      "title": "Companions",
+      "items": [
+        { "id": "10-gy-companion", "label": "GrokYtalkY companion" },
+        { "id": "11-local-stack", "label": "Local stack recipes" }
+      ]
+    },
+    {
+      "title": "Meta",
+      "items": [
+        { "id": "12-brand", "label": "SpaceXAI / Grok brand" },
+        { "id": "13-tools", "label": "Lab tools workspace" },
+        { "id": "99-contributing-docs", "label": "Riffing on these docs" }
+      ]
+    }
+  ]
+}

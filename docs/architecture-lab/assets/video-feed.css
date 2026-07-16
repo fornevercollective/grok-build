@@ -1,0 +1,327 @@
+/* ── Sidebar collapsible sections + high-res stream feed ── */
+
+.sb-section {
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+  padding: 0;
+}
+
+.sb-section > .sb-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sb-section > .sb-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sb-section > .sb-summary:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sb-chev {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  opacity: 0.7;
+  margin-right: 0.15rem;
+}
+
+.sb-section[open] > .sb-summary .sb-chev {
+  transform: rotate(45deg);
+  margin-top: -0.15rem;
+}
+
+.sb-summary-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-summary-meta {
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-dim);
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-summary-meta.live {
+  color: #4ade80;
+}
+.sb-summary-meta.hot {
+  color: #6ecbff;
+}
+.sb-summary-meta.err {
+  color: #f87171;
+}
+
+.sb-section-body {
+  padding: 0 0.35rem 0.55rem;
+}
+
+/* Nested nav section collapsibles */
+.nav-group {
+  margin: 0.15rem 0 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.nav-group > .nav-group-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.nav-group > .nav-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-group > .nav-group-summary:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.nav-group .sb-chev {
+  width: 0.45rem;
+  height: 0.45rem;
+}
+
+.nav-group-items {
+  padding: 0 0 0.15rem;
+}
+
+/* ── High-res video stage (above Architecture Lab) ── */
+.sb-video .sb-section-body {
+  padding: 0 0.4rem 0.65rem;
+}
+
+.sidebar-video {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sv-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #05060a;
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(110, 203, 255, 0.06);
+}
+
+.sv-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.sv-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.62rem;
+  color: rgba(200, 208, 220, 0.55);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(14, 16, 22, 0.2) 0%,
+    rgba(5, 6, 10, 0.55) 100%
+  );
+  transition: opacity 0.2s;
+}
+
+.sv-stage.playing .sv-overlay,
+.sv-stage.has-src .sv-overlay {
+  opacity: 0;
+}
+
+.sv-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.sv-chip {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #101218;
+  color: var(--text-dim);
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.62rem;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.sv-chip:hover {
+  color: var(--text);
+  border-color: rgba(110, 203, 255, 0.35);
+}
+
+.sv-chip.active {
+  color: var(--accent);
+  border-color: rgba(110, 203, 255, 0.45);
+  background: var(--accent-soft);
+}
+
+.sv-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sv-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  background: #0a0c10;
+  color: var(--text);
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.68rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  outline: none;
+}
+
+.sv-input:focus {
+  border-color: rgba(110, 203, 255, 0.45);
+  box-shadow: 0 0 0 2px rgba(110, 203, 255, 0.12);
+}
+
+.sv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sv-select {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #101218;
+  color: var(--text-dim);
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.65rem;
+  padding: 0.28rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  max-width: 4.5rem;
+}
+
+.sv-status {
+  margin: 0;
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.6rem;
+  line-height: 1.35;
+  color: var(--text-dim);
+  word-break: break-word;
+}
+
+.sv-status.ok {
+  color: #4ade80;
+}
+.sv-status.warn {
+  color: #fbbf24;
+}
+.sv-status.err {
+  color: #f87171;
+}
+
+.sv-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 5.5rem;
+  overflow: auto;
+}
+
+.sv-hist-item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.2rem 0.3rem;
+  border-radius: 5px;
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-hist-item:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+/* Brand lab sits under stream */
+.brand-lab {
+  padding: 0.65rem 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-lab h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+/* Compact gy brand inside collapsible */
+.sb-section .gy-brand {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding: 0.35rem 0.4rem 0.45rem;
+}
+
+/* Nested walkie inside collapsible — slightly tighter */
+.sb-section .walkie-burst-only {
+  margin: 0;
+  border: none;
+  padding: 0.15rem 0 0;
+}
+
+.sb-section .mesh-status {
+  margin: 0.15rem 0 0;
+}

@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "sha": "local",
+  "short": "local",
+  "ref": "local",
+  "built_at": "",
+  "source": "repo",
+  "note": "Overwritten on GitHub Pages deploy; local serve.sh answers /version.json live from git"
+}
