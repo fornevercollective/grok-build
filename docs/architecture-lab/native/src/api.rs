@@ -32,6 +32,9 @@ pub fn router(state: Arc<LabState>) -> Router {
         // Colossus/Dojo LTS (GOJO/DOLOSUS) path resolution
         .route("/api/lts", get(lts_status))
         .route("/api/lts/status", get(lts_status))
+        // Overview-style host AI hook (no client keys)
+        .route("/api/agent/iterate", get(agent_iterate_help).post(agent_iterate_post))
+        .route("/api/ai/iterate", get(agent_iterate_help).post(agent_iterate_post))
         // Fleet: Panda host + handoff bus (Mu-class product path)
         .route("/api/panda/open", get(panda_open_get).post(panda_open_post))
         .route("/api/panda/status", get(panda_status_get))
@@ -777,6 +780,133 @@ async fn media_tools() -> Json<Value> {
         "gy_bin": which("gy"),
         "native": true,
     }))
+}
+
+#[derive(Deserialize, Default)]
+struct IterateBody {
+    prompt: Option<String>,
+    message: Option<String>,
+    text: Option<String>,
+    role: Option<String>,
+    max_turns: Option<u32>,
+    #[serde(rename = "maxTurns")]
+    max_turns_alt: Option<u32>,
+    timeout_ms: Option<u64>,
+}
+
+async fn agent_iterate_help() -> Json<Value> {
+    Json(json!({
+        "ok": true,
+        "method": "POST",
+        "contract": "overview-onAiIterate-host-hook",
+        "body": {
+            "prompt": "string",
+            "role": "agent|plan|build|verify",
+            "max_turns": 8,
+            "timeout_ms": 120000,
+        },
+        "via": "grok -p when found; else stub",
+    }))
+}
+
+/// Host AI iterate — same contract as serve.sh / overview onAiIterate.
+async fn agent_iterate_post(Json(body): Json<IterateBody>) -> Json<Value> {
+    let prompt = body
+        .prompt
+        .or(body.message)
+        .or(body.text)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if prompt.is_empty() {
+        return Json(json!({"ok": false, "error": "empty prompt", "via": "empty"}));
+    }
+    let prompt = if prompt.len() > 12000 {
+        format!("{}…[truncated]", &prompt[..12000])
+    } else {
+        prompt
+    };
+    let role = body
+        .role
+        .unwrap_or_else(|| "agent".into())
+        .trim()
+        .to_lowercase();
+    let max_turns = body
+        .max_turns
+        .or(body.max_turns_alt)
+        .unwrap_or(8)
+        .clamp(1, 24);
+    let timeout_ms = body.timeout_ms.unwrap_or(120_000).clamp(5_000, 300_000);
+    let bin = which("grok").or_else(|| which("xai-grok-pager"));
+    let Some(bin) = bin else {
+        return Json(json!({
+            "ok": true,
+            "via": "stub",
+            "stub": true,
+            "role": role,
+            "text": format!(
+                "[stub · grok not on PATH]\nrole={role} max_turns={max_turns}\n\nPrompt:\n{}",
+                &prompt[..prompt.len().min(800)]
+            ),
+            "bin": Value::Null,
+        }));
+    };
+    let preamble = match role.as_str() {
+        "plan" => "You are α plan. Explore read-only, propose a short plan, stop for approval.",
+        "build" => "You are β build. Implement the approved plan; stay in scope.",
+        "verify" => "You are γ verify. Test and review only; report pass/fail.",
+        _ => "You are Lab center agent. Be concise; prefer actionable steps.",
+    };
+    let full = format!("{preamble}\n\nUser:\n{prompt}");
+    let max_str = max_turns.to_string();
+    let bin_c = bin.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        Command::new(&bin_c)
+            .args(["-p", &full, "--max-turns", &max_str])
+            .output()
+    })
+    .await;
+
+    match result {
+        Ok(Ok(out)) => {
+            let mut text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if text.is_empty() {
+                text = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            }
+            if text.is_empty() {
+                text = format!("(no output · exit {})", out.status.code().unwrap_or(-1));
+            }
+            if text.len() > 24000 {
+                text = format!("{}…[truncated]", &text[..24000]);
+            }
+            Json(json!({
+                "ok": out.status.success() || !text.is_empty(),
+                "via": "grok-p",
+                "text": text,
+                "bin": bin,
+                "code": out.status.code(),
+                "role": role,
+                "max_turns": max_turns,
+                "timeout_ms": timeout_ms,
+            }))
+        }
+        Ok(Err(e)) => Json(json!({
+            "ok": false,
+            "via": "error",
+            "error": e.to_string(),
+            "text": "",
+            "bin": bin,
+            "role": role,
+        })),
+        Err(e) => Json(json!({
+            "ok": false,
+            "via": "error",
+            "error": e.to_string(),
+            "text": "",
+            "bin": bin,
+            "role": role,
+        })),
+    }
 }
 
 /// Colossus / Dojo LTS path status (aliases: GOJO / DOLOSUS).

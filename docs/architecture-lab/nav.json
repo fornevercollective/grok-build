@@ -40,7 +40,8 @@
         { "id": "22-panda-shell", "label": "Panda shell · new terminal app" },
         { "id": "23-fleet-funnel", "label": "Fleet funnel · build order" },
         { "id": "24-abc-path", "label": "A·B·C path · center + 3 feeds" },
-        { "id": "25-colossus-dojo-lts", "label": "Colossus/Dojo LTS · public-folder" }
+        { "id": "25-colossus-dojo-lts", "label": "Colossus/Dojo LTS · public-folder" },
+        { "id": "26-dev-off-grok-cli-overview", "label": "Dev-off · grok-cli · overview · xai-org" }
       ]
     },
     {

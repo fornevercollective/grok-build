@@ -358,13 +358,46 @@
         reply = "Open Lab → Ship tab: ./ or native Lab.";
         location.href = "./#/tool/ship";
       } else {
-        reply =
-          "Agent received message.\n" +
-          "• Keywords: plan / build / verify / status\n" +
-          "• Live columns: type in each feed footer or focus xterm\n" +
-          "• Full tools: run grok inside a PTY or open Multi/Panda";
-        addToolCard("agent.route", "general");
-        await writeLine("plan", "echo '[agent note] " + t.replace(/'/g, "") .slice(0, 200) + "'");
+        // Overview-style host hook: /api/agent/iterate → grok -p (no client keys)
+        addToolCard("agent.iterate", "onAiIterate");
+        setStatus("grok -p…", "busy");
+        let iter = null;
+        if (window.LabAiIterate && LabAiIterate.iterate) {
+          iter = await LabAiIterate.iterate({ prompt: t, role: "agent", maxTurns: 8 });
+        } else {
+          iter = await api("/api/agent/iterate", {
+            prompt: t,
+            role: "agent",
+            max_turns: 8,
+          }).catch((e) => ({
+            ok: false,
+            via: "error",
+            text: String(e.message || e),
+          }));
+        }
+        if (iter && (iter.text || iter.ok)) {
+          reply =
+            (iter.via ? "via " + iter.via + (iter.stub ? " · stub" : "") + "\n\n" : "") +
+            (iter.text || iter.message || "(empty)");
+          addToolCard("grok-p", iter.via || "done");
+          await writeLine(
+            "plan",
+            "echo '[iterate " +
+              (iter.via || "") +
+              "] " +
+              t.replace(/'/g, "").slice(0, 120) +
+              "'"
+          );
+        } else {
+          reply =
+            "Agent received message (iterate unavailable).\n" +
+            "• Keywords: plan / build / verify / status\n" +
+            "• Live columns: type in each feed footer\n" +
+            "• Full tools: grok in a PTY or Multi/Panda\n" +
+            (iter && iter.message ? "\n" + iter.message : "");
+          addToolCard("agent.route", "general");
+          await writeLine("plan", "echo '[agent note] " + t.replace(/'/g, "").slice(0, 200) + "'");
+        }
       }
 
       if (abortTurn) throw Object.assign(new Error("aborted"), { name: "AbortError" });

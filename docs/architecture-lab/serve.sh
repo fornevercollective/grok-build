@@ -59,8 +59,9 @@ echo "    /launch.html      Launch pad"
 echo "    /chat.html · /stream.html · /browser.html"
 echo "  Option A: native Lab Dock/Arrange + Multi (Panda αβγ OS terms)"
 echo "  Option C: see content/24-abc-path.md (Panda/Mu host pipe)"
-echo "  APIs: /api/pty/* · /api/shells · /api/lts · /api/panda/open · /api/health · …"
+echo "  APIs: /api/pty/* · /api/shells · /api/agent/iterate · /api/lts · /api/health · …"
 echo "  LTS:  Colossus/Dojo · ./scripts/colossus-dojo-lts.sh status"
+echo "  AI:   POST /api/agent/iterate  {prompt, role}  → grok -p (overview-style host hook)"
 echo ""
 
 # Desktop shell sets LAB_DESKTOP=1 — never open a browser tab for localhost
@@ -1457,6 +1458,99 @@ def summon_grok(phrase="", multi=True, triple=False):
         }
 
 
+def agent_iterate(prompt, role="agent", max_turns=8, timeout_ms=120000):
+    """
+    Overview-style host AI hook: Lab never embeds API keys in the client.
+    Runs `grok -p` headless when available; returns structured text for Agent/Workbench.
+    """
+    prompt = (prompt or "").strip()
+    if not prompt:
+        return {"ok": False, "error": "empty prompt", "via": "empty"}
+    if len(prompt) > 12000:
+        prompt = prompt[:12000] + "\n…[truncated]"
+    bin_path = find_grok()
+    role = (role or "agent").strip().lower()
+    max_turns = max(1, min(int(max_turns or 8), 24))
+    timeout_s = max(5, min(int(timeout_ms or 120000) / 1000.0, 300))
+    if not bin_path:
+        log_event("warn", "agent_iterate: grok not found")
+        return {
+            "ok": True,
+            "via": "stub",
+            "stub": True,
+            "text": (
+                "[stub · grok not on PATH]\n"
+                f"role={role} max_turns={max_turns}\n"
+                "Install: curl -fsSL https://x.ai/cli/install.sh | bash\n"
+                f"Would run: grok -p … --max-turns {max_turns}\n\n"
+                f"Prompt:\n{prompt[:800]}"
+            ),
+            "role": role,
+            "bin": None,
+        }
+    # Role-flavored system preamble (railway / fleet kinship — not a monorepo agent)
+    preamble = {
+        "plan": "You are α plan. Explore read-only, propose a short plan, stop for approval.",
+        "build": "You are β build. Implement the approved plan; stay in scope.",
+        "verify": "You are γ verify. Test and review only; report pass/fail.",
+        "agent": "You are Lab center agent. Be concise; prefer actionable steps.",
+    }.get(role, "You are Lab center agent. Be concise.")
+    full = f"{preamble}\n\nUser:\n{prompt}"
+    cmd = [bin_path, "-p", full, "--max-turns", str(max_turns)]
+    # Prefer non-interactive / no-wait flags when present (ignore if CLI rejects later)
+    log_event("info", "agent_iterate start", role=role, bin=bin_path, turns=max_turns)
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            cwd=str(REPO),
+            env={**os.environ, "CI": os.environ.get("CI", "1")},
+        )
+        out = (proc.stdout or "").strip()
+        err = (proc.stderr or "").strip()
+        text = out or err or f"(no output · exit {proc.returncode})"
+        if len(text) > 24000:
+            text = text[:24000] + "\n…[truncated]"
+        log_event(
+            "info",
+            "agent_iterate done",
+            code=proc.returncode,
+            n=len(text),
+        )
+        return {
+            "ok": proc.returncode == 0 or bool(out),
+            "via": "grok-p",
+            "text": text,
+            "bin": bin_path,
+            "code": proc.returncode,
+            "role": role,
+            "max_turns": max_turns,
+            "stderr_tail": err[-400:] if err and out else None,
+        }
+    except subprocess.TimeoutExpired:
+        log_event("warn", "agent_iterate timeout", s=timeout_s)
+        return {
+            "ok": False,
+            "via": "grok-p",
+            "timed_out": True,
+            "text": f"Timed out after {int(timeout_s)}s running grok -p (role={role}).",
+            "bin": bin_path,
+            "role": role,
+        }
+    except Exception as e:
+        log_event("error", f"agent_iterate: {e}")
+        return {
+            "ok": False,
+            "via": "error",
+            "error": str(e),
+            "text": "",
+            "bin": bin_path,
+            "role": role,
+        }
+
+
 def lts_status():
     """Colossus/Dojo LTS (GOJO/DOLOSUS) path resolution for Launch Pad / agents."""
     home = Path.home()
@@ -1938,6 +2032,23 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, list_processes())
         if path in ("/api/lts", "/api/lts/status"):
             return self._json(200, lts_status())
+        if path in ("/api/agent/iterate", "/api/ai/iterate"):
+            # GET help
+            return self._json(
+                200,
+                {
+                    "ok": True,
+                    "method": "POST",
+                    "contract": "overview-onAiIterate-host-hook",
+                    "body": {
+                        "prompt": "string",
+                        "role": "agent|plan|build|verify",
+                        "max_turns": 8,
+                        "timeout_ms": 120000,
+                    },
+                    "via": "grok -p when GROK_BIN/path found; else stub",
+                },
+            )
         if path == "/api/events":
             return self._json(200, {"ok": True, "events": LOG_BUF[-200:]})
         if path == "/api/git-log":
@@ -2004,6 +2115,16 @@ class Handler(SimpleHTTPRequestHandler):
                     str(data.get("phrase") or ""),
                     multi=bool(multi),
                     triple=triple,
+                ),
+            )
+        if path in ("/api/agent/iterate", "/api/ai/iterate"):
+            return self._json(
+                200,
+                agent_iterate(
+                    str(data.get("prompt") or data.get("message") or data.get("text") or ""),
+                    role=str(data.get("role") or data.get("shell") or "agent"),
+                    max_turns=data.get("max_turns") or data.get("maxTurns") or 8,
+                    timeout_ms=data.get("timeout_ms") or data.get("timeoutMs") or 120000,
                 ),
             )
         if path == "/api/shells":

@@ -421,22 +421,82 @@
           signal
         ).catch(() => {});
       } else if (targetRole) {
-        reply =
-          "Queued for **" +
-          targetRole +
-          "**.\nPanda: source ~/.panda/profiles/" +
-          targetRole +
-          ".env then `grok`.";
+        // Role-targeted: handoff note + optional headless iterate into that role flavor
         setFeedStatus(targetRole, "running");
         appendFeed(targetRole, "direct: " + t.slice(0, 240));
+        setStatus("iterate · " + targetRole, "busy");
+        let iter = null;
+        if (window.LabAiIterate && LabAiIterate.iterate) {
+          iter = await LabAiIterate.iterate({
+            prompt: t,
+            role: targetRole,
+            maxTurns: 6,
+            signal: signal,
+          });
+        } else {
+          iter = await api(
+            "/api/agent/iterate",
+            { prompt: t, role: targetRole, max_turns: 6 },
+            signal
+          ).catch((e) => ({ ok: false, text: String(e.message || e), via: "error" }));
+        }
+        check();
+        if (iter && iter.text) {
+          reply =
+            "→ **" +
+            targetRole +
+            "** via " +
+            (iter.via || "iterate") +
+            (iter.stub ? " (stub)" : "") +
+            "\n\n" +
+            iter.text;
+          appendFeed(targetRole, (iter.text || "").slice(0, 400));
+        } else {
+          reply =
+            "Queued for **" +
+            targetRole +
+            "**.\nPanda: source ~/.panda/profiles/" +
+            targetRole +
+            ".env then `grok`.";
+        }
       } else {
-        reply =
-          "Main agent received your message.\n\n" +
-          "• **Plan / Build / Verify** chips or Send here on a feed\n" +
-          "• **Ship · History · Notes** · Multi for PTYs\n" +
-          "• **Cancel** stops an in-flight turn · **Refresh** reloads\n" +
-          "Full tools: Multi (Panda) or `grok` TUI.";
-        appendFeed("plan", "note: " + t.slice(0, 160));
+        // Center agent: overview onAiIterate contract → grok -p
+        setStatus("grok -p…", "busy");
+        appendFeed("plan", "iterate: " + t.slice(0, 160));
+        let iter = null;
+        if (window.LabAiIterate && LabAiIterate.iterate) {
+          iter = await LabAiIterate.iterate({
+            prompt: t,
+            role: "agent",
+            maxTurns: 8,
+            signal: signal,
+          });
+        } else {
+          iter = await api(
+            "/api/agent/iterate",
+            { prompt: t, role: "agent", max_turns: 8 },
+            signal
+          ).catch((e) => ({ ok: false, text: String(e.message || e), via: "error" }));
+        }
+        check();
+        if (iter && iter.text) {
+          reply =
+            "via **" +
+            (iter.via || "iterate") +
+            "**" +
+            (iter.stub ? " · stub" : "") +
+            "\n\n" +
+            iter.text;
+          appendFeed("plan", "← " + (iter.via || "done"));
+        } else {
+          reply =
+            "Main agent received your message (iterate unavailable).\n\n" +
+            "• **Plan / Build / Verify** chips or Send on a feed\n" +
+            "• **Ship · History · Notes** · Multi for PTYs\n" +
+            "• Run `./serve.sh` for POST /api/agent/iterate → grok -p\n" +
+            (iter && iter.message ? "\n" + iter.message : "");
+          appendFeed("plan", "note: " + t.slice(0, 160));
+        }
       }
 
       await sleep(80, signal);

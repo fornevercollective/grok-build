@@ -149,6 +149,7 @@ cd ~/projects/grok-repo-template
 ## Related
 
 - [A·B·C path](#/24-abc-path)
+- [Dev-off · grok-cli · overview · xai-org](#/26-dev-off-grok-cli-overview)
 - [Fleet funnel](#/23-fleet-funnel)
 - [Dev build · forks](#/14-dev-build-and-forks)
 - [Panda shell](#/22-panda-shell)

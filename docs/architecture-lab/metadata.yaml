@@ -67,13 +67,32 @@ ecosystem_paths:
     notes: >
       StageForge at ~/dev/stageforge may be a local tree (no remote commits).
       Use make build && make install; bin/stageforge up from architecture-lab.
-  # Prior dev-off trees (patterns only)
+  # Prior dev-off trees (patterns only — never vendor monorepos)
   grok_cli:
     path: ~/projects/grok-cli
     role: notes_terminal_axum_ws
+    kinship: railway axum+WS · mugrok · TerminalPane · multi-agent roles
+    cherry_pick:
+      - railway agent role shapes
+      - notes TerminalPane chrome
+      - chat stream / tool-card density
   overview:
     path: ~/projects/overview
     role: research_onAiIterate_snapshot
+    kinship: onAiIterate host hook · workspace snapshot v2 · share links
+    cherry_pick:
+      - onAiIterate contract (Lab: /api/agent/iterate + lab-ai-iterate.js)
+      - workspace-snapshot codec (session interchange)
+      - plan-approve outline UI patterns
+    forbid:
+      - VITE_* API keys
+      - full React monorepo vendor
+
+lab_ai:
+  contract: overview-onAiIterate-host-hook
+  endpoint: POST /api/agent/iterate
+  client: assets/lab-ai-iterate.js
+  backend: grok -p when available · stub otherwise
 
 pipe:
   name: colossus_dojo_lts
@@ -94,3 +113,13 @@ upstream:
     GitHub compare main...xai-org:main reports unrelated histories.
     Use path-checkout / scripts — never force-merge; no external PRs (CONTRIBUTING.md).
   last_fetch_hint: git fetch upstream && git log --oneline main..upstream/main
+  tip_seen:
+    - sha: 8adf901
+      subject: Synced from monorepo
+      takeaways:
+        - hooks HTTP SSRF redirect fix (pattern only)
+        - headless drain task_backgrounded before no-wait exit
+        - SOURCE_REV + DotSlash required for monorepo crate builds
+        - skip: OAuth workspace scopes, enterprise STT, settings_modal
+    - sha: c68e39f
+      subject: Publish harness and TUI open-source
