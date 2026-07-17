@@ -13,6 +13,7 @@ Works **locally** and on **GitHub Pages**. Open tabs auto-reload when a new depl
 | **[content/14-dev-build-and-forks.md](content/14-dev-build-and-forks.md)** | **Build deps · versioning · forks · status.x.ai go/no-go** |
 | [content/99-contributing-docs.md](content/99-contributing-docs.md) | How to riff on lab pages |
 | [native/README.md](native/README.md) | Rust float shell (product path) |
+| [content/32-memory-glass-browser.md](content/32-memory-glass-browser.md) | **Memory Glass** browser · SpaceX void · droplet optics |
 | [content/06-plugin-anatomy.md](content/06-plugin-anatomy.md) | Plugin packaging rules |
 | [content/12-brand.md](content/12-brand.md) | SpaceXAI / Grok brand |
 
@@ -76,6 +77,29 @@ Electron under `desktop/` is optional **deprecated** fallback (`ARCH_LAB_FORCE_E
 
 See [native/README.md](native/README.md).
 
+## Memory Glass (browser surface)
+
+Two layers — **lab concept** (this folder) and **native shell** (experiments):
+
+| Layer | Path | What it is |
+|-------|------|------------|
+| **DOM optics** | `assets/memory-glass.{js,css}` · `browser.html` | Soft droplet aperture over SpaceX blueprint void · parallax · Glass toggle |
+| **Lab doc** | [`content/32-memory-glass-browser.md`](content/32-memory-glass-browser.md) (`#/32-memory-glass-browser`) | Design notes · controls · architecture |
+| **Native shell** | [`../../experiments/memory-glass/`](../../experiments/memory-glass/) | Standalone Rust browser · **tao + wry → WKWebView** · flat page · 3 tabs · rust-shield Dock icon |
+
+```bash
+# Conceptual (static lab / native Lab Browser)
+./serve.sh
+open http://127.0.0.1:8765/browser.html   # Memory Glass wired by default
+
+# Standalone native droplet browser
+cd ../../experiments/memory-glass
+cargo build --release
+./build-mac-app.sh && open "Memory Glass.app"
+```
+
+Not Chrome. Not Electron. Full notes: [Memory Glass browser](content/32-memory-glass-browser.md) · [experiments/memory-glass README](../../experiments/memory-glass/README.md).
+
 ## GitHub Pages
 
 | | |
@@ -92,6 +116,7 @@ First-time setup (repo admin): **Settings → Pages → Build and deployment →
 ```text
 docs/architecture-lab/          # historical path · product name = Grok Build Lab
   index.html          # SPA shell (Docs · Ship · Notes · …)
+  browser.html        # Lab browser shell · Memory Glass optics
   chat.html           # float chat · voice + text
   stream.html         # stream feed window
   agent.html          # Agent Console · center chat + α/β/γ feeds (agentcn scaffold)
@@ -108,11 +133,14 @@ docs/architecture-lab/          # historical path · product name = Grok Build L
   scripts/
     status-xai-check.sh       # status.x.ai go/no-go
     install-pre-push-hook.sh  # git push gate
-  assets/             # app.js · tools.js · ship-deck.js · listen · …
-  content/            # markdown source of truth
+  assets/             # app.js · tools.js · memory-glass.js/css · ship-deck · …
+  content/            # markdown source of truth (incl. 32-memory-glass-browser)
   native/             # Rust product shell → Grok Build Lab.app · bin grok-build-lab
   desktop/            # Electron fallback (deprecated · no Architecture Lab.app)
   scripts/prepare-pages-site.sh
+
+# Sibling experiment (standalone native droplet browser):
+../../experiments/memory-glass/   # tao+wry Memory Glass · build-mac-app.sh
 ```
 
 ## Codebase forks (one glance)
