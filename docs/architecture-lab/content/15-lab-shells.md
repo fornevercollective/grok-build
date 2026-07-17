@@ -6,7 +6,7 @@
 |---------|------|--------|--------|
 | **Native (preferred)** | `docs/architecture-lab/native/` | Rust · **tao + wry** → **WKWebView** / WebView2 / WebKitGTK | **Product path** · crate **0.2.0** · lab content **0.2.1** |
 | **Electron (fallback)** | `docs/architecture-lab/desktop/` | Node · **Electron 33** → Chromium | **Deprecated** · `ARCH_LAB_FORCE_ELECTRON=1` only |
-| **Browser / Pages** | static lab | Static HTML + MD | Always available |
+| **Browser / Pages** | static lab · [`browser.html`](../browser.html) | Static HTML + MD · **Memory Glass** (blueprint void + soft droplet) | Always available · see [Memory Glass browser](#/32-memory-glass-browser) |
 
 > Prefer native. Electron remains an emergency path when system webview is unusable.  
 > Full build/version/fork map: [Dev build · versions · forks](#/14-dev-build-and-forks).

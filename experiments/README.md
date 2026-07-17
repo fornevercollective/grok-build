@@ -20,3 +20,5 @@ cargo build -p panda-shell --release
 ```
 
 Lab map: [Panda shell experiment](../docs/architecture-lab/content/22-panda-shell.md) (`#/22-panda-shell`).
+
+- **memory-glass** — native droplet browser (Rust + WKWebView); see `memory-glass/README.md`

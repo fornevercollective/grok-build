@@ -6,9 +6,11 @@
     <title>Grok Build Lab · Browser</title>
     <meta
       name="description"
-      content="Lab browser shell — left X sections, center feed, collapsible search rail, LabX automation"
+      content="Lab browser shell — X feed + Memory Glass (SpaceX blueprint void, liquid droplet rim, parallax depth) · LabX automation"
     />
     <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <!-- Memory Glass: soft aperture · blueprint float · campfire breath (not hard Apple rects) -->
+    <link rel="stylesheet" href="assets/memory-glass.css" />
     <style>
       :root {
         --bg: #000000;
@@ -43,6 +45,21 @@
       body {
         display: flex;
         flex-direction: column;
+      }
+      /* Memory Glass stage is the sole flex child when wired */
+      body > .mg-stage {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      body > .mg-stage .mg-inner {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      body > .mg-stage .xb-shell {
+        flex: 1 1 auto;
+        min-height: 0;
       }
 
       /* ── top chrome (lab shell) ── */
@@ -1949,5 +1966,7 @@
         }
       })();
     </script>
+    <!-- Memory Glass runtime: wraps chrome+shell into soft droplet over SpaceX blueprint void -->
+    <script src="assets/memory-glass.js" defer></script>
   </body>
 </html>
