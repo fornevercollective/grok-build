@@ -373,12 +373,20 @@ pub fn run_blocking(url: &str, float: bool, _root: &Path, bus: Arc<ControlBus>) 
         },
     );
 
-    // ── Browser — lazy WKWebView (simple URL surface) ──
+    // ── Browser — shipped shell is browser.html (X layout + LabX automation).
+    // Optional: LAB_BROWSER_PAGE=browser-classic.html for thin URL chrome only.
     let browser = build_browser_window(&event_loop)?;
     place_browser_window(&browser);
     browser.set_visible(false);
     let browser_id = browser.id();
-    let browser_url = format!("{lab_url}browser.html");
+    let browser_page = std::env::var("LAB_BROWSER_PAGE").unwrap_or_else(|_| "browser.html".into());
+    let browser_page = match browser_page.as_str() {
+        "classic" | "thin" | "url" => "browser-classic.html".to_string(),
+        "x" | "x-browser" | "xbrowser" | "shell" => "browser.html".to_string(),
+        other if other.ends_with(".html") => other.to_string(),
+        _ => "browser.html".to_string(),
+    };
+    let browser_url = format!("{lab_url}{browser_page}");
     let browser_wv = if eager {
         Some(build_webview(
             &browser,
@@ -1067,8 +1075,9 @@ fn build_browser_window(event_loop: &tao::event_loop::EventLoop<ControlCmd>) -> 
         .with_always_on_top(false)
         .with_resizable(true)
         .with_transparent(true)
-        .with_inner_size(LogicalSize::new(960.0, 700.0))
-        .with_min_inner_size(LogicalSize::new(480.0, 360.0))
+        // Three-column shell (left nav · feed · search rail)
+        .with_inner_size(LogicalSize::new(1180.0, 780.0))
+        .with_min_inner_size(LogicalSize::new(640.0, 420.0))
         .with_visible(false);
 
     #[cfg(target_os = "macos")]
@@ -1100,20 +1109,23 @@ fn place_browser_window(window: &Window) {
 }
 
 fn browser_init_script() -> String {
+    // Drag / edge-resize / IPC only — do NOT inject lab-native-bar (shell has its own chrome).
+    // The shipped browser IS the UI, not a nested page that mimics a browser chrome.
     let chrome = float_chrome_js("browser");
     format!(
         r##"
 {chrome}
-document.documentElement.classList.add("lab-native","lab-browser-surface");
+document.documentElement.classList.add("lab-native","lab-browser-surface","lab-browser-shell");
 function __labMarkBrowserBody(){{
   if (document.body) {{
-    document.body.classList.add("lab-native","lab-browser-surface","br-body");
+    document.body.classList.add("lab-native","lab-browser-surface","lab-browser-shell","br-body","xb-body");
   }}
 }}
 __labMarkBrowserBody();
 document.addEventListener("DOMContentLoaded", __labMarkBrowserBody);
 window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
-  isDesktop: true, isNative: true, isBrowserWindow: true, shell: "wry-browser", floatChrome: true,
+  isDesktop: true, isNative: true, isBrowserWindow: true,
+  shell: "wry-browser-shell", floatChrome: true, shippedBrowser: true,
   control: function(action, extra){{
     return fetch("/api/control", {{
       method: "POST",
@@ -1121,6 +1133,15 @@ window.LabDesktop = Object.assign(window.LabDesktop || {{}}, {{
       body: JSON.stringify(Object.assign({{ action: action, target: "browser" }}, extra || {{}}))
     }}).then(function(r){{ return r.json(); }});
   }}
+}});
+// Prefer LabX when the shell is up (automation without nested address-bar UX)
+window.addEventListener("DOMContentLoaded", function(){{
+  try {{
+    if (window.LabX && !window.__labXReadyNote) {{
+      window.__labXReadyNote = true;
+      console.info("[lab-browser] LabX ready · shell=browser.html");
+    }}
+  }} catch (e) {{}}
 }});
 "##
     )
@@ -1615,7 +1636,7 @@ fn float_chrome_js(role: &str) -> String {
   var EDGE = 10;
   function isScrollPort(t) {{
     return !!(t && t.closest && t.closest(
-      ".ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll, .stream-body, .sv-stage, .sv-list, pre, code, textarea, [data-scroll], .lp-scroll, .br-frame"
+      ".ac-scroll, .ac-feed-body, .content-wrap, #panel-docs, .article, .wb-scroll, .stream-body, .sv-stage, .sv-list, pre, code, textarea, [data-scroll], .lp-scroll, .br-frame, .xb-frame-wrap, .xb-right-inner, .xb-nav-list, #xb-frame"
     ));
   }}
   function nearEdge(e) {{
@@ -2693,16 +2714,19 @@ fn apply_cmd(
             if url.is_empty() {
                 return Err("empty navigate url".into());
             }
-            // Drive browser.html labBrowse() so chrome stays put.
+            // Drive x-browser LabX / labBrowse so chrome + automation API stay put.
+            // Supports: urls, search:q, nav:home, rail:toggle, lab:stream.html, …
             let esc = url
                 .replace('\\', "\\\\")
                 .replace('\'', "\\'")
                 .replace('\n', " ");
             let js = format!(
-                "try{{if(window.labBrowse)labBrowse('{esc}');\
+                "try{{if(window.LabX&&LabX.run)LabX.run('{esc}');\
+                 else if(window.labBrowse)labBrowse('{esc}');\
                  else if(document.getElementById('br-url')){{\
                  document.getElementById('br-url').value='{esc}';\
-                 var f=document.getElementById('br-frame');if(f)f.src='{esc}';}}}}catch(e){{}}"
+                 var f=document.getElementById('br-frame')||document.getElementById('xb-frame');\
+                 if(f)f.src='{esc}';}}}}catch(e){{}}"
             );
             let ids: Vec<WindowId> = windows
                 .values()

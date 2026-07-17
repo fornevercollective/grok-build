@@ -6,10 +6,27 @@
     <title>Grok Build Lab · Browser</title>
     <meta
       name="description"
-      content="Lightweight lab browser — Rust host + system WebKit (Ladybird-style split: shell vs engine)"
+      content="Lab browser shell — left X sections, center feed, collapsible search rail, LabX automation"
     />
     <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
     <style>
+      :root {
+        --bg: #000000;
+        --bg-elev: #0a0a0a;
+        --bg-hover: #16181c;
+        --bg-rail: #000000;
+        --border: #2f3336;
+        --text: #e7e9ea;
+        --muted: #71767b;
+        --blue: #1d9bf0;
+        --blue-hover: #1a8cd8;
+        --pink: #f91880;
+        --radius: 9999px;
+        --left-w: 275px;
+        --left-w-collapsed: 72px;
+        --right-w: 350px;
+        --chrome-h: 42px;
+      }
       * {
         box-sizing: border-box;
       }
@@ -18,33 +35,36 @@
         margin: 0;
         height: 100%;
         overflow: hidden;
-        background: #0b0c0f;
-        color: #e8eaed;
-        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-        border-radius: 18px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
       }
       body {
         display: flex;
         flex-direction: column;
       }
-      .br-chrome {
+
+      /* ── top chrome (lab shell) ── */
+      .xb-chrome {
         display: flex;
         align-items: center;
         gap: 0.35rem;
-        height: 42px;
+        height: var(--chrome-h);
         padding: 0 12px 0 0.75rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(9, 9, 11, 0.94);
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.96);
         flex-shrink: 0;
         user-select: none;
         min-width: 0;
+        z-index: 20;
       }
-      .br-lights {
+      .xb-lights {
         display: flex;
         gap: 7px;
         margin-right: 4px;
       }
-      .br-tl {
+      .xb-tl {
         width: 12px;
         height: 12px;
         border-radius: 50%;
@@ -52,168 +72,1262 @@
         padding: 0;
         cursor: pointer;
       }
-      .br-tl.close {
+      .xb-tl.close {
         background: #ff5f57;
       }
-      .br-tl.min {
+      .xb-tl.min {
         background: #febc2e;
       }
-      .br-tl.max {
+      .xb-tl.max {
         background: #28c840;
       }
-      .br-title {
+      .xb-title {
         font-size: 0.72rem;
-        font-weight: 600;
-        color: #6ecbff;
+        font-weight: 700;
+        color: var(--text);
         white-space: nowrap;
+        letter-spacing: 0.01em;
       }
-      .br-pill {
+      .xb-title .xmark {
+        color: var(--text);
+        margin-right: 0.25rem;
+      }
+      .xb-pill {
         font-family: ui-monospace, Menlo, monospace;
         font-size: 0.55rem;
-        color: #a1a1aa;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        border: 1px solid var(--border);
         border-radius: 999px;
-        padding: 0.1rem 0.4rem;
+        padding: 0.1rem 0.45rem;
       }
-      .br-nav {
+      .xb-pill.live {
+        color: #00ba7c;
+        border-color: rgba(0, 186, 124, 0.35);
+      }
+      .xb-nav {
         display: flex;
         gap: 0.25rem;
         flex-shrink: 0;
       }
-      .br-btn {
+      .xb-btn {
         appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: #121216;
-        color: #a1a1aa;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
         border-radius: 7px;
         height: 26px;
         padding: 0 0.45rem;
         font-size: 0.62rem;
         font-family: ui-monospace, Menlo, monospace;
         cursor: pointer;
+        white-space: nowrap;
       }
-      .br-btn:hover {
-        color: #fafafa;
+      .xb-btn:hover {
+        color: var(--text);
+        background: var(--bg-hover);
       }
-      .br-btn.primary {
-        color: #38bdf8;
-        border-color: rgba(56, 189, 248, 0.35);
+      .xb-btn.primary {
+        color: var(--blue);
+        border-color: rgba(29, 155, 240, 0.4);
       }
-      .br-url-form {
+      .xb-btn.active {
+        color: var(--text);
+        background: var(--bg-hover);
+      }
+      .xb-url-form {
         flex: 1;
         min-width: 0;
         display: flex;
         gap: 0.3rem;
       }
-      .br-url {
+      .xb-url {
         flex: 1;
         min-width: 0;
         height: 28px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #0a0a0e;
-        color: #fafafa;
+        background: #16181c;
+        color: var(--text);
         font-family: ui-monospace, Menlo, monospace;
         font-size: 0.68rem;
         padding: 0 0.55rem;
         outline: none;
       }
-      .br-url:focus {
-        border-color: rgba(56, 189, 248, 0.4);
+      .xb-url:focus {
+        border-color: var(--blue);
       }
-      .br-frame-wrap {
+
+      /* ── three-column shell ── */
+      .xb-shell {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: var(--left-w) minmax(0, 1fr) var(--right-w);
+        transition: grid-template-columns 0.22s ease;
+      }
+      .xb-shell.right-collapsed {
+        grid-template-columns: var(--left-w) minmax(0, 1fr) 0px;
+      }
+      .xb-shell.left-narrow {
+        grid-template-columns: var(--left-w-collapsed) minmax(0, 1fr) var(--right-w);
+      }
+      .xb-shell.left-narrow.right-collapsed {
+        grid-template-columns: var(--left-w-collapsed) minmax(0, 1fr) 0px;
+      }
+
+      /* ── left nav ── */
+      .xb-left {
+        border-right: 1px solid var(--border);
+        background: var(--bg-rail);
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+        padding: 0.35rem 0.5rem 0.75rem;
+      }
+      .xb-left-top {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.5rem 0.65rem;
+      }
+      .xb-logo {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        font-size: 1.55rem;
+        font-weight: 800;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .xb-logo:hover {
+        background: var(--bg-hover);
+      }
+      .xb-left-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .xb-nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+      }
+      .xb-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        font-size: 1.05rem;
+        font-weight: 500;
+        padding: 0.7rem 0.85rem;
+        border-radius: var(--radius);
+        cursor: pointer;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .xb-nav-item:hover {
+        background: var(--bg-hover);
+      }
+      .xb-nav-item.active {
+        font-weight: 800;
+      }
+      .xb-nav-item .ico {
+        width: 1.65rem;
+        text-align: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+      .xb-nav-item .lbl {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .xb-nav-item.lab {
+        color: #6ecbff;
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+      .xb-nav-item.lab .ico {
+        font-size: 1rem;
+      }
+      .xb-nav-sep {
+        height: 1px;
+        background: var(--border);
+        margin: 0.45rem 0.75rem;
+        flex-shrink: 0;
+      }
+      .xb-post {
+        margin: 0.65rem 0.35rem 0.25rem;
+        appearance: none;
+        border: 0;
+        background: var(--blue);
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.05rem;
+        border-radius: var(--radius);
+        padding: 0.85rem 1rem;
+        cursor: pointer;
+        width: calc(100% - 0.7rem);
+      }
+      .xb-post:hover {
+        background: var(--blue-hover);
+      }
+      .xb-post-compact {
+        display: none;
+        width: 50px;
+        height: 50px;
+        margin: 0.5rem auto 0;
+        border-radius: 50%;
+        border: 0;
+        background: var(--blue);
+        color: #fff;
+        font-size: 1.35rem;
+        font-weight: 700;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .xb-post-compact:hover {
+        background: var(--blue-hover);
+      }
+      .xb-shell.left-narrow .xb-left-label,
+      .xb-shell.left-narrow .xb-nav-item .lbl,
+      .xb-shell.left-narrow .xb-post {
+        display: none;
+      }
+      .xb-shell.left-narrow .xb-nav-item {
+        justify-content: center;
+        padding: 0.75rem;
+        gap: 0;
+      }
+      .xb-shell.left-narrow .xb-post-compact {
+        display: grid;
+        place-items: center;
+      }
+      .xb-shell.left-narrow .xb-left {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+      }
+
+      /* ── center feed ── */
+      .xb-center {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--border);
+        background: var(--bg);
+        position: relative;
+      }
+      .xb-feed-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        height: 48px;
+        padding: 0 1rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
+        flex-shrink: 0;
+        z-index: 5;
+      }
+      .xb-feed-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .xb-feed-tabs {
+        display: flex;
+        gap: 0;
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+      }
+      .xb-tab {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.88rem;
+        font-weight: 600;
+        padding: 0.85rem 1.1rem;
+        cursor: pointer;
+        position: relative;
+        white-space: nowrap;
+      }
+      .xb-tab:hover {
+        background: rgba(231, 233, 234, 0.04);
+        color: var(--text);
+      }
+      .xb-tab.active {
+        color: var(--text);
+        font-weight: 800;
+      }
+      .xb-tab.active::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 56px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--blue);
+      }
+      .xb-feed-actions {
+        display: flex;
+        gap: 0.3rem;
+        flex-shrink: 0;
+      }
+      .xb-icon-btn {
+        appearance: none;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        display: grid;
+        place-items: center;
+      }
+      .xb-icon-btn:hover {
+        background: rgba(29, 155, 240, 0.12);
+        color: var(--blue);
+      }
+      .xb-frame-wrap {
         flex: 1;
         min-height: 0;
         position: relative;
         background: #050508;
       }
-      #br-frame {
+      #xb-frame {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
         border: 0;
-        background: #fff;
+        background: #000;
       }
-      .br-hint {
+      .xb-hint {
         position: absolute;
         left: 50%;
-        top: 40%;
+        top: 38%;
         transform: translate(-50%, -50%);
         text-align: center;
-        color: #71717a;
-        font-size: 0.78rem;
+        color: var(--muted);
+        font-size: 0.82rem;
         pointer-events: none;
-        max-width: 28rem;
-        line-height: 1.45;
+        max-width: 26rem;
+        line-height: 1.5;
+        z-index: 1;
       }
-      .br-hint code {
+      .xb-hint strong {
+        display: block;
+        color: var(--text);
+        font-size: 1.15rem;
+        margin-bottom: 0.45rem;
+      }
+      .xb-hint code {
         font-family: ui-monospace, Menlo, monospace;
         color: #a1a1aa;
+        font-size: 0.75rem;
+      }
+
+      /* ── right rail (collapsible) ── */
+      .xb-right {
+        min-width: 0;
+        width: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        border-left: 1px solid var(--border);
+        transition: opacity 0.18s ease, visibility 0.18s ease;
+      }
+      .xb-right-head {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        height: 48px;
+        padding: 0 0.55rem 0 0.75rem;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
+      }
+      .xb-right-head h2 {
+        margin: 0;
+        flex: 1;
+        min-width: 0;
+        font-size: 0.95rem;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .xb-right-head .xb-icon-btn {
+        flex-shrink: 0;
+      }
+      .xb-right-inner {
+        width: var(--right-w);
+        min-height: 0;
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.65rem 0.85rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .xb-shell.right-collapsed .xb-right {
+        border: 0;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      /* edge grip on feed when right is open (collapse) / always available */
+      .xb-right-edge {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        z-index: 14;
+        width: 22px;
+        height: 56px;
+        margin-right: -1px;
+        border: 1px solid var(--border);
+        border-right: 0;
+        border-radius: 10px 0 0 10px;
+        background: #16181c;
+        color: var(--muted);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        padding: 0;
+        box-shadow: -4px 0 14px rgba(0, 0, 0, 0.35);
+      }
+      .xb-right-edge:hover {
+        color: var(--text);
+        background: #1d1f23;
+        border-color: var(--muted);
+      }
+      .xb-shell.right-collapsed .xb-right-edge {
+        right: 0;
+        border-right: 1px solid var(--border);
+        border-left: 0;
+        border-radius: 0 10px 10px 0;
+        margin-right: 0;
+        box-shadow: 4px 0 14px rgba(0, 0, 0, 0.35);
+      }
+      .xb-search-box {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--bg);
+        padding-bottom: 0.25rem;
+      }
+      .xb-search-form {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: #202327;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        padding: 0.55rem 0.9rem;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .xb-search-form:focus-within {
+        background: transparent;
+        border-color: var(--blue);
+      }
+      .xb-search-form .ico {
+        color: var(--muted);
+        font-size: 0.95rem;
+        flex-shrink: 0;
+      }
+      .xb-search-form input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        font-size: 0.92rem;
+        outline: none;
+      }
+      .xb-search-form input::placeholder {
+        color: var(--muted);
+      }
+      .xb-card {
+        background: #16181c;
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .xb-card h3 {
+        margin: 0;
+        padding: 0.85rem 1rem 0.35rem;
+        font-size: 1.15rem;
+        font-weight: 800;
+      }
+      .xb-card-item {
+        display: block;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        text-align: left;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        font: inherit;
+      }
+      .xb-card-item:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .xb-card-item .meta {
+        display: block;
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-bottom: 0.15rem;
+      }
+      .xb-card-item .topic {
+        display: block;
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+      .xb-card-item .count {
+        display: block;
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 0.15rem;
+      }
+      .xb-card-foot {
+        display: block;
+        padding: 0.85rem 1rem;
+        color: var(--blue);
+        font-size: 0.92rem;
+        text-decoration: none;
+        cursor: pointer;
+        border: 0;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+      }
+      .xb-card-foot:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .xb-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.65rem 1rem 0.95rem;
+      }
+      .xb-chip {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: var(--radius);
+        padding: 0.35rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .xb-chip:hover {
+        background: var(--bg-hover);
+        border-color: var(--muted);
+      }
+      .xb-chip.accent {
+        border-color: rgba(29, 155, 240, 0.45);
+        color: var(--blue);
+      }
+      .xb-follow {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.75rem 1rem;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        text-align: left;
+        font: inherit;
+      }
+      .xb-follow:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .xb-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #2f3336;
+        display: grid;
+        place-items: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+      }
+      .xb-follow-meta {
+        flex: 1;
+        min-width: 0;
+      }
+      .xb-follow-meta .name {
+        font-weight: 700;
+        font-size: 0.92rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .xb-follow-meta .handle {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+      .xb-follow-btn {
+        border: 0;
+        background: #eff3f4;
+        color: #0f1419;
+        font-weight: 700;
+        font-size: 0.82rem;
+        border-radius: var(--radius);
+        padding: 0.35rem 0.85rem;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .xb-follow-btn:hover {
+        background: #d7dbdc;
+      }
+      .xb-lab-links {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.35rem 0.5rem 0.75rem;
+      }
+      .xb-lab-link {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        text-align: left;
+        padding: 0.45rem 0.55rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      .xb-lab-link:hover {
+        color: var(--text);
+        background: var(--bg-hover);
+      }
+
+      /* floating reopen chip when right collapsed */
+      .xb-right-reopen {
+        position: fixed;
+        right: 12px;
+        top: calc(var(--chrome-h) + 58px);
+        z-index: 30;
+        appearance: none;
+        border: 1px solid var(--border);
+        background: #16181c;
+        color: var(--text);
+        border-radius: var(--radius);
+        height: 36px;
+        padding: 0 0.95rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .xb-right-reopen:hover {
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      /* collapsed: no top Search chip — full footer search instead */
+      body.xb-right-is-collapsed .xb-right-reopen,
+      body.xb-right-is-collapsed #btn-right-toggle {
+        display: none !important;
+      }
+      body.xb-right-is-collapsed .xb-center {
+        border-right: 0;
+      }
+      body.xb-right-is-collapsed .xb-footer {
+        display: flex;
+      }
+
+      /* ── footer search (collapsed mode) ── */
+      .xb-footer {
+        display: none;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 52px;
+        padding: 0.45rem 0.75rem;
+        border-top: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.96);
+        z-index: 25;
+      }
+      .xb-footer-form {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #202327;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        padding: 0.4rem 0.85rem;
+        height: 40px;
+      }
+      .xb-footer-form:focus-within {
+        background: transparent;
+        border-color: var(--blue);
+      }
+      .xb-footer-form .ico {
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .xb-footer-form input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        font-size: 0.95rem;
+        outline: none;
+      }
+      .xb-footer-form input::placeholder {
+        color: var(--muted);
+      }
+      .xb-footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+      }
+      .xb-footer .xb-btn {
+        height: 34px;
+        padding: 0 0.7rem;
+        font-size: 0.72rem;
+      }
+      .xb-footer-hint {
+        display: none;
+        font-size: 0.62rem;
+        color: var(--muted);
+        font-family: ui-monospace, Menlo, monospace;
+        white-space: nowrap;
+      }
+      @media (min-width: 1100px) {
+        .xb-footer-hint {
+          display: block;
+        }
+      }
+
+      @media (max-width: 1100px) {
+        :root {
+          --left-w: var(--left-w-collapsed);
+          --right-w: 300px;
+        }
+        .xb-left-label,
+        .xb-nav-item .lbl,
+        .xb-post {
+          display: none;
+        }
+        .xb-nav-item {
+          justify-content: center;
+          padding: 0.75rem;
+        }
+        .xb-post-compact {
+          display: grid;
+          place-items: center;
+        }
+      }
+      @media (max-width: 820px) {
+        .xb-shell,
+        .xb-shell.right-collapsed,
+        .xb-shell.left-narrow,
+        .xb-shell.left-narrow.right-collapsed {
+          grid-template-columns: var(--left-w-collapsed) minmax(0, 1fr) 0px;
+        }
+        .xb-right {
+          position: absolute;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: min(340px, 92vw);
+          z-index: 12;
+          border-left: 1px solid var(--border);
+          box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+          transform: translateX(100%);
+          transition: transform 0.22s ease;
+          pointer-events: none;
+        }
+        .xb-shell:not(.right-collapsed) .xb-right {
+          transform: translateX(0);
+          pointer-events: auto;
+          opacity: 1;
+          visibility: visible;
+        }
+        .xb-shell.right-collapsed .xb-right {
+          transform: translateX(100%);
+          opacity: 0;
+          visibility: hidden;
+        }
+        .xb-center {
+          border-right: 0;
+        }
+        .xb-right-edge {
+          display: none;
+        }
       }
     </style>
   </head>
-  <body class="br-body">
-    <header class="br-chrome" data-drag-region="1">
-      <div class="br-lights" data-no-drag>
-        <button type="button" class="br-tl close" id="btn-close" title="Close"></button>
-        <button type="button" class="br-tl min" id="btn-min" title="Minimize"></button>
-        <button type="button" class="br-tl max" id="btn-max" title="Zoom"></button>
+  <body class="xb-body">
+    <header class="xb-chrome" data-drag-region="1">
+      <div class="xb-lights" data-no-drag>
+        <button type="button" class="xb-tl close" id="btn-close" title="Close"></button>
+        <button type="button" class="xb-tl min" id="btn-min" title="Minimize"></button>
+        <button type="button" class="xb-tl max" id="btn-max" title="Zoom"></button>
       </div>
-      <strong class="br-title">Browser</strong>
-      <span class="br-pill" id="br-status">idle</span>
-      <div class="br-nav" data-no-drag>
-        <button type="button" class="br-btn" id="btn-back" title="Back">←</button>
-        <button type="button" class="br-btn" id="btn-fwd" title="Forward">→</button>
-        <button type="button" class="br-btn" id="btn-reload" title="Reload">↻</button>
-        <button type="button" class="br-btn" id="btn-home" title="Lab home">⌂</button>
+      <strong class="xb-title"><span class="xmark">𝕏</span> Browser</strong>
+      <span class="xb-pill" id="xb-status">idle</span>
+      <div class="xb-nav" data-no-drag>
+        <button type="button" class="xb-btn" id="btn-back" title="Back">←</button>
+        <button type="button" class="xb-btn" id="btn-fwd" title="Forward">→</button>
+        <button type="button" class="xb-btn" id="btn-reload" title="Reload">↻</button>
+        <button type="button" class="xb-btn" id="btn-home" title="X home">⌂</button>
       </div>
-      <form class="br-url-form" id="br-form" data-no-drag>
+      <form class="xb-url-form" id="xb-form" data-no-drag>
         <input
-          class="br-url"
-          id="br-url"
+          class="xb-url"
+          id="xb-url"
           type="text"
           spellcheck="false"
           autocomplete="off"
-          placeholder="https://… or docs path (workbench.html)"
+          placeholder="https://x.com/… · @handle · search"
           aria-label="URL"
         />
-        <button type="submit" class="br-btn primary">Go</button>
+        <button type="submit" class="xb-btn primary">Go</button>
       </form>
-      <button type="button" class="br-btn" id="btn-dock" data-no-drag title="Arrange cluster">
-        Dock
+      <button type="button" class="xb-btn" id="btn-left-toggle" data-no-drag title="Narrow left nav">
+        ☰
       </button>
-      <button type="button" class="br-btn" id="btn-pin" data-no-drag title="Always on top">
-        Pin
+      <button
+        type="button"
+        class="xb-btn active"
+        id="btn-right-toggle"
+        data-no-drag
+        title="Collapse right search rail (footer search when closed)"
+        aria-controls="xb-right"
+        aria-expanded="true"
+      >
+        Rail ▾
       </button>
-      <button type="button" class="br-btn" id="btn-lab" data-no-drag>Lab</button>
+      <a class="xb-btn" id="btn-classic" href="browser-classic.html" data-no-drag title="Classic URL browser">Classic URL</a>
+      <button type="button" class="xb-btn" id="btn-dock" data-no-drag title="Arrange cluster">Dock</button>
+      <button type="button" class="xb-btn" id="btn-pin" data-no-drag title="Always on top">Pin</button>
+      <button type="button" class="xb-btn" id="btn-lab" data-no-drag>Lab</button>
     </header>
-    <div class="br-frame-wrap">
-      <p class="br-hint" id="br-hint">
-        Lightweight lab browser · Rust shell + system WebKit<br />
-        (Ladybird pattern: host ≠ engine · no Chromium embed)<br />
-        <code>x.ai/cli</code> · <code>workbench.html</code> · any https URL
-      </p>
-      <iframe id="br-frame" title="Browser content" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
+
+    <div class="xb-shell" id="xb-shell">
+      <!-- LEFT: X sections -->
+      <aside class="xb-left" aria-label="X sections">
+        <div class="xb-left-top">
+          <button type="button" class="xb-logo" id="nav-logo" title="Home" aria-label="X home">𝕏</button>
+          <span class="xb-left-label">X · lab</span>
+        </div>
+        <ul class="xb-nav-list" id="xb-nav-list">
+          <li>
+            <button type="button" class="xb-nav-item active" data-nav="home" data-url="https://x.com/home">
+              <span class="ico">⌂</span><span class="lbl">Home</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="explore" data-url="https://x.com/explore">
+              <span class="ico">🔍</span><span class="lbl">Explore</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="notifications" data-url="https://x.com/notifications">
+              <span class="ico">🔔</span><span class="lbl">Notifications</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="messages" data-url="https://x.com/messages">
+              <span class="ico">✉️</span><span class="lbl">Messages</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="grok" data-url="https://x.com/i/grok">
+              <span class="ico">✦</span><span class="lbl">Grok</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="lists" data-url="https://x.com/i/lists">
+              <span class="ico">☰</span><span class="lbl">Lists</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="bookmarks" data-url="https://x.com/i/bookmarks">
+              <span class="ico">🔖</span><span class="lbl">Bookmarks</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="communities" data-url="https://x.com/i/communities">
+              <span class="ico">👥</span><span class="lbl">Communities</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="premium" data-url="https://x.com/i/premium_sign_up">
+              <span class="ico">✦</span><span class="lbl">Premium</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="profile" data-url="https://x.com/settings/profile">
+              <span class="ico">👤</span><span class="lbl">Profile</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item" data-nav="more" data-url="https://x.com/settings">
+              <span class="ico">⋯</span><span class="lbl">More</span>
+            </button>
+          </li>
+          <li class="xb-nav-sep" aria-hidden="true"></li>
+          <li>
+            <button type="button" class="xb-nav-item lab" data-nav="spacex" data-url="https://x.com/SpaceX">
+              <span class="ico">🚀</span><span class="lbl">SpaceX</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item lab" data-nav="spacexai" data-url="https://x.com/spacexai">
+              <span class="ico">◈</span><span class="lbl">SpaceXAI</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item lab" data-nav="xai" data-url="https://x.com/xai">
+              <span class="ico">✦</span><span class="lbl">xAI</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="xb-nav-item lab" data-nav="starship" data-url="https://x.com/i/broadcasts/1MKgNNXAZdmxL">
+              <span class="ico">📡</span><span class="lbl">Starship live</span>
+            </button>
+          </li>
+        </ul>
+        <button type="button" class="xb-post" id="btn-post" title="Compose on X">Post</button>
+        <button type="button" class="xb-post-compact" id="btn-post-c" title="Compose on X">＋</button>
+      </aside>
+
+      <!-- CENTER: feed -->
+      <main class="xb-center">
+        <div class="xb-feed-head">
+          <h1 class="xb-feed-title" id="xb-feed-title">Home</h1>
+          <div class="xb-feed-tabs" role="tablist" aria-label="Timeline">
+            <button type="button" class="xb-tab active" data-tab="foryou" data-url="https://x.com/home">
+              For you
+            </button>
+            <button type="button" class="xb-tab" data-tab="following" data-url="https://x.com/home">
+              Following
+            </button>
+          </div>
+          <div class="xb-feed-actions">
+            <button type="button" class="xb-icon-btn" id="btn-feed-reload" title="Reload feed">↻</button>
+            <button type="button" class="xb-icon-btn" id="btn-open-ext" title="Open in system browser">↗</button>
+            <button
+              type="button"
+              class="xb-icon-btn"
+              id="btn-right-toggle-feed"
+              title="Collapse right search rail"
+              aria-controls="xb-right"
+              aria-expanded="true"
+            >
+              »
+            </button>
+          </div>
+        </div>
+        <div class="xb-frame-wrap">
+          <p class="xb-hint" id="xb-hint">
+            <strong>X feed</strong>
+            Left sections · center timeline · right search rail<br />
+            Some X pages block iframes — use <code>↗</code> or Classic browser if blank
+          </p>
+          <iframe
+            id="xb-frame"
+            title="X feed"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+          <button
+            type="button"
+            class="xb-right-edge"
+            id="btn-right-edge"
+            title="Collapse / expand search rail"
+            aria-controls="xb-right"
+            aria-expanded="true"
+          >
+            »
+          </button>
+        </div>
+      </main>
+
+      <!-- RIGHT: collapsible search / discover -->
+      <aside class="xb-right" id="xb-right" aria-label="Search and discover" aria-hidden="false">
+        <div class="xb-right-head">
+          <h2>Search &amp; discover</h2>
+          <button
+            type="button"
+            class="xb-icon-btn"
+            id="btn-right-collapse"
+            title="Collapse right rail"
+            aria-label="Collapse right rail"
+          >
+            »
+          </button>
+        </div>
+        <div class="xb-right-inner">
+          <div class="xb-search-box">
+            <form class="xb-search-form" id="xb-search-form">
+              <span class="ico" aria-hidden="true">🔍</span>
+              <input
+                id="xb-search"
+                type="search"
+                placeholder="Search"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Search X"
+              />
+            </form>
+          </div>
+
+          <section class="xb-card" aria-label="Lab quick search">
+            <h3>Lab · search</h3>
+            <div class="xb-chip-row">
+              <button type="button" class="xb-chip accent" data-q="SpaceX">SpaceX</button>
+              <button type="button" class="xb-chip accent" data-q="Starship">Starship</button>
+              <button type="button" class="xb-chip accent" data-q="xAI">xAI</button>
+              <button type="button" class="xb-chip" data-q="Grok">Grok</button>
+              <button type="button" class="xb-chip" data-q="from:SpaceX">from:SpaceX</button>
+              <button type="button" class="xb-chip" data-q="from:xai">from:xai</button>
+              <button type="button" class="xb-chip" data-q="from:spacexai">from:spacexai</button>
+            </div>
+          </section>
+
+          <section class="xb-card" aria-label="What's happening">
+            <h3>What's happening</h3>
+            <button type="button" class="xb-card-item" data-trend="SpaceX" data-url="https://x.com/SpaceX">
+              <span class="meta">Trending in Lab</span>
+              <span class="topic">SpaceX</span>
+              <span class="count">Live · fleet · Starship</span>
+            </button>
+            <button type="button" class="xb-card-item" data-trend="Starship" data-url="https://x.com/i/broadcasts/1MKgNNXAZdmxL">
+              <span class="meta">Live broadcast</span>
+              <span class="topic">Starship</span>
+              <span class="count">x.com/i/broadcasts</span>
+            </button>
+            <button type="button" class="xb-card-item" data-trend="xAI" data-url="https://x.com/xai">
+              <span class="meta">Technology · Trending</span>
+              <span class="topic">xAI</span>
+              <span class="count">Grok · Colossus</span>
+            </button>
+            <button type="button" class="xb-card-item" data-trend="SpaceXAI" data-url="https://x.com/spacexai">
+              <span class="meta">Org brand</span>
+              <span class="topic">SpaceXAI</span>
+              <span class="count">@spacexai</span>
+            </button>
+            <button type="button" class="xb-card-item" data-trend="Grok" data-url="https://x.com/i/grok">
+              <span class="meta">Product</span>
+              <span class="topic">Grok</span>
+              <span class="count">Chat · Build · Voice</span>
+            </button>
+            <button type="button" class="xb-card-foot" id="btn-show-more-trends">Show more</button>
+          </section>
+
+          <section class="xb-card" aria-label="Who to follow">
+            <h3>Who to follow</h3>
+            <button type="button" class="xb-follow" data-url="https://x.com/SpaceX">
+              <span class="xb-avatar">🚀</span>
+              <span class="xb-follow-meta">
+                <span class="name">SpaceX</span>
+                <span class="handle">@SpaceX</span>
+              </span>
+              <span class="xb-follow-btn">View</span>
+            </button>
+            <button type="button" class="xb-follow" data-url="https://x.com/xai">
+              <span class="xb-avatar">✦</span>
+              <span class="xb-follow-meta">
+                <span class="name">xAI</span>
+                <span class="handle">@xai</span>
+              </span>
+              <span class="xb-follow-btn">View</span>
+            </button>
+            <button type="button" class="xb-follow" data-url="https://x.com/spacexai">
+              <span class="xb-avatar">◈</span>
+              <span class="xb-follow-meta">
+                <span class="name">SpaceXAI</span>
+                <span class="handle">@spacexai</span>
+              </span>
+              <span class="xb-follow-btn">View</span>
+            </button>
+            <button type="button" class="xb-follow" data-url="https://x.com/elonmusk">
+              <span class="xb-avatar">ℇ</span>
+              <span class="xb-follow-meta">
+                <span class="name">Elon Musk</span>
+                <span class="handle">@elonmusk</span>
+              </span>
+              <span class="xb-follow-btn">View</span>
+            </button>
+          </section>
+
+          <section class="xb-card" aria-label="Lab surfaces">
+            <h3>Lab surfaces</h3>
+            <div class="xb-lab-links">
+              <button type="button" class="xb-lab-link" data-lab="stream.html">→ stream.html · media pin</button>
+              <button type="button" class="xb-lab-link" data-lab="chat.html">→ chat.html · voice orb</button>
+              <button type="button" class="xb-lab-link" data-lab="phone.html">→ phone.html · lab-ship</button>
+              <button type="button" class="xb-lab-link" data-lab="workbench.html">→ workbench.html · PTY</button>
+              <button type="button" class="xb-lab-link" data-lab="browser-classic.html">→ browser-classic.html · thin chrome</button>
+              <button type="button" class="xb-lab-link" data-lab="index.html">→ index.html · docs</button>
+            </div>
+          </section>
+        </div>
+      </aside>
     </div>
+
+    <button type="button" class="xb-right-reopen" id="btn-right-reopen" title="Expand search rail" aria-controls="xb-right">
+      🔍 Search «
+    </button>
+
+    <!-- Footer search when right rail is collapsed (Grok + human) -->
+    <footer class="xb-footer" id="xb-footer" aria-label="Search bar" data-no-drag>
+      <form class="xb-footer-form" id="xb-footer-form">
+        <span class="ico" aria-hidden="true">🔍</span>
+        <input
+          id="xb-footer-q"
+          type="search"
+          placeholder="Search X · @handle · url · search:… · nav:home · rail:open"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Footer search and Grok commands"
+        />
+      </form>
+      <div class="xb-footer-actions">
+        <button type="submit" form="xb-footer-form" class="xb-btn primary" id="btn-footer-go">Go</button>
+        <button type="button" class="xb-btn" id="btn-footer-rail" title="Expand right rail">Rail «</button>
+        <span class="xb-footer-hint" title="Automation API">LabX · /api/control</span>
+      </div>
+    </footer>
+
     <script>
       (function () {
-        const frame = document.getElementById("br-frame");
-        const urlEl = document.getElementById("br-url");
-        const hint = document.getElementById("br-hint");
-        const status = document.getElementById("br-status");
+        const frame = document.getElementById("xb-frame");
+        const urlEl = document.getElementById("xb-url");
+        const hint = document.getElementById("xb-hint");
+        const status = document.getElementById("xb-status");
+        const shell = document.getElementById("xb-shell");
+        const feedTitle = document.getElementById("xb-feed-title");
+        const searchEl = document.getElementById("xb-search");
+        const footerQ = document.getElementById("xb-footer-q");
+        const rightToggle = document.getElementById("btn-right-toggle");
+        const leftToggle = document.getElementById("btn-left-toggle");
+
+        const NAV_URLS = {
+          home: "https://x.com/home",
+          explore: "https://x.com/explore",
+          notifications: "https://x.com/notifications",
+          messages: "https://x.com/messages",
+          grok: "https://x.com/i/grok",
+          lists: "https://x.com/i/lists",
+          bookmarks: "https://x.com/i/bookmarks",
+          communities: "https://x.com/i/communities",
+          premium: "https://x.com/i/premium_sign_up",
+          profile: "https://x.com/settings/profile",
+          more: "https://x.com/settings",
+          settings: "https://x.com/settings",
+          spacex: "https://x.com/SpaceX",
+          spacexai: "https://x.com/spacexai",
+          xai: "https://x.com/xai",
+          starship: "https://x.com/i/broadcasts/1MKgNNXAZdmxL",
+          compose: "https://x.com/compose/post",
+          post: "https://x.com/compose/post",
+        };
+
+        const TITLES = {
+          home: "Home",
+          explore: "Explore",
+          notifications: "Notifications",
+          messages: "Messages",
+          grok: "Grok",
+          lists: "Lists",
+          bookmarks: "Bookmarks",
+          communities: "Communities",
+          premium: "Premium",
+          profile: "Profile",
+          more: "More",
+          spacex: "SpaceX",
+          spacexai: "SpaceXAI",
+          xai: "xAI",
+          starship: "Starship",
+          search: "Search",
+          compose: "Post",
+        };
+
         let pinned = false;
         let history = [];
         let histIdx = -1;
+        let activeNav = "home";
+        let lastQuery = "";
+        let lastAction = { op: "init", at: Date.now() };
 
         function setStatus(t) {
-          if (status) status.textContent = t;
+          if (status) {
+            status.textContent = t;
+            status.classList.toggle("live", t === "live" || t === "auto");
+          }
+        }
+
+        function note(op, detail) {
+          lastAction = { op: op, detail: detail || null, at: Date.now() };
+        }
+
+        function syncSearchFields(q) {
+          q = q == null ? "" : String(q);
+          if (searchEl && document.activeElement !== searchEl) searchEl.value = q;
+          if (footerQ && document.activeElement !== footerQ) footerQ.value = q;
         }
 
         function normalize(u) {
           u = String(u || "").trim();
           if (!u) return "";
           if (/^https?:\/\//i.test(u) || u.startsWith("about:")) return u;
+          if (u.startsWith("@")) return "https://x.com/" + u.slice(1);
+          if (/^x:/i.test(u)) return "https://x.com/" + u.slice(2).replace(/^@/, "");
           if (u.startsWith("/") || u.endsWith(".html") || u.includes(".html#")) {
             try {
               return new URL(u, location.origin + location.pathname.replace(/[^/]*$/, "")).href;
@@ -221,67 +1335,568 @@
               return u;
             }
           }
+          // bare handle-ish
+          if (/^[A-Za-z0-9_]{1,15}$/.test(u)) return "https://x.com/" + u;
           if (u.includes(".") && !u.includes(" ")) return "https://" + u;
-          return u;
+          // free text → X search
+          return "https://x.com/search?q=" + encodeURIComponent(u) + "&src=typed_query";
         }
 
-        function go(raw, pushHist) {
+        function setActiveNav(id) {
+          activeNav = id || activeNav;
+          document.querySelectorAll(".xb-nav-item").forEach(function (btn) {
+            btn.classList.toggle("active", btn.getAttribute("data-nav") === activeNav);
+          });
+          if (feedTitle) feedTitle.textContent = TITLES[activeNav] || "Feed";
+        }
+
+        function go(raw, pushHist, navId) {
           const u = normalize(raw);
-          if (!u) return;
+          if (!u) return { ok: false, error: "empty" };
           urlEl.value = u;
           if (hint) hint.style.display = "none";
-          // Keep lab chrome — navigate iframe only (full load_url would drop chrome/IPC)
           try {
             frame.src = u;
           } catch (e) {
             setStatus("err");
+            return { ok: false, error: String(e) };
           }
           if (pushHist !== false) {
             history = history.slice(0, histIdx + 1);
             history.push(u);
             histIdx = history.length - 1;
           }
+          if (navId) setActiveNav(navId);
           setStatus("live");
+          note("go", u);
+          return { ok: true, url: u, nav: activeNav };
         }
-        // Native control bus can drive the frame
-        window.labBrowse = go;
 
-        document.getElementById("br-form").addEventListener("submit", function (e) {
-          e.preventDefault();
-          go(urlEl.value, true);
-        });
-        document.getElementById("btn-back").addEventListener("click", function () {
+        function searchX(q) {
+          q = String(q || "").trim();
+          if (!q) return { ok: false, error: "empty query" };
+          lastQuery = q;
+          syncSearchFields(q);
+          var r = go(
+            "https://x.com/search?q=" + encodeURIComponent(q) + "&src=typed_query",
+            true,
+            "search"
+          );
+          if (feedTitle) feedTitle.textContent = "Search · " + q;
+          note("search", q);
+          return Object.assign({ query: q }, r);
+        }
+
+        function navTo(id) {
+          id = String(id || "")
+            .trim()
+            .toLowerCase()
+            .replace(/^#/, "");
+          if (!id) return { ok: false, error: "nav id required" };
+          var url = NAV_URLS[id];
+          if (!url) {
+            var btn = document.querySelector('.xb-nav-item[data-nav="' + id + '"]');
+            if (btn) url = btn.getAttribute("data-url");
+          }
+          if (!url) return { ok: false, error: "unknown nav: " + id, known: Object.keys(NAV_URLS) };
+          var r = go(url, true, id);
+          note("nav", id);
+          return r;
+        }
+
+        function back() {
           if (histIdx > 0) {
             histIdx--;
-            go(history[histIdx], false);
-          } else {
-            try {
-              frame.contentWindow.history.back();
-            } catch (_) {}
+            return go(history[histIdx], false);
           }
-        });
-        document.getElementById("btn-fwd").addEventListener("click", function () {
+          try {
+            frame.contentWindow.history.back();
+            note("back", "frame");
+            return { ok: true, op: "back" };
+          } catch (_) {
+            return { ok: false, error: "no history" };
+          }
+        }
+        function forward() {
           if (histIdx < history.length - 1) {
             histIdx++;
-            go(history[histIdx], false);
-          } else {
+            return go(history[histIdx], false);
+          }
+          try {
+            frame.contentWindow.history.forward();
+            note("forward", "frame");
+            return { ok: true, op: "forward" };
+          } catch (_) {
+            return { ok: false, error: "no forward" };
+          }
+        }
+        function reload() {
+          if (history[histIdx]) return go(history[histIdx], false);
+          try {
+            frame.contentWindow.location.reload();
+          } catch (_) {
+            frame.src = frame.src;
+          }
+          note("reload");
+          return { ok: true, op: "reload" };
+        }
+        function home() {
+          document.querySelectorAll(".xb-tab").forEach(function (t, i) {
+            t.classList.toggle("active", i === 0);
+          });
+          return navTo("home");
+        }
+        function compose() {
+          var r = go("https://x.com/compose/post", true, "compose");
+          if (feedTitle) feedTitle.textContent = "Post";
+          return r;
+        }
+        function openExternal(u) {
+          u = u || history[histIdx] || urlEl.value || "https://x.com/home";
+          try {
+            window.open(u, "_blank", "noopener");
+            note("openExternal", u);
+            return { ok: true, url: u };
+          } catch (e) {
+            return { ok: false, error: String(e) };
+          }
+        }
+
+        // Right rail collapse
+        const rightAside = document.getElementById("xb-right");
+        const rightEdge = document.getElementById("btn-right-edge");
+        const rightFeedBtn = document.getElementById("btn-right-toggle-feed");
+        const rightCollapseBtn = document.getElementById("btn-right-collapse");
+        const rightReopen = document.getElementById("btn-right-reopen");
+        const footer = document.getElementById("xb-footer");
+
+        function setRightCollapsed(on) {
+          on = !!on;
+          shell.classList.toggle("right-collapsed", on);
+          document.body.classList.toggle("xb-right-is-collapsed", on);
+          rightToggle.classList.toggle("active", !on);
+          rightToggle.setAttribute("aria-expanded", on ? "false" : "true");
+          // Expanded: show "Rail ▾" in chrome. Collapsed: chrome button hidden → footer search.
+          rightToggle.textContent = "Rail ▾";
+          rightToggle.title = "Collapse right rail (search moves to footer)";
+          if (rightAside) rightAside.setAttribute("aria-hidden", on ? "true" : "false");
+          if (footer) footer.setAttribute("aria-hidden", on ? "false" : "true");
+          if (rightEdge) {
+            rightEdge.textContent = on ? "«" : "»";
+            rightEdge.setAttribute("aria-expanded", on ? "false" : "true");
+            rightEdge.title = on ? "Expand search rail" : "Collapse search rail";
+          }
+          if (rightFeedBtn) {
+            rightFeedBtn.textContent = on ? "«" : "»";
+            rightFeedBtn.setAttribute("aria-expanded", on ? "false" : "true");
+            rightFeedBtn.title = on ? "Expand right search rail" : "Collapse right search rail";
+          }
+          if (on && footerQ) {
+            // focus footer search when collapsing for keyboard/Grok flow
             try {
-              frame.contentWindow.history.forward();
+              footerQ.focus({ preventScroll: true });
             } catch (_) {}
           }
+          try {
+            localStorage.setItem("lab-xb-right", on ? "0" : "1");
+          } catch (_) {}
+          note(on ? "railCollapse" : "railExpand");
+          return { ok: true, rightCollapsed: on };
+        }
+        function toggleRight() {
+          return setRightCollapsed(!shell.classList.contains("right-collapsed"));
+        }
+        function setLeftNarrow(on) {
+          on = !!on;
+          shell.classList.toggle("left-narrow", on);
+          leftToggle.classList.toggle("active", on);
+          try {
+            localStorage.setItem("lab-xb-left", on ? "1" : "0");
+          } catch (_) {}
+          note("leftNarrow", on);
+          return { ok: true, leftNarrow: on };
+        }
+
+        function openLab(page) {
+          page = String(page || "").trim();
+          if (!page) return { ok: false, error: "page required" };
+          if (!/\.html/i.test(page) && !page.startsWith("http")) {
+            page = page.replace(/^\//, "") + (page.endsWith(".html") ? "" : ".html");
+          }
+          return go(page, true);
+        }
+
+        function state() {
+          return {
+            ok: true,
+            surface: "x-browser",
+            url: history[histIdx] || urlEl.value || "",
+            nav: activeNav,
+            query: lastQuery,
+            rightCollapsed: shell.classList.contains("right-collapsed"),
+            leftNarrow: shell.classList.contains("left-narrow"),
+            history: history.slice(),
+            histIdx: histIdx,
+            lastAction: lastAction,
+            pinned: pinned,
+            sections: Object.keys(NAV_URLS),
+            api: "LabX",
+          };
+        }
+
+        /**
+         * Universal command runner for Grok / control bus.
+         * Accepts URLs, search, nav, rail, lab, history ops.
+         */
+        function run(cmd, opts) {
+          opts = opts || {};
+          if (cmd == null) return { ok: false, error: "empty command" };
+          if (typeof cmd === "object" && !Array.isArray(cmd)) {
+            return dispatchObj(cmd);
+          }
+          var s = String(cmd).trim();
+          if (!s) return { ok: false, error: "empty command" };
+
+          // JSON string payload
+          if (s.charAt(0) === "{") {
+            try {
+              return dispatchObj(JSON.parse(s));
+            } catch (_) {}
+          }
+
+          var low = s.toLowerCase();
+
+          // explicit ops
+          if (low === "back" || low === "hist:back") return back();
+          if (low === "forward" || low === "fwd" || low === "hist:forward") return forward();
+          if (low === "reload" || low === "refresh") return reload();
+          if (low === "home") return home();
+          if (low === "compose" || low === "post" || low === "new") return compose();
+          if (low === "state" || low === "status") return state();
+          if (low === "help" || low === "?") return help();
+          if (low === "rail:open" || low === "rail:expand" || low === "right:open")
+            return setRightCollapsed(false);
+          if (low === "rail:close" || low === "rail:collapse" || low === "right:close")
+            return setRightCollapsed(true);
+          if (low === "rail:toggle" || low === "right:toggle" || low === "rail") return toggleRight();
+          if (low === "left:narrow") return setLeftNarrow(true);
+          if (low === "left:wide") return setLeftNarrow(false);
+          if (low === "left:toggle") return setLeftNarrow(!shell.classList.contains("left-narrow"));
+          if (low === "external" || low === "popout") return openExternal();
+
+          // prefixes
+          var m;
+          if ((m = s.match(/^(?:search|q|find|query)[:=]\s*(.+)$/i))) return searchX(m[1]);
+          if ((m = s.match(/^(?:nav|section|go|open)[:=]\s*(.+)$/i))) {
+            var id = m[1].trim().toLowerCase();
+            if (NAV_URLS[id] || document.querySelector('.xb-nav-item[data-nav="' + id + '"]'))
+              return navTo(id);
+            return go(m[1], true);
+          }
+          if ((m = s.match(/^(?:lab|surface)[:=]\s*(.+)$/i))) return openLab(m[1]);
+          if ((m = s.match(/^(?:user|profile|@)[:=]\s*(.+)$/i)))
+            return go("@" + m[1].replace(/^@/, ""), true);
+          if ((m = s.match(/^(?:rail|right)[:=]\s*(.+)$/i))) {
+            var v = m[1].toLowerCase();
+            if (v === "open" || v === "expand" || v === "1" || v === "true") return setRightCollapsed(false);
+            if (v === "close" || v === "collapse" || v === "0" || v === "false") return setRightCollapsed(true);
+            if (v === "toggle") return toggleRight();
+          }
+          if ((m = s.match(/^x:search[:=]?\s*(.+)$/i))) return searchX(m[1]);
+          if ((m = s.match(/^x:nav[:=]?\s*(.+)$/i))) return navTo(m[1]);
+
+          // bare section name
+          if (NAV_URLS[low]) return navTo(low);
+
+          // default: navigate / search smart
+          setStatus("auto");
+          return go(s, true);
+        }
+
+        function dispatchObj(o) {
+          if (!o || typeof o !== "object") return { ok: false, error: "bad object" };
+          var op = (o.op || o.action || o.cmd || o.do || "").toString().toLowerCase();
+          if (o.search != null || o.q != null || o.query != null) return searchX(o.search || o.q || o.query);
+          if (o.nav != null || o.section != null) return navTo(o.nav || o.section);
+          if (o.url != null || o.href != null || o.goto != null) return go(o.url || o.href || o.goto, true);
+          if (o.lab != null || o.page != null) return openLab(o.lab || o.page);
+          if (o.user != null || o.handle != null) return go("@" + String(o.user || o.handle).replace(/^@/, ""), true);
+          if (o.rightCollapsed != null) return setRightCollapsed(!!o.rightCollapsed);
+          if (o.rail != null) {
+            var r = String(o.rail).toLowerCase();
+            if (r === "open" || r === "expand") return setRightCollapsed(false);
+            if (r === "close" || r === "collapse") return setRightCollapsed(true);
+            if (r === "toggle") return toggleRight();
+          }
+          if (op === "search" || op === "find") return searchX(o.value || o.text || o.q || "");
+          if (op === "nav" || op === "section") return navTo(o.value || o.id || o.section || "");
+          if (op === "go" || op === "browse" || op === "navigate" || op === "open")
+            return go(o.value || o.url || o.href || "", true);
+          if (op === "back") return back();
+          if (op === "forward" || op === "fwd") return forward();
+          if (op === "reload" || op === "refresh") return reload();
+          if (op === "home") return home();
+          if (op === "compose" || op === "post") return compose();
+          if (op === "state" || op === "status") return state();
+          if (op === "rail" || op === "toggle_rail") return toggleRight();
+          if (op === "collapse_rail") return setRightCollapsed(true);
+          if (op === "expand_rail") return setRightCollapsed(false);
+          if (op === "lab") return openLab(o.value || o.page || "");
+          if (op === "run" && o.cmd) return run(o.cmd);
+          if (op === "help") return help();
+          return { ok: false, error: "unknown object command", got: o };
+        }
+
+        function help() {
+          return {
+            ok: true,
+            surface: "x-browser",
+            api: "window.LabX",
+            aliases: ["labBrowse", "labX", "LabXBrowser"],
+            control: {
+              navigate: 'POST /api/control {"action":"navigate","url":"search:SpaceX"}',
+              eval: 'POST /api/control {"action":"eval","target":"browser","script":"LabX.search(\'Starship\')"}',
+              open: 'POST /api/control {"action":"show_browser"} then navigate',
+            },
+            commands: [
+              "search:SpaceX | q:from:xai | find:Grok",
+              "nav:home | nav:explore | nav:grok | nav:spacex",
+              "https://x.com/… | @handle | x:spacexai",
+              "rail:open | rail:close | rail:toggle",
+              "lab:stream.html | lab:chat.html | lab:phone.html",
+              "back | forward | reload | home | compose | state | help",
+              '{ "op":"search", "q":"Starship" }',
+              '{ "nav":"notifications" }',
+              '{ "url":"https://x.com/xai" }',
+            ],
+            methods: [
+              "LabX.run(cmd)",
+              "LabX.search(q)",
+              "LabX.go(url)",
+              "LabX.nav(section)",
+              "LabX.back() / forward() / reload() / home()",
+              "LabX.compose()",
+              "LabX.setRightCollapsed(bool) / toggleRight()",
+              "LabX.openLab(page)",
+              "LabX.state() / help()",
+            ],
+            sections: Object.keys(NAV_URLS),
+          };
+        }
+
+        // ── Grok / automation surface ──
+        var LabX = {
+          run: run,
+          go: function (u, navId) {
+            return go(u, true, navId);
+          },
+          browse: function (u) {
+            return run(u);
+          },
+          search: searchX,
+          nav: navTo,
+          section: navTo,
+          back: back,
+          forward: forward,
+          reload: reload,
+          home: home,
+          compose: compose,
+          openExternal: openExternal,
+          openLab: openLab,
+          setRightCollapsed: setRightCollapsed,
+          toggleRight: toggleRight,
+          expandRight: function () {
+            return setRightCollapsed(false);
+          },
+          collapseRight: function () {
+            return setRightCollapsed(true);
+          },
+          setLeftNarrow: setLeftNarrow,
+          state: state,
+          help: help,
+          normalize: normalize,
+        };
+        window.LabX = LabX;
+        window.labX = LabX;
+        window.LabXBrowser = LabX;
+        // Native control bus: navigate / browse drives this
+        window.labBrowse = function (u) {
+          setStatus("auto");
+          return run(u);
+        };
+
+        // postMessage automation (iframe parents, agents)
+        window.addEventListener("message", function (ev) {
+          var d = ev && ev.data;
+          if (!d) return;
+          if (d === "lab-x-state" || d === "LabX.state") {
+            try {
+              ev.source && ev.source.postMessage({ type: "lab-x-state", state: state() }, "*");
+            } catch (_) {}
+            return;
+          }
+          if (typeof d === "string" && (d.indexOf("lab-x:") === 0 || d.indexOf("LabX:") === 0)) {
+            var r = run(d.replace(/^(lab-x:|LabX:)/i, ""));
+            try {
+              ev.source && ev.source.postMessage({ type: "lab-x-result", result: r }, "*");
+            } catch (_) {}
+            return;
+          }
+          if (typeof d === "object") {
+            if (d.type === "lab-x" || d.type === "LabX" || d.labX || d.LabX) {
+              var payload = d.cmd != null ? d.cmd : d.labX || d.LabX || d.payload || d;
+              var result = typeof payload === "object" && !payload.cmd ? dispatchObj(payload) : run(payload);
+              try {
+                ev.source &&
+                  ev.source.postMessage({ type: "lab-x-result", id: d.id || null, result: result }, "*");
+              } catch (_) {}
+            }
+          }
+        });
+
+        // CustomEvent for in-page agents
+        window.addEventListener("lab-x", function (ev) {
+          if (ev && ev.detail != null) run(ev.detail);
+        });
+
+        document.getElementById("xb-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          run(urlEl.value);
+        });
+
+        document.getElementById("xb-search-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          searchX(searchEl.value);
+        });
+
+        document.getElementById("xb-footer-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          run(footerQ.value);
+        });
+
+        // keep rail + footer search in sync while typing
+        function bindSync(a, b) {
+          if (!a || !b) return;
+          a.addEventListener("input", function () {
+            if (document.activeElement === a) b.value = a.value;
+          });
+        }
+        bindSync(searchEl, footerQ);
+        bindSync(footerQ, searchEl);
+
+        document.getElementById("btn-back").addEventListener("click", function () {
+          back();
+        });
+        document.getElementById("btn-fwd").addEventListener("click", function () {
+          forward();
         });
         document.getElementById("btn-reload").addEventListener("click", function () {
-          if (history[histIdx]) go(history[histIdx], false);
-          else
-            try {
-              frame.contentWindow.location.reload();
-            } catch (_) {
-              frame.src = frame.src;
-            }
+          reload();
         });
         document.getElementById("btn-home").addEventListener("click", function () {
-          go("workbench.html", true);
+          home();
         });
+        document.getElementById("btn-feed-reload").addEventListener("click", function () {
+          reload();
+        });
+        document.getElementById("btn-open-ext").addEventListener("click", function () {
+          openExternal();
+        });
+
+        document.getElementById("nav-logo").addEventListener("click", function () {
+          home();
+        });
+
+        document.getElementById("xb-nav-list").addEventListener("click", function (e) {
+          var btn = e.target.closest(".xb-nav-item");
+          if (!btn) return;
+          var url = btn.getAttribute("data-url");
+          var nav = btn.getAttribute("data-nav");
+          if (url) go(url, true, nav);
+        });
+
+        document.querySelectorAll(".xb-tab").forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            document.querySelectorAll(".xb-tab").forEach(function (t) {
+              t.classList.remove("active");
+            });
+            tab.classList.add("active");
+            var url = tab.getAttribute("data-url") || "https://x.com/home";
+            go(url, true, "home");
+            if (feedTitle) feedTitle.textContent = tab.textContent.trim();
+          });
+        });
+
+        document.getElementById("btn-post").addEventListener("click", compose);
+        document.getElementById("btn-post-c").addEventListener("click", compose);
+
+        // Right rail: chips, trends, follows, lab links
+        document.querySelectorAll(".xb-chip[data-q]").forEach(function (chip) {
+          chip.addEventListener("click", function () {
+            var q = chip.getAttribute("data-q");
+            searchX(q);
+          });
+        });
+        document.querySelectorAll(".xb-card-item[data-url]").forEach(function (item) {
+          item.addEventListener("click", function () {
+            go(item.getAttribute("data-url"), true);
+            var trend = item.getAttribute("data-trend");
+            if (trend && feedTitle) feedTitle.textContent = trend;
+          });
+        });
+        document.getElementById("btn-show-more-trends").addEventListener("click", function () {
+          navTo("explore");
+        });
+        document.querySelectorAll(".xb-follow[data-url]").forEach(function (row) {
+          row.addEventListener("click", function () {
+            go(row.getAttribute("data-url"), true);
+          });
+        });
+        document.querySelectorAll(".xb-lab-link[data-lab]").forEach(function (link) {
+          link.addEventListener("click", function () {
+            go(link.getAttribute("data-lab"), true);
+            if (feedTitle) feedTitle.textContent = link.getAttribute("data-lab");
+          });
+        });
+
+        rightToggle.addEventListener("click", toggleRight);
+        if (rightFeedBtn) rightFeedBtn.addEventListener("click", toggleRight);
+        if (rightEdge) rightEdge.addEventListener("click", toggleRight);
+        if (rightCollapseBtn) {
+          rightCollapseBtn.addEventListener("click", function () {
+            setRightCollapsed(true);
+          });
+        }
+        if (rightReopen) {
+          rightReopen.addEventListener("click", function () {
+            setRightCollapsed(false);
+          });
+        }
+        document.getElementById("btn-footer-rail").addEventListener("click", function () {
+          setRightCollapsed(false);
+        });
+
+        // ] expands / collapses right rail (when not typing)
+        document.addEventListener("keydown", function (e) {
+          if (e.key !== "]" && e.key !== "[") return;
+          var t = e.target;
+          var tag = (t && t.tagName) || "";
+          if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+          if (e.key === "]") {
+            e.preventDefault();
+            toggleRight();
+          }
+        });
+        leftToggle.addEventListener("click", function () {
+          setLeftNarrow(!shell.classList.contains("left-narrow"));
+        });
+        try {
+          if (localStorage.getItem("lab-xb-right") === "0") setRightCollapsed(true);
+          else setRightCollapsed(false);
+          if (localStorage.getItem("lab-xb-left") === "1") setLeftNarrow(true);
+        } catch (_) {
+          setRightCollapsed(false);
+        }
 
         function control(action, extra) {
           return fetch("/api/control", {
@@ -312,14 +1927,26 @@
           control("arrange");
         });
         document.getElementById("btn-lab").addEventListener("click", function () {
-          control("focus_lab");
+          control("focus_lab").catch(function () {
+            location.href = "index.html";
+          });
         });
 
-        // Deep link ?url=
+        // Deep link ?url= · ?q= · ?nav= · ?cmd=  (Grok automation entry)
         try {
-          const q = new URLSearchParams(location.search).get("url");
-          if (q) go(q, true);
-        } catch (_) {}
+          var params = new URLSearchParams(location.search);
+          var cmd = params.get("cmd") || params.get("run");
+          var u = params.get("url");
+          var nav = params.get("nav");
+          var qq = params.get("q") || params.get("search");
+          if (cmd) run(cmd);
+          else if (qq) searchX(qq);
+          else if (u) go(u, true, nav || undefined);
+          else if (nav) navTo(nav);
+          else go("https://x.com/home", true, "home");
+        } catch (_) {
+          go("https://x.com/home", true, "home");
+        }
       })();
     </script>
   </body>

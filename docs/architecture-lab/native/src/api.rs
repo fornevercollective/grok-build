@@ -434,7 +434,7 @@ async fn control_help() -> Json<Value> {
             "chat_orb", "orb", "siri_orb", "orb_chat", "mini_chat",
             "lab_ship", "labship", "ship_orb", "lab_ship_orb",
             "chat_full", "full_chat", "expand_chat",
-            "navigate", "browse", "goto",
+            "navigate", "browse", "goto", "open_url",
             "drag", "ping", "quit"
         ],
         "targets": ["lab", "chat", "stream", "agent", "launch", "browser", "all"],
@@ -452,9 +452,38 @@ async fn control_help() -> Json<Value> {
             {"action": "pin", "target": "chat", "on": true},
             {"action": "center", "target": "lab"},
             {"action": "eval", "target": "chat", "script": "LabChat.listen()"},
+            {"action": "show_browser"},
+            {"action": "navigate", "url": "search:SpaceX"},
+            {"action": "navigate", "url": "nav:home"},
+            {"action": "navigate", "url": "rail:toggle"},
+            {"action": "eval", "target": "browser", "script": "LabX.search('Starship')"},
+            {"action": "eval", "target": "browser", "script": "LabX.state()"},
             {"action": "error", "message": "fix me"},
             {"action": "quit"}
-        ]
+        ],
+        "browser_shell": {
+            "page": "/browser.html",
+            "shipped": true,
+            "classic": "/browser-classic.html",
+            "api": "window.LabX",
+            "open": "POST /api/control {\"action\":\"show_browser\"}",
+            "commands": [
+                "search:SpaceX",
+                "nav:explore",
+                "@SpaceX",
+                "rail:open",
+                "lab:stream.html",
+                "back",
+                "compose",
+                "state"
+            ],
+            "eval_examples": [
+                "LabX.search('from:xai')",
+                "LabX.nav('notifications')",
+                "LabX.run('rail:close')",
+                "LabX.help()"
+            ]
+        }
     }))
 }
 

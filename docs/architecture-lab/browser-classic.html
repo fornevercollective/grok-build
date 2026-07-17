@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Build Lab · Browser</title>
+    <meta
+      name="description"
+      content="Lightweight lab browser — Rust host + system WebKit (Ladybird-style split: shell vs engine)"
+    />
+    <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0c0f;
+        color: #e8eaed;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        border-radius: 18px;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      .br-chrome {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        height: 42px;
+        padding: 0 12px 0 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(9, 9, 11, 0.94);
+        flex-shrink: 0;
+        user-select: none;
+        min-width: 0;
+      }
+      .br-lights {
+        display: flex;
+        gap: 7px;
+        margin-right: 4px;
+      }
+      .br-tl {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      .br-tl.close {
+        background: #ff5f57;
+      }
+      .br-tl.min {
+        background: #febc2e;
+      }
+      .br-tl.max {
+        background: #28c840;
+      }
+      .br-title {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #6ecbff;
+        white-space: nowrap;
+      }
+      .br-pill {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.55rem;
+        color: #a1a1aa;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        padding: 0.1rem 0.4rem;
+      }
+      .br-nav {
+        display: flex;
+        gap: 0.25rem;
+        flex-shrink: 0;
+      }
+      .br-btn {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #121216;
+        color: #a1a1aa;
+        border-radius: 7px;
+        height: 26px;
+        padding: 0 0.45rem;
+        font-size: 0.62rem;
+        font-family: ui-monospace, Menlo, monospace;
+        cursor: pointer;
+      }
+      .br-btn:hover {
+        color: #fafafa;
+      }
+      .br-btn.primary {
+        color: #38bdf8;
+        border-color: rgba(56, 189, 248, 0.35);
+      }
+      a.br-btn {
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        line-height: 24px;
+      }
+      .br-url-form {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        gap: 0.3rem;
+      }
+      .br-url {
+        flex: 1;
+        min-width: 0;
+        height: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: #0a0a0e;
+        color: #fafafa;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        padding: 0 0.55rem;
+        outline: none;
+      }
+      .br-url:focus {
+        border-color: rgba(56, 189, 248, 0.4);
+      }
+      .br-frame-wrap {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        background: #050508;
+      }
+      #br-frame {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #fff;
+      }
+      .br-hint {
+        position: absolute;
+        left: 50%;
+        top: 40%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #71717a;
+        font-size: 0.78rem;
+        pointer-events: none;
+        max-width: 28rem;
+        line-height: 1.45;
+      }
+      .br-hint code {
+        font-family: ui-monospace, Menlo, monospace;
+        color: #a1a1aa;
+      }
+    </style>
+  </head>
+  <body class="br-body">
+    <header class="br-chrome" data-drag-region="1">
+      <div class="br-lights" data-no-drag>
+        <button type="button" class="br-tl close" id="btn-close" title="Close"></button>
+        <button type="button" class="br-tl min" id="btn-min" title="Minimize"></button>
+        <button type="button" class="br-tl max" id="btn-max" title="Zoom"></button>
+      </div>
+      <strong class="br-title">Browser</strong>
+      <span class="br-pill" id="br-status">idle</span>
+      <div class="br-nav" data-no-drag>
+        <button type="button" class="br-btn" id="btn-back" title="Back">←</button>
+        <button type="button" class="br-btn" id="btn-fwd" title="Forward">→</button>
+        <button type="button" class="br-btn" id="btn-reload" title="Reload">↻</button>
+        <button type="button" class="br-btn" id="btn-home" title="Lab home">⌂</button>
+      </div>
+      <form class="br-url-form" id="br-form" data-no-drag>
+        <input
+          class="br-url"
+          id="br-url"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="https://… or docs path (workbench.html)"
+          aria-label="URL"
+        />
+        <button type="submit" class="br-btn primary">Go</button>
+      </form>
+      <a class="br-btn primary" id="btn-x" href="browser.html" data-no-drag title="Full lab browser shell">Shell</a>
+      <button type="button" class="br-btn" id="btn-dock" data-no-drag title="Arrange cluster">
+        Dock
+      </button>
+      <button type="button" class="br-btn" id="btn-pin" data-no-drag title="Always on top">
+        Pin
+      </button>
+      <button type="button" class="br-btn" id="btn-lab" data-no-drag>Lab</button>
+    </header>
+    <div class="br-frame-wrap">
+      <p class="br-hint" id="br-hint">
+        Lightweight lab browser · Rust shell + system WebKit<br />
+        (Ladybird pattern: host ≠ engine · no Chromium embed)<br />
+        <code>x.ai/cli</code> · <code>workbench.html</code> · any https URL
+      </p>
+      <iframe id="br-frame" title="Browser content" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
+    </div>
+    <script>
+      (function () {
+        const frame = document.getElementById("br-frame");
+        const urlEl = document.getElementById("br-url");
+        const hint = document.getElementById("br-hint");
+        const status = document.getElementById("br-status");
+        let pinned = false;
+        let history = [];
+        let histIdx = -1;
+
+        function setStatus(t) {
+          if (status) status.textContent = t;
+        }
+
+        function normalize(u) {
+          u = String(u || "").trim();
+          if (!u) return "";
+          if (/^https?:\/\//i.test(u) || u.startsWith("about:")) return u;
+          if (u.startsWith("/") || u.endsWith(".html") || u.includes(".html#")) {
+            try {
+              return new URL(u, location.origin + location.pathname.replace(/[^/]*$/, "")).href;
+            } catch {
+              return u;
+            }
+          }
+          if (u.includes(".") && !u.includes(" ")) return "https://" + u;
+          return u;
+        }
+
+        function go(raw, pushHist) {
+          const u = normalize(raw);
+          if (!u) return;
+          urlEl.value = u;
+          if (hint) hint.style.display = "none";
+          // Keep lab chrome — navigate iframe only (full load_url would drop chrome/IPC)
+          try {
+            frame.src = u;
+          } catch (e) {
+            setStatus("err");
+          }
+          if (pushHist !== false) {
+            history = history.slice(0, histIdx + 1);
+            history.push(u);
+            histIdx = history.length - 1;
+          }
+          setStatus("live");
+        }
+        // Native control bus can drive the frame
+        window.labBrowse = go;
+
+        document.getElementById("br-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          go(urlEl.value, true);
+        });
+        document.getElementById("btn-back").addEventListener("click", function () {
+          if (histIdx > 0) {
+            histIdx--;
+            go(history[histIdx], false);
+          } else {
+            try {
+              frame.contentWindow.history.back();
+            } catch (_) {}
+          }
+        });
+        document.getElementById("btn-fwd").addEventListener("click", function () {
+          if (histIdx < history.length - 1) {
+            histIdx++;
+            go(history[histIdx], false);
+          } else {
+            try {
+              frame.contentWindow.history.forward();
+            } catch (_) {}
+          }
+        });
+        document.getElementById("btn-reload").addEventListener("click", function () {
+          if (history[histIdx]) go(history[histIdx], false);
+          else
+            try {
+              frame.contentWindow.location.reload();
+            } catch (_) {
+              frame.src = frame.src;
+            }
+        });
+        document.getElementById("btn-home").addEventListener("click", function () {
+          go("workbench.html", true);
+        });
+
+        function control(action, extra) {
+          return fetch("/api/control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.assign({ action: action, target: "browser" }, extra || {})),
+          }).then(function (r) {
+            return r.json();
+          });
+        }
+        document.getElementById("btn-close").addEventListener("click", function () {
+          control("hide_browser").catch(function () {
+            window.close();
+          });
+        });
+        document.getElementById("btn-min").addEventListener("click", function () {
+          control("minimize", { target: "browser" });
+        });
+        document.getElementById("btn-max").addEventListener("click", function () {
+          control("maximize", { target: "browser" });
+        });
+        document.getElementById("btn-pin").addEventListener("click", function () {
+          pinned = !pinned;
+          control(pinned ? "pin" : "unpin", { target: "browser", on: pinned });
+          this.textContent = pinned ? "Unpin" : "Pin";
+        });
+        document.getElementById("btn-dock").addEventListener("click", function () {
+          control("arrange");
+        });
+        document.getElementById("btn-lab").addEventListener("click", function () {
+          control("focus_lab");
+        });
+
+        // Deep link ?url=
+        try {
+          const q = new URLSearchParams(location.search).get("url");
+          if (q) go(q, true);
+        } catch (_) {}
+      })();
+    </script>
+  </body>
+</html>
