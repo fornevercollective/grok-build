@@ -1,0 +1,96 @@
+{
+  "t": 1784397295451,
+  "iso": "2026-07-18T17:54:55Z",
+  "machine": {
+    "model": "MacBookPro16,1",
+    "arch": "x86_64",
+    "ram_gb": 16,
+    "host": "qbits-MacBook-Pro.local",
+    "class": "older-intel-laptop",
+    "display": "3072x1920 Retina",
+    "gpus": [
+      "Intel UHD Graphics 630",
+      "AMD Radeon Pro 5500M"
+    ]
+  },
+  "game": "webgrid",
+  "grid": "30x30",
+  "rounds": [
+    {
+      "clicks": 25,
+      "hitsGuess": 25,
+      "missGuess": 7,
+      "bestBps": 3.76,
+      "bestNtpm": 23,
+      "finalBps": null,
+      "finalNtpm": null,
+      "peak": {
+        "bps": 3.76,
+        "ntpm": 23
+      },
+      "peakBps": 3.76,
+      "peakNtpm": 23,
+      "N": 30,
+      "round": 1,
+      "rounds": 2,
+      "beatPrior": false
+    },
+    {
+      "clicks": 16,
+      "hitsGuess": 16,
+      "missGuess": 4,
+      "bestBps": 2.45,
+      "bestNtpm": 15,
+      "finalBps": null,
+      "finalNtpm": null,
+      "peak": {
+        "bps": 2.45,
+        "ntpm": 15
+      },
+      "peakBps": 2.45,
+      "peakNtpm": 15,
+      "N": 30,
+      "round": 2,
+      "rounds": 2,
+      "beatPrior": false
+    }
+  ],
+  "sessionBest": {
+    "peakBps": 3.76,
+    "peakNtpm": 23,
+    "clicks": 25,
+    "hitsGuess": 25,
+    "missGuess": 7,
+    "hitRatePct": 78.125,
+    "N": 30
+  },
+  "aggregate": {
+    "overallHitRatePct": 78.84615384615384,
+    "roundHitRatesPct": [
+      78.125,
+      80.0
+    ],
+    "totalHitsGuess": 41,
+    "totalMissGuess": 11
+  },
+  "score": 49.1,
+  "synopsis": "WebGrid Intel laptop \u00b7 3.76 BPS / 23 NTPM \u00b7 30\u00d730 \u00b7 hit\u224878.8% \u00b7 score 49.1",
+  "calibration": {
+    "viewport": [
+      1370,
+      1026
+    ],
+    "desktopOk": true,
+    "contrailNote": "FPS/buffer lag on Intel UHD+WKWebView: agent pointerup often ahead of canvas blue repaint \u2192 contrail marks miss visual targets even when NTPM rises",
+    "paceDefault": "sleep_ms~4 wait_loops~18 may be too aggressive for this GPU; try sleep_ms 10\u201316 wait_loops 12\u201314"
+  },
+  "compare": {
+    "neuralink_marketing_n1": {
+      "bps": 10.39,
+      "note": "N1 implant clinical participant fullscreen 16-inch MBP \u2014 not agent"
+    },
+    "agent_targetBeat_field": 483.58,
+    "targetBeat_note": "field is stale/mis-scaled (not human BPS); ignore for ranking \u2014 use peakBps only",
+    "this_machine_session_best_bps": 3.76
+  }
+}
