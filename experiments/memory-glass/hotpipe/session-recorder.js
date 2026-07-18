@@ -1,11 +1,11 @@
-/* Memory Glass · session recorder (P2) + X draft only (P4)
+/* Memory Glass · session recorder (P2) + X draft from run metrics / board (P4)
  * Cam still-pipe samples + optional screen/page snapshot → local pack.
- * You post to X — no auto-post.
- * VER: session-rec-v1
+ * X draft = activity leaderboard synopsis (you post — no auto-post).
+ * VER: session-rec-v2-board
  */
 (function () {
   "use strict";
-  var VER = "session-rec-v1";
+  var VER = "session-rec-v2-board";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._sessionRecVer === VER) return;
   HP._sessionRecVer = VER;
@@ -57,6 +57,7 @@
       '<span class="dot"></span>' +
       '<button type="button" id="mg-rec-toggle">REC</button>' +
       '<button type="button" id="mg-rec-snap">SNAP</button>' +
+      '<button type="button" id="mg-rec-board">BOARD</button>' +
       '<button type="button" id="mg-rec-x">X DRAFT</button>';
     (document.body || document.documentElement).appendChild(recBtn);
     recBtn.querySelector("#mg-rec-toggle").onclick = function () {
@@ -65,6 +66,13 @@
     };
     recBtn.querySelector("#mg-rec-snap").onclick = function () {
       snap("manual");
+      try {
+        if (window.__mgActivityBoard) window.__mgActivityBoard.submitRun("snap");
+      } catch (eB) {}
+    };
+    recBtn.querySelector("#mg-rec-board").onclick = function () {
+      if (window.__mgActivityBoard) window.__mgActivityBoard.toggle();
+      else log("board missing");
     };
     recBtn.querySelector("#mg-rec-x").onclick = function () {
       exportXDraft();
@@ -219,8 +227,16 @@
       recBtn.querySelector("#mg-rec-toggle").textContent = "REC";
     }
     var pack = buildPack();
+    /* submit run metrics to built-in leaderboard */
+    try {
+      if (window.__mgActivityBoard) {
+        pack.run = window.__mgActivityBoard.submitRun("rec-stop", {
+          rec: { frames: frames.length, meta: meta },
+        });
+      }
+    } catch (eB) {}
     persistPack(pack);
-    log("REC stop n=" + frames.length);
+    log("REC stop n=" + frames.length + (pack.run ? " score=" + pack.run.score : ""));
     return pack;
   }
 
@@ -230,14 +246,22 @@
       if (window.__mgContrail && window.__mgContrail.exportStoryBeats)
         beats = window.__mgContrail.exportStoryBeats();
     } catch (e) {}
+    var metrics = null;
+    try {
+      if (window.__mgActivityBoard) metrics = window.__mgActivityBoard.collectMetrics();
+    } catch (eM) {}
     return {
-      schema: "mg-session-pack-v1",
+      schema: "mg-session-pack-v2",
       meta: meta,
       frames: frames.map(function (f) {
         /* strip huge dataUrls for JSONL index; keep last 3 full */
         return f;
       }),
       beats: beats,
+      metrics: metrics,
+      synopsis: metrics && window.__mgActivityBoard
+        ? window.__mgActivityBoard.synopsis(metrics)
+        : null,
       blochTrials: (window.__mgBlochSolve && window.__mgBlochSolve.trials
         ? window.__mgBlochSolve.trials.slice(-40)
         : []),
@@ -248,6 +272,7 @@
         blackwell: "https://mueee.qbitos.ai/blackwell.html",
         kbatch: "https://kbatch.ugrad.ai/",
         handoff: "https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md",
+        webgrid: "https://neuralink.com/webgrid/",
       },
     };
   }
@@ -304,83 +329,77 @@
   }
 
   function exportXDraft() {
-    var pack = recording ? buildPack() : null;
-    if (!pack) {
-      try {
-        pack = {
-          meta: JSON.parse(localStorage.getItem("mg.session.lastPackMeta") || "{}"),
-          beats:
-            window.__mgContrail && window.__mgContrail.exportStoryBeats
-              ? window.__mgContrail.exportStoryBeats()
-              : null,
-          bloch: window.__mgBlochSolve ? window.__mgBlochSolve.report() : null,
-        };
-      } catch (e) {
-        pack = {};
-      }
-    }
-    var lines = [];
-    lines.push("Memory Glass · session reaction (manual post)");
-    lines.push("");
-    if (pack.meta && pack.meta.startedAt) lines.push("⏱ " + pack.meta.startedAt);
-    if (location.href) lines.push("🔗 " + location.href.slice(0, 120));
+    /* Prefer built-in leaderboard: run metrics + synopsis + top board */
+    var text = null;
     try {
-      if (window.__mgContrail && window.__mgContrail.report)
-        lines.push("🕸 " + window.__mgContrail.report());
-    } catch (e) {}
-    try {
-      if (window.__mgBlochSolve && window.__mgBlochSolve.report)
-        lines.push("⚛ " + window.__mgBlochSolve.report());
-    } catch (e2) {}
-    try {
-      var dj = window.__mgContrail && window.__mgContrail.lastDojo && window.__mgContrail.lastDojo();
-      if (dj) {
-        if (dj.strain != null) lines.push("📐 strain " + dj.strain);
-        if (dj.worldWords && dj.worldWords.length)
-          lines.push("🗺 " + dj.worldWords.slice(0, 5).join(", "));
-        if (dj.phrasingOrders)
-          lines.push(
-            "🔤 SO " +
-              Object.keys(dj.phrasingOrders)
-                .map(function (k) {
-                  return k;
-                })
-                .join("/")
-          );
-      }
-    } catch (e3) {}
-    try {
-      var beats =
-        pack.beats ||
-        (window.__mgContrail && window.__mgContrail.exportStoryBeats
-          ? window.__mgContrail.exportStoryBeats()
-          : null);
-      if (beats && beats.beats && beats.beats.length) {
-        lines.push("");
-        lines.push("Beats:");
-        beats.beats.slice(0, 4).forEach(function (b, i) {
-          lines.push(i + 1 + ". [" + (b.mood || "?") + "] " + (b.hint || b.glyph || ""));
+      if (window.__mgActivityBoard && window.__mgActivityBoard.formatXDraft) {
+        if (recording) {
+          /* mid-run: snapshot current activity onto board */
+          window.__mgActivityBoard.submitRun("rec-live");
+        }
+        text = window.__mgActivityBoard.formatXDraft({
+          fresh: !recording,
+          kind: recording ? "rec-live" : "x-draft",
         });
       }
-    } catch (e4) {}
-    lines.push("");
-    lines.push("Cubes · " + "https://mueee.qbitos.ai/quantum-gutter.html");
-    lines.push("Train · " + "https://mueee.qbitos.ai/ugrad-r0.html");
-    lines.push("KBatch · " + "https://kbatch.ugrad.ai/");
-    lines.push("");
-    lines.push("#MemoryGlass #KBatch #WebGrid");
-    lines.push("");
-    lines.push("(You post — no auto-post)");
+    } catch (eBoard) {}
 
-    var text = lines.join("\n");
+    if (!text) {
+      /* fallback if board not injected yet */
+      var pack = recording ? buildPack() : null;
+      if (!pack) {
+        try {
+          pack = {
+            meta: JSON.parse(localStorage.getItem("mg.session.lastPackMeta") || "{}"),
+            beats:
+              window.__mgContrail && window.__mgContrail.exportStoryBeats
+                ? window.__mgContrail.exportStoryBeats()
+                : null,
+          };
+        } catch (e) {
+          pack = {};
+        }
+      }
+      var lines = [];
+      lines.push("Memory Glass · run synopsis (manual post)");
+      lines.push("");
+      if (pack.meta && pack.meta.startedAt) lines.push("⏱ " + pack.meta.startedAt);
+      if (location.href) lines.push("🔗 " + location.href.slice(0, 120));
+      try {
+        if (window.__mgContrail && window.__mgContrail.report)
+          lines.push("🕸 " + window.__mgContrail.report());
+      } catch (e) {}
+      try {
+        if (window.__mgBlochSolve && window.__mgBlochSolve.report)
+          lines.push("⚛ " + window.__mgBlochSolve.report());
+      } catch (e2) {}
+      try {
+        if (window.__mgWebgridCalib && window.__mgWebgridCalib.scrapeScore) {
+          var sc = window.__mgWebgridCalib.scrapeScore();
+          if (sc.bps != null || (sc.peak && sc.peak.bps != null))
+            lines.push(
+              "🎮 " +
+                (sc.peak && sc.peak.bps != null ? sc.peak.bps : sc.bps) +
+                " BPS · " +
+                (sc.peak && sc.peak.ntpm != null ? sc.peak.ntpm : sc.ntpm) +
+                " NTPM"
+            );
+        }
+      } catch (eWg) {}
+      lines.push("");
+      lines.push("#MemoryGlass #WebGrid #KBatch");
+      lines.push("(You post — no auto-post)");
+      text = lines.join("\n");
+    }
+
     try {
       if (window.ipc)
         window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: text }));
       else if (navigator.clipboard) navigator.clipboard.writeText(text);
     } catch (e) {}
-    log("X draft copied · you post");
+    log("X draft · metrics+board · you post");
     try {
-      alert("X draft copied to clipboard — you post when ready.");
+      alert("X draft (run metrics + leaderboard) copied — you post when ready.");
     } catch (e5) {}
     return text;
   }

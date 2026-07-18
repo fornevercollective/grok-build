@@ -80,6 +80,13 @@
       }
     } catch (e4b) {}
     try {
+      if (window.__mgActivityBoard) {
+        var br = window.__mgActivityBoard.report() || "";
+        var top = /top=([^\s]+)/.exec(br);
+        parts.push("<b>BOARD</b> " + (top ? top[1] : "—"));
+      }
+    } catch (e4c) {}
+    try {
       var dj = window.__mgContrail && window.__mgContrail.lastDojo && window.__mgContrail.lastDojo();
       if (dj && dj.strain != null) parts.push("<b>S</b> " + Math.round(dj.strain));
     } catch (e5) {}

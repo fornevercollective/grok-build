@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v4-floats";
+  var VER = "glass-capsule-v5-board";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
@@ -299,6 +299,30 @@
             else window.__mgSessionRec.start();
             setStatus(window.__mgSessionRec.report());
           } else setStatus("session-rec missing");
+        })
+      );
+      row.appendChild(
+        act("BOARD", "ok", function () {
+          if (window.__mgActivityBoard) {
+            window.__mgActivityBoard.toggle();
+            setStatus(window.__mgActivityBoard.report());
+          } else setStatus("leaderboard missing");
+        })
+      );
+      row.appendChild(
+        act("X DRAFT", "hot", function () {
+          if (window.__mgSessionRec && window.__mgSessionRec.exportXDraft) {
+            window.__mgSessionRec.exportXDraft();
+            setStatus("X draft · metrics+board · clipboard");
+          } else if (window.__mgActivityBoard && window.__mgActivityBoard.formatXDraft) {
+            var t = window.__mgActivityBoard.formatXDraft({ fresh: true });
+            try {
+              if (window.ipc)
+                window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: t }));
+              else if (navigator.clipboard) navigator.clipboard.writeText(t);
+            } catch (e) {}
+            setStatus("X draft from board");
+          } else setStatus("X draft missing");
         })
       );
     } else if (mode === "qbit") {

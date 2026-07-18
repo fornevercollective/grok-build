@@ -1367,6 +1367,7 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
     let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
     let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
+    let activity_board = read_hotpipe_file("activity-leaderboard.js").unwrap_or_default();
     let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
     let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
     let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
@@ -1441,7 +1442,11 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !bloch_bus.is_empty() {
             inject_js_blob(wv, &bloch_bus);
         }
-        // P2 session recorder + P4 X draft (no auto-post)
+        // Activity leaderboard before session-rec so X draft can use board metrics
+        if !activity_board.is_empty() {
+            inject_js_blob(wv, &activity_board);
+        }
+        // P2 session recorder + P4 X draft from board (no auto-post)
         if !session_rec.is_empty() {
             inject_js_blob(wv, &session_rec);
         }
@@ -1523,6 +1528,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !bloch_bus.is_empty() {
         tag.push_str("+bloch");
+    }
+    if !activity_board.is_empty() {
+        tag.push_str("+board");
     }
     if !session_rec.is_empty() {
         tag.push_str("+rec");
