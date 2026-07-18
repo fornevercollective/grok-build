@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var VER = "rubik-lang-v1";
+  var VER = "rubik-lang-v3-no-overlap";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._rubikLangVer === VER) return;
   HP._rubikLangVer = VER;
@@ -98,12 +98,14 @@
   }
 
   function ensureCss() {
-    if (document.getElementById("mg-rubik-lang-css")) return;
+    var old = document.getElementById("mg-rubik-lang-css");
+    if (old) old.remove();
     var st = document.createElement("style");
     st.id = "mg-rubik-lang-css";
     st.textContent = [
-      "#mg-rubik-orb{position:fixed;right:12px;bottom:calc(124px + var(--mg-kb-h,0px));",
-      "  z-index:2147483002;width:56px;height:56px;border-radius:50%;",
+      /* Orb stacked above BLOCH orb (layout pins); low z so panels cover */
+      "#mg-rubik-orb{position:fixed;left:12px;right:auto;bottom:calc(218px + var(--mg-kb-h,0px));",
+      "  z-index:2147482985;width:52px;height:52px;border-radius:50%;",
       "  background:rgba(10,12,16,0.45);backdrop-filter:blur(20px) saturate(1.3);",
       "  -webkit-backdrop-filter:blur(20px) saturate(1.3);",
       "  border:1px solid rgba(255,255,255,0.18);",
@@ -112,40 +114,42 @@
       "#mg-rubik-orb canvas{width:100%;height:100%;display:block}",
       "#mg-rubik-orb .lbl{position:absolute;left:0;right:0;bottom:2px;text-align:center;",
       "  font:700 7px/1 system-ui;letter-spacing:0.08em;color:rgba(255,190,120,0.9)}",
-      "#mg-rubik-float{position:fixed;right:12px;top:56px;z-index:2147482996;",
-      "  width:min(260px,34vw);border-radius:12px;overflow:hidden;",
-      "  background:rgba(10,12,16,0.52);backdrop-filter:blur(22px) saturate(1.35);",
-      "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
-      "  border:1px solid rgba(255,255,255,0.16);",
-      "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
-      "  font:650 9px/1.25 system-ui;color:rgba(244,246,250,0.92);pointer-events:auto}",
+      /* Float: right of left rail — WIP stays closed unless user opens */
+      "#mg-rubik-float{position:fixed;left:min(300px,22vw);right:auto;top:48px;z-index:2147482996;",
+      "  width:min(360px,36vw);max-height:min(70vh,640px);border-radius:14px;overflow:auto;",
+      "  background:rgba(10,12,16,0.58);backdrop-filter:blur(24px) saturate(1.4);",
+      "  -webkit-backdrop-filter:blur(24px) saturate(1.4);",
+      "  border:1px solid rgba(255,255,255,0.18);",
+      "  box-shadow:0 10px 32px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.12);",
+      "  font:650 10px/1.35 system-ui;color:rgba(244,246,250,0.94);pointer-events:auto}",
       "#mg-rubik-float.hidden{display:none}",
       "#mg-rubik-float .hd{display:flex;justify-content:space-between;align-items:center;",
-      "  padding:6px 8px;letter-spacing:0.1em;text-transform:uppercase;",
-      "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,190,120,0.95)}",
+      "  padding:8px 12px;letter-spacing:0.1em;text-transform:uppercase;",
+      "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,190,120,0.95);",
+      "  position:sticky;top:0;background:rgba(10,12,16,0.85);z-index:1}",
       "#mg-rubik-float .hd button{appearance:none;background:transparent;border:0;color:inherit;",
-      "  cursor:pointer;font:700 11px/1 system-ui}",
-      "#mg-rubik-float .body{padding:8px}",
-      "#mg-rubik-float .faces{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0}",
-      "#mg-rubik-float .face{padding:5px 6px;border-radius:6px;",
+      "  cursor:pointer;font:700 12px/1 system-ui}",
+      "#mg-rubik-float .body{padding:10px 12px 12px}",
+      "#mg-rubik-float .faces{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}",
+      "#mg-rubik-float .face{padding:8px 10px;border-radius:8px;",
       "  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);",
-      "  font:600 8px/1.2 ui-monospace,Menlo,monospace}",
+      "  font:600 9px/1.3 ui-monospace,Menlo,monospace}",
       "#mg-rubik-float .face.on{border-color:rgba(255,200,120,0.65);",
-      "  box-shadow:0 0 10px rgba(255,180,80,0.25)}",
-      "#mg-rubik-float .face b{display:block;font-size:11px;letter-spacing:0.06em}",
-      "#mg-rubik-float .links{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}",
+      "  box-shadow:0 0 12px rgba(255,180,80,0.28)}",
+      "#mg-rubik-float .face b{display:block;font-size:13px;letter-spacing:0.06em;margin-bottom:2px}",
+      "#mg-rubik-float .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}",
       "#mg-rubik-float .links button{appearance:none;cursor:pointer;",
-      "  padding:5px 8px;border-radius:999px;font:700 8px/1 system-ui;letter-spacing:0.06em;",
+      "  padding:7px 11px;border-radius:999px;font:700 9px/1 system-ui;letter-spacing:0.06em;",
       "  color:rgba(240,245,255,0.95);background:rgba(255,255,255,0.08);",
       "  border:1px solid rgba(255,255,255,0.14)}",
       "#mg-rubik-float .links button.hot{background:rgba(255,160,60,0.22);",
       "  border-color:rgba(255,180,100,0.45)}",
       "#mg-rubik-float .links button.ok{background:rgba(80,220,160,0.15);",
       "  border-color:rgba(100,220,160,0.35)}",
-      "#mg-rubik-float .ft{padding:4px 8px 6px;font:500 8px/1.25 ui-monospace,Menlo,monospace;",
+      "#mg-rubik-float .ft{padding:6px 12px 8px;font:500 9px/1.3 ui-monospace,Menlo,monospace;",
       "  color:rgba(180,200,160,0.85);border-top:1px solid rgba(255,255,255,0.08)}",
-      "#mg-rubik-float canvas.cube{width:100%;height:88px;display:block;margin:4px 0;",
-      "  border-radius:8px;background:rgba(4,8,14,0.55)}",
+      "#mg-rubik-float canvas.cube{width:100%;height:min(200px,28vh);display:block;margin:6px 0;",
+      "  border-radius:10px;background:rgba(4,8,14,0.55)}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }
@@ -388,6 +392,8 @@
     if (open) refresh();
   }, 120);
   setTimeout(paintOrb, 180);
+
+  /* Manual open/close only — Rubik WIP; use TOOLS when ready, not auto */
 
   window.__mgRubikLang = {
     ver: VER,

@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "bloch-solve-v2-float";
+  var VER = "bloch-solve-v4-no-overlap";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._blochSolveVer === VER) return;
   HP._blochSolveVer = VER;
@@ -175,12 +175,14 @@
 
   /* ── mini orb + maze-style float (openable) ── */
   function ensureCss() {
-    if (document.getElementById("mg-bloch-orb-css")) return;
+    var old = document.getElementById("mg-bloch-orb-css");
+    if (old) old.remove();
     var st = document.createElement("style");
     st.id = "mg-bloch-orb-css";
     st.textContent = [
-      "#mg-bloch-orb{position:fixed;right:12px;bottom:calc(56px + var(--mg-kb-h,0px));",
-      "  z-index:2147483003;width:56px;height:56px;border-radius:50%;",
+      /* Orb: above CTRL, below open panels (z low) — layout pins position */
+      "#mg-bloch-orb{position:fixed;left:12px;right:auto;bottom:calc(160px + var(--mg-kb-h,0px));",
+      "  z-index:2147482985;width:52px;height:52px;border-radius:50%;",
       "  background:rgba(10,12,16,0.45);backdrop-filter:blur(20px) saturate(1.3);",
       "  -webkit-backdrop-filter:blur(20px) saturate(1.3);",
       "  border:1px solid rgba(255,255,255,0.18);",
@@ -189,8 +191,9 @@
       "#mg-bloch-orb canvas{width:100%;height:100%;display:block}",
       "#mg-bloch-orb .lbl{position:absolute;left:0;right:0;bottom:2px;text-align:center;",
       "  font:700 7px/1 system-ui;letter-spacing:0.08em;color:rgba(160,210,255,0.85)}",
-      "#mg-bloch-float{position:fixed;right:78px;bottom:calc(56px + var(--mg-kb-h,0px));",
-      "  z-index:2147482997;width:min(240px,32vw);border-radius:12px;overflow:hidden;",
+      /* Float: mid-left (right of maze/geo rail) — not stacked on GEO */
+      "#mg-bloch-float{position:fixed;left:min(300px,22vw);right:auto;top:56px;bottom:auto;",
+      "  z-index:2147482991;width:min(240px,32vw);border-radius:12px;overflow:hidden;",
       "  background:rgba(10,12,16,0.5);backdrop-filter:blur(22px) saturate(1.35);",
       "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
       "  border:1px solid rgba(255,255,255,0.16);",
@@ -388,6 +391,8 @@
 
   setInterval(paintOrb, 400);
   setTimeout(paintOrb, 200);
+
+  /* Manual open/close only — use TOOLS → BLOCH or orb click */
 
   window.__mgBlochSolve = {
     ver: VER,

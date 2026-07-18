@@ -1,0 +1,37 @@
+{
+  "ver": "kbatch-r4-data-2026-07-18",
+  "product": "ugrad.kbatch.shadow",
+  "kbatchVersion": "1.2.0",
+  "rung": "R4-data",
+  "smoke": { "pass": 50, "fail": 0 },
+  "metrics": {
+    "d5Glosses": 6199,
+    "senseEntries": 6202,
+    "senseStubs": 0,
+    "senseHardFails": 0,
+    "worldAnalyzedLangs": 32,
+    "worldAnalyzedWordsApprox": 775000,
+    "worldPackSpellingsApprox": 54600000
+  },
+  "axes": {
+    "dictionaries": { "score": 0.88, "dial": "D5-bulk-R4" },
+    "schools": { "score": 0.8, "dial": "S2-live" },
+    "museums": { "score": 0.76, "dial": "M3-live" },
+    "typing": { "score": 0.77, "dial": "T2-live" },
+    "music": { "score": 0.75, "dial": "R3-live" }
+  },
+  "analyzedLangs": [
+    "ar", "bg", "cs", "da", "de", "el", "es", "fi", "fr", "he", "hi", "hr",
+    "hu", "id", "it", "ja", "ko", "ms", "nl", "no", "pl", "pt", "ro", "ru",
+    "sl", "sr", "sv", "th", "tr", "uk", "vi", "zh"
+  ],
+  "links": {
+    "home": "https://kbatch.ugrad.ai/",
+    "data": "https://data.ugrad.ai/kbatch/",
+    "livingBooks": "https://kbatch.ugrad.ai/labs/living-books.html",
+    "learn": "https://kbatch.ugrad.ai/learn",
+    "dojo": "https://kbatch.ugrad.ai/dojo/",
+    "milestone": "https://kbatch.ugrad.ai/docs/MILESTONE-R4-DATA.md"
+  },
+  "note": "Snapshot for Memory Glass LIVE RANK / Control Center when offline. Live source of truth remains kbatch SPA + R2."
+}

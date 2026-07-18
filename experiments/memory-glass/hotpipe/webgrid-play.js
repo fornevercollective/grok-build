@@ -24,7 +24,10 @@
  * P-001 score truth: NEVER use marketing body BPS/grid (10.39 / 40×40); sidebar+peak only.
  * P-002 Intel laptop: auto pace profile + play-perf (throttle redraws, keep floats).
  * P-003 All dual-space floats LIVE during WebGrid play (contrail/maze/bloch/rubik/beats/board/kb).
- * VER: webgrid-play-v23-floats-live
+ * P-004 Canvas FILL: use full window (not cramped Neuralink max-height / min(96vw,96vh)).
+ * P-005 Aggressive fill: ~88% of main view square; score column stays readable.
+ * P-006 Keep Memory Glass chrome (dragon grabber, tools, tabs, stoplights) VISIBLE.
+ * VER: webgrid-play-v28-scrim-dead
  */
 (function () {
   "use strict";
@@ -33,7 +36,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v23-floats-live";
+  var VER = "webgrid-play-v28-scrim-dead";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -530,33 +533,101 @@
     }
   }
 
-  /** Kick Neuralink's canvas resize (min(clientW, clientH) of container) */
+  /** FILL: size play canvas to the largest square that fits the window (sidebar reserved). */
   function kickCanvasResize() {
     try {
       window.dispatchEvent(new Event("resize"));
     } catch (e) {}
     try {
-      var c = document.querySelector("canvas._canvas_1wslk_27") || document.querySelector("canvas");
+      var c =
+        document.querySelector("canvas._canvas_1wslk_27") ||
+        document.querySelector("canvas");
+      if (!c) return;
       var box = document.querySelector("._container_1wslk_16");
-      if (c && box) {
-        var a = Math.min(box.clientWidth, box.clientHeight);
-        if (a > 40) {
-          c.style.width = a + "px";
-          c.style.height = a + "px";
-          var dpr = window.devicePixelRatio || 1;
-          c.width = Math.floor(a * dpr);
-          c.height = Math.floor(a * dpr);
+      var side = document.querySelector("._sidebar_1bxtc_139");
+      var vw = 0;
+      var vh = 0;
+      try {
+        if (window.__mgNativeInnerWidth) vw = window.__mgNativeInnerWidth();
+        if (window.__mgNativeInnerHeight) vh = window.__mgNativeInnerHeight();
+      } catch (eN) {}
+      if (!vw || !vh) {
+        try {
+          var vv = window.visualViewport;
+          vw = (vv && vv.width) || window.innerWidth || 0;
+          vh = (vv && vv.height) || window.innerHeight || 0;
+        } catch (eV) {
+          vw = window.innerWidth || 1280;
+          vh = window.innerHeight || 800;
         }
       }
+      /* Score column ~9–12rem; floats are overlays — reserve only score strip */
+      var sideW = 0;
+      if (side) {
+        var r = side.getBoundingClientRect();
+        sideW = Math.max(r.width || 0, side.offsetWidth || 0);
+        if (sideW < 40 || r.right < 8) sideW = 0;
+        sideW = Math.min(sideW, Math.floor(vw * 0.18));
+      }
+      if (!sideW) sideW = Math.min(160, Math.floor(vw * 0.12));
+      var pad = 12;
+      /* Aggressive fill: target ~88% of shorter axis (was leaving huge ocean margins) */
+      var targetH = Math.floor(vh * 0.9);
+      var targetW = Math.floor(vw - sideW - pad * 2);
+      var fromWin = Math.floor(Math.min(targetW, targetH));
+      var fromBox = 0;
+      if (box) {
+        var bw = box.clientWidth || 0;
+        var bh = box.clientHeight || 0;
+        if (bw > 40 && bh > 40) fromBox = Math.floor(Math.min(bw, bh) * 0.98);
+      }
+      var a = Math.max(fromBox, fromWin);
+      /* hard floor: never leave a postage-stamp grid on a large display */
+      var minFill = Math.floor(Math.min(vw, vh) * 0.62);
+      if (a < minFill) a = minFill;
+      a = Math.min(a, Math.floor(Math.min(vw - 8, vh - 8)));
+      a = Math.max(200, a);
+      if (a < 40) return;
+
+      var curCss = parseFloat(c.style.width) || c.getBoundingClientRect().width || 0;
+      /* Avoid thrashing buffer mid-frame unless size actually moved */
+      if (Math.abs(curCss - a) < 6 && Math.abs((c.width || 0) / (window.devicePixelRatio || 1) - a) < 6) {
+        return;
+      }
+
+      c.style.width = a + "px";
+      c.style.height = a + "px";
+      c.style.maxWidth = a + "px";
+      c.style.maxHeight = a + "px";
+      c.style.minWidth = a + "px";
+      c.style.minHeight = a + "px";
+      var dpr = window.devicePixelRatio || 1;
+      var px = Math.floor(a * dpr);
+      if (Math.abs(c.width - px) > 4) {
+        c.width = px;
+        c.height = px;
+      }
+      if (box) {
+        box.style.width = "100%";
+        box.style.height = "100%";
+        box.style.maxHeight = "100dvh";
+      }
+      try {
+        window.__mgWebgridCanvasFill = { a: a, vw: vw, vh: vh, sideW: sideW, ver: VER };
+      } catch (eF) {}
     } catch (e2) {}
   }
 
+  /**
+   * Expand Neuralink play area for FILL canvas.
+   * NEVER hide Memory Glass shell chrome: dragon grabber, tools panel, tabs,
+   * stoplights, search dock, edges/grip — those are window controls + visual tools.
+   */
   function hideMgChrome() {
     try {
       document.documentElement.classList.add("mg-webgrid-play");
       document.documentElement.style.setProperty("--mg-page-pad-bot", "0px");
       document.documentElement.style.setProperty("--mg-page-pad-top", "0px");
-      /* Kill Neuralink nav offset so root can use full height */
       document.documentElement.style.setProperty("--root-nav-height", "0px");
       if (document.body) {
         document.body.style.setProperty("padding-top", "0", "important");
@@ -573,65 +644,144 @@
       (document.head || document.documentElement).appendChild(st);
     }
     st.textContent =
-      "html.mg-webgrid-play #mg-tabs," +
-      "html.mg-webgrid-play #mg-tab-row," +
-      "html.mg-webgrid-play #mg-search-dock," +
-      "html.mg-webgrid-play #mg-search-peek," +
-      "html.mg-webgrid-play #mg-stoplights," +
-      "html.mg-webgrid-play #mg-top-right," +
-      "html.mg-webgrid-play #mg-mode-menu," +
-      "html.mg-webgrid-play #mg-tab," +
-      "html.mg-webgrid-play .mg-edge," +
-      "html.mg-webgrid-play .mg-grip," +
+      /* ── MG shell chrome MUST stay visible + interactive ── */ +
       "html.mg-webgrid-play #mg-dragon," +
       "html.mg-webgrid-play #mg-panel," +
-      "html.mg-webgrid-play #mg-dev," +
-      "html.mg-webgrid-play #mg-scrim{" +
-      "  display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;}" +
+      "html.mg-webgrid-play #mg-tabs," +
+      "html.mg-webgrid-play #mg-tab-row," +
+      "html.mg-webgrid-play #mg-tab," +
+      "html.mg-webgrid-play #mg-stoplights," +
+      "html.mg-webgrid-play #mg-search-dock," +
+      "html.mg-webgrid-play #mg-search-peek," +
+      "html.mg-webgrid-play #mg-top-right," +
+      "html.mg-webgrid-play #mg-mode-menu," +
+      "html.mg-webgrid-play #mg-drag-pad," +
+      "html.mg-webgrid-play .mg-edge," +
+      "html.mg-webgrid-play .mg-grip," +
+      "html.mg-webgrid-play #mg-sx-rail," +
+      "html.mg-webgrid-play #mg-glass-capsule{" +
+      "  visibility:visible!important;pointer-events:auto!important;}" +
+      "html.mg-webgrid-play #mg-dragon," +
+      "html.mg-webgrid-play #mg-tabs," +
+      "html.mg-webgrid-play #mg-stoplights," +
+      "html.mg-webgrid-play #mg-search-dock{" +
+      "  opacity:1!important;z-index:2147483600!important;}" +
+      /* panel only when dragon open — don't force display if closed */ +
+      "html.mg-webgrid-play #mg-dragon.is-open #mg-panel{display:flex!important;opacity:1!important;}" +
       "html.mg-webgrid-play,html.mg-webgrid-play body{" +
       "  padding:0!important;margin:0!important;overflow:hidden!important;height:100%!important;" +
       "  width:100%!important;max-width:100%!important;}" +
+      /* page content receives clicks; MG chrome overlays stay above */ +
       "html.mg-webgrid-play #mg-root{pointer-events:none!important;}" +
-      "html.mg-webgrid-play canvas,html.mg-webgrid-play button,html.mg-webgrid-play a,html.mg-webgrid-play input{" +
+      "html.mg-webgrid-play #mg-root #mg-dragon," +
+      "html.mg-webgrid-play #mg-root #mg-panel," +
+      "html.mg-webgrid-play #mg-root #mg-tabs," +
+      "html.mg-webgrid-play #mg-root #mg-tab-row," +
+      "html.mg-webgrid-play #mg-root #mg-stoplights," +
+      "html.mg-webgrid-play #mg-root #mg-search-dock," +
+      "html.mg-webgrid-play #mg-root #mg-search-peek," +
+      "html.mg-webgrid-play #mg-root #mg-search," +
+      "html.mg-webgrid-play #mg-root #mg-top-right," +
+      "html.mg-webgrid-play #mg-root #mg-mode-menu," +
+      "html.mg-webgrid-play #mg-root #mg-drag-pad," +
+      "html.mg-webgrid-play #mg-root .mg-edge," +
+      "html.mg-webgrid-play #mg-root .mg-grip{" +
       "  pointer-events:auto!important;}" +
-      /* ── FILL PLAY AREA (override Neuralink max-height: 100dvh - 20rem) ── */ +
+      /* scrim NEVER captures — #mg-root z is above body floats; scrim ate all clicks */ +
+      "html.mg-webgrid-play #mg-scrim," +
+      "html.mg-webgrid-play #mg-root #mg-scrim," +
+      "html.mg-webgrid-play #mg-dragon.is-open ~ #mg-scrim{" +
+      "  pointer-events:none!important;opacity:0!important;}" +
+      /* body-level floats ABOVE #mg-root (2147483646) */ +
+      "html.mg-webgrid-play #mg-glass-cap," +
+      "html.mg-webgrid-play #mg-float-kb," +
+      "html.mg-webgrid-play #mg-activity-board," +
+      "html.mg-webgrid-play #mg-board-chip," +
+      "html.mg-webgrid-play #mg-rec-chip," +
+      "html.mg-webgrid-play #mg-sx-rail," +
+      "html.mg-webgrid-play #mg-live-solve-hud," +
+      "html.mg-webgrid-play #mg-kb-beats," +
+      "html.mg-webgrid-play #mg-mem-maze," +
+      "html.mg-webgrid-play #mg-sports-field," +
+      "html.mg-webgrid-play #mg-geo-float," +
+      "html.mg-webgrid-play #mg-raider-stage," +
+      "html.mg-webgrid-play #mg-rubik-float," +
+      "html.mg-webgrid-play #mg-bloch-float," +
+      "html.mg-webgrid-play #mg-menu-health-pill{" +
+      "  z-index:2147483647!important;pointer-events:auto!important;}" +
+      "html.mg-webgrid-play #mg-search-dock," +
+      "html.mg-webgrid-play #mg-search-peek{" +
+      "  pointer-events:auto!important;}" +
+      "html.mg-webgrid-play #mg-glass-cap button," +
+      "html.mg-webgrid-play #mg-glass-cap input," +
+      "html.mg-webgrid-play #mg-float-kb button," +
+      "html.mg-webgrid-play #mg-activity-board button," +
+      "html.mg-webgrid-play #mg-search-dock button," +
+      "html.mg-webgrid-play #mg-search-dock input," +
+      "html.mg-webgrid-play #mg-search button," +
+      "html.mg-webgrid-play #mg-search input," +
+      "html.mg-webgrid-play #mg-dragon button," +
+      "html.mg-webgrid-play #mg-panel button{" +
+      "  pointer-events:auto!important;cursor:pointer;}" +
+      /* game canvas clickable; do NOT blanket-enable every button (site chrome) */ +
+      "html.mg-webgrid-play canvas{" +
+      "  pointer-events:auto!important;}" +
+      /* ── FILL Neuralink play only (site chrome) ── */ +
       "html.mg-webgrid-play{--root-nav-height:0px!important;}" +
-      "html.mg-webgrid-play header," +
-      "html.mg-webgrid-play nav," +
-      "html.mg-webgrid-play [class*='Nav']," +
-      "html.mg-webgrid-play [class*='nav_']," +
-      "html.mg-webgrid-play [class*='Header']," +
-      "html.mg-webgrid-play [class*='header_']{" +
+      "html.mg-webgrid-play body > header," +
+      "html.mg-webgrid-play body > nav," +
+      "html.mg-webgrid-play ._root_1bxtc_16 > header," +
+      "html.mg-webgrid-play [class*='_root_'] > header{" +
       "  display:none!important;height:0!important;min-height:0!important;overflow:hidden!important;}" +
       "html.mg-webgrid-play ._root_1bxtc_16{" +
-      "  margin-top:0!important;margin:0!important;padding:0.4rem!important;" +
-      "  height:100dvh!important;max-height:100dvh!important;width:100%!important;" +
-      "  max-width:100vw!important;box-sizing:border-box!important;" +
-      "  display:flex!important;align-items:stretch!important;justify-content:center!important;}" +
-      "html.mg-webgrid-play ._gameplay_1bxtc_131{" +
-      "  height:100%!important;width:100%!important;max-width:100%!important;" +
-      "  gap:0.75rem!important;align-items:center!important;justify-content:center!important;" +
-      "  box-sizing:border-box!important;}" +
-      /* Canvas container: use almost entire viewport (was 100dvh - 20rem) */ +
-      "html.mg-webgrid-play ._container_1wslk_16{" +
-      "  flex:1 1 auto!important;width:100%!important;height:100%!important;" +
-      "  max-height:none!important;max-height:min(98dvh,100%)!important;" +
-      "  min-height:0!important;overflow:hidden!important;" +
+      "  margin:0!important;padding:0!important;" +
+      "  height:100dvh!important;max-height:100dvh!important;min-height:100dvh!important;" +
+      "  width:100vw!important;max-width:100vw!important;box-sizing:border-box!important;" +
+      "  display:flex!important;align-items:stretch!important;justify-content:stretch!important;}" +
+      "html.mg-webgrid-play ._gameplay_1bxtc_131," +
+      "html.mg-webgrid-play [class*='_gameplay_']{" +
+      "  height:100dvh!important;width:100vw!important;max-width:100vw!important;" +
+      "  max-height:100dvh!important;margin:0!important;padding:0.2rem 0.35rem!important;" +
+      "  gap:0.35rem!important;align-items:center!important;justify-content:center!important;" +
+      "  box-sizing:border-box!important;display:flex!important;flex-direction:row!important;}" +
+      "html.mg-webgrid-play ._container_1wslk_16," +
+      "html.mg-webgrid-play [class*='_container_']{" +
+      "  flex:1 1 auto!important;width:auto!important;height:100%!important;" +
+      "  max-height:100dvh!important;max-width:none!important;min-width:0!important;" +
+      "  min-height:min(90dvh,100%)!important;overflow:visible!important;" +
+      "  margin:0!important;padding:0!important;" +
       "  display:flex!important;align-items:center!important;justify-content:center!important;}" +
-      "html.mg-webgrid-play ._canvas_1wslk_27{" +
-      "  max-width:min(96vw,96vh)!important;max-height:min(96vw,96vh)!important;" +
-      "  width:min(96vw,96vh)!important;height:min(96vw,96vh)!important;}" +
-      /* Compact sidebar so grid gets the pixels */ +
-      "html.mg-webgrid-play ._sidebar_1bxtc_139{" +
-      "  flex:0 0 auto!important;min-width:10rem!important;max-width:16rem!important;" +
-      "  margin:0!important;padding:0.5rem!important;}" +
+      "html.mg-webgrid-play ._canvas_1wslk_27," +
+      "html.mg-webgrid-play canvas[class*='_canvas_']{" +
+      "  max-width:none!important;max-height:none!important;" +
+      "  object-fit:contain!important;flex-shrink:0!important;}" +
+      "html.mg-webgrid-play ._sidebar_1bxtc_139," +
+      "html.mg-webgrid-play [class*='_sidebar_']{" +
+      "  flex:0 0 8.5rem!important;min-width:7.5rem!important;max-width:10.5rem!important;" +
+      "  width:8.5rem!important;margin:0!important;padding:0.25rem 0.35rem!important;" +
+      "  align-self:center!important;position:relative!important;z-index:5!important;}" +
       "html.mg-webgrid-play ._timer_1bxtc_69," +
       "html.mg-webgrid-play ._bigScore_1bxtc_69{" +
-      "  font-size:clamp(1.8rem,4vw,3.2rem)!important;letter-spacing:-0.04em!important;}" +
+      "  font-size:clamp(1.5rem,3.4vw,2.8rem)!important;letter-spacing:-0.04em!important;" +
+      "  color:#111!important;text-shadow:0 0 8px rgba(255,255,255,0.9)!important;}" +
       "html.mg-webgrid-play ._smallScore_1bxtc_74{" +
-      "  font-size:clamp(1rem,2vw,1.6rem)!important;margin-top:0!important;}";
+      "  font-size:clamp(0.85rem,1.5vw,1.2rem)!important;margin-top:0!important;}" +
+      "html.mg-webgrid-play ._dialog_1bxtc_30," +
+      "html.mg-webgrid-play [class*='_dialog_']{" +
+      "  max-width:min(92vw,48rem)!important;}" +
+      "html.mg-webgrid-play main,html.mg-webgrid-play #__next,html.mg-webgrid-play [id='__next']{" +
+      "  min-height:100dvh!important;height:100%!important;padding:0!important;margin:0!important;}";
     kickCanvasResize();
-    log(VER + " · fill play area · zoom " + desiredZoom());
+    setTimeout(kickCanvasResize, 60);
+    setTimeout(kickCanvasResize, 200);
+    setTimeout(kickCanvasResize, 600);
+    setTimeout(function () {
+      try {
+        if (window.__mgFloatLayout && window.__mgFloatLayout.apply) window.__mgFloatLayout.apply();
+      } catch (eL) {}
+      kickCanvasResize();
+    }, 900);
+    log(VER + " · canvas FILL · MG chrome kept · zoom " + desiredZoom());
   }
 
   /** How many agent rounds to run (1–5). URL ?mg_autoplay=3 or localStorage mg.webgrid.play_rounds */
@@ -1396,13 +1546,21 @@
   /* ⌘− / ⌘+ / ⌘0 — capture phase so page doesn't eat them */
   window.addEventListener("keydown", onZoomKey, true);
   document.addEventListener("keydown", onZoomKey, true);
-  /* Keep layout fill after SPA transitions; don't spam zoom IPC */
+  /* Keep layout fill after SPA transitions; re-assert size without thrashing */
   _fillTimer = setInterval(function () {
     try {
       hideMgChrome();
       kickCanvasResize();
     } catch (eH) {}
-  }, 1500);
+  }, 2200);
+
+  /* Expose for console / board */
+  window.__mgWebgridFill = {
+    kick: kickCanvasResize,
+    report: function () {
+      return window.__mgWebgridCanvasFill || null;
+    },
+  };
 
   window.__mgWebgridPlayTeardown = function () {
     try {

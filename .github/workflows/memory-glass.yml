@@ -1,0 +1,35 @@
+# Memory Glass · product trust CI
+name: memory-glass
+
+on:
+  push:
+    paths:
+      - "experiments/memory-glass/**"
+      - ".github/workflows/memory-glass.yml"
+  pull_request:
+    paths:
+      - "experiments/memory-glass/**"
+      - ".github/workflows/memory-glass.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: smoke + cargo check
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: experiments/memory-glass
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Product surface smoke
+        run: bash scripts/mg-smoke.sh
+
+      - name: cargo check
+        run: cargo check
+
+      - name: cargo build --release
+        run: cargo build --release

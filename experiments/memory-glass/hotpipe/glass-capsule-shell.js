@@ -1,13 +1,20 @@
 /* Memory Glass · unified Dragon glass capsule
  * One floating glass-morphism panel (inspect-style) — modes never stack as full rails.
- * VER: glass-capsule-v1
+ * VER: glass-capsule-v15-cal-boot
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v7-floats-live";
+  var VER = "glass-capsule-v15-cal-boot";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
+
+  function markUserCtrl() {
+    try {
+      window.__mgUserOpenedCtrl = true;
+      window.__mgUserChromeTouch = true;
+    } catch (e) {}
+  }
 
   try {
     if (document.getElementById("pip-wrap")) return;
@@ -24,12 +31,12 @@
   var el, body, statusEl;
 
   var MODES = [
-    { id: "tools", label: "TOOLS" },
-    { id: "qbit", label: "QBIT" },
+    { id: "tools", label: "Tools" },
+    { id: "qbit", label: "Qbit" },
     { id: "gt", label: "GT" },
-    { id: "mkt", label: "MKT" },
-    { id: "vid", label: "VID" },
-    { id: "books", label: "BOOKS" },
+    { id: "mkt", label: "Mkt" },
+    { id: "vid", label: "Vid" },
+    { id: "books", label: "Books" },
   ];
 
   function ensureCss() {
@@ -39,27 +46,39 @@
   }
 
   function setStatus(s) {
-    if (statusEl) statusEl.textContent = s || VER;
+    if (statusEl) statusEl.textContent = s || "Control Center";
   }
 
   function measure() {
     try {
       var cap = document.getElementById("mg-glass-cap");
-      var h = cap && !collapsed ? cap.offsetHeight : 44;
+      var h = cap && !collapsed ? cap.offsetHeight : 40;
       document.documentElement.style.setProperty("--mg-cap-h", h + 12 + "px");
     } catch (e) {}
   }
 
-  function act(label, cls, fn) {
+  /** Control Center module tile */
+  function act(label, cls, fn, opts) {
+    opts = opts || {};
     var b = document.createElement("button");
     b.type = "button";
-    b.className = "act" + (cls ? " " + cls : "");
-    b.textContent = label;
+    b.className = "act" + (cls ? " " + cls : "") + (opts.wide ? " wide" : "");
+    var ico = opts.ico || "●";
+    var sub = opts.sub || "";
+    b.innerHTML =
+      '<span class="ico" aria-hidden="true">' +
+      ico +
+      "</span>" +
+      '<span class="lbl">' +
+      label +
+      (sub ? '<div class="sub">' + sub + "</div>" : "") +
+      "</span>";
     b.onclick = function (ev) {
       if (ev) {
         ev.preventDefault();
         ev.stopPropagation();
       }
+      markUserCtrl();
       try {
         fn();
       } catch (e) {
@@ -67,6 +86,13 @@
       }
     };
     return b;
+  }
+
+  function section(title) {
+    var s = document.createElement("div");
+    s.className = "mg-cap-section";
+    s.textContent = title;
+    return s;
   }
 
   function paint() {
@@ -78,166 +104,291 @@
     row.className = "mg-cap-row";
 
     if (mode === "tools") {
-      hint.textContent =
-        "Dragon glass capsule · one panel at a time · glass morphism · kbatch + WebGrid tools.";
+      hint.textContent = "";
+      body.appendChild(section("Lab"));
       row.appendChild(
-        act("KEYBOARD", "primary", function () {
-          if (window.__mgFloatKb) window.__mgFloatKb.toggle();
-          setStatus("keyboard " + (window.__mgFloatKb && window.__mgFloatKb.isOpen() ? "on" : "off"));
+        act("Keyboard", "primary", function () {
+          if (window.__mgFloatKb) {
+            if (window.__mgFloatKb.launch)
+              window.__mgFloatKb.launch({ mode: "type" });
+            else window.__mgFloatKb.toggle();
+            setStatus(window.__mgFloatKb.report());
+          } else setStatus("Keyboard missing");
           measure();
-        })
+        }, { ico: "⌨", sub: "Lang · Codec · Braille · Jam" })
       );
       row.appendChild(
-        act("MAZE", "primary", function () {
+        act("Codec", "hot", function () {
+          if (window.__mgFloatKb && window.__mgFloatKb.launch) {
+            window.__mgFloatKb.launch({
+              mode: "codec",
+              codec: "hex",
+              text: window.__mgFloatKb.buffer() || "hello MG",
+            });
+            setStatus(
+              (window.__mgLangCodec && window.__mgLangCodec.report()) ||
+                window.__mgFloatKb.report()
+            );
+          } else setStatus("Codec plane missing");
+          measure();
+        }, { ico: "⌬", sub: "HEX·BIN·Steno·Glyph·Qbit" })
+      );
+      row.appendChild(
+        act("Maze", "primary", function () {
           if (window.__mgMemoryMaze) {
             window.__mgMemoryMaze.toggle();
             setStatus(window.__mgMemoryMaze.report());
-          } else setStatus("maze missing");
-        })
+          } else setStatus("Maze missing");
+        }, { ico: "◈", sub: "Memory rain" })
       );
       row.appendChild(
-        act("CONTRAIL", "ok", function () {
+        act("Beats", "primary", function () {
+          if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.toggle) {
+            window.__mgKeyboardBeats.toggle();
+            setStatus(window.__mgKeyboardBeats.report());
+          } else setStatus("Beats missing");
+        }, { ico: "♪", sub: "Staff · piano" })
+      );
+      row.appendChild(
+        act("Contrail", "ok", function () {
           if (window.__mgContrail) {
             if (window.__mgContrail.toggle) window.__mgContrail.toggle();
             else window.__mgContrail.setFlow(true);
             if (window.__mgContrail.setOverlay) window.__mgContrail.setOverlay(true);
             setStatus(window.__mgContrail.report());
-          } else setStatus("contrail on WebGrid only");
-        })
+          } else setStatus("Contrail on WebGrid only");
+        }, { ico: "〰", sub: "Path flow" })
       );
-      row.appendChild(
-        act("BEATS", "primary", function () {
-          if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.toggle) {
-            window.__mgKeyboardBeats.toggle();
-            setStatus(window.__mgKeyboardBeats.report());
-          } else if (window.__mgContrail && window.__mgContrail.exportStoryBeats) {
-            var b = window.__mgContrail.exportStoryBeats();
-            var t = JSON.stringify(b, null, 2);
-            if (window.ipc)
-              window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: t }));
-            else if (navigator.clipboard) navigator.clipboard.writeText(t);
-            setStatus("story beats " + ((b.beats && b.beats.length) || 0));
-          } else setStatus("beats missing");
-        })
-      );
-      row.appendChild(
-        act("FLOATS", "hot", function () {
-          /* Open all dual-space floats for WebGrid lab play */
+      body.appendChild(row);
+
+      var row2 = document.createElement("div");
+      row2.className = "mg-cap-row";
+      body.appendChild(section("Play"));
+      row2.appendChild(
+        act("Field", "ok", function () {
           try {
-            if (window.__mgContrail && window.__mgContrail.setOverlay)
-              window.__mgContrail.setOverlay(true);
-            if (window.__mgContrail && window.__mgContrail.setFlow)
-              window.__mgContrail.setFlow(true);
-            if (window.__mgMemoryMaze) window.__mgMemoryMaze.open();
-            if (window.__mgBlochSolve) {
-              window.__mgBlochSolve.setEnabled(true);
-              if (window.__mgBlochSolve.open) window.__mgBlochSolve.open();
-            }
-            if (window.__mgRubikLang) window.__mgRubikLang.open();
-            if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
-            if (window.__mgActivityBoard) window.__mgActivityBoard.open();
-            if (window.__mgSportsField) window.__mgSportsField.open();
-            if (window.__mgGeoPattern) window.__mgGeoPattern.open();
-            if (window.__mgFloatKb) window.__mgFloatKb.open();
-            setStatus("all floats live · play lab");
-          } catch (eF) {
-            setStatus("floats err " + eF);
-          }
-        })
-      );
-      row.appendChild(
-        act("FIELD", "ok", function () {
+            if (window.__mgFloatLayout && window.__mgFloatLayout.closeHeavy)
+              window.__mgFloatLayout.closeHeavy({
+                keepPlay: true,
+                boardPill: true,
+                ctrlPill: false,
+              });
+          } catch (e) {}
           if (window.__mgSportsField) {
-            window.__mgSportsField.toggle();
+            if (!window.__mgSportsField.isOpen()) {
+              window.__mgSportsField.open();
+              if (window.__mgSportsField.setMode) window.__mgSportsField.setMode("webgrid");
+              if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
+            } else {
+              var m = window.__mgSportsField.mode && window.__mgSportsField.mode();
+              if (m === "webgrid") window.__mgSportsField.setMode("go");
+              else if (m === "go") window.__mgSportsField.setMode("chess");
+              else window.__mgSportsField.close();
+            }
+            try {
+              if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
+                window.__mgFloatLayout.apply();
+            } catch (eA) {}
             setStatus(window.__mgSportsField.report());
           } else {
             var u = "https://mueee.qbitos.ai/sports-field-ugrad.html";
             if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
             else window.open(u, "_blank");
-            setStatus("sports-field site");
+            setStatus("Sports field");
           }
-        })
+        }, { ico: "▣", sub: "WebGrid · Go · Chess" })
       );
-      row.appendChild(
+      row2.appendChild(
+        act("Raider", "primary", function () {
+          if (window.__mgRaider) {
+            window.__mgRaider.toggle();
+            setStatus(window.__mgRaider.report());
+          } else setStatus("Raider missing");
+        }, { ico: "▶", sub: "BrotherNumsey" })
+      );
+      row2.appendChild(
+        act("Board", "ok", function () {
+          if (window.__mgActivityBoard) {
+            if (window.__mgActivityBoard.isOpen && window.__mgActivityBoard.isOpen()) {
+              if (window.__mgActivityBoard.isCollapsed && window.__mgActivityBoard.isCollapsed())
+                window.__mgActivityBoard.expand();
+              else window.__mgActivityBoard.close();
+            } else window.__mgActivityBoard.open({ collapsed: true });
+            setStatus(window.__mgActivityBoard.report());
+          } else setStatus("Board missing");
+        }, { ico: "☰", sub: "Live rank" })
+      );
+      row2.appendChild(
+        act("Play stack", "hot", function () {
+          try {
+            if (window.__mgFloatLayout && window.__mgFloatLayout.openPlayStack) {
+              window.__mgFloatLayout.openPlayStack({
+                keyboard: true,
+                kbMode: "codec",
+                codec: "hex",
+                mode: "webgrid",
+              });
+              setStatus("Field+Beats+Codec · matched");
+            } else if (window.__mgFloatLayout && window.__mgFloatLayout.openLabKit) {
+              window.__mgFloatLayout.openLabKit();
+              setStatus("Lab kit");
+            }
+          } catch (eF) {
+            setStatus("Play stack err");
+          }
+        }, { ico: "✦", sub: "Field · Beats · KB" })
+      );
+      row2.appendChild(
+        act("Clear", "muted", function () {
+          try {
+            if (window.__mgMenus && window.__mgMenus.closeAll) window.__mgMenus.closeAll();
+            else if (window.__mgFloatLayout && window.__mgFloatLayout.closeAll)
+              window.__mgFloatLayout.closeAll();
+            setStatus("Stack cleared");
+          } catch (eC) {
+            setStatus("Clear err");
+          }
+        }, { ico: "⊘", sub: "Close all floats" })
+      );
+      row2.appendChild(
+        act("Calibrate", "primary", function () {
+          try {
+            if (window.__mgCal && window.__mgCal.boot) {
+              setStatus("CAL → SHOW…");
+              window.__mgCal.boot({ mode: "full" }).then(function (r) {
+                setStatus(
+                  r && r.ok
+                    ? "CAL+SHOW green · " + (r.ms || "?") + "ms"
+                    : "CAL " +
+                        ((r && r.cal && r.cal.pass) || "?") +
+                        "/" +
+                        ((r && r.cal && r.cal.total) || "?") +
+                        (r && r.skippedShow ? " · no show" : "")
+                );
+              });
+            } else if (window.__mgMenus && window.__mgMenus.exercise) {
+              window.__mgMenus.exercise({ delayMs: 120 });
+              setStatus("Menu exercise…");
+            } else setStatus("Cal missing");
+          } catch (eCal) {
+            setStatus("Cal err");
+          }
+        }, { ico: "◎", sub: "Fast verify + flourish" })
+      );
+      body.appendChild(row2);
+
+      var row3 = document.createElement("div");
+      row3.className = "mg-cap-row";
+      body.appendChild(section("Solve"));
+      row3.appendChild(
+        act("Bloch", "primary", function () {
+          if (window.__mgBlochSolve) {
+            window.__mgBlochSolve.setEnabled(true);
+            if (window.__mgBlochSolve.toggle) window.__mgBlochSolve.toggle();
+            else if (window.__mgBlochSolve.open) window.__mgBlochSolve.open();
+            setStatus(window.__mgBlochSolve.report ? window.__mgBlochSolve.report() : "Bloch");
+          } else setStatus("Bloch missing");
+        }, { ico: "◉", sub: "Dual solve" })
+      );
+      row3.appendChild(
         act("GEO", "hot", function () {
           if (window.__mgGeoPattern) {
             window.__mgGeoPattern.toggle();
             setStatus(window.__mgGeoPattern.report());
-          } else setStatus("geo-pattern missing");
-        })
+          } else setStatus("GEO missing");
+        }, { ico: "◎", sub: "Hunt · quake" })
       );
-      row.appendChild(
-        act("HUNT", "ok", function () {
-          if (window.__mgGeoPattern) {
-            window.__mgGeoPattern.open();
-            window.__mgGeoPattern.hunt();
-            setStatus("scavenger hunt clue");
-          } else setStatus("geo-pattern missing");
-        })
-      );
-      row.appendChild(
-        act("WEBGRID", "hot", function () {
+      row3.appendChild(
+        act("WebGrid", "primary", function () {
           var u = "https://neuralink.com/webgrid/?mg_autoplay=1";
           if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
           else location.href = u;
-        })
+        }, { ico: "⊞", sub: "Play" })
       );
-      row.appendChild(
-        act("KBATCH", "primary", function () {
-          var u = "https://kbatch.ugrad.ai/";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("LEARN", "ok", function () {
-          /* CEFR + FN seed + accreditation stair */
-          var u = "https://kbatch.ugrad.ai/learn";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("DOJO", "", function () {
-          var u = "https://kbatch.ugrad.ai/dojo/";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("HANDOFF", "", function () {
-          var u = "https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("TERM", "ok", function () {
-          /* distilled terminal tool — local metrics, not full site */
-          var lines = [
-            "term · local independence",
-            window.__mgLiveSolveHud ? "solve hud on" : "solve hud —",
-            window.__mgBlochSolve ? window.__mgBlochSolve.report() : "bloch —",
-            window.__mgKeyboardBeats ? window.__mgKeyboardBeats.report() : "beats —",
-            window.__mgSessionRec ? window.__mgSessionRec.report() : "rec —",
-            "full lab: mueee terminal (opt)",
-          ];
-          setStatus(lines.slice(0, 4).join(" · "));
+      row3.appendChild(
+        act("Hot", "muted", function () {
           try {
-            if (navigator.clipboard)
-              navigator.clipboard.writeText(lines.join("\n"));
-          } catch (e) {}
+            if (window.ipc)
+              window.ipc.postMessage(JSON.stringify({ op: "hot_reload" }));
+            setStatus("Hot reload");
+          } catch (e) {
+            setStatus("⌘⇧R hot reload");
+          }
+        }, { ico: "↻", sub: "Reload menus" })
+      );
+      body.appendChild(row3);
+      body.appendChild(section("kbatch · R4-data"));
+      var row = document.createElement("div");
+      row.className = "mg-cap-row";
+      row.appendChild(
+        act("kbatch", "primary", function () {
+          if (window.__mgKbatchFleet) window.__mgKbatchFleet.openHome();
+          else {
+            var u = "https://kbatch.ugrad.ai/";
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+          }
+          setStatus(
+            window.__mgKbatchFleet ? window.__mgKbatchFleet.report() : "kbatch.ugrad.ai"
+          );
+        }, {
+          ico: "∇",
+          sub: window.__mgKbatchFleet
+            ? "R4 · " +
+              ((window.__mgKbatchFleet.snap().metrics || {}).d5Glosses || "6k") +
+              " glosses"
+            : "ugrad.ai",
         })
       );
       row.appendChild(
-        act("BLANK KB", "", function () {
-          var u = "https://fornevercollective.github.io/blank/";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
+        act("Books", "ok", function () {
+          if (window.__mgKbatchFleet) window.__mgKbatchFleet.openLivingBooks();
+          else {
+            var u = "https://kbatch.ugrad.ai/labs/living-books.html";
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+          }
+          setStatus("Living books SPA");
+        }, { ico: "📘", sub: "MG P0 playfield" })
       );
       row.appendChild(
-        act("PHRASE→DOJO", "hot", function () {
+        act("Learn", "ok", function () {
+          if (window.__mgKbatchFleet) window.__mgKbatchFleet.openLearn();
+          else {
+            var u = "https://kbatch.ugrad.ai/learn";
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+          }
+        }, { ico: "▤", sub: "Schools 0.80" })
+      );
+      row.appendChild(
+        act("Dojo", "muted", function () {
+          if (window.__mgKbatchFleet) window.__mgKbatchFleet.openDojo();
+          else {
+            var u = "https://kbatch.ugrad.ai/dojo/";
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+          }
+        }, { ico: "⚔", sub: "Typing 0.77" })
+      );
+      body.appendChild(row);
+      body.appendChild(section("Field"));
+      var rowHunt = document.createElement("div");
+      rowHunt.className = "mg-cap-row";
+      rowHunt.appendChild(
+        act("Hunt", "hot", function () {
+          if (window.__mgGeoPattern) {
+            window.__mgGeoPattern.open();
+            window.__mgGeoPattern.hunt();
+            setStatus("Hunt clue ready");
+          } else setStatus("GEO missing");
+        }, { ico: "⌖", sub: "Scavenger" })
+      );
+      body.appendChild(rowHunt);
+      var rowWide = document.createElement("div");
+      rowWide.className = "mg-cap-row";
+      rowWide.appendChild(
+        act("Phrase → Dojo", "hot", function () {
           var phrase =
             (window.__mgContrail && window.__mgContrail.stats && window.__mgContrail.stats.lastPhrase) ||
             (window.__mgFloatKb && window.__mgFloatKb.buffer()) ||
@@ -246,7 +397,7 @@
             setStatus("kbatch bridge missing");
             return;
           }
-          setStatus("dojo run «" + String(phrase).slice(0, 16) + "»…");
+          setStatus("Dojo «" + String(phrase).slice(0, 16) + "»…");
           window.__mgKbatchDojo.runPhrase(phrase, {
             canvas: document.getElementById("mg-contrail-ov"),
             seed: window.__mgFloatKb && window.__mgFloatKb.buffer()
@@ -265,223 +416,105 @@
                 " · SO " +
                 so +
                 " · " +
-                ww +
-                " · steno " +
-                (rep.steno && rep.steno.canCarryImage ? "imgOK" : "img?")
+                ww
             );
           });
-        })
+        }, { ico: "⚡", sub: "Contrail → kbatch", wide: true })
       );
-      row.appendChild(
-        act("GUTTER", "", function () {
-          var u = "https://mueee.qbitos.ai/quantum-gutter.html";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("RUBIK", "hot", function () {
-          if (window.__mgRubikLang && window.__mgRubikLang.toggle) {
-            window.__mgRubikLang.toggle();
-            setStatus(window.__mgRubikLang.report());
-          } else {
-            var u = "https://mueee.qbitos.ai/rubiks-ugrad.html";
-            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-            else window.open(u, "_blank");
-            setStatus("rubik float missing · opened site");
-          }
-        })
-      );
-      row.appendChild(
-        act("NOTEPAD", "ok", function () {
-          /* distilled quantum notepad tool — gate pad in glass, not whole site */
-          var pad = document.createElement("div");
-          pad.className = "mg-cap-row";
-          ["H", "X", "Y", "Z", "S", "T"].forEach(function (g) {
-            pad.appendChild(
-              act(g, "", function () {
-                if (window.__mgQuantum)
-                  window.__mgQuantum.applyGate({ id: g, name: g });
-                if (window.__mgBlochSolve) setStatus(window.__mgBlochSolve.report());
-                else if (window.__mgQuantum) setStatus(window.__mgQuantum.report());
-              })
-            );
-          });
-          pad.appendChild(
-            act("SCORE", "hot", function () {
-              if (window.__mgQuantum) window.__mgQuantum.scoreHit();
-              setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "?");
-            })
-          );
-          pad.appendChild(
-            act("OPEN↗", "", function () {
-              var u = "https://mueee.qbitos.ai/quantum-notepad.html";
-              if (window.ipc)
-                window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-            })
-          );
-          body.appendChild(pad);
-          setStatus("notepad tool · gates in-glass");
-          measure();
-        })
-      );
-      row.appendChild(
-        act("R0", "ok", function () {
-          var u = "https://mueee.qbitos.ai/ugrad-r0.html";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("BLACKWELL", "", function () {
-          var u = "https://mueee.qbitos.ai/blackwell.html";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
-        })
-      );
-      row.appendChild(
-        act("BLOCH", "hot", function () {
-          if (window.__mgBlochSolve) {
-            if (window.__mgBlochSolve.toggle) window.__mgBlochSolve.toggle();
-            else window.__mgBlochSolve.setEnabled(true);
-            setStatus(window.__mgBlochSolve.report());
-          } else setStatus("bloch-solve-bus missing");
-        })
-      );
-      row.appendChild(
-        act("REC", "primary", function () {
+      body.appendChild(rowWide);
+
+      body.appendChild(section("Session"));
+      var rowSess = document.createElement("div");
+      rowSess.className = "mg-cap-row";
+      rowSess.appendChild(
+        act("Record", "primary", function () {
           if (window.__mgSessionRec) {
             if (window.__mgSessionRec.isRecording()) window.__mgSessionRec.stop();
             else window.__mgSessionRec.start();
             setStatus(window.__mgSessionRec.report());
-          } else setStatus("session-rec missing");
-        })
+          } else setStatus("REC missing");
+        }, { ico: "●", sub: "Session" })
       );
-      row.appendChild(
-        act("BOARD", "ok", function () {
-          if (window.__mgActivityBoard) {
-            window.__mgActivityBoard.toggle();
-            setStatus(window.__mgActivityBoard.report());
-          } else setStatus("leaderboard missing");
-        })
-      );
-      row.appendChild(
-        act("MINI LB", "hot", function () {
-          if (window.__mgActivityBoard) {
-            window.__mgActivityBoard.open();
-            try {
-              var b = document.getElementById("mg-board-lane-mini");
-              if (b) b.click();
-            } catch (e) {}
-            setStatus("MINI 12×12 leaderboard");
-          } else setStatus("board missing");
-        })
-      );
-      row.appendChild(
-        act("POST ↗", "hot", function () {
-          if (window.__mgActivityBoard && window.__mgActivityBoard.openLeaderboardWindow) {
-            window.__mgActivityBoard.openLeaderboardWindow({
-              post: true,
-              kind: "post-play",
-            });
-            setStatus("clean leaderboard window…");
-          } else setStatus("leaderboard page missing");
-        })
-      );
-      row.appendChild(
-        act("DAY", "primary", function () {
+      rowSess.appendChild(
+        act("Day", "ok", function () {
           if (window.__mgCollabDay) {
             if (!window.__mgCollabDay.day()) window.__mgCollabDay.start({});
             window.__mgCollabDay.toggle();
             setStatus(window.__mgCollabDay.report());
-          } else setStatus("collab-day missing");
-        })
+          } else setStatus("Collab day missing");
+        }, { ico: "▦", sub: "Mesh collab" })
       );
-      row.appendChild(
-        act("GROK↦", "ok", function () {
-          if (window.__mgCollabDay && window.__mgCollabDay.exportGrokBrief) {
-            window.__mgCollabDay.exportGrokBrief();
-            setStatus("Grok brief · clipboard + download");
-          } else setStatus("start DAY first");
-        })
-      );
-      row.appendChild(
-        act("MESH+", "ok", function () {
+      rowSess.appendChild(
+        act("Mesh", "ok", function () {
           if (window.__mgCollabDay) {
             window.__mgCollabDay.shareScore();
-            setStatus("score shared on mg-mesh");
+            setStatus("Score on mg-mesh");
           } else if (window.__mgMesh) setStatus(window.__mgMesh.report());
-          else setStatus("mesh missing");
-        })
+          else setStatus("Mesh missing");
+        }, { ico: "⬡", sub: "Share" })
       );
-      row.appendChild(
-        act("X DRAFT", "hot", function () {
+      rowSess.appendChild(
+        act("X Draft", "hot", function () {
           if (window.__mgCollabDay && window.__mgCollabDay.day && window.__mgCollabDay.day()) {
             window.__mgCollabDay.exportXDraft();
-            setStatus("collab X draft · you post");
+            setStatus("X draft · you post");
           } else if (window.__mgSessionRec && window.__mgSessionRec.exportXDraft) {
             window.__mgSessionRec.exportXDraft();
-            setStatus("X draft · metrics+board · clipboard");
-          } else if (window.__mgActivityBoard && window.__mgActivityBoard.formatXDraft) {
-            var t = window.__mgActivityBoard.formatXDraft({ fresh: true });
-            try {
-              if (window.ipc)
-                window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: t }));
-              else if (navigator.clipboard) navigator.clipboard.writeText(t);
-            } catch (e) {}
-            setStatus("X draft from board");
+            setStatus("X draft · clipboard");
           } else setStatus("X draft missing");
-        })
+        }, { ico: "↗", sub: "Copy only" })
       );
+      body.appendChild(rowSess);
+      setStatus("Control Center · Tools");
+      measure();
+      return;
     } else if (mode === "qbit") {
-      hint.textContent = "Quantum WebGrid · Bloch gates · school capsules (glass host).";
+      body.appendChild(section("Quantum"));
       row.appendChild(
-        act("OPEN FULL", "ok", function () {
+        act("Open", "ok", function () {
           if (window.__mgQuantum) {
-            /* re-enable temporary rail only for full canvas if needed */
             var r = document.getElementById("mg-qwg-rail");
             if (r) {
               r.style.display = "flex";
               window.__mgQuantum.open();
             }
             setStatus(window.__mgQuantum.report());
-          } else setStatus("quantum not loaded");
-        })
+          } else setStatus("Quantum not loaded");
+        }, { ico: "⚛", sub: "Full rail" })
       );
       ["H", "X", "Y", "Z", "S", "T"].forEach(function (g) {
         row.appendChild(
-          act(g, "", function () {
+          act(g, "primary", function () {
             if (window.__mgQuantum)
               window.__mgQuantum.applyGate({ id: g, name: g });
             setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "?");
-          })
+          }, { ico: g, sub: "Gate" })
         );
       });
       row.appendChild(
-        act("SCORE", "hot", function () {
+        act("Score", "hot", function () {
           if (window.__mgQuantum) window.__mgQuantum.scoreHit();
           setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "?");
-        })
+        }, { ico: "★", sub: "Hit" })
       );
       row.appendChild(
-        act("|0⟩", "", function () {
+        act("|0⟩", "muted", function () {
           if (window.__mgQuantum) window.__mgQuantum.reset();
-        })
+        }, { ico: "↺", sub: "Reset" })
       );
       row.appendChild(
-        act("COMPOSER", "primary", function () {
+        act("Composer", "primary", function () {
           var u = "https://quantum.cloud.ibm.com/composer";
           if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-        })
+        }, { ico: "IBM", sub: "Cloud" })
       );
       var cv = document.createElement("canvas");
       cv.className = "mg-cap-cv";
       cv.id = "mg-cap-bloch";
-      body.appendChild(hint);
       body.appendChild(row);
       body.appendChild(cv);
       drawMiniBloch(cv);
-      setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "qbit ready");
+      setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "Qbit ready");
       measure();
       return;
     } else if (mode === "gt") {
@@ -792,16 +825,27 @@
 
   function mount() {
     ensureCss();
-    if (document.getElementById("mg-glass-cap")) return;
+    if (document.getElementById("mg-glass-cap")) {
+      /* remount if stale version shell */
+      try {
+        if (window.__mgGlassCap && window.__mgGlassCap.ver !== VER) {
+          var old = document.getElementById("mg-glass-cap");
+          if (old && old.parentNode) old.parentNode.removeChild(old);
+        } else return;
+      } catch (eR) {
+        return;
+      }
+    }
     el = document.createElement("div");
     el.id = "mg-glass-cap";
     el.innerHTML =
       '<div id="mg-glass-cap-hdr">' +
-      '  <div class="ttl"><span class="dot">.</span>Dragon · glass</div>' +
-      '  <div id="mg-glass-cap-tabs"></div>' +
+      '  <div class="ttl"><span class="dot"></span>Control Center</div>' +
+      '  <div id="mg-glass-cap-tabs" role="tablist"></div>' +
+      '  <button type="button" id="mg-glass-cap-fold" title="Close">×</button>' +
       "</div>" +
       '<div id="mg-glass-cap-body"></div>' +
-      '<div id="mg-glass-cap-status"></div>';
+      '<div id="mg-glass-cap-status">Control Center</div>';
     (document.body || document.documentElement).appendChild(el);
     body = el.querySelector("#mg-glass-cap-body");
     statusEl = el.querySelector("#mg-glass-cap-status");
@@ -811,11 +855,13 @@
       b.type = "button";
       b.textContent = M.label;
       b.setAttribute("data-mode", M.id);
+      b.setAttribute("role", "tab");
       b.onclick = function (ev) {
         if (ev) {
           ev.preventDefault();
           ev.stopPropagation();
         }
+        markUserCtrl();
         if (mode === M.id && !collapsed) {
           collapsed = true;
           el.classList.add("collapsed");
@@ -826,37 +872,119 @@
       };
       tabs.appendChild(b);
     });
-    var fold = document.createElement("button");
-    fold.type = "button";
-    fold.textContent = "—";
-    fold.title = "collapse";
-    fold.onclick = function () {
+    var fold = el.querySelector("#mg-glass-cap-fold");
+    fold.onclick = function (ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      markUserCtrl();
       collapsed = !collapsed;
       el.classList.toggle("collapsed", collapsed);
+      fold.textContent = collapsed ? "" : "×";
+      fold.title = collapsed ? "Open Control Center" : "Close";
+      /* collapsed pill title shortens */
+      var ttl = el.querySelector("#mg-glass-cap-hdr .ttl");
+      if (ttl)
+        ttl.innerHTML = collapsed
+          ? '<span class="dot"></span>CTRL'
+          : '<span class="dot"></span>Control Center';
       measure();
+      try {
+        if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
+          window.__mgFloatLayout.apply();
+      } catch (eA) {}
+      log(VER + " · CTRL " + (collapsed ? "collapsed" : "expanded"));
     };
-    tabs.appendChild(fold);
+    /* Header click toggles (Control Center feel) */
+    var hdr = el.querySelector("#mg-glass-cap-hdr");
+    if (hdr) {
+      hdr.style.cursor = "pointer";
+      hdr.addEventListener("click", function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+        markUserCtrl();
+        if (collapsed) {
+          collapsed = false;
+          el.classList.remove("collapsed");
+          fold.textContent = "×";
+          var ttl2 = el.querySelector("#mg-glass-cap-hdr .ttl");
+          if (ttl2) ttl2.innerHTML = '<span class="dot"></span>Control Center';
+          paint();
+          measure();
+        } else {
+          fold.click();
+        }
+      });
+    }
     setMode("tools");
+    /* Start collapsed pill */
     collapsed = true;
     el.classList.add("collapsed");
-    /* WebGrid: stay collapsed; expand only on tab click */
+    fold.textContent = "";
+    var ttl0 = el.querySelector("#mg-glass-cap-hdr .ttl");
+    if (ttl0) ttl0.innerHTML = '<span class="dot"></span>CTRL';
     try {
-      if (/neuralink\.com/i.test(location.hostname) && /webgrid/i.test(location.pathname)) {
-        collapsed = true;
-        el.classList.add("collapsed");
+      if (/[?&]mg_tools=1\b/i.test(location.search || "")) {
+        collapsed = false;
+        el.classList.remove("collapsed");
+        fold.textContent = "×";
+        if (ttl0) ttl0.innerHTML = '<span class="dot"></span>Control Center';
+        setMode("tools");
       }
     } catch (eW) {}
     measure();
     setInterval(measure, 2000);
-    log(VER + " · glass chip bottom-right · collapsed by default");
+    log(VER + " · Control Center · start " + (collapsed ? "pill" : "open"));
   }
 
   window.__mgGlassCap = {
     ver: VER,
     setMode: setMode,
     measure: measure,
+    openTools: function () {
+      markUserCtrl();
+      setMode("tools");
+      collapsed = false;
+      if (el) el.classList.remove("collapsed");
+      measure();
+      try {
+        var d = document.getElementById("mg-dragon");
+        if (d) {
+          d.classList.add("is-open");
+          d.__mgUserClosed = false;
+        }
+      } catch (e) {}
+    },
+    collapse: function (force) {
+      /* product-mode may call this at boot — skip if user already owns CTRL */
+      if (window.__mgUserOpenedCtrl && !force) return;
+      collapsed = true;
+      if (el) el.classList.add("collapsed");
+      measure();
+    },
+    close: function () {
+      /* intentional close (user / Grok / menu-health) always allowed */
+      collapsed = true;
+      if (el) {
+        el.classList.add("collapsed");
+        var foldBtn = el.querySelector("#mg-glass-cap-fold");
+        if (foldBtn) {
+          foldBtn.textContent = "";
+          foldBtn.title = "Open Control Center";
+        }
+        var ttl = el.querySelector("#mg-glass-cap-hdr .ttl");
+        if (ttl) ttl.innerHTML = '<span class="dot"></span>CTRL';
+      }
+      measure();
+    },
+    isOpen: function () {
+      return !!(el && !collapsed && !el.classList.contains("collapsed"));
+    },
+    isCollapsed: function () {
+      return !!collapsed;
+    },
     report: function () {
-      return VER + " mode=" + mode;
+      return VER + " mode=" + mode + " collapsed=" + collapsed;
     },
   };
 

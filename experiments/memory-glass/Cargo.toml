@@ -3,10 +3,10 @@
 
 [package]
 name = "memory-glass-browser"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.75"
-description = "Memory Glass — native droplet browser shell (tao + wry / WKWebView). Rust-first, not Chrome/Electron."
+description = "Memory Glass — native macOS browser shell for high-FPS BCI / WebGrid training (tao + wry / WKWebView). Sub-second instrument hot-reload."
 license = "Apache-2.0"
 publish = false
 

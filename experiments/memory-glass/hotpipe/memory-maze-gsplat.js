@@ -1,11 +1,13 @@
 /* Memory Glass · memory maze gsplat (from contrail / keyboard points)
  * Lightweight canvas "space" — point cloud + corridors.
- * Raindrop-style music from piano-buddy / qbpm / uvqbit packs.
- * VER: memory-maze-v2-rain
+ * Rain music: Daito / Rhizomatiks installation spirit —
+ * sparse spatial events, metallic partials, long room, soft continuum
+ * (phase-forms / body-signal → sound lineage · not cute piano arps).
+ * VER: memory-maze-v3b-daito-fill
  */
 (function () {
   "use strict";
-  var VER = "memory-maze-v2-rain-playperf";
+  var VER = "memory-maze-v3c-beats-feed";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._memMazeVer === VER) return;
   HP._memMazeVer = VER;
@@ -19,25 +21,93 @@
     } catch (e) {}
   }
 
-  /* ── music packs (piano-buddy · qbpm · uvqbit) ── */
+  /* ── music packs · default = installation rain (daito.ws lineage) ── */
   var PACKS = [
     {
       id: "raindrop",
-      label: "Raindrop",
-      from: "qbpm ambient + piano-buddy",
-      root: 72,
-      scale: [0, 2, 4, 7, 9],
-      mode: "major-pent",
-      bpm: 72,
-      decay: 1.1,
-      gain: 0.055,
+      label: "Install rain",
+      from: "daito.ws / Rhizomatiks installation · Phase Forms sparse",
+      root: 55,
+      scale: [0, 1, 3, 5, 7, 8, 10], /* phrygian-ish / dark install */
+      mode: "install-phryg",
+      bpm: 58,
+      decay: 2.4,
+      gain: 0.038,
+      wave: "sine",
+      spread: 18,
+      style: "install",
+      noise: 0.55,
+      metal: 0.7,
+      continuum: 0.22,
+      delayMs: 420,
+      fb: 0.42,
+      sparse: 1.35,
+    },
+    {
+      id: "phase-forms",
+      label: "Phase forms",
+      from: "polyrhythm ambient · AV install continuum",
+      root: 50,
+      scale: [0, 2, 3, 7, 10, 12, 14],
+      mode: "poly-ambient",
+      bpm: 48,
+      decay: 3.2,
+      gain: 0.034,
+      wave: "triangle",
+      spread: 20,
+      style: "install",
+      noise: 0.35,
+      metal: 0.85,
+      continuum: 0.32,
+      delayMs: 510,
+      fb: 0.48,
+      sparse: 1.6,
+      poly: [1, 1.5, 2.0],
+    },
+    {
+      id: "body-signal",
+      label: "Body signal",
+      from: "physiological → tone · early Rhizomatiks feedback",
+      root: 48,
+      scale: [0, 3, 5, 7, 10, 15],
+      mode: "body-pent",
+      bpm: 64,
+      decay: 1.8,
+      gain: 0.04,
       wave: "sine",
       spread: 14,
+      style: "install",
+      noise: 0.7,
+      metal: 0.45,
+      continuum: 0.18,
+      delayMs: 280,
+      fb: 0.36,
+      sparse: 1.15,
+    },
+    {
+      id: "glass-mesh",
+      label: "Glass mesh",
+      from: "crystalline partials · museum hall",
+      root: 67,
+      scale: [0, 2, 5, 7, 9, 12],
+      mode: "glass-hex",
+      bpm: 72,
+      decay: 2.0,
+      gain: 0.036,
+      wave: "sine",
+      spread: 16,
+      style: "install",
+      noise: 0.25,
+      metal: 0.95,
+      continuum: 0.14,
+      delayMs: 360,
+      fb: 0.4,
+      sparse: 1.25,
     },
     {
       id: "aeolian",
       label: "Aeolian soft",
-      from: "qbpm Mode VI",
+      from: "qbpm Mode VI (legacy soft)",
       root: 67,
       scale: [0, 2, 3, 5, 7, 8, 10],
       mode: "aeolian",
@@ -46,19 +116,13 @@
       gain: 0.05,
       wave: "triangle",
       spread: 12,
-    },
-    {
-      id: "c-major",
-      label: "C major",
-      from: "piano-buddy practice",
-      root: 60,
-      scale: [0, 2, 4, 5, 7, 9, 11],
-      mode: "ionian",
-      bpm: 80,
-      decay: 0.7,
-      gain: 0.048,
-      wave: "sine",
-      spread: 12,
+      style: "soft",
+      noise: 0.1,
+      metal: 0.2,
+      continuum: 0.08,
+      delayMs: 180,
+      fb: 0.28,
+      sparse: 1.0,
     },
     {
       id: "uvqbit",
@@ -72,19 +136,13 @@
       gain: 0.05,
       wave: "sine",
       spread: 16,
-    },
-    {
-      id: "qbpm-pads",
-      label: "qbpm pads",
-      from: "qbpm MPC pads",
-      root: 60,
-      scale: [0, 3, 7, 12, 15, 19],
-      mode: "pad-stack",
-      bpm: 100,
-      decay: 1.3,
-      gain: 0.042,
-      wave: "triangle",
-      spread: 10,
+      style: "soft",
+      noise: 0.12,
+      metal: 0.25,
+      continuum: 0.06,
+      delayMs: 160,
+      fb: 0.25,
+      sparse: 0.95,
     },
   ];
 
@@ -98,20 +156,47 @@
   var autoSpin = true;
   var panel = null,
     cv = null;
-  var open = true;
+  var open = false; /* start closed — open via MAZE / FLOATS, not frozen on launch */
 
   var packIdx = 0;
   var musicOn = true;
   var audioCtx = null;
   var master = null;
   var delayNode = null;
+  var delayNode2 = null;
+  var delayFb = null;
+  var delayFb2 = null;
+  var wetBus = null;
+  var dryBus = null;
+  var continuumOsc = null;
+  var continuumGain = null;
+  var continuumLfo = null;
   var lastDropT = 0;
   var dropCount = 0;
   var rainVis = []; /* {x,y,life,hue} canvas rain streaks */
   var lastKeyMidi = null;
+  var phaseAccum = 0;
+  var fillMode = true; /* fill = large viewable canvas, not cramped postage stamp */
 
   function pack() {
     return PACKS[packIdx % PACKS.length];
+  }
+
+  function applyFillLayout() {
+    if (!panel) return;
+    if (fillMode) {
+      panel.classList.add("fill");
+      panel.style.width = "";
+      panel.style.maxHeight = "";
+      panel.style.height = "";
+      panel.style.left = "12px";
+      panel.style.top = "48px";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+    } else {
+      panel.classList.remove("fill");
+    }
+    draw();
   }
 
   function ensureUi() {
@@ -121,12 +206,15 @@
       st.id = "mg-maze-css";
       st.textContent = [
         "#mg-mem-maze{position:fixed;left:12px;top:56px;z-index:2147482995;",
-        "  width:min(240px,30vw);border-radius:12px;overflow:hidden;",
+        "  width:min(320px,36vw);border-radius:12px;overflow:hidden;",
         "  background:rgba(10,12,16,0.5);backdrop-filter:blur(22px) saturate(1.35);",
         "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
         "  border:1px solid rgba(255,255,255,0.16);",
         "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
         "  font:650 9px/1.2 system-ui;color:rgba(244,246,250,0.92);pointer-events:auto}",
+        /* FILL: large square view — entire gsplat space readable */ 
+        "#mg-mem-maze.fill{width:min(52vw,720px);max-width:calc(100vw - 24px);",
+        "  left:12px;top:48px;}",
         "#mg-mem-maze.hidden{display:none}",
         "#mg-mem-maze .hd{display:flex;justify-content:space-between;align-items:center;",
         "  padding:6px 8px;letter-spacing:0.12em;text-transform:uppercase;",
@@ -135,7 +223,10 @@
         "  cursor:pointer;font:700 11px/1 system-ui;margin-left:2px}",
         "#mg-mem-maze .hd button.on{color:rgba(120,230,180,0.95)}",
         "#mg-mem-maze .hd button.mute{color:rgba(180,180,190,0.55)}",
-        "#mg-mem-maze canvas{width:100%;height:160px;display:block;cursor:grab}",
+        "#mg-mem-maze canvas{width:100%;height:min(36vh,280px);display:block;cursor:grab;",
+        "  aspect-ratio:1/1;max-height:min(48vh,520px);}",
+        "#mg-mem-maze.fill canvas{height:auto;min-height:min(42vw,520px);",
+        "  max-height:min(70vh,720px);aspect-ratio:1/1;}",
         "#mg-mem-maze .ft{padding:4px 8px 6px;font:500 8px/1.25 ui-monospace,Menlo,monospace;",
         "  color:rgba(160,200,180,0.85);letter-spacing:0.04em}",
       ].join("");
@@ -143,11 +234,14 @@
     }
     panel = document.createElement("div");
     panel.id = "mg-mem-maze";
+    if (fillMode) panel.classList.add("fill");
+    if (!open) panel.classList.add("hidden");
     panel.innerHTML =
-      '<div class="hd"><span>Memory maze · rain</span>' +
+      '<div class="hd"><span>Memory maze · install</span>' +
       '<span>' +
       '<button type="button" id="mg-maze-music" title="music on/off" class="on">♫</button> ' +
       '<button type="button" id="mg-maze-pack" title="cycle pack">PACK</button> ' +
+      '<button type="button" id="mg-maze-fill" title="fill / compact view" class="on">FILL</button> ' +
       '<button type="button" id="mg-maze-spin" title="spin">⟳</button> ' +
       '<button type="button" id="mg-maze-x">×</button></span></div>' +
       '<canvas id="mg-maze-cv"></canvas>' +
@@ -158,6 +252,13 @@
       open = false;
       panel.classList.add("hidden");
     };
+    panel.querySelector("#mg-maze-fill").onclick = function () {
+      fillMode = !fillMode;
+      var bf = panel.querySelector("#mg-maze-fill");
+      bf.classList.toggle("on", fillMode);
+      applyFillLayout();
+      log("maze view " + (fillMode ? "FILL" : "compact"));
+    };
     panel.querySelector("#mg-maze-spin").onclick = function () {
       autoSpin = !autoSpin;
     };
@@ -167,15 +268,22 @@
       b.classList.toggle("on", musicOn);
       b.classList.toggle("mute", !musicOn);
       if (musicOn) ensureAudio();
-      log("maze music " + (musicOn ? "on" : "off"));
+      updateContinuum();
+      log("maze music " + (musicOn ? "on · install rain" : "off"));
     };
     panel.querySelector("#mg-maze-pack").onclick = function () {
       packIdx = (packIdx + 1) % PACKS.length;
-      log("maze pack " + pack().id);
+      log("maze pack " + pack().id + " · " + (pack().from || "").slice(0, 40));
       paintFt();
       if (musicOn) {
         ensureAudio();
-        playDrop(pack().root + pack().scale[0], 0.7);
+        applyPackRoom();
+        playDrop(pack().root + pack().scale[0], 0.72, { pan: -0.3 });
+        setTimeout(function () {
+          playDrop(pack().root + pack().scale[2 % pack().scale.length] + 12, 0.45, {
+            pan: 0.35,
+          });
+        }, 220);
       }
     };
     var drag = false,
@@ -208,82 +316,255 @@
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         master = audioCtx.createGain();
-        master.gain.value = 0.7;
-        /* light rain reverb: delay feedback */
-        delayNode = audioCtx.createDelay(1.2);
-        delayNode.delayTime.value = 0.18;
-        var fb = audioCtx.createGain();
-        fb.gain.value = 0.28;
-        var wet = audioCtx.createGain();
-        wet.gain.value = 0.22;
-        delayNode.connect(fb);
-        fb.connect(delayNode);
-        delayNode.connect(wet);
-        wet.connect(master);
+        master.gain.value = 0.78;
+        dryBus = audioCtx.createGain();
+        dryBus.gain.value = 0.72;
+        wetBus = audioCtx.createGain();
+        wetBus.gain.value = 0.48;
+
+        /* dual-tap feedback delay = museum / installation hall */
+        delayNode = audioCtx.createDelay(1.5);
+        delayNode.delayTime.value = 0.42;
+        delayNode2 = audioCtx.createDelay(1.5);
+        delayNode2.delayTime.value = 0.67;
+        delayFb = audioCtx.createGain();
+        delayFb.gain.value = 0.42;
+        delayFb2 = audioCtx.createGain();
+        delayFb2.gain.value = 0.28;
+        var lp = audioCtx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 4200;
+        lp.Q.value = 0.4;
+
+        delayNode.connect(delayFb);
+        delayFb.connect(delayNode2);
+        delayNode2.connect(delayFb2);
+        delayFb2.connect(delayNode);
+        delayNode.connect(lp);
+        delayNode2.connect(lp);
+        lp.connect(wetBus);
+
+        dryBus.connect(master);
+        wetBus.connect(master);
         master.connect(audioCtx.destination);
+
+        startContinuum();
       }
+      applyPackRoom();
       if (audioCtx.state === "suspended") audioCtx.resume();
     } catch (e) {}
     return audioCtx;
+  }
+
+  function applyPackRoom() {
+    if (!audioCtx || !delayNode) return;
+    var P = pack();
+    var t = audioCtx.currentTime;
+    try {
+      delayNode.delayTime.setTargetAtTime((P.delayMs || 400) / 1000, t, 0.05);
+      if (delayNode2)
+        delayNode2.delayTime.setTargetAtTime(((P.delayMs || 400) * 1.55) / 1000, t, 0.05);
+      if (delayFb) delayFb.gain.setTargetAtTime(P.fb != null ? P.fb : 0.4, t, 0.08);
+      if (delayFb2)
+        delayFb2.gain.setTargetAtTime((P.fb != null ? P.fb : 0.4) * 0.65, t, 0.08);
+      if (wetBus)
+        wetBus.gain.setTargetAtTime(P.style === "install" ? 0.52 : 0.28, t, 0.08);
+    } catch (eR) {}
+    updateContinuum();
+  }
+
+  /** Soft installation continuum under sparse events (Phase Forms air) */
+  function startContinuum() {
+    if (!audioCtx || continuumOsc) return;
+    try {
+      continuumOsc = audioCtx.createOscillator();
+      continuumOsc.type = "sine";
+      continuumGain = audioCtx.createGain();
+      continuumGain.gain.value = 0.0001;
+      continuumLfo = audioCtx.createOscillator();
+      continuumLfo.type = "sine";
+      continuumLfo.frequency.value = 0.07;
+      var lfoG = audioCtx.createGain();
+      lfoG.gain.value = 3.5;
+      continuumLfo.connect(lfoG);
+      lfoG.connect(continuumOsc.frequency);
+      continuumOsc.connect(continuumGain);
+      continuumGain.connect(dryBus);
+      continuumGain.connect(delayNode);
+      continuumOsc.start();
+      continuumLfo.start();
+      updateContinuum();
+    } catch (eC) {}
+  }
+
+  function updateContinuum() {
+    if (!audioCtx || !continuumOsc || !continuumGain) return;
+    var P = pack();
+    var t = audioCtx.currentTime;
+    var base = midiToFreq((P.root || 55) - 12);
+    try {
+      continuumOsc.frequency.setTargetAtTime(base, t, 0.2);
+      var level = musicOn ? (P.continuum || 0.12) * 0.045 : 0.0001;
+      continuumGain.gain.setTargetAtTime(Math.max(0.0001, level), t, 0.4);
+    } catch (eU) {}
   }
 
   function midiToFreq(m) {
     return 440 * Math.pow(2, (m - 69) / 12);
   }
 
-  /** Soft raindrop pluck — sine/tri + fast attack, long decay */
-  function playDrop(midi, vel) {
+  function makeNoiseBuffer(ctx, seconds) {
+    var n = Math.floor(ctx.sampleRate * seconds);
+    var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  /**
+   * Installation rain event — metallic partials + bandpass grain + long hall.
+   * Daito / Rhizomatiks spirit: body-mapped pitch, sparse, spatial, not cute.
+   */
+  function playDrop(midi, vel, opts) {
     if (!musicOn) return;
     var ctx = ensureAudio();
     if (!ctx || !master) return;
+    opts = opts || {};
     var P = pack();
     vel = vel == null ? 0.65 : vel;
-    var t = ctx.currentTime;
+    /* feed live notation → beats staff + piano (skip if caller already notated) */
+    if (!opts.noNotate) {
+      try {
+        if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.onMazeNote) {
+          window.__mgKeyboardBeats.onMazeNote(midi, {
+            src: "maze",
+            pack: P.id,
+            vel: vel,
+            hit: true,
+          });
+        } else if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.ingestNote) {
+          window.__mgKeyboardBeats.ingestNote(midi, { src: "maze", pack: P.id, hit: true });
+        }
+      } catch (eNote) {}
+    }
+    var t = ctx.currentTime + (opts.when || 0);
     var freq = midiToFreq(midi);
+    var peak = (P.gain || 0.04) * vel;
+    var decay = P.decay || 2.0;
+    var install = P.style === "install" || P.style == null;
+    var metal = P.metal != null ? P.metal : install ? 0.7 : 0.2;
+    var noiseAmt = P.noise != null ? P.noise : install ? 0.5 : 0.1;
+    var pan = opts.pan;
+    if (pan == null || !isFinite(pan)) pan = (Math.random() * 2 - 1) * 0.85;
+
+    var out = ctx.createGain();
+    out.gain.value = 1;
+    try {
+      if (ctx.createStereoPanner) {
+        var panN = ctx.createStereoPanner();
+        panN.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), t);
+        out.connect(panN);
+        panN.connect(dryBus);
+        panN.connect(delayNode);
+      } else {
+        out.connect(dryBus);
+        out.connect(delayNode);
+      }
+    } catch (eP) {
+      out.connect(dryBus);
+      if (delayNode) out.connect(delayNode);
+    }
+
+    /* 1) body tone — slow attack, long release (installation, not pluck) */
     var g = ctx.createGain();
-    var peak = (P.gain || 0.05) * vel;
+    var atk = install ? 0.04 + Math.random() * 0.06 : 0.012;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + (P.decay || 1));
+    g.gain.exponentialRampToValueAtTime(peak, t + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
 
     var o = ctx.createOscillator();
     o.type = P.wave === "triangle" ? "triangle" : "sine";
     o.frequency.setValueAtTime(freq, t);
-    /* slight drip detune */
-    o.frequency.exponentialRampToValueAtTime(freq * 0.985, t + 0.08);
-
-    /* soft high shimmer layer */
-    var o2 = ctx.createOscillator();
-    o2.type = "sine";
-    o2.frequency.value = freq * 2.01;
-    var g2 = ctx.createGain();
-    g2.gain.setValueAtTime(peak * 0.22, t);
-    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-
+    /* slight downward glide = drop / gravity */
+    try {
+      o.frequency.exponentialRampToValueAtTime(freq * 0.972, t + Math.min(0.45, decay * 0.25));
+    } catch (eF) {}
     o.connect(g);
-    o2.connect(g2);
-    g.connect(master);
-    g2.connect(master);
-    if (delayNode) {
-      g.connect(delayNode);
-      g2.connect(delayNode);
-    }
+    g.connect(out);
     o.start(t);
-    o2.start(t);
-    o.stop(t + (P.decay || 1) + 0.05);
-    o2.stop(t + 0.4);
+    o.stop(t + decay + 0.08);
+
+    /* 2) metallic partial stack (inharmonic · glass / mesh) */
+    if (metal > 0.05) {
+      var ratios = [2.01, 2.76, 3.52, 5.04];
+      for (var ri = 0; ri < ratios.length; ri++) {
+        if (Math.random() > metal) continue;
+        var om = ctx.createOscillator();
+        om.type = "sine";
+        om.frequency.value = freq * ratios[ri] * (0.998 + Math.random() * 0.006);
+        var gm = ctx.createGain();
+        var mp = peak * metal * (0.12 / (ri + 1));
+        gm.gain.setValueAtTime(0.0001, t);
+        gm.gain.exponentialRampToValueAtTime(mp, t + 0.008 + ri * 0.004);
+        gm.gain.exponentialRampToValueAtTime(0.0001, t + 0.25 + metal * 0.9);
+        om.connect(gm);
+        gm.connect(out);
+        om.start(t);
+        om.stop(t + 1.4);
+      }
+    }
+
+    /* 3) bandpass noise grain (impact / droplet in a hall) */
+    if (noiseAmt > 0.05) {
+      try {
+        var src = ctx.createBufferSource();
+        src.buffer = makeNoiseBuffer(ctx, 0.12);
+        var bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = freq * (1.4 + Math.random() * 1.2);
+        bp.Q.value = 4 + metal * 8;
+        var gn = ctx.createGain();
+        var np = peak * noiseAmt * 0.55;
+        gn.gain.setValueAtTime(0.0001, t);
+        gn.gain.exponentialRampToValueAtTime(np, t + 0.004);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.09 + noiseAmt * 0.08);
+        src.connect(bp);
+        bp.connect(gn);
+        gn.connect(out);
+        src.start(t);
+        src.stop(t + 0.15);
+      } catch (eN) {}
+    }
+
+    /* 4) occasional sub pulse for sparse installation weight */
+    if (install && Math.random() < 0.18) {
+      var os = ctx.createOscillator();
+      os.type = "sine";
+      os.frequency.value = midiToFreq(Math.max(28, midi - 24));
+      var gs = ctx.createGain();
+      gs.gain.setValueAtTime(0.0001, t);
+      gs.gain.exponentialRampToValueAtTime(peak * 0.35, t + 0.03);
+      gs.gain.exponentialRampToValueAtTime(0.0001, t + decay * 0.7);
+      os.connect(gs);
+      gs.connect(out);
+      os.start(t);
+      os.stop(t + decay);
+    }
+
     dropCount++;
 
-    /* qbpm-live bus (same channel as keyboard-beats) */
+    /* collab bus — qbpm-live + install tag for multi-agent sessions */
     try {
       var bc = new BroadcastChannel("qbpm-live");
       bc.postMessage({
         type: "kbatch.qbpm.live",
         source: "mg-memory-maze-rain",
+        style: P.style || "install",
         pack: P.id,
         midi: Math.round(midi),
         bpm: liveBpm(),
         drop: dropCount,
+        pan: pan,
         ts: Date.now(),
       });
       bc.close();
@@ -319,41 +600,66 @@
   function rainTick() {
     if (!open || !musicOn) return;
     var now = Date.now();
+    var P = pack();
     var bpm = liveBpm();
-    var interval = 60000 / Math.max(48, bpm);
-    /* denser drops with more points */
-    var dens = Math.min(1.6, 0.35 + points.length / 400);
-    var wait = (interval * (0.35 + Math.random() * 0.9)) / dens;
+    var interval = 60000 / Math.max(36, bpm);
+    /* installation: sparser, more irregular (not arpeggio rain) */
+    var sparse = P.sparse != null ? P.sparse : 1.2;
+    var dens = Math.min(1.25, 0.28 + points.length / 520) / sparse;
+    var wait = (interval * (0.55 + Math.random() * 1.35)) / Math.max(0.2, dens);
+    /* polyrhythm phase (Phase Forms spirit) */
+    if (P.poly && P.poly.length) {
+      phaseAccum += 1;
+      var poly = P.poly[phaseAccum % P.poly.length];
+      wait *= poly;
+    }
     if (now - lastDropT < wait) return;
     lastDropT = now;
+
     if (!points.length) {
-      /* ambient sparse rain even when empty */
-      if (Math.random() < 0.4) {
-        var P = pack();
-        var sc = P.scale;
-        playDrop(P.root + sc[Math.floor(Math.random() * sc.length)], 0.35 + Math.random() * 0.3);
+      /* rare hall events when empty — continuum carries the room */
+      if (Math.random() < 0.22) {
+        var sc0 = P.scale;
+        var midi0 = P.root + sc0[Math.floor(Math.random() * sc0.length)];
+        playDrop(midi0, 0.28 + Math.random() * 0.25, {
+          pan: Math.random() * 2 - 1,
+        });
         rainVis.push({
           x: Math.random(),
-          y: Math.random() * 0.3,
+          y: Math.random() * 0.25,
           life: 1,
-          hue: PC_HUE[Math.floor(Math.random() * 12)],
+          hue: 200 + Math.floor(Math.random() * 40),
         });
       }
       return;
     }
+
     var p = points[Math.floor(Math.random() * points.length)];
     var midi = degreeFromPoint(p);
-    var vel = 0.4 + Math.random() * 0.55;
-    /* stress points = louder / higher */
-    if (p.r > 200 && p.g < 120) vel *= 1.15;
-    playDrop(midi, vel);
+    var vel = 0.32 + Math.random() * 0.5;
+    /* stress / warm path color maps to energy (body-signal) */
+    if (p.r > 200 && p.g < 120) vel *= 1.2;
+    if (p.g > 200 && p.r < 140) vel *= 0.85;
+    var pan = Math.max(-1, Math.min(1, p.x * 0.75 + (Math.random() - 0.5) * 0.2));
+    playDrop(midi, vel, { pan: pan });
+
+    /* occasional double-hit at polyrhythm offset (collab / multi-agent feel) */
+    if (P.style === "install" && Math.random() < 0.2) {
+      var sc = P.scale;
+      var m2 = midi + sc[Math.floor(Math.random() * sc.length)] - sc[0];
+      playDrop(m2, vel * 0.55, {
+        pan: -pan * 0.7,
+        when: (interval / 1000) * (0.33 + Math.random() * 0.25),
+      });
+    }
+
     rainVis.push({
       x: 0.5 + p.x * 0.22,
-      y: 0.2 + Math.random() * 0.2,
-      life: 1,
-      hue: PC_HUE[Math.round(midi) % 12],
+      y: 0.15 + Math.random() * 0.2,
+      life: 1.15,
+      hue: 185 + (Math.round(midi) % 12) * 8,
     });
-    if (rainVis.length > 40) rainVis.shift();
+    if (rainVis.length > 36) rainVis.shift();
   }
 
   function trajRgb(traj, strain) {
@@ -416,7 +722,9 @@
       midi: midi,
     });
     while (points.length > MAX) points.shift();
-    if (musicOn) playDrop(midi, 0.85);
+    /* noNotate: keyboard-beats.onKey already writes staff/piano for keys;
+       maze rain (playDrop from rainTick) still notates freely */
+    if (musicOn) playDrop(midi, 0.85, { noNotate: true });
   }
 
   function project(p) {
@@ -442,7 +750,7 @@
       " · " +
       P.id +
       " · " +
-      (musicOn ? "♫ rain" : "mute") +
+      (musicOn ? (P.style === "install" ? "♫ install" : "♫ rain") : "mute") +
       " · " +
       liveBpm() +
       "bpm" +
@@ -454,8 +762,14 @@
     ensureUi();
     if (!cv) return;
     var dpr = Math.min(2, window.devicePixelRatio || 1);
-    var W = cv.clientWidth || 220;
-    var H = 160;
+    var W = cv.clientWidth || (fillMode ? 480 : 280);
+    /* square canvas so full 3d view is not letterboxed/cramped */
+    var H = cv.clientHeight || W;
+    if (H < 80) H = W;
+    if (Math.abs(W - H) > 8) {
+      /* force square draw space */
+      H = W;
+    }
     cv.width = Math.floor(W * dpr);
     cv.height = Math.floor(H * dpr);
     var ctx = cv.getContext("2d");
@@ -579,6 +893,7 @@
         if (PACKS[i].id === id) {
           packIdx = i;
           paintFt();
+          applyPackRoom();
           return PACKS[i];
         }
       }
@@ -587,11 +902,13 @@
     cyclePack: function () {
       packIdx = (packIdx + 1) % PACKS.length;
       paintFt();
+      applyPackRoom();
       return pack();
     },
     setMusic: function (on) {
       musicOn = !!on;
       if (musicOn) ensureAudio();
+      updateContinuum();
       if (panel) {
         var b = panel.querySelector("#mg-maze-music");
         if (b) {
@@ -603,7 +920,17 @@
     isMusicOn: function () {
       return musicOn;
     },
+    isOpen: function () {
+      return open;
+    },
     playDrop: playDrop,
+    scaleMidis: function () {
+      var P = pack();
+      return (P.scale || []).map(function (d) {
+        return (P.root || 60) + d;
+      });
+    },
+    pack: pack,
     open: function () {
       open = true;
       ensureUi();

@@ -1,24 +1,36 @@
 # Memory Glass · Native browser shell
 
-**Rust-first · tao + wry → WKWebView · not Chrome · not Electron**
+> **Ethos:** a **native, user-shaped living craft** — collaborative browser-OS from edge IoT to the business you run — **live data, markets, music, mesh, and SLAM** that can train robots and spin **maker fleets** worldwide.  
+> **Ship hatch (now):** high-FPS WebGrid / BCI training shell · metrics · sub-second hot-reload · kbatch R4 language plane.
 
-Droplet-glass concept browser for the SpaceX cool-test surface: transparent shell, flat page (no distance skew/tilt), three tabs on boot, depth HUD optional.
+**Rust-first · tao + wry → WKWebView · not Chrome · not Electron · not another start page**
+
+| | |
+|--|--|
+| **Full vision** | [docs/PRODUCT.md](docs/PRODUCT.md) — ethos · planes · money · music · makers |
+| **Ship surface** | WebGrid play · LIVE RANK pill · Control Center · GO/CHAT/MESH |
+| **Version** | `0.3.0` (product freeze · tag `mg-v0.3.0-product`) |
+| **Privacy** | [docs/PRIVACY.md](docs/PRIVACY.md) |
+| **Package map** | [docs/PACKAGE_MAP.md](docs/PACKAGE_MAP.md) — core vs lab planes |
+| **Fleet R4** | [docs/FLEET-R4-DATA.md](docs/FLEET-R4-DATA.md) — kbatch axes · living books P0 |
+| **Modes** | Product lean on WebGrid · full multi-plane lab via `?mg_lab_full=1` |
 
 ### Goal + hurdles
 
 | | |
 |--|--|
-| **Goal** | Native low-overhead droplet browser with ~1s hot-pipe iteration, spatial face/path instrument, and live Grok integration — lighter than Electron; stretch **sub-16ms** spatial HUD frames |
+| **Goal** | Native low-overhead droplet browser with ~1s hot-pipe iteration, spatial instruments optional, live metrics — lighter than Electron; stretch **sub-16ms** HUD frames |
+| **Product freeze** | [docs/PRODUCT.md](docs/PRODUCT.md) · [docs/v0.3.0-PRODUCT-CHECKLIST.md](docs/v0.3.0-PRODUCT-CHECKLIST.md) |
 | **H0–H6** | Hard-pushed — hands/air, pen tip, dense GSPLAT, IndexedDB, prefetch, frame budget |
 | **H7–H9** | Scaffolds **finished** — isolate map · soft rim · touch + WebGrid BPS |
-| **Ironline / μgrad / collab** | `ironline.js` · `ugrad-ladder.js` · `collab.js` · `plans/*` |
-| **Full ladder** | `hotpipe/GOALS.md` |
+| **Ironline / μgrad / collab** | LAB modules — see package map |
 | Piece | Stack |
 |-------|--------|
 | Window | **tao** 0.31 |
 | Web | **wry** 0.48 → macOS **WKWebView** (`transparent`) |
-| Icon | Graphite shield + white singularity portal (xAI-lean aesthetic; Dock + window) |
+| Icon | Graphite shield + white singularity portal |
 | Bundle | `build-mac-app.sh` → `Memory Glass.app` |
+| Smoke | `bash scripts/mg-smoke.sh` |
 
 ## Icon
 

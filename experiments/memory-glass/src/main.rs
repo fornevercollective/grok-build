@@ -140,6 +140,14 @@ enum Cmd {
     ClipboardCopy {
         text: String,
     },
+    /// Lab SNAP composite (data URL) → ~/.panda/mg-soak/watch/snaps + promo live/
+    SaveLabSnap {
+        data_url: String,
+        name: String,
+        peak_bps: Option<f64>,
+        peak_ntpm: Option<f64>,
+        synopsis: String,
+    },
     /// Voice STT mute (true = mute, false = unmute) via ~/.panda/voice/mute.sh
     MicMute(bool),
     /// Push current mic mute state into inspect UI (no change)
@@ -380,8 +388,10 @@ fn spawn_new_window(url: &str) {
     }
 }
 
-/// Soft ship corner radius — single layer clip only (no recursive tree = no crunch).
+/// Soft ship corner radius — main browser only.
+/// Inspect uses square glass (radius 0) to avoid crunchy black falloff on the mask edge.
 const MG_CORNER_R: f64 = 12.0;
+const MG_INSPECT_CORNER_R: f64 = 0.0;
 
 /// Detect near-fullscreen / maximized fill of the current monitor (secondary vertical too).
 /// Uses physical px for both window outer size and monitor size (scale-factor safe).
@@ -414,16 +424,25 @@ fn window_backing_scale(window: &Window) -> f64 {
 /// Scale-aware: sets layer.contentsScale to the window's backingScaleFactor so glass
 /// works simultaneously on 1× landscape + 2× Retina / vertical second screens.
 /// Re-call after Moved / Resized / Focused / ScaleFactorChanged.
+/// `soft_corners`: main browser uses rounded glass; inspect uses square edges
+/// (avoids crunchy black falloff on the corner mask).
 #[cfg(target_os = "macos")]
-fn clear_window_bg(window: &Window) {
+fn clear_window_bg_ex(window: &Window, soft_corners: bool) {
     use objc::{class, msg_send, runtime::Object, sel, sel_impl};
     use tao::platform::macos::WindowExtMacOS;
 
     let nearly_fs = window_nearly_fills_monitor(window);
     let scale = window_backing_scale(window);
     // Fullscreen / monitor-fill: no corner radius (masks + opaque FS spaces → solid black)
-    // cornerRadius is in points (not pixels) — same MG_CORNER_R at every scale factor
-    let radius = if nearly_fs { 0.0_f64 } else { MG_CORNER_R };
+    let radius = if nearly_fs {
+        0.0_f64
+    } else if soft_corners {
+        MG_CORNER_R
+    } else {
+        MG_INSPECT_CORNER_R
+    };
+    // Only mask when we actually round — masking a clear layer with radius is the black crunch
+    let mask = radius > 0.5 && !nearly_fs;
 
     unsafe {
         let ns_window = window.ns_window() as *mut Object;
@@ -433,13 +452,11 @@ fn clear_window_bg(window: &Window) {
         let clear: *mut Object = msg_send![class!(NSColor), clearColor];
         let _: () = msg_send![ns_window, setBackgroundColor: clear];
         let _: () = msg_send![ns_window, setOpaque: false];
-        // Shadow on secondary FS can force an opaque backdrop plate — off when filling monitor
-        let _: () = msg_send![ns_window, setHasShadow: !nearly_fs];
-        // Survive green-button / Spaces transitions that re-paint the titlebar chrome
+        // Inspect: light shadow only when not filling monitor (no opaque plate)
+        let _: () = msg_send![ns_window, setHasShadow: !nearly_fs && soft_corners];
         let _: () = msg_send![ns_window, setTitlebarAppearsTransparent: true];
         let _: () = msg_send![ns_window, setTitleVisibility: 1i64]; // NSWindowTitleHidden = 1
 
-        // Prefer layer-backed compositing for multi-scale multi-display glass
         let _: () = msg_send![ns_window, setAutorecalculatesKeyViewLoop: true];
 
         let content: *mut Object = msg_send![ns_window, contentView];
@@ -451,17 +468,26 @@ fn clear_window_bg(window: &Window) {
                 let cg: *mut std::ffi::c_void = msg_send![cg_clear, CGColor];
                 let _: () = msg_send![layer, setBackgroundColor: cg];
                 let _: () = msg_send![layer, setOpaque: false];
-                // Critical for Retina / mixed 1×+2× setups
                 let _: () = msg_send![layer, setContentsScale: scale];
                 let _: () = msg_send![layer, setCornerRadius: radius];
-                // masksToBounds + radius on FS can composite as a black card on the other display
-                let _: () = msg_send![layer, setMasksToBounds: !nearly_fs];
-                // Allow subpixel / transparent blending across scale factors
+                let _: () = msg_send![layer, setMasksToBounds: mask];
                 let _: () = msg_send![layer, setAllowsGroupOpacity: false];
+                // Soft edge antialias when rounded (reduces black fringe on Retina)
+                if mask {
+                    // kCALayerLeftEdge|Right|Bottom|Top = 15
+                    let _: () = msg_send![layer, setEdgeAntialiasingMask: 15u64];
+                } else {
+                    let _: () = msg_send![layer, setEdgeAntialiasingMask: 0u64];
+                }
             }
         }
         let _: () = msg_send![ns_window, invalidateShadow];
     }
+}
+
+#[cfg(target_os = "macos")]
+fn clear_window_bg(window: &Window) {
+    clear_window_bg_ex(window, true);
 }
 
 /// After wry builds the WKWebView, re-assert drawsBackground=false (shell transparency).
@@ -507,7 +533,16 @@ fn clear_webview_bg(webview: &wry::WebView) {
 /// Re-assert glass on a window + its webview after monitor moves / FS / zoom / scale change.
 #[cfg(target_os = "macos")]
 fn reassert_glass_shell(window: &Window, webview: Option<&wry::WebView>) {
-    clear_window_bg(window);
+    clear_window_bg_ex(window, true);
+    if let Some(wv) = webview {
+        clear_webview_bg(wv);
+    }
+}
+
+/// Inspect float: square clear glass — full UI visible, no crunchy black rim.
+#[cfg(target_os = "macos")]
+fn reassert_inspect_glass(window: &Window, webview: Option<&wry::WebView>) {
+    clear_window_bg_ex(window, false);
     if let Some(wv) = webview {
         clear_webview_bg(wv);
     }
@@ -535,9 +570,9 @@ fn reassert_all_glass(
     LAST_MS.store(now, Ordering::Relaxed);
 
     reassert_glass_shell(main, main_wv);
-    reassert_glass_shell(inspect, inspect_wv);
+    reassert_inspect_glass(inspect, inspect_wv);
     eprintln!(
-        "glass: reassert main@{}× inspect@{}× nearly_fs={},{}",
+        "glass: reassert main@{}× inspect@{}× nearly_fs={},{} inspect_square",
         window_backing_scale(main),
         window_backing_scale(inspect),
         window_nearly_fills_monitor(main),
@@ -547,6 +582,9 @@ fn reassert_all_glass(
 
 #[cfg(not(target_os = "macos"))]
 fn reassert_glass_shell(_window: &Window, _webview: Option<&wry::WebView>) {}
+
+#[cfg(not(target_os = "macos"))]
+fn reassert_inspect_glass(_window: &Window, _webview: Option<&wry::WebView>) {}
 
 #[cfg(not(target_os = "macos"))]
 fn reassert_all_glass(
@@ -1263,6 +1301,120 @@ fn inject_js_blob(webview: &wry::WebView, js: &str) {
     let _ = webview.evaluate_script(&wrapped);
 }
 
+/// Clear version guards + menu DOM so the next inject remounts menus without app restart.
+fn inject_hotpipe_force_reset(webview: &wry::WebView) {
+    let js = r#"
+(function () {
+  "use strict";
+  try {
+    if (typeof window.__mgWebgridPlayTeardown === "function") {
+      try { window.__mgWebgridPlayTeardown(); } catch (eT) {}
+    }
+  } catch (e0) {}
+  try {
+    var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
+    Object.keys(HP).forEach(function (k) {
+      try {
+        if (/Ver$/i.test(k) || k.charAt(0) === "_" || k.indexOf("_") === 0) delete HP[k];
+      } catch (eD) {}
+    });
+  } catch (e1) {}
+  var kill = [
+    "__mgWebgridPlayVer",
+    "__mgWebgridChromeV15",
+    "__mgWebgridChromeV16",
+    "__mgWebgridPlayTeardown",
+    "__mgWebgridFill",
+    "__mgFloatLayout",
+    "__mgGlassCap",
+    "__mgActivityBoard",
+    "__mgSessionRec",
+    "__mgMemoryMaze",
+    "__mgBlochSolve",
+    "__mgRubikLang",
+    "__mgKeyboardBeats",
+    "__mgSportsField",
+    "__mgGeoPattern",
+    "__mgContrail",
+    "__mgFloatKb",
+    "__mgRaider",
+    "__mgRaiderKeys",
+    "__mgProduct",
+    "__mgProductMode",
+    "__mgBoardWebgridHooked"
+  ];
+  kill.forEach(function (k) {
+    try { delete window[k]; } catch (eK) {}
+  });
+  var ids = [
+    "mg-glass-cap",
+    "mg-mem-maze",
+    "mg-geo-float",
+    "mg-activity-board",
+    "mg-board-chip",
+    "mg-rubik-float",
+    "mg-rubik-orb",
+    "mg-bloch-float",
+    "mg-bloch-orb",
+    "mg-kb-beats",
+    "mg-sports-field",
+    "mg-rec-chip",
+    "mg-board-toast",
+    "mg-float-kb",
+    "mg-sx-rail",
+    "mg-contrail-ov",
+    "mg-live-solve-hud",
+    "mg-raider-stage",
+    "mg-raider-css",
+    "mg-product-mode-css"
+  ];
+  ids.forEach(function (id) {
+    try {
+      var el = document.getElementById(id);
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    } catch (eR) {}
+  });
+  try {
+    document.querySelectorAll('style[id^="mg-"]').forEach(function (s) {
+      try { s.parentNode && s.parentNode.removeChild(s); } catch (eS) {}
+    });
+  } catch (eSt) {}
+  try {
+    if (window.__mgDevLog) window.__mgDevLog("ok", "hotpipe force-reset · remount menus", "hot");
+  } catch (eL) {}
+  try {
+    console.log("[mg-hotpipe] force-reset · remount menus");
+  } catch (eC) {}
+})();
+"#;
+    let _ = webview.evaluate_script(js);
+}
+
+/// Hard hot-reload: reset + re-read hotpipe files from disk and inject (no app restart).
+fn inject_live_js_hot_reload(targets: &[&wry::WebView], lean: bool) -> bool {
+    for wv in targets {
+        inject_hotpipe_force_reset(wv);
+    }
+    let ok = inject_live_js_mode(targets, lean);
+    for wv in targets {
+        let note = if ok {
+            r#"(function(){try{if(window.__mgDevLog)window.__mgDevLog('ok','hot-pipe reloaded · menus remounted (⌘⇧R)','hot');if(window.__mgGlassCap&&window.__mgGlassCap.openTools)window.__mgGlassCap.openTools();}catch(e){}})();"#
+        } else {
+            r#"(function(){try{if(window.__mgDevLog)window.__mgDevLog('err','hot-pipe reload failed','hot');}catch(e){}})();"#
+        };
+        let _ = wv.evaluate_script(note);
+    }
+    if ok {
+        eprintln!(
+            "hotpipe: HOT RELOAD ok · dir={}",
+            hotpipe_dir().display()
+        );
+    } else {
+        eprintln!("hotpipe: HOT RELOAD failed · dir={}", hotpipe_dir().display());
+    }
+    ok
+}
+
 
 fn mg_video_feed_script() -> std::path::PathBuf {
     // Prefer source tree next to hotpipe; fall back to ~/.panda copy
@@ -1382,6 +1534,17 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
     let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
+    let float_layout = read_hotpipe_file("float-layout.js").unwrap_or_default();
+    let raider = read_hotpipe_file("brothernumsey-raider.js").unwrap_or_default();
+    let product_mode = read_hotpipe_file("product-mode.js").unwrap_or_default();
+    let menu_health = read_hotpipe_file("menu-health-monitor.js").unwrap_or_default();
+    let mg_cal = read_hotpipe_file("mg-calibrate-boot.js").unwrap_or_default();
+    let kbatch_fleet = read_hotpipe_file("kbatch-fleet-bridge.js").unwrap_or_default();
+    let qbit_codec = read_hotpipe_file("qbit-codec.js")
+        .or_else(|| read_hotpipe_file("concepts/qbit-codec.js"))
+        .unwrap_or_default();
+    let lang_codec = read_hotpipe_file("lang-codec-plane.js").unwrap_or_default();
+    let kb_atlas = read_hotpipe_file("keyboard-atlas-seed.js").unwrap_or_default();
 
     if lean {
         for wv in targets {
@@ -1406,6 +1569,16 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !glass_cap.is_empty() {
                     inject_js_blob(wv, &glass_cap);
                 }
+                /* codecs + atlas before keyboard so CODEC/lang modes are live */
+                if !qbit_codec.is_empty() {
+                    inject_js_blob(wv, &qbit_codec);
+                }
+                if !lang_codec.is_empty() {
+                    inject_js_blob(wv, &lang_codec);
+                }
+                if !kb_atlas.is_empty() {
+                    inject_js_blob(wv, &kb_atlas);
+                }
                 if !float_kb.is_empty() {
                     inject_js_blob(wv, &float_kb);
                 }
@@ -1427,6 +1600,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !geo_pattern.is_empty() {
                     inject_js_blob(wv, &geo_pattern);
                 }
+                if !raider.is_empty() {
+                    inject_js_blob(wv, &raider);
+                }
                 if !collab.is_empty() {
                     inject_js_blob(wv, &collab);
                 }
@@ -1439,6 +1615,25 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !live_hud.is_empty() {
                     inject_js_blob(wv, &live_hud);
                 }
+                /* tile floats so they never stack over WebGrid metrics */
+                if !float_layout.is_empty() {
+                    inject_js_blob(wv, &float_layout);
+                }
+                if !kbatch_fleet.is_empty() {
+                    inject_js_blob(wv, &kbatch_fleet);
+                }
+                /* product mode last — lean chrome, no ghost lab kit */
+                if !product_mode.is_empty() {
+                    inject_js_blob(wv, &product_mode);
+                }
+                /* live menu health + Grok __mgMenus open/close API (after product) */
+                if !menu_health.is_empty() {
+                    inject_js_blob(wv, &menu_health);
+                }
+                /* Grok CAL boot → flourish SHOW */
+                if !mg_cal.is_empty() {
+                    inject_js_blob(wv, &mg_cal);
+                }
             }
             if !activity_board.is_empty() {
                 inject_js_blob(wv, &activity_board);
@@ -1449,8 +1644,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             inject_leaderboard_handoff(wv);
         }
         eprintln!(
-            "hotpipe: LEAN play-lab floats={} → {} surface(s)",
+            "hotpipe: LEAN play-lab floats={} product={} → {} surface(s)",
             !strict,
+            !product_mode.is_empty(),
             targets.len()
         );
         return true;
@@ -1529,6 +1725,15 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         if !glass_cap.is_empty() {
             inject_js_blob(wv, &glass_cap);
         }
+        if !qbit_codec.is_empty() {
+            inject_js_blob(wv, &qbit_codec);
+        }
+        if !lang_codec.is_empty() {
+            inject_js_blob(wv, &lang_codec);
+        }
+        if !kb_atlas.is_empty() {
+            inject_js_blob(wv, &kb_atlas);
+        }
         if !float_kb.is_empty() {
             inject_js_blob(wv, &float_kb);
         }
@@ -1556,6 +1761,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         if !geo_pattern.is_empty() {
             inject_js_blob(wv, &geo_pattern);
         }
+        if !raider.is_empty() {
+            inject_js_blob(wv, &raider);
+        }
         if !collab_day.is_empty() {
             inject_js_blob(wv, &collab_day);
         }
@@ -1565,11 +1773,30 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         if !live_hud.is_empty() {
             inject_js_blob(wv, &live_hud);
         }
+        if !float_layout.is_empty() {
+            inject_js_blob(wv, &float_layout);
+        }
+        if !kbatch_fleet.is_empty() {
+            inject_js_blob(wv, &kbatch_fleet);
+        }
+        if !product_mode.is_empty() {
+            inject_js_blob(wv, &product_mode);
+        }
+        if !menu_health.is_empty() {
+            inject_js_blob(wv, &menu_health);
+        }
+        if !mg_cal.is_empty() {
+            inject_js_blob(wv, &mg_cal);
+        }
         inject_filmstrip_board(wv);
         inject_leaderboard_handoff(wv);
     }
     eprintln!(
-        "hotpipe: FULL stack injected → {} surface(s)",
+        "hotpipe: FULL stack injected product={} kbatch={} menu-health={} cal={} → {} surface(s)",
+        !product_mode.is_empty(),
+        !kbatch_fleet.is_empty(),
+        !menu_health.is_empty(),
+        !mg_cal.is_empty(),
         targets.len()
     );
     true
@@ -1904,9 +2131,22 @@ fn place_inspect_right_of(main: &Window, inspect: &Window) {
     tile_browser_and_inspect(main, inspect, false);
 }
 
+/// Grok sandbox: soft layout never resizes the user's main window (full-view safe).
+/// Set MG_GROK_SANDBOX=0 to restore aggressive dual-pane shrink. Default: on.
+fn grok_sandbox_active() -> bool {
+    match std::env::var("MG_GROK_SANDBOX") {
+        Ok(v) => {
+            let t = v.trim();
+            !(t == "0" || t.eq_ignore_ascii_case("false") || t.eq_ignore_ascii_case("off"))
+        }
+        Err(_) => true, // default: protect user window
+    }
+}
+
 /// Dual-pane layout: main left, inspect fully visible to its right.
-/// `force` = initial boot / menu Tile — may shrink & left-align main.
-/// Soft path (window moved/resized) only repositions inspect and shrinks if overflow.
+/// `force` = initial boot / menu Tile.
+/// Soft path (move/resize): **position inspect only** — never shrink main
+/// (Grok sandbox / full-view: touch must not steal user layout).
 fn tile_browser_and_inspect(main: &Window, inspect: &Window, force: bool) {
     let scale = main.scale_factor().max(1.0);
     let mon = main
@@ -1922,6 +2162,11 @@ fn tile_browser_and_inspect(main: &Window, inspect: &Window, force: bool) {
     let insp_size0 = inspect.outer_size();
     let gap = (12.0 * scale).round() as i32;
     let y_off = (28.0 * scale).round() as i32;
+
+    // Soft path / sandbox / full-view: never fight the user's window size
+    let protect_main = !force
+        || grok_sandbox_active()
+        || window_nearly_fills_monitor(main);
 
     let Some(mon) = mon else {
         inspect.set_outer_position(PhysicalPosition::new(
@@ -1949,15 +2194,15 @@ fn tile_browser_and_inspect(main: &Window, inspect: &Window, force: bool) {
     let mut main_w = main_size0.width as i32;
     let mut main_h = main_size0.height as i32;
 
-    if force {
-        // Comfortable dual-pane defaults for this monitor
-        let insp_pref_w = ((380.0_f64 * scale).round() as i32)
-            .min((work_w as f64 * 0.32).round() as i32)
-            .max((300.0 * scale).round() as i32);
-        let insp_pref_h = ((work_h as f64) * 0.86).round() as i32;
+    if force && !protect_main {
+        // Explicit Tile only when not sandbox / not full-view — may size both panes
+        let insp_pref_w = ((440.0_f64 * scale).round() as i32)
+            .min((work_w as f64 * 0.36).round() as i32)
+            .max((360.0 * scale).round() as i32);
+        let insp_pref_h = ((work_h as f64) * 0.94).round() as i32;
         inspect.set_inner_size(LogicalSize::new(
-            (insp_pref_w as f64 / scale).clamp(300.0, 460.0),
-            (insp_pref_h as f64 / scale).clamp(480.0, 1100.0),
+            (insp_pref_w as f64 / scale).clamp(360.0, 560.0),
+            (insp_pref_h as f64 / scale).clamp(560.0, 1400.0),
         ));
         let is = inspect.outer_size();
         insp_w = is.width as i32;
@@ -1973,73 +2218,52 @@ fn tile_browser_and_inspect(main: &Window, inspect: &Window, force: bool) {
             main_w = s.width as i32;
             main_h = s.height as i32;
         }
+    } else if force && protect_main {
+        // Force tile in sandbox/full-view: grow inspect only — never touch main size
+        let insp_pref_w = ((440.0_f64 * scale).round() as i32)
+            .min((work_w as f64 * 0.34).round() as i32)
+            .max((360.0 * scale).round() as i32);
+        let insp_pref_h = ((work_h as f64) * 0.94).round() as i32;
+        inspect.set_inner_size(LogicalSize::new(
+            (insp_pref_w as f64 / scale).clamp(360.0, 560.0),
+            (insp_pref_h as f64 / scale).clamp(560.0, 1400.0),
+        ));
+        let is = inspect.outer_size();
+        insp_w = is.width as i32;
+        insp_h = is.height as i32;
     }
+    // Soft path: never set_inner_size on main (Grok sandbox / full-view)
 
-    // Will inspect fall off the right edge?
-    let overflow =
-        main_pos0.x + main_w + gap + insp_w > mon_right || main_pos0.x < mon_left - 12;
-    if !force && overflow {
-        // Soft rescue: shrink main just enough so inspect fits
-        let max_main_w = (mon_right - mon_left - gap - insp_w).max((600.0 * scale).round() as i32);
-        if main_w > max_main_w {
-            main.set_inner_size(LogicalSize::new(
-                (max_main_w as f64 / scale).max(600.0),
-                main_h as f64 / scale,
-            ));
-            let s = main.outer_size();
-            main_w = s.width as i32;
-            main_h = s.height as i32;
-        }
-    }
-
-    let need_shift = force || overflow;
-    let main_x = if need_shift {
-        mon_left
-    } else {
-        main_pos0
-            .x
-            .clamp(mon_left, (mon_right - main_w - gap - insp_w).max(mon_left))
-    };
-    let main_y = main_pos0
-        .y
-        .clamp(mon_top, (mon_bottom - main_h).max(mon_top));
-
-    if need_shift || (main_x - main_pos0.x).abs() > 2 || (main_y - main_pos0.y).abs() > 2 {
-        main.set_outer_position(PhysicalPosition::new(main_x, main_y));
-    }
-
-    // Re-read after possible main move/resize
-    let main_size = main.outer_size();
-    main_w = main_size.width as i32;
     let Ok(main_pos) = main.outer_position() else {
         return;
     };
+    main_w = main.outer_size().width as i32;
+    main_h = main.outer_size().height as i32;
+
     let mut insp_x = main_pos.x + main_w + gap;
     if insp_x + insp_w > mon_right {
-        let overflow_px = insp_x + insp_w - mon_right;
-        let target_w = (main_w - overflow_px - 4).max((600.0 * scale).round() as i32);
-        if target_w < main_w {
-            main.set_inner_size(LogicalSize::new(
-                (target_w as f64 / scale).max(580.0),
-                main_size.height as f64 / scale,
-            ));
-            let s = main.outer_size();
-            main_w = s.width as i32;
-            main.set_outer_position(PhysicalPosition::new(main_x, main_y));
-            insp_x = main_x + main_w + gap;
+        // Prefer moving inspect, not shrinking main
+        insp_x = (mon_right - insp_w).max(mon_left);
+        // If still no room, park inspect on left of main
+        if insp_x + insp_w > main_pos.x && insp_x < main_pos.x + main_w {
+            insp_x = (main_pos.x - gap - insp_w).max(mon_left);
         }
-        insp_x = insp_x.min(mon_right - insp_w).max(mon_left);
     }
-    // Keep inspect height inside work area (position only — don't fight user size unless force)
-    if force && insp_h > work_h {
+    if insp_h > work_h {
         inspect.set_inner_size(LogicalSize::new(
-            insp_w as f64 / scale,
-            (work_h as f64 / scale).clamp(420.0, 1100.0),
+            (insp_w as f64 / scale).clamp(360.0, 560.0),
+            (work_h as f64 / scale).clamp(520.0, 1400.0),
         ));
         insp_h = inspect.outer_size().height as i32;
+        insp_w = inspect.outer_size().width as i32;
     }
-    let insp_y = (main_pos.y + y_off).clamp(mon_top, (mon_bottom - insp_h).max(mon_top));
+    let insp_y = mon_top.max(main_pos.y.min((mon_bottom - insp_h).max(mon_top)));
     inspect.set_outer_position(PhysicalPosition::new(insp_x, insp_y));
+    #[cfg(target_os = "macos")]
+    {
+        reassert_inspect_glass(inspect, None);
+    }
+    let _ = (main_h, force); // silence unused when protect path
 }
 
 fn voice_mic_mute(mute: bool) {
@@ -7564,7 +7788,7 @@ fn hud_init_script() -> &'static str {
     openPhoneRelay();
   });
 
-  /* Search: collapsed ..... · expand on click · stays above page scroll (fixed dock) */
+  /* Search: collapsed ..... · expand on click · stays open while interacting */
   (function searchDock() {
     var dock = document.getElementById("mg-search-dock");
     var peek = document.getElementById("mg-search-peek");
@@ -7576,30 +7800,71 @@ fn hud_init_script() -> &'static str {
       if (dock.parentNode !== host) host.appendChild(dock);
     } catch (eRe) {}
     var hideT = 0;
+    var pinned = false; /* user is using the bar — don't auto-hide */
+    function dockHasFocus() {
+      try {
+        var a = document.activeElement;
+        return !!(a && dock.contains(a));
+      } catch (e) {
+        return document.activeElement === urlEl;
+      }
+    }
     function openSearch() {
       dock.classList.add("is-open");
       clearTimeout(hideT);
+      pinned = false;
+      try { window.__mgUserChromeTouch = true; } catch (eU) {}
       try { urlEl.focus(); urlEl.select(); } catch (e) {}
       armHide();
     }
     function closeSearch() {
-      if (document.activeElement === urlEl) return;
+      if (pinned || dockHasFocus()) return;
       dock.classList.remove("is-open");
+      dock.classList.remove("chat-open");
     }
     function armHide() {
       clearTimeout(hideT);
+      if (pinned) return;
       hideT = setTimeout(function () {
-        if (document.activeElement === urlEl) { armHide(); return; }
+        if (pinned || dockHasFocus()) { armHide(); return; }
+        /* leave open longer if modes/chat are active */
+        try {
+          if (dock.classList.contains("chat-open")) { armHide(); return; }
+          var mBtn = dock.querySelector("#mg-search-modes button.on");
+          if (mBtn) {
+            var md = mBtn.getAttribute("data-mode") || "";
+            if (md === "chat" || md === "mesh") { armHide(); return; }
+          }
+        } catch (eM) {}
         closeSearch();
-      }, 4800);
+      }, 12000);
     }
     peek.addEventListener("click", function (e) {
       if (e) { e.preventDefault(); e.stopPropagation(); }
       openSearch();
     });
-    bar.addEventListener("pointerdown", function () { clearTimeout(hideT); });
-    bar.addEventListener("focusin", function () { clearTimeout(hideT); });
-    bar.addEventListener("focusout", function () { armHide(); });
+    dock.addEventListener("pointerdown", function () {
+      pinned = true;
+      clearTimeout(hideT);
+      try { window.__mgUserChromeTouch = true; } catch (eU) {}
+    });
+    dock.addEventListener("pointerenter", function () { clearTimeout(hideT); });
+    dock.addEventListener("pointerleave", function () {
+      if (!dockHasFocus()) { pinned = false; armHide(); }
+    });
+    bar.addEventListener("pointerdown", function () {
+      pinned = true;
+      clearTimeout(hideT);
+    });
+    bar.addEventListener("focusin", function () {
+      pinned = true;
+      clearTimeout(hideT);
+    });
+    bar.addEventListener("focusout", function () {
+      setTimeout(function () {
+        if (!dockHasFocus()) { pinned = false; armHide(); }
+      }, 120);
+    });
     /* ⌘L / Ctrl+L focuses search */
     if (!window.__mgSearchKeyBound) {
       window.__mgSearchKeyBound = true;
@@ -7919,6 +8184,26 @@ fn main() -> Result<()> {
                 "clipboard_copy" => Some(Cmd::ClipboardCopy {
                     text: v
                         .get("text")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                }),
+                "save_lab_snap" | "lab_snap" => Some(Cmd::SaveLabSnap {
+                    data_url: v
+                        .get("dataUrl")
+                        .or_else(|| v.get("data_url"))
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    name: v
+                        .get("name")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    peak_bps: v.get("peakBps").and_then(|x| x.as_f64()),
+                    peak_ntpm: v.get("peakNtpm").and_then(|x| x.as_f64()),
+                    synopsis: v
+                        .get("synopsis")
                         .and_then(|x| x.as_str())
                         .unwrap_or("")
                         .to_string(),
@@ -8274,8 +8559,14 @@ fn main() -> Result<()> {
                 Cmd::DevLog { lvl, msg, src } => {
                     // WebGrid playthrough watch: append JSON samples to disk (https page
                     // cannot fetch http://localhost — IPC is the only reliable path).
-                    if src == "webgrid-watch" || msg.starts_with("MGW:") {
+                    if src == "webgrid-watch"
+                        || src == "menu-health"
+                        || msg.starts_with("MGW:")
+                        || msg.starts_with("MENU_HEALTH")
+                    {
                         let payload = if let Some(rest) = msg.strip_prefix("MGW:") {
+                            rest.to_string()
+                        } else if let Some(rest) = msg.strip_prefix("MENU_HEALTH ") {
                             rest.to_string()
                         } else {
                             msg.clone()
@@ -8299,19 +8590,48 @@ fn main() -> Result<()> {
                             })
                             .to_string()
                         };
+                        let is_menu = src == "menu-health"
+                            || line.contains("\"menu_health\"")
+                            || line.contains("\"kind\":\"menu_");
+                        let jsonl_name = if is_menu {
+                            "menu-health.jsonl"
+                        } else {
+                            "play.jsonl"
+                        };
                         if let Ok(mut f) = std::fs::OpenOptions::new()
                             .create(true)
                             .append(true)
-                            .open(watch_dir.join("play.jsonl"))
+                            .open(watch_dir.join(jsonl_name))
                         {
                             use std::io::Write;
                             let _ = writeln!(f, "{line}");
                         }
-                        let _ = std::fs::write(
-                            watch_dir.join("live-summary.json"),
-                            &line,
-                        );
-                        eprintln!("MG_WATCH {line}");
+                        /* also mirror menu health into play.jsonl for one-tail monitors */
+                        if is_menu {
+                            if let Ok(mut f) = std::fs::OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open(watch_dir.join("play.jsonl"))
+                            {
+                                use std::io::Write;
+                                let _ = writeln!(f, "{line}");
+                            }
+                            let _ = std::fs::write(
+                                watch_dir.join("menu-health-latest.json"),
+                                &line,
+                            );
+                        }
+                        if !is_menu {
+                            let _ = std::fs::write(
+                                watch_dir.join("live-summary.json"),
+                                &line,
+                            );
+                        }
+                        if is_menu {
+                            eprintln!("MENU_HEALTH {line}");
+                        } else {
+                            eprintln!("MG_WATCH {line}");
+                        }
                     }
                     if let Some(wv) = inspect_wv.as_ref() {
                         // Don't spam inspect UI with full JSON every 350ms
@@ -8378,8 +8698,17 @@ fn main() -> Result<()> {
                         if let Some(wv) = inspect_wv.as_ref() {
                             t.push(wv);
                         }
-                        inject_live_js_mode(&t, hotpipe_lean);
+                        /* Force-reset version guards + remount menus (no full app restart) */
+                        inject_live_js_hot_reload(&t, hotpipe_lean);
                         live_mtime = mtime_of(&hotpipe_dir().join("live.js"));
+                        if let Some(wv) = inspect_wv.as_ref() {
+                            inject_dev_line(
+                                wv,
+                                "ok",
+                                &format!("hot-pipe reloaded · {}", hotpipe_dir().display()),
+                                "hotpipe",
+                            );
+                        }
                     }
                 }
                 Cmd::HotMitigate { msg } => {
@@ -8524,6 +8853,97 @@ fn main() -> Result<()> {
                             "(function(){{try{{if(typeof switchTab==='function')switchTab({index});else if(window.__mgSwitchTab)window.__mgSwitchTab({index});}}catch(e){{}}}})();"
                         );
                         let _ = wv.evaluate_script(&js);
+                    }
+                }
+                Cmd::SaveLabSnap {
+                    data_url,
+                    name,
+                    peak_bps,
+                    peak_ntpm,
+                    synopsis,
+                } => {
+                    fn b64_decode(input: &str) -> Option<Vec<u8>> {
+                        const T: &[u8] =
+                            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                        let mut out = Vec::with_capacity(input.len() * 3 / 4 + 4);
+                        let mut buf: u32 = 0;
+                        let mut bits: i32 = 0;
+                        for &c in input.as_bytes() {
+                            if c == b'=' || c.is_ascii_whitespace() {
+                                continue;
+                            }
+                            let v = T.iter().position(|&x| x == c)? as u32;
+                            buf = (buf << 6) | v;
+                            bits += 6;
+                            if bits >= 8 {
+                                bits -= 8;
+                                out.push(((buf >> bits) & 0xff) as u8);
+                            }
+                        }
+                        Some(out)
+                    }
+                    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+                    let mut wrote = false;
+                    if let Some(comma) = data_url.find(',') {
+                        let meta = &data_url[..comma];
+                        let b64 = &data_url[comma + 1..];
+                        let ext = if meta.contains("png") { "png" } else { "jpg" };
+                        if let Some(bytes) = b64_decode(b64) {
+                            let stamp = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_secs())
+                                .unwrap_or(0);
+                            let bps_s = peak_bps
+                                .map(|b| format!("{b}bps").replace('.', "p"))
+                                .unwrap_or_else(|| "na".into());
+                            let fname = if name.is_empty() {
+                                format!("mg-lab-snap-{bps_s}-{stamp}.{ext}")
+                            } else if name.contains('.') {
+                                name.clone()
+                            } else {
+                                format!("{name}.{ext}")
+                            };
+                            let mut dirs: Vec<std::path::PathBuf> = Vec::new();
+                            if let Some(ref h) = home {
+                                dirs.push(h.join(".panda/mg-soak/watch/snaps"));
+                            }
+                            dirs.push(std::path::PathBuf::from(
+                                "/Volumes/qbitOS/00.dev/projects/grok-build/experiments/memory-glass/docs/x-promo-packet/images/live",
+                            ));
+                            for dir in dirs {
+                                if std::fs::create_dir_all(&dir).is_err() {
+                                    continue;
+                                }
+                                let path = dir.join(&fname);
+                                if std::fs::write(&path, &bytes).is_ok() {
+                                    eprintln!(
+                                        "lab_snap: wrote {} ({} bytes)",
+                                        path.display(),
+                                        bytes.len()
+                                    );
+                                    wrote = true;
+                                    let latest = dir.join("latest-lab-snap.jpg");
+                                    let _ = std::fs::write(&latest, &bytes);
+                                    let meta_path = dir.join(format!("{fname}.json"));
+                                    let meta_js = serde_json::json!({
+                                        "file": fname,
+                                        "peakBps": peak_bps,
+                                        "peakNtpm": peak_ntpm,
+                                        "synopsis": synopsis,
+                                        "t": stamp,
+                                    });
+                                    if let Ok(s) = serde_json::to_string_pretty(&meta_js) {
+                                        let _ = std::fs::write(meta_path, s);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !wrote {
+                        eprintln!(
+                            "lab_snap: failed to decode/write data URL (len={})",
+                            data_url.len()
+                        );
                     }
                 }
                 Cmd::ClipboardCopy { text } => {
