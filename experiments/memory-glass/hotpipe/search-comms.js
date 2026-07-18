@@ -230,9 +230,15 @@
       pushLine("sys", "geo pattern flow", true);
       return { ok: true, kind: "geo" };
     }
-    if (/^(board|rank|leader)\b/i.test(s)) {
+    if (/^(board|rank|leader|mini\s*lb|miniboard)\b/i.test(s)) {
       try {
-        if (window.__mgActivityBoard) window.__mgActivityBoard.open();
+        if (window.__mgActivityBoard) {
+          window.__mgActivityBoard.open();
+          if (/mini/i.test(s)) {
+            var b = document.getElementById("mg-board-lane-mini");
+            if (b) b.click();
+          }
+        }
       } catch (e) {}
       return { ok: true, kind: "board" };
     }

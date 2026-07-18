@@ -28,16 +28,26 @@
         "  border:1px solid rgba(255,255,255,0.14);",
         "  box-shadow:0 4px 16px rgba(0,0,0,0.12);",
         "  font:600 9px/1.2 ui-monospace,Menlo,monospace;color:rgba(230,240,250,0.92);",
-        "  letter-spacing:0.03em;pointer-events:none;white-space:nowrap;overflow:hidden;",
-        "  text-overflow:ellipsis}",
+        "  letter-spacing:0.03em;pointer-events:auto;white-space:nowrap;overflow:hidden;",
+        "  text-overflow:ellipsis;cursor:default}",
         "#mg-solve-hud b{color:rgba(160,220,255,0.95);font-weight:700}",
         "#mg-solve-hud .sep{opacity:0.35;margin:0 6px}",
+        "#mg-solve-hud .board-hit{color:rgba(120,255,180,0.98)!important;cursor:pointer;",
+        "  text-decoration:underline;text-underline-offset:2px}",
       ].join("");
       (document.head || document.documentElement).appendChild(st);
     }
     el = document.createElement("div");
     el.id = "mg-solve-hud";
     el.textContent = "SOLVE · warming…";
+    el.addEventListener("click", function (ev) {
+      var t = ev.target;
+      if (t && t.classList && t.classList.contains("board-hit")) {
+        try {
+          if (window.__mgActivityBoard) window.__mgActivityBoard.toggle();
+        } catch (e) {}
+      }
+    });
     (document.body || document.documentElement).appendChild(el);
   }
 
@@ -84,7 +94,10 @@
       if (window.__mgActivityBoard) {
         var br = window.__mgActivityBoard.report() || "";
         var top = /top=([^\s]+)/.exec(br);
-        parts.push("<b>BOARD</b> " + (top ? top[1] : "—"));
+        parts.push(
+          '<b class="board-hit" title="Open leaderboard">BOARD</b> ' +
+            (top ? top[1] : "—")
+        );
       }
     } catch (e4c) {}
     try {

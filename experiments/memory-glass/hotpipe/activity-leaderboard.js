@@ -4,11 +4,12 @@
  * Clean window → leaderboard.html after playthrough to post.
  * Live ranking: chess/sportsfield style (mueee games spirit) + predictions.
  * Stays open during WebGrid play.
- * VER: activity-board-v3-sportsfield
+ * Mini WebGrid: always findable (chip + auto-open on 12×12).
+ * VER: activity-board-v4-mini-find
  */
 (function () {
   "use strict";
-  var VER = "activity-board-v3-sportsfield";
+  var VER = "activity-board-v4-mini-find";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._activityBoardVer === VER) return;
   HP._activityBoardVer = VER;
@@ -20,10 +21,12 @@
   var KEY = "mg.activity.leaderboard.v1";
   var MAX = 40;
   var panel = null;
+  var chip = null;
   var open = false;
   var lastRun = null;
   var postToast = null;
   var lastPromptRunId = null;
+  var filterMini = false; /* show mini-webgrid lane only */
 
   /* If this is the clean leaderboard page, hydrate handoff into board APIs */
   var IS_LB_PAGE = false;
@@ -54,11 +57,33 @@
     } catch (e) {}
   }
 
+  function isMiniWebgrid() {
+    try {
+      if (/[?&]mg_scale=small\b/i.test(location.search)) return true;
+      if (/[?&]grid=12\b/i.test(location.search)) return true;
+      if (/[?&]mg_window=small\b/i.test(location.search)) return true;
+      if (window.innerWidth <= 751 || window.innerHeight <= 600) return true;
+      if (window.__mgWebgridCalib && window.__mgWebgridCalib.detectGridSize) {
+        if (window.__mgWebgridCalib.detectGridSize() === 12) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function isWebgridHost() {
+    try {
+      return /neuralink\.com$/i.test(location.hostname || "") && /webgrid/i.test(location.pathname || "");
+    } catch (e) {
+      return false;
+    }
+  }
+
   function hostGame() {
     try {
       var h = location.hostname || "";
       var p = location.pathname || "";
-      if (/neuralink\.com$/i.test(h) && /webgrid/i.test(p)) return "webgrid";
+      if (/neuralink\.com$/i.test(h) && /webgrid/i.test(p))
+        return isMiniWebgrid() ? "webgrid-mini" : "webgrid";
       if (/kbatch\.ugrad\.ai$/i.test(h)) return "kbatch";
       if (/mueee\.qbitos\.ai$/i.test(h)) {
         if (/rubik/i.test(p)) return "rubik";
@@ -309,16 +334,39 @@
 
   function gameLabel(g) {
     var map = {
-      webgrid: "WebGrid",
+      webgrid: "WebGrid 30",
+      "webgrid-mini": "WebGrid MINI 12",
       "webgrid-ugrad": "WebGrid μgrad",
       kbatch: "KBatch",
       rubik: "Rubik language",
       snake: "Snake",
       language: "Language lab",
+      scavenger: "Scavenger",
       mueee: "μeee lab",
       session: "Memory Glass",
     };
     return map[g] || g;
+  }
+
+  function boardFiltered() {
+    var b = boardRanked();
+    if (filterMini) {
+      return b.filter(function (r) {
+        return (
+          r.game === "webgrid-mini" ||
+          (r.metrics && r.metrics.webgrid && /12/.test(String(r.metrics.webgrid.grid || "")))
+        );
+      });
+    }
+    if (filterFull) {
+      return b.filter(function (r) {
+        return (
+          r.game === "webgrid" ||
+          (r.metrics && r.metrics.webgrid && /30/.test(String(r.metrics.webgrid.grid || "")))
+        );
+      });
+    }
+    return b;
   }
 
   function fmtNum(n) {
@@ -588,19 +636,38 @@
     var st = document.createElement("style");
     st.id = "mg-board-css";
     st.textContent = [
-      "#mg-activity-board{position:fixed;left:12px;top:calc(56px + 168px);z-index:2147482993;",
-      "  width:min(300px,36vw);border-radius:12px;overflow:hidden;",
+      "#mg-activity-board{position:fixed;right:12px;top:48px;z-index:2147482993;",
+      "  width:min(300px,42vw);border-radius:12px;overflow:hidden;",
       "  background:rgba(10,12,16,0.55);backdrop-filter:blur(22px) saturate(1.35);",
       "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
       "  border:1px solid rgba(255,255,255,0.16);",
       "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
       "  font:650 9px/1.25 system-ui;color:rgba(244,246,250,0.92);pointer-events:auto}",
+      "#mg-activity-board.mini-layout{right:8px;top:40px;width:min(260px,48vw)}",
       "#mg-activity-board.hidden{display:none}",
+      "#mg-board-chip{position:fixed;right:10px;top:10px;z-index:2147483005;",
+      "  padding:7px 12px;border-radius:999px;cursor:pointer;pointer-events:auto;",
+      "  background:rgba(10,14,12,0.72);backdrop-filter:blur(18px);",
+      "  -webkit-backdrop-filter:blur(18px);border:1px solid rgba(120,230,160,0.45);",
+      "  box-shadow:0 4px 16px rgba(0,0,0,0.2),0 0 12px rgba(80,200,140,0.15);",
+      "  font:700 10px/1 system-ui;letter-spacing:0.08em;text-transform:uppercase;",
+      "  color:rgba(140,255,190,0.98)}",
+      "#mg-board-chip:hover{background:rgba(20,40,28,0.85);border-color:rgba(160,255,200,0.7)}",
+      "#mg-board-chip.hidden{display:none}",
+      "#mg-board-chip .n{opacity:0.75;font-weight:600;margin-left:6px;letter-spacing:0.02em;",
+      "  text-transform:none}",
       "#mg-activity-board .hd{display:flex;justify-content:space-between;align-items:center;",
       "  padding:6px 8px;letter-spacing:0.1em;text-transform:uppercase;",
       "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,210,120,0.95)}",
       "#mg-activity-board .hd button{appearance:none;background:transparent;border:0;color:inherit;",
       "  cursor:pointer;font:700 11px/1 system-ui;margin-left:4px}",
+      "#mg-activity-board .lane{display:flex;gap:4px;padding:4px 8px;",
+      "  border-bottom:1px solid rgba(255,255,255,0.08)}",
+      "#mg-activity-board .lane button{appearance:none;cursor:pointer;padding:3px 8px;border-radius:999px;",
+      "  font:700 8px/1 system-ui;color:rgba(220,230,240,0.85);",
+      "  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)}",
+      "#mg-activity-board .lane button.on{background:rgba(80,220,140,0.2);border-color:rgba(120,230,160,0.45);",
+      "  color:rgba(160,255,200,0.98)}",
       "#mg-activity-board .live{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:6px 8px;",
       "  border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,40,20,0.25)}",
       "#mg-activity-board .live .c{text-align:center}",
@@ -634,23 +701,66 @@
     (document.head || document.documentElement).appendChild(st);
   }
 
+  function ensureChip() {
+    if (chip || document.getElementById("mg-board-chip")) return;
+    ensureCss();
+    chip = document.createElement("button");
+    chip.type = "button";
+    chip.id = "mg-board-chip";
+    chip.title = "Open WebGrid leaderboard (mini + full)";
+    chip.innerHTML = 'BOARD<span class="n" id="mg-board-chip-n">·</span>';
+    chip.onclick = function (ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      toggle();
+    };
+    (document.body || document.documentElement).appendChild(chip);
+    paintChip();
+  }
+
+  function paintChip() {
+    ensureChip();
+    if (!chip) return;
+    var b = boardFiltered();
+    var top = b[0] ? fmtNum(b[0].score) : "—";
+    var mini = isMiniWebgrid();
+    chip.innerHTML =
+      (mini ? "MINI BOARD" : "BOARD") +
+      '<span class="n">#' +
+      top +
+      " · n" +
+      boardRanked().length +
+      "</span>";
+    /* chip visible when panel closed — always findable on WebGrid */
+    if (open) chip.classList.add("hidden");
+    else chip.classList.remove("hidden");
+  }
+
   function ensurePanel() {
     if (panel) return;
     ensureCss();
+    ensureChip();
     panel = document.createElement("div");
     panel.id = "mg-activity-board";
-    panel.className = open ? "" : "hidden";
+    panel.className = (open ? "" : "hidden") + (isMiniWebgrid() ? " mini-layout" : "");
     panel.innerHTML =
-      '<div class="hd"><span>Live rank · sportsfield</span>' +
+      '<div class="hd"><span id="mg-board-hd-title">Live rank · WebGrid</span>' +
       '<span><button type="button" id="mg-board-snap" title="snapshot">＋</button>' +
       '<button type="button" id="mg-board-x">×</button></span></div>' +
+      '<div class="lane">' +
+      '<button type="button" id="mg-board-lane-all" class="on">ALL</button>' +
+      '<button type="button" id="mg-board-lane-mini">MINI 12×12</button>' +
+      '<button type="button" id="mg-board-lane-full">FULL 30×30</button>' +
+      "</div>" +
       '<div class="live" id="mg-board-live">' +
       '<div class="c"><div class="k">Live</div><div class="v" id="mg-board-live-sc">—</div></div>' +
       '<div class="c"><div class="k">Pred BPS</div><div class="v warn" id="mg-board-pred">—</div></div>' +
       '<div class="c"><div class="k">ELO≈</div><div class="v" id="mg-board-elo">—</div></div>' +
       "</div>" +
       '<div class="pred" id="mg-board-predline">chess/sportsfield predictions…</div>' +
-      '<div class="syn" id="mg-board-syn">no run yet</div>' +
+      '<div class="syn" id="mg-board-syn">no run yet · chip top-right always opens board</div>' +
       '<div class="rank-table" id="mg-board-ol"></div>' +
       '<div class="ft">' +
       '<button type="button" id="mg-board-post" class="hot">POST ↗</button>' +
@@ -681,7 +791,24 @@
       lastRun = null;
       paintPanel();
     };
+    panel.querySelector("#mg-board-lane-all").onclick = function () {
+      filterMini = false;
+      filterFull = false;
+      paintPanel();
+    };
+    panel.querySelector("#mg-board-lane-mini").onclick = function () {
+      filterMini = true;
+      filterFull = false;
+      paintPanel();
+    };
+    panel.querySelector("#mg-board-lane-full").onclick = function () {
+      filterMini = false;
+      filterFull = true;
+      paintPanel();
+    };
   }
+
+  var filterFull = false;
 
   function ensureToastCss() {
     if (document.getElementById("mg-board-toast-css")) return;
@@ -855,23 +982,32 @@
   }
 
   function paintPanel() {
+    ensureChip();
+    paintChip();
     if (!open) return;
     ensurePanel();
-    var board = boardRanked();
+    if (panel) panel.classList.toggle("mini-layout", isMiniWebgrid());
+    var board = boardFiltered();
     var syn = document.getElementById("mg-board-syn");
     var ol = document.getElementById("mg-board-ol");
+    var hd = document.getElementById("mg-board-hd-title");
     var live = collectMetrics();
     var pred = predictNext();
     var elSc = document.getElementById("mg-board-live-sc");
     var elPred = document.getElementById("mg-board-pred");
     var elElo = document.getElementById("mg-board-elo");
     var elPredLine = document.getElementById("mg-board-predline");
+    if (hd)
+      hd.textContent = isMiniWebgrid()
+        ? "MINI board · 12×12"
+        : "Live rank · WebGrid";
     if (elSc) elSc.textContent = fmtNum(pred.liveScore);
     if (elPred)
       elPred.textContent = pred.predBps != null ? fmtNum(pred.predBps) : "—";
     if (elElo) elElo.textContent = String(pred.eloHint);
     if (elPredLine) {
       elPredLine.textContent =
+        (isMiniWebgrid() ? "MINI 12×12 · " : "") +
         "P(top) " +
         pred.winTopPct +
         "% · P(field) " +
@@ -879,19 +1015,30 @@
         "% · " +
         pred.form +
         " · n=" +
-        pred.fieldN +
+        board.length +
         (pred.liveBps != null ? " · live " + fmtNum(pred.liveBps) + " BPS" : "");
     }
+    try {
+      var bAll = document.getElementById("mg-board-lane-all");
+      var bMini = document.getElementById("mg-board-lane-mini");
+      var bFull = document.getElementById("mg-board-lane-full");
+      if (bAll) bAll.classList.toggle("on", !filterMini && !filterFull);
+      if (bMini) bMini.classList.toggle("on", !!filterMini);
+      if (bFull) bFull.classList.toggle("on", !!filterFull);
+    } catch (eL) {}
     if (syn)
       syn.textContent =
-        (lastRun ? lastRun.synopsis : synopsis(live)).slice(0, 120) || "—";
+        (lastRun ? lastRun.synopsis : synopsis(live)).slice(0, 120) ||
+        "chip top-right · BOARD · always findable";
     if (ol) {
       ol.innerHTML = "";
       if (!board.length) {
         var empty = document.createElement("div");
         empty.className = "rank-row";
         empty.style.opacity = "0.55";
-        empty.textContent = "empty — SNAP or finish a playthrough";
+        empty.textContent = filterMini
+          ? "no MINI runs yet · play 12×12 then SNAP"
+          : "empty — SNAP or finish a playthrough";
         ol.appendChild(empty);
       } else {
         board.slice(0, 12).forEach(function (r, i) {
@@ -933,19 +1080,41 @@
   function openPanel() {
     open = true;
     ensurePanel();
+    ensureChip();
     panel.classList.remove("hidden");
+    if (chip) chip.classList.add("hidden");
     paintPanel();
   }
 
   function close() {
     open = false;
     if (panel) panel.classList.add("hidden");
+    ensureChip();
+    if (chip) chip.classList.remove("hidden");
+    paintChip();
   }
 
   function toggle() {
     if (open) close();
     else openPanel();
   }
+
+  /* Mini WebGrid: auto-open board + chip always present */
+  function bootFindable() {
+    ensureChip();
+    paintChip();
+    if (IS_LB_PAGE) return;
+    if (isWebgridHost()) {
+      filterMini = isMiniWebgrid();
+      /* open after short delay so playfield paints first */
+      setTimeout(function () {
+        openPanel();
+        log(VER + " · board findable" + (isMiniWebgrid() ? " MINI" : ""));
+      }, 700);
+    }
+  }
+  setTimeout(bootFindable, 400);
+  setTimeout(bootFindable, 2000);
 
   /* Hook WebGrid agent end reports into board */
   function hookWebgrid() {

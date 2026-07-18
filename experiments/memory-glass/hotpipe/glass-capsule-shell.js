@@ -366,6 +366,18 @@
         })
       );
       row.appendChild(
+        act("MINI LB", "hot", function () {
+          if (window.__mgActivityBoard) {
+            window.__mgActivityBoard.open();
+            try {
+              var b = document.getElementById("mg-board-lane-mini");
+              if (b) b.click();
+            } catch (e) {}
+            setStatus("MINI 12×12 leaderboard");
+          } else setStatus("board missing");
+        })
+      );
+      row.appendChild(
         act("POST ↗", "hot", function () {
           if (window.__mgActivityBoard && window.__mgActivityBoard.openLeaderboardWindow) {
             window.__mgActivityBoard.openLeaderboardWindow({
