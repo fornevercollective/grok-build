@@ -7,13 +7,15 @@ Live work loop for Grok + Memory Glass **without full app rebuild/relaunch**.
 | Path | Role |
 |------|------|
 | `live.js` | Injected into the main WKWebView when mtime changes (~1s poll) |
+| `GOALS.md` | North-star goal, **next hurdle (H1 hands/air)**, ladder H0–H9 |
+| `SESSION_HANDOFF.md` | Restart ops + known issues |
+| `X_WRITEUP.md` | Public speed / goal language for X–Grok |
 | `prompt.md` | Current agent prompt / intent Grok should extend |
 | `loop.json` | Lightweight loop state (iteration, last pack, last mitigation) |
 | `agent.html` | In-browser agent / prompt surface (navigate via Inspect **Agent**) |
 | `mitigations/*.js` | Auto-applied when inspect errors match a pattern |
 | `patches/*.js` | Optional named patches applied on demand |
 | `out/` | Inspect packs written for Grok Build submit |
-
 ## Workflow
 
 1. Leave Memory Glass running.

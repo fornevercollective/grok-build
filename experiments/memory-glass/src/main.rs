@@ -159,6 +159,16 @@ enum Cmd {
     TrackPeople {
         json: String,
     },
+    /// Inspect-first hands / air pointer → main CSS vars only (no body thrash)
+    TrackHand {
+        present: bool,
+        nx: f64,
+        ny: f64,
+        pinch: f64,
+        expand: f64,
+        conf: f64,
+        engine: String,
+    },
 }
 
 const HOME_URL: &str = "https://www.spacex.com/";
@@ -4223,6 +4233,16 @@ fn hud_init_script() -> &'static str {
     function ensureHands(on) {
       ctrl.handTrack = !!on;
       setToggleUi("mg-hand-toggle", on);
+      rootEl.classList.toggle("mg-hands-on", !!on);
+      if (!on) {
+        lastHands = [];
+        rootEl.classList.remove("mg-hands-on", "mg-occ-on");
+        rootEl.style.setProperty("--mg-cf-expand", "1");
+        try {
+          var ocH = document.getElementById("mg-occ");
+          if (ocH) { var oxH = ocH.getContext("2d"); if (oxH) oxH.clearRect(0, 0, ocH.width, ocH.height); }
+        } catch (eH) {}
+      }
     }
     function ensureLidar(on) {
       ctrl.lidar = !!on;
@@ -4301,9 +4321,10 @@ fn hud_init_script() -> &'static str {
         applyEye("calibrate");
         ensureCamTrack(true);
         ensurePageAxis(true);
-        ensureHands(true);
-        ensureLidar(true);
-        ensureOcclude(true);
+        /* H1 thrash guard: main hands OPT-IN (toggle). Inspect owns hands via still-pipe. */
+        ensureHands(false);
+        ensureLidar(false);
+        ensureOcclude(false);
         ctrl.camPip = true;
         ctrl.focalZoom = true;
         ctrl.hoverFocus = true;
@@ -4319,7 +4340,7 @@ fn hud_init_script() -> &'static str {
         setSlider("mg-c-ana", 28);
         setSlider("mg-c-drop", 94);
         setSlider("mg-c-glow", 40);
-        setCalibMsg("DEPTH · face + hands + lidar · no-glasses + full HUD");
+        setCalibMsg("DEPTH · face lock · hands/lidar OPT-IN (inspect owns H1 air pointer)");
         return;
       }
 
@@ -6738,6 +6759,22 @@ fn main() -> Result<()> {
                         })
                         .unwrap_or_else(|| "[]".into()),
                 }),
+                "track_hand" => Some(Cmd::TrackHand {
+                    present: v
+                        .get("present")
+                        .and_then(|x| x.as_bool())
+                        .unwrap_or(false),
+                    nx: v.get("nx").and_then(|x| x.as_f64()).unwrap_or(0.5),
+                    ny: v.get("ny").and_then(|x| x.as_f64()).unwrap_or(0.5),
+                    pinch: v.get("pinch").and_then(|x| x.as_f64()).unwrap_or(1.0),
+                    expand: v.get("expand").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                    conf: v.get("conf").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                    engine: v
+                        .get("engine")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("inspect-hands")
+                        .to_string(),
+                }),
                 _ => None,
             };
             if let Some(cmd) = cmd {
@@ -7378,6 +7415,35 @@ fn main() -> Result<()> {
   }}
 }}catch(e){{}}}})();"#,
                             safe = safe
+                        );
+                        let _ = wv.evaluate_script(&js);
+                    }
+                }
+                Cmd::TrackHand {
+                    present,
+                    nx,
+                    ny,
+                    pinch,
+                    expand,
+                    conf,
+                    engine,
+                } => {
+                    // H1: inspect hands → main CSS/storage only (hot-pipe thrash guards)
+                    if let Some(wv) = webview.as_ref() {
+                        let eng = js_single_quote(&engine);
+                        let js = format!(
+                            r#"(function(){{try{{
+  var h={{present:{present},nx:{nx},ny:{ny},pinch:{pinch},expand:{expand},conf:{conf},engine:'{eng}'}};
+  window.__mgHand=h;
+  if(typeof window.__mgApplyRemoteHand==='function')window.__mgApplyRemoteHand(h);
+}}catch(e){{}}}})();"#,
+                            present = if present { "true" } else { "false" },
+                            nx = nx,
+                            ny = ny,
+                            pinch = pinch,
+                            expand = expand,
+                            conf = conf,
+                            eng = eng,
                         );
                         let _ = wv.evaluate_script(&js);
                     }

@@ -4,6 +4,15 @@
 
 Droplet-glass concept browser for the SpaceX cool-test surface: transparent shell, flat page (no distance skew/tilt), three tabs on boot, depth HUD optional.
 
+### Goal + next hurdle
+
+| | |
+|--|--|
+| **Goal** | Native low-overhead droplet browser with ~1s hot-pipe iteration, spatial face/path instrument, and live Grok integration — lighter than Electron; stretch **sub-16ms** spatial HUD frames |
+| **Baseline** | Shipped (continuous cam, inspect track, 6DOF head lock, multi-subject paths, soft mesh, meters) |
+| **Next hurdle** | **Hands + in-air pointer without thrash** (inspect-first) |
+| **Full ladder** | `hotpipe/GOALS.md` |
+
 | Piece | Stack |
 |-------|--------|
 | Window | **tao** 0.31 |
@@ -85,7 +94,30 @@ Lives under:
 experiments/memory-glass/
 ```
 
-Standalone Cargo workspace (`[workspace]` in this folder) — not a monorepo member (same pattern as `docs/architecture-lab/native`).
+Standalone Cargo workspace (`[workspace]` in this folder) — **not** a monorepo member (same pattern as `docs/architecture-lab/native`). Coexists with path-checked-out xAI harness crates under `crates/codegen/…`.
+
+### Upstream tools (xai-org/grok-build)
+
+Monorepo tools (pager, shell, workspace, MCP, voice, …) stay current via **path-checkout**, not merge:
+
+```bash
+# from repo root
+./scripts/sync-upstream-path-checkout.sh upstream/main
+./scripts/verify-upstream-sync.sh
+```
+
+**GitHub “N commits behind” is normal** — histories are unrelated. Trust root **`SOURCE_REV` + path-checkout** (see `docs/FORK_SYNC.md`).
+
+Leverage monorepo tools in this fork:
+
+```bash
+cargo check -p xai-grok-pager-bin
+cargo run -p xai-grok-pager-bin
+# Memory Glass stays separate:
+cd experiments/memory-glass && cargo build --release && ./build-mac-app.sh
+```
+
+Session resume: `hotpipe/SESSION_HANDOFF.md`.
 
 Conceptual surface (DOM Memory Glass) remains:
 

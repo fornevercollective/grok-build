@@ -54,3 +54,14 @@ still-pipe live.jpg
 - MediaPipe WASM offline bundle inside `.app` (CDN often blocked)
 
 Until then, **hot-pipe `live.js`** owns the visual rebuild; rust only for window/IPC/cam auth.
+
+## Goals / hurdles (product, not just lineage)
+
+See **`GOALS.md`**. Short map:
+
+| Hurdle | Lineage link |
+|--------|----------------|
+| **H0 baseline** | Face instrument + path contrails (ofx / Daito tip trails) — **shipped** |
+| **H1 next** | Hands / air pointer without thrash — gesture path, not body thrash |
+| **H2** | Pen / object tip — fencing tip as path source |
+| **H3+** | WebGPU/Metal GSPLAT, true SAM/DETR, XR depth — native/heavy |

@@ -46,8 +46,22 @@ GrokYtalkY phone can push frames the same way (HTTP POST JPEG).
 
 Inspect bottom bars: **RAM · GPU · Spool · FPS** + signal text (`SPOOL_STALL`, `RAM_CRIT`, …).
 
+## Goal + next hurdle
+
+| | |
+|--|--|
+| **North-star** | Native WKWebView droplet + hot-pipe (~1s) + spatial mix + live Grok — no Electron bloat; stretch **sub-16ms** HUD frames |
+| **Baseline** | Shipped (continuous cam, inspect track, 6DOF, paths, soft mesh, meters) |
+| **NEXT** | **H1 hands / air pointer without thrash** — inspect-first; never body-filter thrash on PAGE |
+| **After** | H2 pen tip · H3 WebGPU/Metal GSPLAT · H4 cache · H5 subagents/pre-fetch · H6 sub-16ms · H7–H9 multi-process / XR |
+
+Canonical: `hotpipe/GOALS.md`. Do not jump to XR while H1 is open.
+
 ## Docs
 
+- `hotpipe/GOALS.md` — north-star, next hurdle, ladder, anti-goals
 - `ARCHITECTURE.md` — paint vs rusty
 - `hotpipe/LINEAGE.md` — daito/ofx/SAM map
+- `hotpipe/SESSION_HANDOFF.md` — restart + known issues
+- `hotpipe/X_WRITEUP.md` — public speed language
 - `Resources-pack/MANIFEST.md` — what's in the .app

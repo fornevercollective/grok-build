@@ -8,10 +8,15 @@
 ## Quick restart
 
 ```bash
-# still-pipe (inspect face feed)
+# HTTP still-pipe (serves live.jpg)
 python3 ~/.panda/vision/still-server.py &
-# ONE capture writer only (avoid multi-ffmpeg cam thrash)
-bash ~/.panda/vision/capture-gentle.sh &
+
+# FACE cam — continuous stream (device stays open; no LED snap thrash)
+# Do NOT run snap-loop.sh (re-opens cam every N sec = snapshots)
+bash ~/.panda/vision/capture-stream.sh &
+
+# optional: glass.jpg = Memory Glass window grab (not camera)
+# bash ~/.panda/vision/capture-gentle.sh &
 
 # app
 open -n "$HOME/Applications/Memory Glass.app"
@@ -44,7 +49,22 @@ cp experiments/memory-glass/hotpipe/live.js \
 | **MG scroll fix** | `3c27b6e` — depth scroll hop + handoff refresh |
 | Branch | `main` = `origin/main` |
 | **SOURCE_REV** | `124d85bc5dc6e7805560215fcc6d5413944920e1` (upstream monorepo tip path-checkout) |
-| Upstream sync | `scripts/sync-upstream-path-checkout.sh` — **never** force-merge `upstream/main` (unrelated histories) |
+| Upstream sync | `scripts/sync-upstream-path-checkout.sh` + `scripts/verify-upstream-sync.sh` |
+| Policy | **GitHub behind-count is normal** — trust `SOURCE_REV` + path-checkout (`docs/FORK_SYNC.md`). **Never** force-merge `upstream/main` (unrelated histories). |
+
+### Keep monorepo tools current
+
+```bash
+git fetch upstream
+./scripts/verify-upstream-sync.sh          # exit 0 = content OK
+# if DRIFT:
+./scripts/sync-upstream-path-checkout.sh upstream/main
+git commit -m "Sync product tree from xai-org/grok-build tip (path-checkout)."
+git push origin main
+```
+
+Leverage in build (workspace): `cargo check -p xai-grok-pager-bin` · shell/tools/workspace crates under `crates/codegen/`.  
+Memory Glass remains standalone under `experiments/memory-glass/`.
 
 ### Uncommitted (lab only, not MG)
 
@@ -62,8 +82,8 @@ M docs/architecture-lab/browser.html
 | App | `~/Applications/Memory Glass.app` |
 | Last build stamp | **v0.2.0 · b1784335396 · r1784335412** |
 | Bundle epoch | ~1784335410 |
-| Hot-pipe VER | **live-v16-path** (mesh + path contrails + spatial lock) |
-| live.js size | ~61KB |
+| Hot-pipe VER | **live-v17-hands** (H1 inspect hands/air + path contrails + spatial lock) |
+| live.js size | ~check after inject |
 
 ---
 
@@ -82,7 +102,8 @@ M docs/architecture-lab/browser.html
 1. **Hot-pipe first** for track/HUD; rust rebuild only for window/IPC/native.  
 2. **PAGE default** — DEPTH is opt-in (cam/axis thrash history).  
 3. **Inspect owns heavy track**; main stays calm (no body filter thrash).  
-4. **Single camera writer** for `live.jpg` — multi-ffmpeg = LED thrash / empty feed.  
+4. **Single continuous camera writer** for `live.jpg` — use `capture-stream.sh` (open device once).  
+   **Never** `snap-loop.sh` style `-frames:v 1` every few seconds (LED flash / snapshot feel).  
 5. Mesh/matte defaults **low** so face stays visible (MESH α ~0.28, MATTE α ~0.14).
 
 ---
@@ -117,23 +138,35 @@ M docs/architecture-lab/browser.html
 
 ---
 
+## Goal + next hurdle (canonical: `GOALS.md`)
+
+| | |
+|--|--|
+| **North-star** | Native WKWebView droplet + ~1s hot-pipe + spatial mix + live Grok — **without** Electron bloat; stretch **sub-16ms** spatial HUD frames |
+| **Baseline** | **Shipped** — continuous cam, inspect track, 6DOF lock, multi-subject paths, soft mesh, meters |
+| **NEXT HURDLE (H1)** | **In progress** — inspect hands/air (`live-v17-hands` + `track_hand` IPC); main PAGE calm; DEPTH hands **opt-in** |
+| **After H1** | H2 pen/object tip → H3 WebGPU/Metal GSPLAT → H4 cache → H5 subagents/pre-fetch → H6 sub-16ms → H7–H9 multi-process / Metal / XR |
+
+Full ladder, success criteria, anti-goals: **`hotpipe/GOALS.md`**.
+
 ## Known issues / next builds
 
 | Issue | Notes |
 |-------|--------|
-| Camera multi-grab | Only one capture-gentle + still-server |
+| Camera multi-grab | Only one continuous writer (`capture-stream.sh`) + still-server |
 | Auth flap | AV status 0 at boot then prompt; System Settings › Camera › Memory Glass |
 | MediaPipe CDN | Often blocked; lattice 468 still works |
-| Hands / in-air touch | Disabled on main (thrash); re-enable carefully |
-| Pen/object track | Not built — needs tip detector + stable video |
-| Git | Scroll fix in main.rs may be uncommitted |
+| **Hands / in-air touch (H1)** | **Partial** — inspect MediaPipe Hands + air pointer + `track_hand`; main PAGE never thrash; soak not done |
+| Pen/object track (H2) | Not built — needs tip detector + stable video |
+| WebGPU GSPLAT (H3) | Roadmap — canvas 2D proxy today |
+| Git | Prefer commit X_WRITEUP / GOALS / capture-stream pack when dirty |
 
 **Roadmap distance (approx.)**  
-- Face instrument + paths: **shipped**  
-- Hands + air pointer: **days**  
-- Pen tip + depth touch: **1–2+ weeks**  
-- XR product: **months / other stack**
-
+- Face instrument + paths: **shipped (H0)**  
+- Hands + air pointer: **next · days (H1)**  
+- Pen tip + depth touch: **1–2+ weeks (H2)**  
+- Sub-16ms / WebGPU density: **weeks · target bar (H3–H6)**  
+- XR product: **months / other stack (H9)**
 ---
 
 ## Key paths
@@ -141,8 +174,10 @@ M docs/architecture-lab/browser.html
 ```
 experiments/memory-glass/
   src/main.rs
-  hotpipe/live.js          # VER live-v16-path
+  hotpipe/live.js          # VER live-v17-hands
+  hotpipe/GOALS.md         # north-star + next hurdle ladder
   hotpipe/LINEAGE.md
+  hotpipe/X_WRITEUP.md
   hotpipe/SESSION_HANDOFF.md  # this file
   build-mac-app.sh
   ARCHITECTURE.md
@@ -170,13 +205,15 @@ experiments/memory-glass/
 ## Agent prompt seed (paste next session)
 
 ```
-Continue Memory Glass (experiments/memory-glass). Read hotpipe/SESSION_HANDOFF.md.
+Continue Memory Glass (experiments/memory-glass).
+Read hotpipe/GOALS.md + SESSION_HANDOFF.md.
+North-star: native WKWebView droplet + hot-pipe + spatial mix without Electron bloat.
+Baseline shipped (H0). H1 partial: live-v17-hands inspect hands/air + track_hand; finish soak + offline Hands bundle.
 Hot-pipe first (live.js); rust rebuild only for native/IPC.
-Latest: live-v16-path, PAGE default, depth scroll fix may be uncommitted in main.rs.
-Still-pipe :9877, single cam writer. Git: a678887 pushed; commit scroll fix if pending.
+
+Still-pipe :9877, single continuous cam writer (capture-stream.sh — never snap-loop).
 Do not reintroduce body filter thrash or multi-ffmpeg on device 0.
 ```
-
 ---
 
 *End of handoff. Background monitors should be stopped when this file is written.*

@@ -18,7 +18,7 @@
 | Path | Why external |
 |------|----------------|
 | `~/.panda/voice/` | live mute state, inbox, spoken.log, bridge.pid |
-| `~/.panda/vision/` | live.jpg / glass.jpg still-pipe frames |
+| `~/.panda/vision/` | live.jpg (from **capture-stream.sh** continuous cam) / glass.jpg |
 | `~/models/audio/whisper/ggml/*.bin` | large STT models (~GB) |
 | `whisper-cli`, `ffmpeg` | Homebrew / local tools |
 | `XAI_API_KEY` | secrets never bundled |

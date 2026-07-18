@@ -34,6 +34,11 @@ runtime. It is synced periodically from the SpaceXAI monorepo.
 A small `SOURCE_REV` file at the root records the full monorepo commit SHA
 for the version of the code present in this tree.
 
+> **Fork note (fornevercollective):** GitHub may show this repo “N commits behind”
+> `xai-org/grok-build`. That is **history only** (unrelated roots). **Trust
+> `SOURCE_REV` + path-checkout** — see [`docs/FORK_SYNC.md`](docs/FORK_SYNC.md).
+> Sync: `./scripts/sync-upstream-path-checkout.sh` · verify: `./scripts/verify-upstream-sync.sh`.
+
 </div>
 
 ---

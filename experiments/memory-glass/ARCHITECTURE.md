@@ -24,6 +24,17 @@ phone or laptop cam
 **Hot-pipe first:** visual + track fixes in `live.js` without rebuild.  
 **Rust rebuild** only for: native menus, window layout, new IPC ops, cam permissions, bundling.
 
+## Goal + next hurdle
+
+| | |
+|--|--|
+| **North-star** | Lightweight native droplet + ~1s hot-pipe + spatial mix + live Grok → **sub-16ms** stretch, no Electron |
+| **Baseline (H0)** | Shell, continuous cam, inspect track, 6DOF lock, multi-subject paths, meters — **shipped** |
+| **Next (H1)** | Hands / air pointer **without thrash** (inspect owns track; main PAGE calm) |
+| **Ladder** | H2 pen tip · H3 WebGPU/Metal · H4 SW/IndexedDB · H5 subagents + Rust pre-fetch · H6 sub-16ms · H7–H9 multi-process / Metal / XR |
+
+Full criteria + anti-goals: `hotpipe/GOALS.md`.
+
 ## Plugin / packet for Grok Build users
 
 Ship as one folder users drop into experiments or enable as lab pack:
