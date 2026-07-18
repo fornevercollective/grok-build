@@ -123,7 +123,7 @@ if [[ -x "$BIN" ]]; then
     MG_WEBGRID_SCALE="$MG_WEBGRID_SCALE" \
     MG_WEBGRID_W="$W" \
     MG_WEBGRID_H="$H" \
-    MG_HOTPIPE_LEAN=1 \
+    MG_HOTPIPE_LEAN="${MG_HOTPIPE_LEAN:-webgrid}" \
     MG_LOCAL_LLM="${MG_LOCAL_LLM:-}" \
     "$BIN" "$URL" >>"$HOME/Library/Logs/MemoryGlass/launch.log" 2>&1
   ) &
