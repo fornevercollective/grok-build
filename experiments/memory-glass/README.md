@@ -4,15 +4,14 @@
 
 Droplet-glass concept browser for the SpaceX cool-test surface: transparent shell, flat page (no distance skew/tilt), three tabs on boot, depth HUD optional.
 
-### Goal + next hurdle
+### Goal + hurdles
 
 | | |
 |--|--|
 | **Goal** | Native low-overhead droplet browser with ~1s hot-pipe iteration, spatial face/path instrument, and live Grok integration — lighter than Electron; stretch **sub-16ms** spatial HUD frames |
-| **Baseline** | Shipped (continuous cam, inspect track, 6DOF head lock, multi-subject paths, soft mesh, meters) |
-| **Next hurdle** | **Hands + in-air pointer without thrash** (inspect-first) |
+| **H0–H6** | Hard-pushed — hands/air, pen tip, dense GSPLAT, IndexedDB, prefetch, frame budget (`live.js` + `hurdles.js`) |
+| **H7–H9** | Scaffold (isolation / rim CSS / depth-touch proxy) |
 | **Full ladder** | `hotpipe/GOALS.md` |
-
 | Piece | Stack |
 |-------|--------|
 | Window | **tao** 0.31 |

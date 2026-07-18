@@ -1,12 +1,11 @@
-/* Memory Glass hotpipe/live.js v17-hands
- * H1: inspect-first hands + air pointer WITHOUT main PAGE thrash
- * + v16 path contrails · v15 spatial lock · mesh α · person matte
- * Hands run on still-pipe (same live.jpg) — no second camera / LED thrash
+/* Memory Glass hotpipe/live.js v18-hurdles
+ * H1 hands/air + bridge for hurdles.js (H2–H9)
+ * Inspect-first · still-pipe only · no main PAGE thrash
  */
 (function () {
   "use strict";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
-  var VER = "live-v17-hands";
+  var VER = "live-v18-hurdles";
   var MAX_FACES = 4;
   var PATH_MAX = 96; /* fencing trail length (samples) */
   var PATH_MIN_DIST = 0.0018; /* ignore micro-jitter in norm space */
@@ -1569,6 +1568,13 @@
   function paintGsplat() {
     var cv = document.getElementById("tri-gsplat-cv");
     if (!cv || !ui.showGsplat) return;
+    /* H3: denser path from hurdles when available */
+    if (typeof window.__mgDenseGsplat === "function" && tracks.length) {
+      try {
+        window.__mgDenseGsplat(cv, tracks, (window.__mgHurdles && window.__mgHurdles.h6 && window.__mgHurdles.h6.quality) || 1);
+        return;
+      } catch (eDg) {}
+    }
     var ctx = cv.getContext("2d");
     if (!ctx) return;
     var W = cv.width,
@@ -2023,6 +2029,21 @@
         } catch (eH) {
           mpHandsBusy = false;
         }
+      } else if (ui.showHands && !mpHands && typeof window.__mgHeuristicHands === "function" && handTick % 3 === 0) {
+        try {
+          var hh = window.__mgHeuristicHands(img);
+          if (hh && hh.length) {
+            lastHands = hh;
+            handGesture.present = true;
+            handGesture.engine = "heuristic-hands";
+            handGesture.hands = hh;
+            handGesture.nx = hh[0][8] ? hh[0][8].x : 0.5;
+            handGesture.ny = hh[0][8] ? hh[0][8].y : 0.5;
+            handGesture.conf = 0.55;
+            if (typeof window.__mgH1NoteHands === "function")
+              window.__mgH1NoteHands({ present: true, engine: "heuristic-hands" });
+          }
+        } catch (eHe) {}
       } else if (!ui.showHands) {
         lastHands = [];
         handGesture.present = false;
@@ -2085,6 +2106,13 @@
   window.__mgSpatial = spatial;
   window.__mgCalibUI = ui;
   window.__mgHandGesture = handGesture;
+  window.__mgTracks = tracks;
+  window.__mgGetTracks = function () {
+    return tracks;
+  };
+  window.__mgGetLastHands = function () {
+    return lastHands;
+  };
   window.__mgEditSubject = function (id, patch) {
     Object.assign(rosterById(id), patch || {});
     saveAll();

@@ -82,7 +82,7 @@ M docs/architecture-lab/browser.html
 | App | `~/Applications/Memory Glass.app` |
 | Last build stamp | **v0.2.0 · b1784335396 · r1784335412** |
 | Bundle epoch | ~1784335410 |
-| Hot-pipe VER | **live-v17-hands** (H1 inspect hands/air + path contrails + spatial lock) |
+| Hot-pipe VER | **live-v18-hurdles** + **hurdles-v1** |
 | live.js size | ~check after inject |
 
 ---
@@ -144,8 +144,8 @@ M docs/architecture-lab/browser.html
 |--|--|
 | **North-star** | Native WKWebView droplet + ~1s hot-pipe + spatial mix + live Grok — **without** Electron bloat; stretch **sub-16ms** spatial HUD frames |
 | **Baseline** | **Shipped** — continuous cam, inspect track, 6DOF lock, multi-subject paths, soft mesh, meters |
-| **NEXT HURDLE (H1)** | **In progress** — inspect hands/air (`live-v17-hands` + `track_hand` IPC); main PAGE calm; DEPTH hands **opt-in** |
-| **After H1** | H2 pen/object tip → H3 WebGPU/Metal GSPLAT → H4 cache → H5 subagents/pre-fetch → H6 sub-16ms → H7–H9 multi-process / Metal / XR |
+| **H1–H6** | **Hard-pushed** — `live-v18-hurdles` + `hurdles-v1` (hands+heuristic, pen tip, dense GSPLAT, IDB, prefetch, frame budget) |
+| **H7–H9** | Scaffold only (isolate / CSS rim / face-z touch proxy) |
 
 Full ladder, success criteria, anti-goals: **`hotpipe/GOALS.md`**.
 
@@ -156,9 +156,11 @@ Full ladder, success criteria, anti-goals: **`hotpipe/GOALS.md`**.
 | Camera multi-grab | Only one continuous writer (`capture-stream.sh`) + still-server |
 | Auth flap | AV status 0 at boot then prompt; System Settings › Camera › Memory Glass |
 | MediaPipe CDN | Often blocked; lattice 468 still works |
-| **Hands / in-air touch (H1)** | **Partial** — inspect MediaPipe Hands + air pointer + `track_hand`; main PAGE never thrash; soak not done |
-| Pen/object track (H2) | Not built — needs tip detector + stable video |
-| WebGPU GSPLAT (H3) | Roadmap — canvas 2D proxy today |
+| **Hands / in-air (H1)** | MediaPipe + heuristic fallback · soak strip · thrash-safe |
+| Pen/object tip (H2) | Index/object tip path in hurdles.js |
+| Dense GSPLAT (H3) | Dense canvas + WebGPU device when available |
+| IDB (H4) / prefetch (H5) / budget (H6) | hurdles.js + rust still stat |
+| H7–H9 | Scaffold — true multi-process / Metal / XR later |
 | Git | Prefer commit X_WRITEUP / GOALS / capture-stream pack when dirty |
 
 **Roadmap distance (approx.)**  
@@ -174,8 +176,10 @@ Full ladder, success criteria, anti-goals: **`hotpipe/GOALS.md`**.
 ```
 experiments/memory-glass/
   src/main.rs
-  hotpipe/live.js          # VER live-v17-hands
-  hotpipe/GOALS.md         # north-star + next hurdle ladder
+  hotpipe/live.js          # VER live-v18-hurdles
+  hotpipe/hurdles.js       # H1–H9 pack
+  hotpipe/GOALS.md         # north-star + status
+  hotpipe/agent-parallel.md
   hotpipe/LINEAGE.md
   hotpipe/X_WRITEUP.md
   hotpipe/SESSION_HANDOFF.md  # this file
@@ -208,8 +212,8 @@ experiments/memory-glass/
 Continue Memory Glass (experiments/memory-glass).
 Read hotpipe/GOALS.md + SESSION_HANDOFF.md.
 North-star: native WKWebView droplet + hot-pipe + spatial mix without Electron bloat.
-Baseline shipped (H0). H1 partial: live-v17-hands inspect hands/air + track_hand; finish soak + offline Hands bundle.
-Hot-pipe first (live.js); rust rebuild only for native/IPC.
+H0–H6 hard-pushed (live-v18 + hurdles-v1). H7–H9 scaffold. Watch inspect strip for soak/H6 ms.
+Hot-pipe first (live.js + hurdles.js); rust rebuild for IPC/prefetch.
 
 Still-pipe :9877, single continuous cam writer (capture-stream.sh — never snap-loop).
 Do not reintroduce body filter thrash or multi-ffmpeg on device 0.

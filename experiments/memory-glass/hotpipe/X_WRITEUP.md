@@ -10,6 +10,22 @@ Canonical ladder: `hotpipe/GOALS.md`.
 
 ---
 
+## Single post — goal ladder (X / Grok · primary)
+
+North-star goal for **Memory Glass:** a native **WKWebView** droplet browser with ~1s **hot-pipe** JS iteration, spatial mix (**GSPLAT**, HUD, paths), and live Grok integration — avoiding Electron bloat while targeting **sub-16ms** spatial HUD frames.
+
+**H0 baseline (shipped):** continuous cam · **6DOF** head lock · multi-subject paths · soft mesh/person matte · inspect tracking · performance meters.
+
+**H1–H6 hard push:** inspect hands/air (+ heuristic fallback) · pen/object tip paths · denser GSPLAT · IndexedDB cache · Rust still-pipe pre-fetch meta · adaptive **sub-16ms** frame budget — calm **PAGE**, no multi-ffmpeg.
+
+**H7–H9 scaffold:** inspect isolation · CSS rim · face-z touch proxy (true multi-process / Metal / XR later).
+
+Supporting files (`GOALS.md`, `SESSION_HANDOFF`, `X_WRITEUP`, `ARCHITECTURE`, `hurdles.js`) plus `~/.panda` packs enable quick agent handoff and iteration.
+
+#MemoryGlass #WKWebView #Rust #GrokBuild #xAI
+
+---
+
 ## Single post — speed baseline (prose · X-ready)
 
 Memory Glass leverages native **tao + wry → WKWebView** for a low-overhead droplet browser (transparent shell, flat **PAGE** default, optional **DEPTH** HUD), delivering lower RAM/CPU than Electron/Chromium while supporting **hot-pipe** live JS injection (~1s updates) for HUD, mesh, contrails, and inspect without full Rust rebuilds.
@@ -120,10 +136,11 @@ WebGPU + cache + offload = path to spatial mix without Electron bloat.
 | tao + wry → WKWebView, not Electron | **True** |
 | Hot-pipe ~1s inject | **True** (mtime poll) |
 | Transparent / droplet shell | **True** |
-| Hands / air pointer | **H1 partial** — inspect MediaPipe Hands + air pointer; main PAGE thrash-safe |
-| Pen / object tip | **H2** — not built |
-| WebGPU GSPLAT | **Roadmap (H3)** — today canvas 2D proxy gsplat |
-| Service workers / IndexedDB tracks | **Roadmap (H4)** |
-| Sub-16ms spatial frames | **Target (H6)**, not guaranteed today |
+| Hands / air pointer | **H1 shipped** — MediaPipe + heuristic; inspect-only thrash-safe |
+| Pen / object tip | **H2 shipped** — index/object tip path |
+| Dense GSPLAT / WebGPU | **H3** — dense canvas; WebGPU device when available |
+| IndexedDB cache | **H4 shipped** |
+| Prefetch + agent hooks | **H5 shipped** (stat live.jpg) |
+| Sub-16ms spatial frames | **H6 path** — adaptive quality EMA |
 | Continuous cam | Use `capture-stream.sh`, not `snap-loop.sh` |
 GitHub “behind xai-org” is **history only** — trust `SOURCE_REV` + path-checkout (`docs/FORK_SYNC.md`).

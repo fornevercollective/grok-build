@@ -901,12 +901,63 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         eprintln!("hotpipe: live.js missing under {}", hotpipe_dir().display());
         return false;
     };
+    // H1–H9 pack (optional) — always after live.js
+    let hurdles = read_hotpipe_file("hurdles.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
+        if !hurdles.is_empty() {
+            inject_js_blob(wv, &hurdles);
+        }
     }
     // Quiet inject — avoid inspect log storms (mitigation feedback)
-    eprintln!("hotpipe: live.js injected → {} surface(s)", targets.len());
+    eprintln!(
+        "hotpipe: live.js{} injected → {} surface(s)",
+        if hurdles.is_empty() { "" } else { "+hurdles" },
+        targets.len()
+    );
     true
+}
+
+/// H5: warm still-pipe + expose prefetch meta to inspect (no multi-ffmpeg)
+fn still_prefetch_meta_js() -> String {
+    let vision = dirs_vision();
+    let live = vision.join("live.jpg");
+    let (ok, age_ms, bytes) = match std::fs::metadata(&live) {
+        Ok(m) => {
+            let age = m
+                .modified()
+                .ok()
+                .and_then(|t| t.elapsed().ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(99999);
+            (true, age, m.len())
+        }
+        Err(_) => (false, 99999u64, 0u64),
+    };
+    format!(
+        r#"(function(){{try{{
+  var m={{ok:{ok},ageMs:{age},bytes:{bytes},t:Date.now()}};
+  window.__mgPrefetchMeta=m;
+  if(typeof window.__mgStillPrefetch==='function')window.__mgStillPrefetch(m);
+  if(m.ok&&typeof window.__mgSysStillOk==='function'&&m.ageMs<800)window.__mgSysStillOk();
+}}catch(e){{}}}})();"#,
+        ok = if ok { "true" } else { "false" },
+        age = age_ms,
+        bytes = bytes
+    )
+}
+
+fn dirs_vision() -> std::path::PathBuf {
+    if let Ok(p) = std::env::var("GY_VISION_DIR") {
+        return std::path::PathBuf::from(p);
+    }
+    dirs_home().join(".panda/vision")
+}
+
+fn dirs_home() -> std::path::PathBuf {
+    std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
 }
 
 fn mtime_of(path: &std::path::Path) -> Option<std::time::SystemTime> {
@@ -6876,9 +6927,12 @@ fn main() -> Result<()> {
     let mut dev_spit_at = Some(std::time::Instant::now() + std::time::Duration::from_millis(900));
     let mut hot_poll_at = Some(std::time::Instant::now() + std::time::Duration::from_millis(1200));
     let mut live_mtime: Option<std::time::SystemTime> = mtime_of(&hotpipe_dir().join("live.js"));
+    let mut hurdles_mtime: Option<std::time::SystemTime> = mtime_of(&hotpipe_dir().join("hurdles.js"));
     let mut mitigate_cooldown: Option<std::time::Instant> = None;
     let mut mitigated_stems: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut agent_push_at: Option<std::time::Instant> = None;
+    let mut prefetch_at: Option<std::time::Instant> =
+        Some(std::time::Instant::now() + std::time::Duration::from_millis(400));
     let hotpipe_enabled = std::env::var("MG_HOTPIPE_OFF").ok().as_deref() != Some("1");
     let start_for_spit = start.clone();
     eprintln!(
@@ -6928,35 +6982,55 @@ fn main() -> Result<()> {
                 agent_push_at = None;
             }
         }
-        // Poll live.js mtime — soft hot-reload without app relaunch
+        // Poll live.js + hurdles.js mtime — soft hot-reload without app relaunch
         if hotpipe_enabled && hot_poll_at.map(|t| now >= t).unwrap_or(true) {
             hot_poll_at = Some(now + std::time::Duration::from_millis(1500));
             let p = hotpipe_dir().join("live.js");
+            let h = hotpipe_dir().join("hurdles.js");
+            let mut changed = false;
             if let Some(mt) = mtime_of(&p) {
-                let changed = match live_mtime {
-                    None => {
+                match live_mtime {
+                    None => live_mtime = Some(mt),
+                    Some(prev) if mt > prev => {
                         live_mtime = Some(mt);
-                        false // initial observe — already injected at boot
+                        changed = true;
                     }
-                    Some(prev) => mt > prev,
-                };
-                if changed {
-                    live_mtime = Some(mt);
-                    let mut t: Vec<&wry::WebView> = Vec::new();
-                    if let Some(wv) = webview.as_ref() {
-                        t.push(wv);
+                    _ => {}
+                }
+            }
+            if let Some(mt) = mtime_of(&h) {
+                match hurdles_mtime {
+                    None => hurdles_mtime = Some(mt),
+                    Some(prev) if mt > prev => {
+                        hurdles_mtime = Some(mt);
+                        changed = true;
                     }
-                    if let Some(wv) = inspect_wv.as_ref() {
-                        t.push(wv);
-                    }
-                    if inject_live_js(&t) {
-                        eprintln!("hotpipe: live.js reloaded ({})", p.display());
-                    }
+                    _ => {}
+                }
+            }
+            if changed {
+                let mut t: Vec<&wry::WebView> = Vec::new();
+                if let Some(wv) = webview.as_ref() {
+                    t.push(wv);
+                }
+                if let Some(wv) = inspect_wv.as_ref() {
+                    t.push(wv);
+                }
+                if inject_live_js(&t) {
+                    eprintln!("hotpipe: live+hurdles reloaded");
                 }
             }
         }
+        // H5: still-pipe prefetch meta (stat live.jpg — never open a second camera)
+        if prefetch_at.map(|t| now >= t).unwrap_or(true) {
+            prefetch_at = Some(now + std::time::Duration::from_millis(350));
+            let js = still_prefetch_meta_js();
+            if let Some(wv) = inspect_wv.as_ref() {
+                let _ = wv.evaluate_script(&js);
+            }
+        }
         // Quiet wake for hot-pipe poll (not a busy spin)
-        *control_flow = ControlFlow::WaitUntil(now + std::time::Duration::from_millis(800));
+        *control_flow = ControlFlow::WaitUntil(now + std::time::Duration::from_millis(250));
 
         match event {
             Event::UserEvent(cmd) => match cmd {
