@@ -20,17 +20,21 @@ Inspect strip tracks hurdle status (**H1 soak … H9 z…**). Honest limits: can
 
 ---
 
-## Single post — public accuracy (X / Grok · goal ladder · transparent)
+## Single post — north-star refined (X / Grok · primary · public accuracy)
 
-North-star for **Memory Glass:** a native **WKWebView** droplet browser with ~1s **hot-pipe** JS iteration, spatial mix (**GSPLAT**, HUD, paths), and live Grok integration — avoiding Electron bloat while targeting **sub-16ms** spatial HUD frames.
+Refined north-star for **Memory Glass** balances progress with transparency:
 
-**H0 baseline (shipped):** continuous cam · **6DOF** head lock · multi-subject paths · soft mesh / person matte · inspect tracking · performance meters.
+**Progress:** `live-v18-hurdles` + `hurdles-v1` · inspect-first Hands + `track_hand` IPC on still-pipe · calm **PAGE** · no multi-ffmpeg.
 
-**H1 (partial — transparent progress):** stable in-air hands / pointer **without thrash** — inspect-first Hands + `track_hand` IPC on still-pipe (`live-v18-hurdles` / `hurdles-v1`; builds on `live-v17-hands`); calm **PAGE**, no multi-ffmpeg. **5‑min soak** (green FPS/Spool with hands) still the lock-in bar — not claimed done until strip shows **SOAK✓**.
+**H1 partial:** thrash-safe hands/air path is live; **5‑min soak** (green FPS/Spool with hands) still **explicitly pending** before **SOAK✓** lock-in — not claimed done.
 
-**Hard-push layers (path, not product lock-in):** H2 pen tip · H3 denser GSPLAT · H4 IndexedDB · H5 prefetch/agent hooks · H6 adaptive frame budget · H7–H9 isolate / rim / touch-proxy scaffolds.
+**H0 baseline (shipped):** continuous cam · **6DOF** lock · multi-subject paths · soft mesh / person matte · inspect tracking · performance meters.
+
+**H2–H9 hard-push layers** stay clearly **roadmap / path**, not product claims: pen tip → denser GSPLAT/WebGPU → IndexedDB → prefetch/hooks → adaptive frames → isolate / rim / touch scaffolds.
 
 Supported by `GOALS.md`, `SESSION_HANDOFF`, `X_WRITEUP`, `ARCHITECTURE` + `~/.panda` packs for fast agent handoff and iteration.
+
+Primary **accurate** tone for public sharing; marketing-clean variant below (no soak caveat) if you want cleaner promotion.
 
 #MemoryGlass #WKWebView #Rust #GrokBuild #xAI
 
