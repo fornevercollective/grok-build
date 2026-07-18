@@ -22,6 +22,8 @@
  * ⌘0 = 100% / 30×30 desktop.
  * Local LLM pace: ?mg_local_llm=1 polls http://127.0.0.1:9880/pace (llama3.2:1b advisor).
  * P-001 score truth: NEVER use marketing body BPS/grid (10.39 / 40×40); sidebar+peak only.
+ * P-002 Intel laptop: auto pace profile + play-perf mode (canvas buffer lag).
+ * VER: webgrid-play-v21-intel-pace
  */
 (function () {
   "use strict";
@@ -30,7 +32,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v20-score-truth";
+  var VER = "webgrid-play-v21-intel-pace";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -57,8 +59,18 @@
   var _fillTimer = null;
   /* Offline pace (webgrid-pace-advisor.py → collector /pace) */
   var PACE_URL = "http://127.0.0.1:9880/pace";
-  var _pace = { sleep_ms: 4, wait_loops: 18, mode: "steady", source: "default" };
+  /* Intel UHD + Retina: sleep_ms 4 is too hot → ghost misses + UI lag */
+  var PACE_PROFILES = {
+    fast: { sleep_ms: 4, wait_loops: 16, mode: "fast", source: "profile-fast" },
+    heavy: { sleep_ms: 9, wait_loops: 13, mode: "heavy-retina", source: "profile-heavy" },
+    intel: { sleep_ms: 14, wait_loops: 12, mode: "intel-buffer", source: "profile-intel" },
+  };
+  var _pace = Object.assign({}, PACE_PROFILES.intel);
   var _paceTimer = null;
+  var _imgCache = { t: 0, w: 0, h: 0, data: null, c: null };
+  var _scoreCache = { t: 0, sc: null };
+  var _playBusy = false;
+  var _adaptClicks = 0;
 
   function wantsLocalLlm() {
     try {
@@ -67,6 +79,91 @@
     } catch (e) {}
     return false;
   }
+
+  /** Detect laptop class for default agent pace (MacBookPro16,1 Intel bench). */
+  function detectPaceProfile() {
+    try {
+      var q = /[?&]mg_pace=(intel|fast|heavy)\b/i.exec(location.search);
+      if (q) return q[1].toLowerCase();
+    } catch (e0) {}
+    try {
+      var ls = localStorage.getItem("mg.webgrid.pace_profile");
+      if (ls && PACE_PROFILES[ls]) return ls;
+    } catch (e1) {}
+    try {
+      var dpr = window.devicePixelRatio || 1;
+      var cores = navigator.hardwareConcurrency || 4;
+      var area = (window.innerWidth || 1) * (window.innerHeight || 1) * dpr * dpr;
+      var ua = navigator.userAgent || "";
+      /* Intel Macs often report "Intel" in UA on older macOS; also high-DPR + ≤8 cores */
+      if (/Intel/i.test(ua) || /MacBookPro1[456]/i.test(ua)) return "intel";
+      if (cores <= 8 && dpr >= 2) return "intel";
+      if (area > 3.5e6) return "heavy";
+    } catch (e2) {}
+    return "fast";
+  }
+
+  function applyPaceProfile(name, source) {
+    var p = PACE_PROFILES[name] || PACE_PROFILES.intel;
+    _pace.sleep_ms = p.sleep_ms;
+    _pace.wait_loops = p.wait_loops;
+    _pace.mode = p.mode;
+    _pace.source = source || p.source || name;
+    try {
+      localStorage.setItem("mg.webgrid.pace_profile", name);
+    } catch (e) {}
+    return _pace;
+  }
+
+  function setPlayBusy(on) {
+    _playBusy = !!on;
+    try {
+      window.__mgWebgridPlayBusy = _playBusy;
+      document.documentElement.classList.toggle("mg-webgrid-play-busy", _playBusy);
+    } catch (e) {}
+    /* Lighten overlays during chase */
+    try {
+      if (_playBusy) {
+        if (window.__mgMemoryMaze && window.__mgMemoryMaze.setMusic)
+          window.__mgMemoryMaze.setMusic(false);
+        if (window.__mgMemoryMaze && window.__mgMemoryMaze.close) window.__mgMemoryMaze.close();
+        if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.close)
+          window.__mgKeyboardBeats.close();
+        if (window.__mgActivityBoard && window.__mgActivityBoard.close)
+          window.__mgActivityBoard.close();
+        if (window.__mgBlochSolve && window.__mgBlochSolve.close) window.__mgBlochSolve.close();
+        if (window.__mgContrail && window.__mgContrail.setOverlay)
+          window.__mgContrail.setOverlay(false);
+      } else {
+        if (window.__mgContrail && window.__mgContrail.setOverlay)
+          window.__mgContrail.setOverlay(true);
+      }
+    } catch (e2) {}
+  }
+
+  function adaptPace(hitsGuess, missGuess) {
+    var total = hitsGuess + missGuess;
+    if (total < 12 || total % 10 !== 0) return;
+    var missRate = missGuess / Math.max(1, total);
+    if (missRate > 0.28 && _pace.sleep_ms < 22) {
+      _pace.sleep_ms = Math.min(22, _pace.sleep_ms + 2);
+      _pace.wait_loops = Math.max(10, _pace.wait_loops - 1);
+      _pace.mode = "adapt-slow";
+      _pace.source = "adapt";
+      log("pace adapt slower sleep=" + _pace.sleep_ms + " miss%=" + Math.round(missRate * 100));
+    } else if (missRate < 0.12 && _pace.sleep_ms > 5) {
+      _pace.sleep_ms = Math.max(5, _pace.sleep_ms - 1);
+      _pace.mode = "adapt-fast";
+      _pace.source = "adapt";
+    }
+  }
+
+  /* Boot pace profile immediately */
+  (function bootPace() {
+    var name = detectPaceProfile();
+    applyPaceProfile(name, "boot-" + name);
+    log(VER + " · pace profile " + name + " sleep=" + _pace.sleep_ms + " wait=" + _pace.wait_loops);
+  })();
 
   function pullPace() {
     if (!wantsLocalLlm()) return;
@@ -625,6 +722,10 @@
    * - Grid N only 12 or 30 (public page); ignore 16/35/40 marketing
    */
   function scrapeScore() {
+    /* Throttle full body.innerText during agent chase (Intel CPU burn) */
+    var now = Date.now();
+    var ttl = _playBusy ? 90 : 40;
+    if (_scoreCache.sc && now - _scoreCache.t < ttl) return _scoreCache.sc;
     var body = ((document.body && document.body.innerText) || "").replace(/\s+/g, " ");
     var bps = null,
       ntpm = null,
@@ -662,7 +763,7 @@
     if (!timer && peak && /play again/i.test(body)) {
       phase = "end";
     }
-    return {
+    var scOut = {
       bps: bps,
       ntpm: ntpm,
       timer: timer,
@@ -672,6 +773,8 @@
       peak: peak,
       truth: true,
     };
+    _scoreCache = { t: now, sc: scOut };
+    return scOut;
   }
 
   function detectGridSize() {
@@ -709,26 +812,42 @@
     var w = c.width,
       h = c.height;
     if (!w || !h) return null;
-    var ctx;
-    try {
-      ctx = c.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return null;
-      var data = ctx.getImageData(0, 0, w, h).data;
-    } catch (e) {
-      return null;
+    var now = Date.now();
+    /* Cache full-frame read — wait loops called this 12–18× per click */
+    var data;
+    var cacheMs = _playBusy ? 12 : 6;
+    if (
+      _imgCache.data &&
+      _imgCache.c === c &&
+      _imgCache.w === w &&
+      _imgCache.h === h &&
+      now - _imgCache.t < cacheMs
+    ) {
+      data = _imgCache.data;
+    } else {
+      try {
+        var ctx = c.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return null;
+        data = ctx.getImageData(0, 0, w, h).data;
+        _imgCache = { t: now, w: w, h: h, data: data, c: c };
+      } catch (e) {
+        return null;
+      }
     }
     var cell = w / N;
     var best = null;
     var bestScore = -1;
+    /* Intel: 1 center sample first pass; only refine if hit */
+    var samplesLite = [[0.5, 0.5]];
+    var samplesFull = [
+      [0.5, 0.5],
+      [0.35, 0.35],
+      [0.65, 0.65],
+    ];
+    var samples = _pace.sleep_ms >= 10 ? samplesLite : samplesFull;
     for (var row = 0; row < N; row++) {
       for (var col = 0; col < N; col++) {
-        /* sample 3 points in cell (avoid grid lines) */
         var hits = 0;
-        var samples = [
-          [0.5, 0.5],
-          [0.35, 0.35],
-          [0.65, 0.65],
-        ];
         for (var s = 0; s < samples.length; s++) {
           var px = Math.min(w - 1, Math.floor((col + samples[s][0]) * cell));
           var py = Math.min(h - 1, Math.floor((row + samples[s][1]) * cell));
@@ -913,6 +1032,7 @@
       livePeakNtpm = 0;
 
     startPaceLoop();
+    setPlayBusy(true);
     log(
       "chase start N=" +
         N +
@@ -927,6 +1047,7 @@
         ")"
     );
 
+    try {
     while (Date.now() < tEnd) {
       var stepMs = _pace.sleep_ms || 4;
       var waitMax = _pace.wait_loops || 18;
@@ -971,13 +1092,21 @@
         clicks++;
         hitsGuess++;
         lastIndex = tgt.index;
+        _adaptClicks++;
+        adaptPace(hitsGuess, missGuess);
         try {
-          if (window.__mgUgradWebgrid) {
+          /* ugrad tensor every other click on intel — save CPU */
+          if (window.__mgUgradWebgrid && (clicks % 2 === 0 || _pace.sleep_ms < 8)) {
             window.__mgUgradWebgrid.observeCell(tgt.index, N);
           }
         } catch (eOb) {}
         try {
-          if (window.__mgContrail && window.__mgContrail.observeAgent) {
+          /* contrail every 3rd agent hop when paced slow */
+          if (
+            window.__mgContrail &&
+            window.__mgContrail.observeAgent &&
+            (clicks % 3 === 0 || _pace.sleep_ms < 8)
+          ) {
             window.__mgContrail.observeAgent(tgt.clientX, tgt.clientY, tgt.index, tgt.conf);
           }
         } catch (eCt) {}
@@ -1043,7 +1172,9 @@
         break;
       }
     }
-
+    } finally {
+      setPlayBusy(false);
+    }
     var fin = scrapeScore();
     var peakBps = fin.peak ? fin.peak.bps : bestBps;
     var peakNtpm = fin.peak ? fin.peak.ntpm : bestNtpm;
@@ -1064,6 +1195,7 @@
       peak: fin.peak || { bps: peakBps, ntpm: peakNtpm },
       peakBps: peakBps,
       peakNtpm: peakNtpm,
+      pace: { sleep_ms: _pace.sleep_ms, wait_loops: _pace.wait_loops, mode: _pace.mode, source: _pace.source },
       N: N,
       round: roundIdx + 1,
       rounds: roundsTotal,
@@ -1182,6 +1314,19 @@
     desktopGridOk: desktopGridOk,
     bpsFromNtpm: bpsFromNtpm,
     scrapeScore: scrapeScore,
+    pace: function () {
+      return Object.assign({}, _pace);
+    },
+    setPaceProfile: function (name) {
+      return applyPaceProfile(name || "intel", "api");
+    },
+    setPace: function (sleepMs, waitLoops) {
+      if (sleepMs != null) _pace.sleep_ms = Math.max(2, Math.min(40, parseInt(sleepMs, 10) || 14));
+      if (waitLoops != null)
+        _pace.wait_loops = Math.max(4, Math.min(30, parseInt(waitLoops, 10) || 12));
+      _pace.source = "api";
+      return Object.assign({}, _pace);
+    },
     targetRgb: [TARGET_R, TARGET_G, TARGET_B],
     zoomOut: applyWebgridZoomOut,
     setZoom: function (z) {

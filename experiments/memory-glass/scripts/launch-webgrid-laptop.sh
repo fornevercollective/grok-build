@@ -87,6 +87,17 @@ if [[ "$LOCAL_LLM" == "1" ]]; then
   fi
 fi
 
+# Intel laptop default pace (MacBookPro16,1 bench: sleep_ms 4 was too hot)
+mkdir -p "$HOME/.panda/mg-soak/watch"
+if [[ ! -f "$HOME/.panda/mg-soak/watch/pace.json" ]] || [[ "${MG_FORCE_INTEL_PACE:-1}" == "1" ]]; then
+  cat >"$HOME/.panda/mg-soak/watch/pace.json" <<'PACE'
+{"sleep_ms":14,"wait_loops":12,"mode":"intel-buffer","source":"laptop-launch"}
+PACE
+  echo "==> wrote intel pace → ~/.panda/mg-soak/watch/pace.json"
+fi
+# Force intel profile in page (webgrid-play auto-detect + URL)
+URL="${URL}&mg_pace=intel"
+
 export MG_WEBGRID_W="$W"
 export MG_WEBGRID_H="$H"
 

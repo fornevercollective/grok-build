@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "live-solve-hud-v1";
+  var VER = "live-solve-hud-v2-playperf";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._liveSolveHudVer === VER) return;
   HP._liveSolveHudVer = VER;
@@ -42,6 +42,9 @@
   }
 
   function tick() {
+    try {
+      if (window.__mgWebgridPlayBusy) return; /* skip body.innerText scrape during chase */
+    } catch (eBusy) {}
     ensure();
     var parts = ["SOLVE"];
     try {
@@ -93,7 +96,7 @@
     el.innerHTML = parts.join('<span class="sep">·</span>');
   }
 
-  setInterval(tick, 350);
+  setInterval(tick, 500);
   setTimeout(tick, 200);
   window.__mgLiveSolveHud = { ver: VER, tick: tick };
 })();

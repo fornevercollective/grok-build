@@ -30,15 +30,20 @@ This MacBook Pro 16,1 (2019 Intel) agent autoplay:
 
 ### Recommended Intel calibration
 
+**Shipped in `webgrid-play-v21-intel-pace`:** auto profile `intel` (sleep_ms=14, wait_loops=12) on ≤8-core + Retina / Intel UA; play-busy mode hides maze/contrail/HUD burn during chase; canvas `getImageData` cached.
+
 ```bash
-# slower agent pace (fewer ghost misses)
+# force profile
+# localStorage: mg.webgrid.pace_profile = "intel" | "heavy" | "fast"
+# URL: ?mg_pace=intel
+
+# slower agent pace file (local-llm advisor)
 echo '{"sleep_ms":14,"wait_loops":12,"mode":"intel-buffer","source":"manual"}' > ~/.panda/mg-soak/watch/pace.json
 # relaunch
-cd /Users/qbit/Projects/grok-build/experiments/memory-glass
 bash scripts/launch-webgrid-laptop.sh --large --rounds 3
 ```
 
-Optional: ⌘0 zoom; nearly fullscreen; reduce glass overlays during play.
+Optional: ⌘0 zoom; nearly fullscreen; overlays auto-dim while agent plays.
 
 ## Publish locations
 

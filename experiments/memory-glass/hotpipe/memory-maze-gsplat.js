@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var VER = "memory-maze-v2-rain";
+  var VER = "memory-maze-v2-rain-playperf";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._memMazeVer === VER) return;
   HP._memMazeVer = VER;
@@ -522,7 +522,22 @@
     paintFt();
   }
 
+  var _tickN = 0;
   function tick() {
+    _tickN++;
+    var busy = false;
+    try {
+      busy = !!window.__mgWebgridPlayBusy;
+    } catch (eB) {}
+    /* During WebGrid chase: skip rain + most frames (Intel CPU) */
+    if (busy) {
+      if (musicOn) {
+        musicOn = false;
+      }
+      if (_tickN % 4 !== 0) return;
+      if (open) draw();
+      return;
+    }
     if (autoSpin) {
       yaw += 0.006;
       pitch = 0.22 + Math.sin(Date.now() / 4000) * 0.08;

@@ -19,7 +19,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v7-float";
+  var VER = "webgrid-contrail-v8-playperf";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -37,6 +37,8 @@
 
   var PATH_MAX = 320;
   var PATH_MIN = 0.0015;
+  var _lastDrawT = 0;
+  var _agentHop = 0;
   var ENDPOINT = "http://127.0.0.1:9880/";
   var path = [];
   var strokes = [];
@@ -229,10 +231,19 @@
     }
     while (path.length > PATH_MAX) path.shift();
     maybeCloseStroke();
-    draw();
-    paintFlow();
+    /* During agent play: throttle full-screen overlay redraw (Intel FPS) */
+    var busy = false;
     try {
-      if (window.__mgMemoryMaze && path.length)
+      busy = !!window.__mgWebgridPlayBusy;
+    } catch (eB) {}
+    var nowD = Date.now();
+    if (!busy || nowD - _lastDrawT > 48) {
+      draw();
+      _lastDrawT = nowD;
+    }
+    if (!busy) paintFlow();
+    try {
+      if (!busy && window.__mgMemoryMaze && path.length)
         window.__mgMemoryMaze.ingestContrailPath(path.slice(-40));
     } catch (eMz) {}
   }
@@ -701,6 +712,7 @@
     if (lastHit && lastHit.cell === cell && Date.now() - lastHit.t < 80) {
       outcome = lastHit.ok ? "hit" : "miss";
     }
+    _agentHop++;
     /* D: do NOT force conf≥2 → hit (was solid green agent mesh) */
     pushPoint(clientX / w, clientY / h, {
       src: "agent",
