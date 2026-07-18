@@ -114,3 +114,15 @@ See `docs/fornever-ledger/PATTERN_STEAL.md`.
 - No secret commits.
 - Resign Memory Glass.app after native/hotpipe ship (`scripts/resign-app.sh`).
 - Never delete RH/crossover/train repos; backup rows before overwrite.
+
+## KBatch bridge (2026-07-18+)
+
+- **Handoff (live):** https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md  
+- **FN honor-seed:** 15 Indigenous educational packs; green–amber chips; opt-in / community-first (not bulk open).  
+- **Accreditation:** knowledge · workforce · government · certified · first-nations · terminal-independence · security-literacy.  
+- **mueee terminal independence:** https://mueee.qbitos.ai/terminal.html  
+- **Playclear chrome:** main-only keyboard/capsule/flow; trail last-80; strain kinematics.
+
+### Safety addenda
+- FN / Indigenous: honor-seed only — community gate; no mass scrape.  
+- Security literacy: defensive only — no exploits / attack PoCs.

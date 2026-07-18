@@ -122,8 +122,31 @@
         })
       );
       row.appendChild(
+        act("LEARN", "ok", function () {
+          /* CEFR + FN seed + accreditation stair */
+          var u = "https://kbatch.ugrad.ai/learn";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
         act("DOJO", "", function () {
           var u = "https://kbatch.ugrad.ai/dojo/";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
+        act("HANDOFF", "", function () {
+          var u = "https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
+        act("TERM", "", function () {
+          /* terminal independence · mueee */
+          var u = "https://mueee.qbitos.ai/terminal.html";
           if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
           else window.open(u, "_blank");
         })
@@ -354,11 +377,10 @@
       );
     } else if (mode === "books") {
       hint.textContent =
-        "Living books · LOC/PD · contrail beats → kids creator (Ants/kbatch).";
+        "Living books · LOC/PD · FN honor-seed (opt-in) · accreditation Learn stair · contrail beats.";
       row.appendChild(
         act("LAB", "ok", function () {
-          var u =
-            "file:///Volumes/qbitOS/00.dev/projects/KBatch-dictionary/labs/living-books.html";
+          var u = "https://kbatch.ugrad.ai/labs/living-books.html";
           if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
           else window.open(u, "_blank");
         })
@@ -371,9 +393,24 @@
         })
       );
       row.appendChild(
-        act("KBATCH", "", function () {
+        act("LEARN", "", function () {
           var u = "https://kbatch.ugrad.ai/learn";
           if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+        })
+      );
+      row.appendChild(
+        act("FN ETHIC", "hot", function () {
+          /* First Nations path: ethics → opt-in seed → practice → community gate */
+          var u = "https://kbatch.ugrad.ai/learn";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          setStatus("FN honor-seed · opt-in · community-first · not bulk open");
+        })
+      );
+      row.appendChild(
+        act("ACCREDIT", "", function () {
+          var u = "https://data.ugrad.ai/kbatch/education/grasp-map.json";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
         })
       );
       row.appendChild(
@@ -385,6 +422,12 @@
               window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: t }));
             setStatus("beats " + ((b.beats && b.beats.length) || 0));
           }
+        })
+      );
+      row.appendChild(
+        act("HANDOFF", "", function () {
+          var u = "https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
         })
       );
     }
