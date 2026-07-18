@@ -5,10 +5,15 @@
  */
 (function () {
   "use strict";
-  var VER = "float-kb-v1";
+  var VER = "float-kb-v2-playclear";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._floatKbVer === VER) return;
   HP._floatKbVer = VER;
+
+  /* A: never mount on inspect surface */
+  try {
+    if (document.getElementById("pip-wrap")) return;
+  } catch (eInsp) {}
 
   function log(m) {
     try {
@@ -23,7 +28,7 @@
   ];
   var buf = "";
   var pathPts = [];
-  var open = true;
+  var open = false; /* B: off until KEYBOARD */
   var el, bufEl, pathCv;
 
   var TOOLS = [
@@ -281,7 +286,7 @@
     });
     rowsEl.appendChild(bot);
 
-    setOpen(true);
+    setOpen(false);
     measure();
     window.addEventListener("resize", measure);
     log(VER + " · floating glass keyboard + kbatch tools");

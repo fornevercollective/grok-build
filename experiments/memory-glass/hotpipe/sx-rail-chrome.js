@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "sx-rail-v2-glass";
+  var VER = "sx-rail-v3-playclear";
   if (window.__mgSxRail && window.__mgSxRail.ver === VER) return;
 
   var CSS_ID = "mg-sx-rail-css";
@@ -32,14 +32,17 @@
       /* Hide legacy stacked full-height rails — capsule shell owns UI */
       "#mg-lark-rail,#mg-qwg-rail,#mg-mkt-rail,#mg-vid-rail{",
       "  display:none!important}",
-      /* Contrail flow sits above keyboard, below capsule */
-      "#mg-contrail-flow{bottom:calc(12px + var(--mg-kb-h,0px) + var(--mg-cap-h,0px))!important;",
-      "  z-index:120!important}",
-      /* ── Dragon glass capsule (single host) ── */
+      /* C: pattern flow — right edge strip, not over board center */
+      "#mg-contrail-flow{left:auto!important;right:10px!important;bottom:auto!important;",
+      "  top:56px!important;transform:none!important;",
+      "  width:min(280px,32vw)!important;max-height:min(42vh,360px)!important;",
+      "  z-index:120!important;overflow:auto!important}",
+      "#mg-contrail-flow .row{grid-template-columns:1fr!important}",
+      /* ── Dragon glass capsule — bottom-right chip (off playfield) ── */
       "#mg-glass-cap{",
-      "  position:fixed;left:50%;bottom:calc(10px + var(--mg-kb-h,0px));",
-      "  transform:translateX(-50%);z-index:2147483005;",
-      "  width:min(520px,94vw);max-height:min(52vh,480px);",
+      "  position:fixed;left:auto;right:12px;bottom:calc(10px + var(--mg-kb-h,0px));",
+      "  transform:none;z-index:2147483005;",
+      "  width:min(340px,42vw);max-height:min(48vh,420px);",
       "  display:flex;flex-direction:column;pointer-events:auto;",
       "  font:650 10px/1.3 system-ui,-apple-system,sans-serif;",
       "  color:var(--mg-glass-text);",
@@ -97,8 +100,8 @@
       "  background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.1)}",
       /* ── Floating Neuralink-style keyboard ── */
       "#mg-float-kb{",
-      "  position:fixed;left:50%;bottom:10px;transform:translateX(-50%);",
-      "  z-index:2147483004;width:min(680px,96vw);",
+      "  position:fixed;left:auto;right:12px;bottom:10px;transform:none;",
+      "  z-index:2147483004;width:min(360px,40vw);",
       "  pointer-events:auto;user-select:none;",
       "  background:var(--mg-glass-bg);",
       "  backdrop-filter:var(--mg-glass-blur);-webkit-backdrop-filter:var(--mg-glass-blur);",
@@ -126,6 +129,9 @@
       "  letter-spacing:0.04em;word-break:break-all}",
       "#mg-float-kb .kb-rows{display:flex;flex-direction:column;gap:4px;align-items:center}",
       "#mg-float-kb .kb-row{display:flex;gap:4px;justify-content:center}",
+      "#mg-float-kb .kb-key{",
+      "  min-width:24px!important;height:28px!important;font-size:11px!important}",
+      "#mg-float-kb .kb-key.space{min-width:min(120px,28vw)!important}",
       "#mg-float-kb .kb-key{",
       "  appearance:none;cursor:pointer;min-width:28px;height:32px;padding:0 6px;",
       "  border:1px solid rgba(255,255,255,0.14);border-radius:7px;",

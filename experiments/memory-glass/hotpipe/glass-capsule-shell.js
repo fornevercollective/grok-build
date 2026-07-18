@@ -4,10 +4,14 @@
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v1";
+  var VER = "glass-capsule-v2-playclear";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
+
+  try {
+    if (document.getElementById("pip-wrap")) return;
+  } catch (eInsp) {}
 
   function log(m) {
     try {
@@ -16,7 +20,7 @@
   }
 
   var mode = "tools";
-  var collapsed = false;
+  var collapsed = true; /* B: start collapsed on play */
   var el, body, statusEl;
 
   var MODES = [
@@ -490,8 +494,18 @@
     };
     tabs.appendChild(fold);
     setMode("tools");
+    collapsed = true;
+    el.classList.add("collapsed");
+    /* WebGrid: stay collapsed; expand only on tab click */
+    try {
+      if (/neuralink\.com/i.test(location.hostname) && /webgrid/i.test(location.pathname)) {
+        collapsed = true;
+        el.classList.add("collapsed");
+      }
+    } catch (eW) {}
+    measure();
     setInterval(measure, 2000);
-    log(VER + " · glass morphism capsule (no stacked rails)");
+    log(VER + " · glass chip bottom-right · collapsed by default");
   }
 
   window.__mgGlassCap = {

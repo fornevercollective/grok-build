@@ -13,7 +13,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v3-strain";
+  var VER = "webgrid-contrail-v4-playclear";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -22,6 +22,10 @@
     } catch (eTd) {}
   }
   window.__mgContrailVer = VER;
+  var IS_INSPECT = false;
+  try {
+    IS_INSPECT = !!document.getElementById("pip-wrap");
+  } catch (eI) {}
   var lastStrain = null;
   var lastDojo = null;
 
@@ -35,8 +39,8 @@
   var lastHit = null; /* {cell, t, ok} */
   var overlay = null;
   var flowPanel = null;
-  var showOverlay = true;
-  var showFlow = true;
+  var showOverlay = true; /* trail only — pointer-events none */
+  var showFlow = false; /* B: off until CONTRAIL */
   var Ngrid = 30;
   var stats = {
     samples: 0,
@@ -112,16 +116,17 @@
    *  dwell   — near-stop
    */
   function classifySample(sample, prev) {
-    if (sample.outcome === "hit") return "success";
-    if (sample.outcome === "miss") return "stress";
     var v = sample.v || 0;
     var pv = prev ? prev.v || 0 : v;
+    /* D: kinematics first — never let hit wipe stress */
+    if (sample.jerk != null && sample.jerk > 2.2) return "stress";
+    if (sample.curv != null && Math.abs(sample.curv) > 0.65) return "stress";
     if (v < 0.12) return "dwell";
-    if (v < 0.45 && v <= pv * 0.85) return "slow";
-    if (v > pv * 1.35 && v > 0.6) return "accel";
-    if (sample.jerk != null && sample.jerk > 2.5) return "stress";
-    if (sample.curv != null && Math.abs(sample.curv) > 0.75) return "stress";
-    if (v > 1.4) return "accel";
+    if (v < 0.4 && v <= pv * 0.88) return "slow";
+    if (v > pv * 1.3 && v > 0.55) return "accel";
+    if (v > 1.5) return "accel";
+    if (sample.outcome === "miss") return "stress";
+    if (sample.outcome === "hit") return "success";
     return "cruise";
   }
 
@@ -345,6 +350,11 @@
             stroke.steno = rep.steno;
             stroke.quantumGutter = rep.quantumGutter;
             stroke.shadows = (rep.latinWordHits || []).slice(0, 8);
+            /* D3: stamp strain onto recent path points + redraw full trail */
+            var nStamp = Math.min(path.length, Math.max(8, stroke.n || 24));
+            for (var si = path.length - nStamp; si < path.length; si++) {
+              if (si >= 0 && path[si]) path[si].strain = rep.strain;
+            }
             paintFlow();
             draw();
           });
@@ -391,6 +401,7 @@
   }
 
   function ensureFlowPanel() {
+    if (IS_INSPECT) return;
     if (flowPanel || !showFlow) return;
     if (!document.getElementById("mg-contrail-flow-css")) {
       var st = document.createElement("style");
@@ -530,6 +541,7 @@
   }
 
   function paintFlow() {
+    if (IS_INSPECT) return;
     if (!showFlow) return;
     ensureFlowPanel();
     if (!flowPanel) return;
@@ -597,13 +609,21 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     if (path.length < 2) return;
-    for (var i = 1; i < path.length; i++) {
+    /* D4: only last 80 samples — no solid green sheet */
+    var start = Math.max(1, path.length - 80);
+    var span = path.length - start;
+    for (var i = start; i < path.length; i++) {
       var a0 = path[i - 1],
         a1 = path[i];
-      var age = i / path.length;
-      var alpha = 0.14 + age * 0.78;
-      ctx.strokeStyle = trajColor(a1.traj || a0.traj || "cruise", alpha, a1.strain != null ? a1.strain : lastStrain);
-      ctx.lineWidth = 1.5 + age * 1.4;
+      var age = (i - start + 1) / Math.max(1, span);
+      var alpha = 0.12 + age * 0.65;
+      if (a1.src === "agent" || a0.src === "agent") alpha *= 0.28;
+      ctx.strokeStyle = trajColor(
+        a1.traj || a0.traj || "cruise",
+        alpha,
+        a1.strain != null ? a1.strain : lastStrain
+      );
+      ctx.lineWidth = (a1.src === "agent" ? 0.9 : 1.4) + age * 1.0;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(a0.nx * w, a0.ny * h);
@@ -628,6 +648,19 @@
   }
 
   function onPtr(ev) {
+    try {
+      var t = ev.target;
+      if (t && t.closest) {
+        if (
+          t.closest("#mg-float-kb") ||
+          t.closest("#mg-glass-cap") ||
+          t.closest("#mg-contrail-flow") ||
+          t.closest("#mg-dock") ||
+          t.closest("#mg-root")
+        )
+          return;
+      }
+    } catch (eC) {}
     var w = window.innerWidth || 1;
     var h = window.innerHeight || 1;
     pushPoint(ev.clientX / w, ev.clientY / h, { src: "ptr", phase: "play" });
@@ -640,8 +673,7 @@
     if (lastHit && lastHit.cell === cell && Date.now() - lastHit.t < 80) {
       outcome = lastHit.ok ? "hit" : "miss";
     }
-    /* agent shots treated as intended success unless marked */
-    if (outcome == null && conf != null && conf >= 2) outcome = "hit";
+    /* D: do NOT force conf≥2 → hit (was solid green agent mesh) */
     pushPoint(clientX / w, clientY / h, {
       src: "agent",
       cell: cell,
@@ -800,5 +832,5 @@
     },
   };
   paintFlow();
-  log(VER + " · kbatch strain colors · dojo composer · steno/glyph/SO");
+  log(VER + " · playclear · trail last-80 · flow off · strain kinematics");
 })();
