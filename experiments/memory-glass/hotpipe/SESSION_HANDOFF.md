@@ -39,18 +39,19 @@ cp experiments/memory-glass/hotpipe/live.js \
 |------|--------|
 | Repo | `/Users/qbit/Projects/grok-build` |
 | Remote | `origin/main` (fornevercollective/grok-build) |
-| **Pushed commit** | `a678887` — *Add Memory Glass native browser experiment with inspect face track.* |
-| Branch | `main` matches origin after push |
+| **Pushed tip** | `e0e776e` — *Sync product tree from xai-org/grok-build tip (path-checkout).* |
+| **MG feature commit** | `a678887` — Memory Glass experiment |
+| **MG scroll fix** | `3c27b6e` — depth scroll hop + handoff refresh |
+| Branch | `main` = `origin/main` |
+| **SOURCE_REV** | `124d85bc5dc6e7805560215fcc6d5413944920e1` (upstream monorepo tip path-checkout) |
+| Upstream sync | `scripts/sync-upstream-path-checkout.sh` — **never** force-merge `upstream/main` (unrelated histories) |
 
-### Uncommitted at handoff time
+### Uncommitted (lab only, not MG)
 
 ```
-M experiments/memory-glass/src/main.rs   # DEPTH scroll-hop fix (mg-scrolling, --mg-py=0)
-M docs/architecture-lab/browser.html     # unrelated lab
+M docs/architecture-lab/browser.html
 ?? docs/architecture-lab/assets/lab-page-metrics.js
 ```
-
-**Do next session:** commit + push the `main.rs` scroll fix if still only local.
 
 ---
 
