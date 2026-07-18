@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v3-tools";
+  var VER = "glass-capsule-v4-floats";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
@@ -98,21 +98,25 @@
       row.appendChild(
         act("CONTRAIL", "ok", function () {
           if (window.__mgContrail) {
-            window.__mgContrail.setFlow(true);
+            if (window.__mgContrail.toggle) window.__mgContrail.toggle();
+            else window.__mgContrail.setFlow(true);
             setStatus(window.__mgContrail.report());
           } else setStatus("contrail on WebGrid only");
         })
       );
       row.appendChild(
-        act("BEATS→", "", function () {
-          if (window.__mgContrail && window.__mgContrail.exportStoryBeats) {
+        act("BEATS", "primary", function () {
+          if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.toggle) {
+            window.__mgKeyboardBeats.toggle();
+            setStatus(window.__mgKeyboardBeats.report());
+          } else if (window.__mgContrail && window.__mgContrail.exportStoryBeats) {
             var b = window.__mgContrail.exportStoryBeats();
             var t = JSON.stringify(b, null, 2);
             if (window.ipc)
               window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: t }));
             else if (navigator.clipboard) navigator.clipboard.writeText(t);
-            setStatus("beats " + ((b.beats && b.beats.length) || 0));
-          } else setStatus("no beats");
+            setStatus("story beats " + ((b.beats && b.beats.length) || 0));
+          } else setStatus("beats missing");
         })
       );
       row.appendChild(
@@ -220,10 +224,16 @@
         })
       );
       row.appendChild(
-        act("RUBIK", "", function () {
-          var u = "https://mueee.qbitos.ai/rubiks-ugrad.html";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
+        act("RUBIK", "hot", function () {
+          if (window.__mgRubikLang && window.__mgRubikLang.toggle) {
+            window.__mgRubikLang.toggle();
+            setStatus(window.__mgRubikLang.report());
+          } else {
+            var u = "https://mueee.qbitos.ai/rubiks-ugrad.html";
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+            setStatus("rubik float missing · opened site");
+          }
         })
       );
       row.appendChild(
@@ -276,7 +286,8 @@
       row.appendChild(
         act("BLOCH", "hot", function () {
           if (window.__mgBlochSolve) {
-            window.__mgBlochSolve.setEnabled(true);
+            if (window.__mgBlochSolve.toggle) window.__mgBlochSolve.toggle();
+            else window.__mgBlochSolve.setEnabled(true);
             setStatus(window.__mgBlochSolve.report());
           } else setStatus("bloch-solve-bus missing");
         })

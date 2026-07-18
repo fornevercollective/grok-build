@@ -19,7 +19,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v6-bright";
+  var VER = "webgrid-contrail-v7-float";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -422,50 +422,58 @@
       var st = document.createElement("style");
       st.id = "mg-contrail-flow-css";
       st.textContent = [
-        "#mg-contrail-flow{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);",
-        "  z-index:125;width:min(720px,94vw);pointer-events:auto;",
-        "  font:600 9px/1.25 ui-monospace,Menlo,monospace;color:rgba(210,225,240,0.92);",
-        "  background:rgba(6,8,12,0.92);border:1px solid rgba(160,180,200,0.28);",
-        "  border-radius:3px;backdrop-filter:blur(12px);padding:6px 8px 8px}",
+        /* maze-style glass float (not solid dark card) */
+        "#mg-contrail-flow{position:fixed;left:12px;bottom:calc(12px + var(--mg-kb-h,0px));",
+        "  z-index:2147482994;width:min(420px,46vw);pointer-events:auto;",
+        "  font:600 9px/1.25 ui-monospace,Menlo,monospace;color:rgba(230,240,250,0.94);",
+        "  background:rgba(10,12,16,0.5);border:1px solid rgba(255,255,255,0.16);",
+        "  border-radius:12px;backdrop-filter:blur(22px) saturate(1.35);",
+        "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
+        "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
+        "  overflow:hidden}",
+        "#mg-contrail-flow.hidden{display:none}",
         "#mg-contrail-flow .hdr{display:flex;justify-content:space-between;align-items:center;",
-        "  letter-spacing:0.12em;text-transform:uppercase;color:rgba(160,210,255,0.95);margin-bottom:4px}",
+        "  letter-spacing:0.12em;text-transform:uppercase;color:rgba(160,210,255,0.95);",
+        "  padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.1);",
+        "  font:650 9px/1.2 system-ui}",
         "#mg-contrail-flow .hdr button{appearance:none;background:transparent;border:0;",
-        "  color:rgba(150,170,190,0.8);cursor:pointer;font:700 12px/1 system-ui}",
+        "  color:inherit;cursor:pointer;font:700 11px/1 system-ui}",
+        "#mg-contrail-flow .body{padding:6px 8px 8px}",
         "#mg-contrail-flow .row{display:grid;grid-template-columns:1.2fr 0.9fr 1fr;gap:6px}",
         "#mg-contrail-flow canvas{width:100%;height:72px;display:block;",
-        "  background:rgba(0,0,0,0.35);border:1px solid rgba(140,160,180,0.18);border-radius:2px}",
+        "  background:rgba(4,8,14,0.55);border:1px solid rgba(255,255,255,0.1);border-radius:8px}",
         "#mg-contrail-flow .leg{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;",
-        "  color:rgba(150,170,190,0.8);font-weight:500}",
-        "#mg-contrail-flow .leg i{display:inline-block;width:8px;height:8px;border-radius:1px;margin-right:3px}",
-        "#mg-contrail-flow .beat{margin-top:3px;color:rgba(180,220,255,0.85);font-weight:500;",
-        "  max-height:2.4em;overflow:hidden}",
+        "  color:rgba(170,190,210,0.85);font-weight:500}",
+        "#mg-contrail-flow .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}",
+        "#mg-contrail-flow .beat{margin-top:4px;color:rgba(180,220,255,0.9);font-weight:500;",
+        "  max-height:2.6em;overflow:hidden}",
       ].join("");
       (document.head || document.documentElement).appendChild(st);
     }
     flowPanel = document.createElement("div");
     flowPanel.id = "mg-contrail-flow";
     flowPanel.innerHTML =
-      '<div class="hdr"><span>Contrail · Pattern flow</span>' +
+      '<div class="hdr"><span>Contrail · pattern flow</span>' +
       '<span><button type="button" id="mg-ct-hide" title="hide">×</button></span></div>' +
+      '<div class="body">' +
       '<div class="row">' +
       '<canvas id="mg-ct-unwind" title="circles unwound in time"></canvas>' +
       '<canvas id="mg-ct-flat" title="flat cell heat map"></canvas>' +
       '<canvas id="mg-ct-composer" title="vertical phrase composer"></canvas>' +
       "</div>" +
       '<div class="leg">' +
-      '<span><i style="background:#3fb950"></i>low strain</span>' +
+      '<span><i style="background:#3fb950"></i>low</span>' +
       '<span><i style="background:#d4a017"></i>mid</span>' +
-      '<span><i style="background:#f85149"></i>high stress</span>' +
+      '<span><i style="background:#f85149"></i>stress</span>' +
       '<span><i style="background:rgba(140,120,255,0.95)"></i>slow</span>' +
       '<span><i style="background:rgba(100,160,220,0.95)"></i>dwell</span>' +
-      '<span>kbatch SO·steno·gutter</span>' +
       "</div>" +
-      '<div class="beat" id="mg-ct-beat">—</div>';
+      '<div class="beat" id="mg-ct-beat">—</div>' +
+      "</div>";
     (document.body || document.documentElement).appendChild(flowPanel);
     flowPanel.querySelector("#mg-ct-hide").onclick = function () {
       showFlow = false;
-      flowPanel.remove();
-      flowPanel = null;
+      if (flowPanel) flowPanel.classList.add("hidden");
     };
   }
 
@@ -829,10 +837,27 @@
     },
     setFlow: function (on) {
       showFlow = !!on;
-      if (!showFlow && flowPanel) {
-        flowPanel.remove();
-        flowPanel = null;
-      } else if (showFlow) paintFlow();
+      if (!showFlow) {
+        if (flowPanel) flowPanel.classList.add("hidden");
+      } else {
+        if (flowPanel) flowPanel.classList.remove("hidden");
+        paintFlow();
+      }
+    },
+    toggleFlow: function () {
+      this.setFlow(!showFlow);
+    },
+    isFlowOpen: function () {
+      return !!showFlow;
+    },
+    open: function () {
+      this.setFlow(true);
+    },
+    close: function () {
+      this.setFlow(false);
+    },
+    toggle: function () {
+      this.toggleFlow();
     },
     report: function () {
       return (
@@ -847,10 +872,11 @@
         stats.slowN +
         " «" +
         (stats.lastPhrase || "—") +
-        "»"
+        "»" +
+        (showFlow ? " flow" : "")
       );
     },
   };
   paintFlow();
-  log(VER + " · playclear · trail last-80 · flow off · strain kinematics");
+  log(VER + " · glass flow float · trail · strain kinematics");
 })();

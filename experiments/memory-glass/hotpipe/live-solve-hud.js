@@ -75,6 +75,11 @@
       }
     } catch (e4) {}
     try {
+      if (window.__mgRubikLang) {
+        parts.push("<b>RUBIK</b> " + (window.__mgRubikLang.face() || "—"));
+      }
+    } catch (e4b) {}
+    try {
       var dj = window.__mgContrail && window.__mgContrail.lastDojo && window.__mgContrail.lastDojo();
       if (dj && dj.strain != null) parts.push("<b>S</b> " + Math.round(dj.strain));
     } catch (e5) {}

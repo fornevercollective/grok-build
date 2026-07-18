@@ -1369,6 +1369,7 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
     let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
     let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
+    let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
     let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
@@ -1450,6 +1451,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !kb_beats.is_empty() {
             inject_js_blob(wv, &kb_beats);
         }
+        if !rubik_lang.is_empty() {
+            inject_js_blob(wv, &rubik_lang);
+        }
         if !live_hud.is_empty() {
             inject_js_blob(wv, &live_hud);
         }
@@ -1528,6 +1532,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !kb_beats.is_empty() {
         tag.push_str("+beats");
+    }
+    if !rubik_lang.is_empty() {
+        tag.push_str("+rubik");
     }
     if !live_hud.is_empty() {
         tag.push_str("+hud");

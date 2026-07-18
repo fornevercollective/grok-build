@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var VER = "float-kb-v2-playclear";
+  var VER = "float-kb-v3-rainbow";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._floatKbVer === VER) return;
   HP._floatKbVer = VER;
@@ -137,6 +137,13 @@
     }
   }
 
+  function keyHue(ch, i) {
+    if (!ch || ch.length !== 1) return (i * 28) % 360;
+    var c = ch.toLowerCase().charCodeAt(0);
+    /* rainbow by alphabet + row spice */
+    return ((c - 97) * 14 + i * 7 + 200) % 360;
+  }
+
   function drawPath() {
     if (!pathCv || pathPts.length < 2) return;
     var dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -147,17 +154,59 @@
     var ctx = pathCv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = "rgba(120,200,255,0.75)";
-    ctx.lineWidth = 2;
     ctx.lineCap = "round";
-    ctx.beginPath();
+    ctx.lineJoin = "round";
+    /* soft multicolor underglow */
+    for (var g = 0; g < pathPts.length - 1; g++) {
+      var a = pathPts[g],
+        b = pathPts[g + 1];
+      var x0 = a.x * w,
+        y0 = a.y * h * 0.32 + h * 0.34;
+      var x1 = b.x * w,
+        y1 = b.y * h * 0.32 + h * 0.34;
+      var hue = keyHue(b.ch || a.ch, g);
+      ctx.strokeStyle = "hsla(" + hue + ",95%,62%,0.22)";
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+    /* bright per-segment trail */
+    for (var i = 0; i < pathPts.length - 1; i++) {
+      var p0 = pathPts[i],
+        p1 = pathPts[i + 1];
+      var px0 = p0.x * w,
+        py0 = p0.y * h * 0.32 + h * 0.34;
+      var px1 = p1.x * w,
+        py1 = p1.y * h * 0.32 + h * 0.34;
+      var h1 = keyHue(p1.ch || p0.ch, i);
+      var fade = 0.45 + 0.55 * ((i + 1) / pathPts.length);
+      ctx.strokeStyle = "hsla(" + h1 + ",92%,68%," + fade + ")";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(px0, py0);
+      ctx.lineTo(px1, py1);
+      ctx.stroke();
+    }
+    /* key dots — colorful nodes */
     pathPts.forEach(function (p, i) {
       var x = p.x * w,
-        y = p.y * h * 0.3 + h * 0.35;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+        y = p.y * h * 0.32 + h * 0.34;
+      var hue = keyHue(p.ch, i);
+      var r = i === pathPts.length - 1 ? 3.2 : 2;
+      ctx.fillStyle = "hsla(" + hue + ",95%,72%,0.95)";
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (i === pathPts.length - 1) {
+        ctx.strokeStyle = "hsla(" + hue + ",100%,85%,0.9)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     });
-    ctx.stroke();
   }
 
   function analyzeBuf() {

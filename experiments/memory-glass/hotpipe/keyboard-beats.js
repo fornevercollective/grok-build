@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "keyboard-beats-v1";
+  var VER = "keyboard-beats-v2-float";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._kbBeatsVer === VER) return;
   HP._kbBeatsVer = VER;
@@ -25,6 +25,7 @@
   var attempts = 0;
   var hits = 0;
   var strip = null;
+  var open = false; /* maze-style: off until BEATS */
   var audioCtx = null;
 
   var NOTE_MAP = {
@@ -62,36 +63,53 @@
       var st = document.createElement("style");
       st.id = "mg-kb-beats-css";
       st.textContent = [
-        "#mg-kb-beats{position:fixed;left:50%;bottom:calc(8px + var(--mg-kb-h,0px));",
+        "#mg-kb-beats{position:fixed;left:50%;bottom:calc(12px + var(--mg-kb-h,0px));",
         "  transform:translateX(-50%);z-index:2147482998;",
-        "  min-width:min(420px,70vw);max-width:90vw;",
-        "  padding:6px 10px;border-radius:10px;",
-        "  background:rgba(10,12,16,0.48);backdrop-filter:blur(20px) saturate(1.3);",
-        "  -webkit-backdrop-filter:blur(20px) saturate(1.3);",
-        "  border:1px solid rgba(255,255,255,0.14);",
-        "  box-shadow:0 6px 18px rgba(0,0,0,0.15);",
+        "  min-width:min(420px,70vw);max-width:90vw;border-radius:12px;overflow:hidden;",
+        "  background:rgba(10,12,16,0.5);backdrop-filter:blur(22px) saturate(1.35);",
+        "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
+        "  border:1px solid rgba(255,255,255,0.16);",
+        "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
         "  font:600 9px/1.3 ui-monospace,Menlo,monospace;color:rgba(220,235,250,0.92);",
-        "  pointer-events:none;letter-spacing:0.04em}",
-        "#mg-kb-beats .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}",
+        "  pointer-events:auto;letter-spacing:0.04em}",
+        "#mg-kb-beats.hidden{display:none}",
+        "#mg-kb-beats .hd{display:flex;justify-content:space-between;align-items:center;",
+        "  padding:6px 10px;letter-spacing:0.12em;text-transform:uppercase;",
+        "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(160,210,255,0.9);",
+        "  font:650 9px/1.2 system-ui}",
+        "#mg-kb-beats .hd button{appearance:none;background:transparent;border:0;color:inherit;",
+        "  cursor:pointer;font:700 11px/1 system-ui}",
+        "#mg-kb-beats .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 10px}",
         "#mg-kb-beats b{color:rgba(160,210,255,0.95)}",
         "#mg-kb-beats .bar{flex:1;min-width:80px;height:6px;border-radius:3px;",
         "  background:rgba(255,255,255,0.08);overflow:hidden}",
         "#mg-kb-beats .bar i{display:block;height:100%;background:linear-gradient(90deg,",
-        "  rgba(80,220,160,0.9),rgba(160,200,255,0.9));width:0%;transition:width .12s}",
+        "  #50e6a0,#a0c8ff,#ffb060,#f070d0,#70e0ff);width:0%;transition:width .12s}",
+        "#mg-kb-beats .spark{display:flex;gap:2px;padding:0 10px 8px;height:28px;align-items:flex-end}",
+        "#mg-kb-beats .spark span{flex:1;min-width:3px;border-radius:2px 2px 0 0;",
+        "  background:hsla(var(--h,180),80%,60%,0.85);height:30%}",
       ].join("");
       (document.head || document.documentElement).appendChild(st);
     }
     strip = document.createElement("div");
     strip.id = "mg-kb-beats";
+    strip.className = open ? "" : "hidden";
     strip.innerHTML =
+      '<div class="hd"><span>Keyboard beats · qbpm</span>' +
+      '<button type="button" id="mg-kb-beats-x">×</button></div>' +
       '<div class="row">' +
-      "<span>BEATS <b id=\"mg-kb-bpm\">96</b></span>" +
+      "<span>BPM <b id=\"mg-kb-bpm\">96</b></span>" +
       "<span>ATT <b id=\"mg-kb-att\">0</b></span>" +
       "<span>HIT <b id=\"mg-kb-hit\">0</b></span>" +
       '<span class="bar"><i id="mg-kb-fill"></i></span>' +
       "<span id=\"mg-kb-note\">—</span>" +
-      "</div>";
+      "</div>" +
+      '<div class="spark" id="mg-kb-spark"></div>';
     (document.body || document.documentElement).appendChild(strip);
+    strip.querySelector("#mg-kb-beats-x").onclick = function () {
+      open = false;
+      strip.classList.add("hidden");
+    };
   }
 
   function blip(midi) {
@@ -169,6 +187,7 @@
   }
 
   function paint() {
+    if (!open) return;
     ensureUi();
     var elBpm = document.getElementById("mg-kb-bpm");
     var elAtt = document.getElementById("mg-kb-att");
@@ -186,6 +205,17 @@
       var b = beats[beats.length - 1];
       elNote.textContent =
         (b.hit ? "HIT" : "MISS") + " · m" + b.midi + " · " + (b.ch || "?");
+    }
+    var spark = document.getElementById("mg-kb-spark");
+    if (spark) {
+      spark.innerHTML = "";
+      beats.slice(-24).forEach(function (bb) {
+        var s = document.createElement("span");
+        var h = ((bb.midi || 60) * 7) % 360;
+        s.style.setProperty("--h", String(h));
+        s.style.height = (bb.hit ? 70 : 35) + Math.min(30, (bb.midi || 60) % 20) + "%";
+        spark.appendChild(s);
+      });
     }
   }
 
@@ -221,11 +251,31 @@
 
   setTimeout(hookKb, 500);
   setTimeout(hookKb, 1500);
-  ensureUi();
+
+  function setOpen(on) {
+    open = !!on;
+    if (open) {
+      ensureUi();
+      strip.classList.remove("hidden");
+      paint();
+    } else if (strip) strip.classList.add("hidden");
+  }
 
   window.__mgKeyboardBeats = {
     ver: VER,
     onKey: onKey,
+    open: function () {
+      setOpen(true);
+    },
+    close: function () {
+      setOpen(false);
+    },
+    toggle: function () {
+      setOpen(!open);
+    },
+    isOpen: function () {
+      return open;
+    },
     bpm: function () {
       return bpm;
     },
