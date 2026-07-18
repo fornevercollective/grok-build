@@ -169,6 +169,18 @@ enum Cmd {
         conf: f64,
         engine: String,
     },
+    /// Trusted in-process click (AppKit NSEvent) — for WebGrid etc. inside OUR WKWebView.
+    /// `x`,`y` are CSS client coordinates (origin top-left of the page viewport).
+    SyntheticClick {
+        x: f64,
+        y: f64,
+    },
+    /// WKWebView page zoom (1.0 = 100%). WebGrid uses ~0.7–0.85 to fit 30×30 grid.
+    PageZoom {
+        scale: f64,
+    },
+    /// Re-assert NSWindow/WK glass on both panes (after FS / multi-scale display move).
+    ReassertGlass,
 }
 
 const HOME_URL: &str = "https://www.spacex.com/";
@@ -187,6 +199,105 @@ fn place_on_primary(window: &Window) {
         return;
     }
     window.set_outer_position(LogicalPosition::new(40.0 + cascade as f64, 48.0 + cascade as f64));
+}
+
+/// Leftmost *landscape* (horizontal) monitor — never the tall vertical panel.
+fn leftmost_landscape_monitor(window: &Window) -> Option<tao::monitor::MonitorHandle> {
+    let mut best: Option<tao::monitor::MonitorHandle> = None;
+    let mut best_x = i32::MAX;
+    for mon in window.available_monitors() {
+        let s = mon.size();
+        // Landscape: width clearly greater than height
+        if (s.width as f64) < (s.height as f64) * 1.05 {
+            continue;
+        }
+        let x = mon.position().x;
+        if x < best_x {
+            best_x = x;
+            best = Some(mon);
+        }
+    }
+    best.or_else(|| window.primary_monitor())
+        .or_else(|| window.current_monitor())
+}
+
+/// True when WebGrid should open as a compact window (Neuralink 12×12 / Safari zoom-in look).
+fn webgrid_wants_small_window() -> bool {
+    if let Ok(v) = std::env::var("MG_WEBGRID_SCALE") {
+        let v = v.to_ascii_lowercase();
+        if v == "small" || v == "12" || v == "12x12" || v == "mobile" {
+            return true;
+        }
+    }
+    if std::env::var("MG_WEBGRID_SMALL")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    // argv URL / flags
+    for a in std::env::args() {
+        let l = a.to_ascii_lowercase();
+        if l.contains("mg_scale=small")
+            || l.contains("grid=12")
+            || l.contains("mg_grid=12")
+            || l.contains("mg_window=small")
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// WebGrid layout (once at boot).
+/// Neuralink: 12×12 if innerWidth≤751 OR innerHeight≤600, else 30×30.
+/// Large (default): near-fullscreen → 30×30.
+/// Small: `?mg_scale=small` / `?grid=12` / env `MG_WEBGRID_SCALE=small` → compact window → 12×12.
+fn place_for_webgrid_play(main: &Window, inspect: Option<&Window>) {
+    let scale = main.scale_factor().max(1.0);
+    let Some(mon) = leftmost_landscape_monitor(main) else {
+        place_on_primary(main);
+        return;
+    };
+    let mpos = mon.position();
+    let msize = mon.size();
+    let mon_w = msize.width as f64 / scale;
+    let mon_h = msize.height as f64 / scale;
+    let small = webgrid_wants_small_window();
+    let (logical_w, logical_h, target) = if small {
+        // Compact browser — Safari zoom-in / mobile breakpoint → big-cell 12×12
+        (720.0_f64.min(mon_w - 40.0).max(560.0), 560.0_f64.min(mon_h - 60.0).max(480.0), "12×12")
+    } else {
+        // Near-fullscreen — height > 600 for desktop 30×30
+        (
+            (mon_w - 48.0).clamp(1280.0, 2200.0),
+            (mon_h - 80.0).clamp(780.0, 1400.0),
+            "30×30",
+        )
+    };
+    main.set_inner_size(LogicalSize::new(logical_w, logical_h));
+    let outer = main.outer_size();
+    let ow = outer.width as i32;
+    let oh = outer.height as i32;
+    let x = mpos.x + (16.0 * scale).round() as i32;
+    let y = mpos.y + (36.0 * scale).round() as i32;
+    main.set_outer_position(PhysicalPosition::new(x, y));
+    eprintln!(
+        "webgrid layout (once): landscape {}x{} · main {}x{} @ ({},{}) · target {target} (small={small})",
+        msize.width, msize.height, ow, oh, x, y
+    );
+    // Inspect: only nudge if it would sit on top of main; otherwise leave alone
+    if let Some(insp) = inspect {
+        if let (Ok(ip), Ok(_)) = (insp.outer_position(), main.outer_position()) {
+            let is = insp.outer_size();
+            let overlap = ip.x < x + ow && ip.x + is.width as i32 > x;
+            if overlap {
+                let gap = (16.0 * scale).round() as i32;
+                let ix = (x + ow + gap).min(mpos.x + msize.width as i32 - is.width as i32 - 12);
+                insp.set_outer_position(PhysicalPosition::new(ix, y));
+            }
+        }
+    }
 }
 
 /// Spawn a new Memory Glass instance. Prefer the .app via `open -n` so LS/Dock match;
@@ -232,13 +343,50 @@ fn spawn_new_window(url: &str) {
     }
 }
 
+/// Soft ship corner radius — single layer clip only (no recursive tree = no crunch).
+const MG_CORNER_R: f64 = 12.0;
+
+/// Detect near-fullscreen / maximized fill of the current monitor (secondary vertical too).
+/// Uses physical px for both window outer size and monitor size (scale-factor safe).
+#[cfg(target_os = "macos")]
+fn window_nearly_fills_monitor(window: &Window) -> bool {
+    let size = window.outer_size();
+    let Some(mon) = window.current_monitor().or_else(|| window.primary_monitor()) else {
+        return false;
+    };
+    let ms = mon.size();
+    // ≥90% of either dimension → fullscreen-ish (works at 1× and 2× Retina)
+    let fill_w = size.width as f64 / (ms.width as f64).max(1.0);
+    let fill_h = size.height as f64 / (ms.height as f64).max(1.0);
+    fill_w >= 0.90 || fill_h >= 0.90
+}
+
+/// Backing scale for the window's current screen (1.0, 2.0, …).
+/// Must match CALayer.contentsScale or glass composites as a black plate on Retina / mixed DPI.
+#[cfg(target_os = "macos")]
+fn window_backing_scale(window: &Window) -> f64 {
+    let s = window.scale_factor();
+    if s.is_finite() && s > 0.25 && s < 8.0 {
+        s
+    } else {
+        1.0
+    }
+}
+
 /// Make the *native shell* see-through: NSWindow + contentView + WKWebView.
-/// IMPORTANT: never toggle setOpaque at runtime — that races wry's transparent
-/// WKWebView and has crashed Memory Glass (cinema mode). Cinema uses CSS only.
+/// Scale-aware: sets layer.contentsScale to the window's backingScaleFactor so glass
+/// works simultaneously on 1× landscape + 2× Retina / vertical second screens.
+/// Re-call after Moved / Resized / Focused / ScaleFactorChanged.
 #[cfg(target_os = "macos")]
 fn clear_window_bg(window: &Window) {
     use objc::{class, msg_send, runtime::Object, sel, sel_impl};
     use tao::platform::macos::WindowExtMacOS;
+
+    let nearly_fs = window_nearly_fills_monitor(window);
+    let scale = window_backing_scale(window);
+    // Fullscreen / monitor-fill: no corner radius (masks + opaque FS spaces → solid black)
+    // cornerRadius is in points (not pixels) — same MG_CORNER_R at every scale factor
+    let radius = if nearly_fs { 0.0_f64 } else { MG_CORNER_R };
 
     unsafe {
         let ns_window = window.ns_window() as *mut Object;
@@ -248,7 +396,14 @@ fn clear_window_bg(window: &Window) {
         let clear: *mut Object = msg_send![class!(NSColor), clearColor];
         let _: () = msg_send![ns_window, setBackgroundColor: clear];
         let _: () = msg_send![ns_window, setOpaque: false];
-        let _: () = msg_send![ns_window, setHasShadow: false];
+        // Shadow on secondary FS can force an opaque backdrop plate — off when filling monitor
+        let _: () = msg_send![ns_window, setHasShadow: !nearly_fs];
+        // Survive green-button / Spaces transitions that re-paint the titlebar chrome
+        let _: () = msg_send![ns_window, setTitlebarAppearsTransparent: true];
+        let _: () = msg_send![ns_window, setTitleVisibility: 1i64]; // NSWindowTitleHidden = 1
+
+        // Prefer layer-backed compositing for multi-scale multi-display glass
+        let _: () = msg_send![ns_window, setAutorecalculatesKeyViewLoop: true];
 
         let content: *mut Object = msg_send![ns_window, contentView];
         if !content.is_null() {
@@ -259,6 +414,13 @@ fn clear_window_bg(window: &Window) {
                 let cg: *mut std::ffi::c_void = msg_send![cg_clear, CGColor];
                 let _: () = msg_send![layer, setBackgroundColor: cg];
                 let _: () = msg_send![layer, setOpaque: false];
+                // Critical for Retina / mixed 1×+2× setups
+                let _: () = msg_send![layer, setContentsScale: scale];
+                let _: () = msg_send![layer, setCornerRadius: radius];
+                // masksToBounds + radius on FS can composite as a black card on the other display
+                let _: () = msg_send![layer, setMasksToBounds: !nearly_fs];
+                // Allow subpixel / transparent blending across scale factors
+                let _: () = msg_send![layer, setAllowsGroupOpacity: false];
             }
         }
         let _: () = msg_send![ns_window, invalidateShadow];
@@ -266,6 +428,7 @@ fn clear_window_bg(window: &Window) {
 }
 
 /// After wry builds the WKWebView, re-assert drawsBackground=false (shell transparency).
+/// Scale-aware contentsScale so WK layers stay clear on every display DPI.
 #[cfg(target_os = "macos")]
 fn clear_webview_bg(webview: &wry::WebView) {
     use objc::{class, msg_send, runtime::Object, sel, sel_impl};
@@ -274,10 +437,20 @@ fn clear_webview_bg(webview: &wry::WebView) {
     unsafe {
         let wk = webview.webview();
         let wk_ptr = &*wk as *const _ as *mut Object;
-        // Private KVC used by wry's `transparent` feature — re-apply post-build.
         let no: *mut Object = msg_send![class!(NSNumber), numberWithBool: false];
-        let key: *mut Object = msg_send![class!(NSString), stringWithUTF8String: b"drawsBackground\0".as_ptr()];
+        let key: *mut Object =
+            msg_send![class!(NSString), stringWithUTF8String: b"drawsBackground\0".as_ptr()];
         let _: () = msg_send![wk_ptr, setValue: no forKey: key];
+
+        // Backing scale from the view's window when available (1× / 2× / 3×)
+        let mut scale = 2.0_f64;
+        let win: *mut Object = msg_send![wk_ptr, window];
+        if !win.is_null() {
+            let bs: f64 = msg_send![win, backingScaleFactor];
+            if bs.is_finite() && bs > 0.25 && bs < 8.0 {
+                scale = bs;
+            }
+        }
 
         let _: () = msg_send![wk_ptr, setWantsLayer: true];
         let layer: *mut Object = msg_send![wk_ptr, layer];
@@ -286,8 +459,65 @@ fn clear_webview_bg(webview: &wry::WebView) {
             let cg: *mut std::ffi::c_void = msg_send![clear, CGColor];
             let _: () = msg_send![layer, setBackgroundColor: cg];
             let _: () = msg_send![layer, setOpaque: false];
+            let _: () = msg_send![layer, setContentsScale: scale];
+            let _: () = msg_send![layer, setCornerRadius: 0.0_f64];
+            let _: () = msg_send![layer, setMasksToBounds: false];
+            let _: () = msg_send![layer, setAllowsGroupOpacity: false];
         }
     }
+}
+
+/// Re-assert glass on a window + its webview after monitor moves / FS / zoom / scale change.
+#[cfg(target_os = "macos")]
+fn reassert_glass_shell(window: &Window, webview: Option<&wry::WebView>) {
+    clear_window_bg(window);
+    if let Some(wv) = webview {
+        clear_webview_bg(wv);
+    }
+}
+
+/// Min interval between full dual-pane glass reasserts (ms).
+/// Without this, move/zoom/heartbeat storms crash or freeze AppKit (layer thrash).
+#[cfg(target_os = "macos")]
+fn reassert_all_glass(
+    main: &Window,
+    main_wv: Option<&wry::WebView>,
+    inspect: &Window,
+    inspect_wv: Option<&wry::WebView>,
+) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static LAST_MS: AtomicU64 = AtomicU64::new(0);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let prev = LAST_MS.load(Ordering::Relaxed);
+    if now.saturating_sub(prev) < 400 {
+        return; // debounce — crash fix
+    }
+    LAST_MS.store(now, Ordering::Relaxed);
+
+    reassert_glass_shell(main, main_wv);
+    reassert_glass_shell(inspect, inspect_wv);
+    eprintln!(
+        "glass: reassert main@{}× inspect@{}× nearly_fs={},{}",
+        window_backing_scale(main),
+        window_backing_scale(inspect),
+        window_nearly_fills_monitor(main),
+        window_nearly_fills_monitor(inspect)
+    );
+}
+
+#[cfg(not(target_os = "macos"))]
+fn reassert_glass_shell(_window: &Window, _webview: Option<&wry::WebView>) {}
+
+#[cfg(not(target_os = "macos"))]
+fn reassert_all_glass(
+    _main: &Window,
+    _main_wv: Option<&wry::WebView>,
+    _inspect: &Window,
+    _inspect_wv: Option<&wry::WebView>,
+) {
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -713,10 +943,77 @@ fn camera_auth_status() -> i64 {
     }
 }
 
+/// Session + durable camera grant state (stops prompt spam across WebGrid / hot reload).
+fn camera_grant_path() -> std::path::PathBuf {
+    std::path::PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into()))
+        .join(".panda/mg-session/camera-grant.json")
+}
+
+fn load_camera_grant() -> serde_json::Value {
+    let p = camera_grant_path();
+    std::fs::read_to_string(&p)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| serde_json::json!({}))
+}
+
+fn save_camera_grant(granted: bool, source: &str) {
+    let p = camera_grant_path();
+    if let Some(parent) = p.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // Durable "logged-in session" — 30 days preference so we don't re-nag at every boot.
+    // OS TCC is still the real gate; this only controls *when we prompt*.
+    let until = now + 30 * 24 * 3600;
+    let mut v = load_camera_grant();
+    if let Some(obj) = v.as_object_mut() {
+        obj.insert("granted".into(), serde_json::json!(granted));
+        obj.insert("source".into(), serde_json::json!(source));
+        obj.insert("updated_at".into(), serde_json::json!(now));
+        if granted {
+            obj.insert("granted_until".into(), serde_json::json!(until));
+            obj.insert("session_ok".into(), serde_json::json!(true));
+        }
+    }
+    let _ = std::fs::write(
+        &p,
+        serde_json::to_string_pretty(&v).unwrap_or_else(|_| "{}".into()),
+    );
+    eprintln!(
+        "camera: grant saved granted={granted} src={source} → {}",
+        p.display()
+    );
+}
+
+fn camera_grant_fresh() -> bool {
+    let v = load_camera_grant();
+    if v.get("granted").and_then(|x| x.as_bool()) != Some(true) {
+        return false;
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let until = v.get("granted_until").and_then(|x| x.as_u64()).unwrap_or(0);
+    until > now
+}
+
 /// Request camera permission via AVFoundation.
 /// Never blocks the UI event loop for long — returns current status; prompt is fire-and-forget.
+/// Process-once: after a grant or deny this launch, we never re-show the OS sheet.
 #[cfg(target_os = "macos")]
 fn request_camera_access_native() -> bool {
+    request_camera_access_native_opts(true)
+}
+
+/// `allow_prompt`: when false, only report status / use session grant — never show OS sheet
+/// (WebGrid play, background boot).
+#[cfg(target_os = "macos")]
+fn request_camera_access_native_opts(allow_prompt: bool) -> bool {
     use block::ConcreteBlock;
     use objc::{class, msg_send, runtime::Object, sel, sel_impl};
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -724,26 +1021,54 @@ fn request_camera_access_native() -> bool {
     #[link(name = "AVFoundation", kind = "framework")]
     extern "C" {}
 
+    /// Process-lifetime: one OS prompt max per launch.
     static REQUESTED: AtomicBool = AtomicBool::new(false);
+    static SESSION_OK: AtomicBool = AtomicBool::new(false);
+
+    if SESSION_OK.load(Ordering::SeqCst) {
+        return true;
+    }
 
     let status = camera_auth_status();
-    eprintln!("camera: AVAuthorizationStatus={status} (0=? 1=restricted 2=denied 3=authorized)");
+    eprintln!(
+        "camera: AVAuthorizationStatus={status} (0=? 1=restricted 2=denied 3=authorized) prompt={}",
+        allow_prompt
+    );
     if status == 3 {
+        SESSION_OK.store(true, Ordering::SeqCst);
+        save_camera_grant(true, "avfoundation_authorized");
         return true;
     }
     if status == 2 || status == 1 {
         eprintln!("camera: denied/restricted — System Settings › Privacy & Security › Camera › Memory Glass");
+        save_camera_grant(false, "denied");
+        return false;
+    }
+
+    // notDetermined
+    if !allow_prompt {
+        eprintln!(
+            "camera: deferred (no prompt) · session_file_ok={} · still-pipe vision OK without Mac cam",
+            camera_grant_fresh()
+        );
         return false;
     }
 
     // notDetermined → fire async request once (do not Condvar-block main thread)
     if REQUESTED.swap(true, Ordering::SeqCst) {
-        eprintln!("camera: request already in flight / completed");
-        return camera_auth_status() == 3;
+        eprintln!("camera: request already in flight / completed this process");
+        return camera_auth_status() == 3 || SESSION_OK.load(Ordering::SeqCst);
     }
 
     let block = ConcreteBlock::new(move |granted: u8| {
-        eprintln!("camera: requestAccess granted={}", granted != 0);
+        let ok = granted != 0;
+        eprintln!("camera: requestAccess granted={}", ok);
+        if ok {
+            SESSION_OK.store(true, Ordering::SeqCst);
+            save_camera_grant(true, "user_prompt");
+        } else {
+            save_camera_grant(false, "user_denied_prompt");
+        }
     });
     let block = block.copy();
 
@@ -762,6 +1087,11 @@ fn request_camera_access_native() -> bool {
 
 #[cfg(not(target_os = "macos"))]
 fn request_camera_access_native() -> bool {
+    true
+}
+
+#[cfg(not(target_os = "macos"))]
+fn request_camera_access_native_opts(_allow_prompt: bool) -> bool {
     true
 }
 
@@ -901,13 +1231,27 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         eprintln!("hotpipe: live.js missing under {}", hotpipe_dir().display());
         return false;
     };
-    // live → hurdles → research → ego → inspect-dock (declutter UI last)
+    // live → body-pose → lens → hurdles → research → ego → dock → ironline → ugrad → collab → webgrid-play
+    let body = read_hotpipe_file("body-pose.js").unwrap_or_default();
+    let lens = read_hotpipe_file("lens.js").unwrap_or_default();
     let hurdles = read_hotpipe_file("hurdles.js").unwrap_or_default();
     let research = read_hotpipe_file("research.js").unwrap_or_default();
     let ego = read_hotpipe_file("ego.js").unwrap_or_default();
     let dock = read_hotpipe_file("inspect-dock.js").unwrap_or_default();
+    let ironline = read_hotpipe_file("ironline.js").unwrap_or_default();
+    let ugrad = read_hotpipe_file("ugrad-ladder.js").unwrap_or_default();
+    let ugrad_wg = read_hotpipe_file("ugrad-webgrid-tensor.js").unwrap_or_default();
+    let collab = read_hotpipe_file("collab.js").unwrap_or_default();
+    let webgrid = read_hotpipe_file("webgrid-play.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
+        // full-body IK after live so hooks + calib ui exist
+        if !body.is_empty() {
+            inject_js_blob(wv, &body);
+        }
+        if !lens.is_empty() {
+            inject_js_blob(wv, &lens);
+        }
         if !hurdles.is_empty() {
             inject_js_blob(wv, &hurdles);
         }
@@ -920,8 +1264,30 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !dock.is_empty() {
             inject_js_blob(wv, &dock);
         }
+        if !ironline.is_empty() {
+            inject_js_blob(wv, &ironline);
+        }
+        if !ugrad.is_empty() {
+            inject_js_blob(wv, &ugrad);
+        }
+        if !ugrad_wg.is_empty() {
+            inject_js_blob(wv, &ugrad_wg);
+        }
+        if !collab.is_empty() {
+            inject_js_blob(wv, &collab);
+        }
+        // Neuralink WebGrid auto-play ONLY inside our WKWebView (never Chromium)
+        if !webgrid.is_empty() {
+            inject_js_blob(wv, &webgrid);
+        }
     }
     let mut tag = String::from("live.js");
+    if !body.is_empty() {
+        tag.push_str("+body");
+    }
+    if !lens.is_empty() {
+        tag.push_str("+lens");
+    }
     if !hurdles.is_empty() {
         tag.push_str("+hurdles");
     }
@@ -931,8 +1297,23 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     if !ego.is_empty() {
         tag.push_str("+ego");
     }
+    if !ironline.is_empty() {
+        tag.push_str("+iron");
+    }
+    if !ugrad.is_empty() {
+        tag.push_str("+ugrad");
+    }
+    if !ugrad_wg.is_empty() {
+        tag.push_str("+ugrad-wg");
+    }
+    if !collab.is_empty() {
+        tag.push_str("+collab");
+    }
     if !dock.is_empty() {
         tag.push_str("+dock");
+    }
+    if !webgrid.is_empty() {
+        tag.push_str("+webgrid");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true
@@ -1412,14 +1793,29 @@ fn inspect_panel_html() -> String {
 <title>Inspect</title>
 <style>
   html,body{margin:0;height:100%;background:transparent!important;
+    background-color:transparent!important;
     font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     color:rgba(255,255,255,0.92);overflow:hidden;-webkit-user-select:none;user-select:none}
+  /* Glass panel — stays translucent; native NSWindow must stay non-opaque (reassert on move/FS) */
   #panel{position:fixed;inset:8px;display:flex;flex-direction:column;
-    background:rgba(10,12,16,0.72);
+    background:rgba(10,12,16,0.52);
     backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);
-    border:1px solid rgba(255,255,255,0.2);border-radius:12px;
-    box-shadow:0 18px 50px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.16);border-radius:12px;
+    /* Soft glass lift — no hard black drop (was crunchy on transparent NSWindow) */
+    box-shadow:0 8px 28px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.12);
     overflow:hidden}
+  /* Vertical second screen / nearly full height — thinner glass, edge-to-edge, no black card */
+  @media (min-height: 900px) and (max-width: 960px) {
+    #panel{
+      inset:0;border-radius:0;border-left:none;border-right:none;
+      background:rgba(8,10,14,0.38);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+  }
+  html.mg-inspect-fill #panel{
+    inset:0!important;border-radius:0!important;
+    background:rgba(8,10,14,0.36)!important;
+  }
   #hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;
     padding:11px 12px 10px;border-bottom:1px solid rgba(255,255,255,0.1);
     cursor:default;flex-shrink:0}
@@ -1445,8 +1841,8 @@ fn inspect_panel_html() -> String {
     padding:10px 10px 8px;border-bottom:1px solid rgba(255,255,255,0.1);
     overflow:hidden}
   #pip-wrap{position:relative;width:100%;height:148px;border-radius:8px;overflow:hidden;
-    border:1px solid rgba(160,210,255,0.3);background:#050608;
-    box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:2;flex-shrink:0}
+    border:1px solid rgba(160,210,255,0.28);background:#050608;
+    box-shadow:0 4px 14px rgba(0,0,0,0.16);z-index:2;flex-shrink:0}
   #pip-mirror{position:absolute;inset:0;overflow:hidden}
   #pip-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
     transform:scaleX(-1);background:#050608}
@@ -1813,10 +2209,18 @@ fn inspect_panel_html() -> String {
       cards[c].classList.toggle('on', c===active);
     }
   };
-  /* ── PIP camera + mic toggles (header + hover) ── */
+  /* ── PIP camera + mic toggles (header + hover) ──
+   * Default Mac cam OFF — still-pipe (phone) is primary vision and never needs
+   * the OS "Memory Glass would like to access the camera" sheet during WebGrid.
+   * Explicit Cam toggle enables Mac getUserMedia for the full session. */
   var pipStream=null;
-  var camOn=true;
+  var camOn=false;
   var micOn=true; /* STT mic; inspect video stays muted for echo safety */
+  var camSessionGranted=false;
+  try{
+    camSessionGranted=localStorage.getItem('mg.camera.session_ok')==='1'
+      || sessionStorage.getItem('mg.camera.session_ok')==='1';
+  }catch(eSess){}
   function paintMediaBtns(){
     var pairs=[
       [document.getElementById('btn-cam'), document.getElementById('pip-cam'), camOn, 'Cam'],
@@ -1853,8 +2257,17 @@ fn inspect_panel_html() -> String {
     if(!camOn){
       if(pipStream){ pipStream.getTracks().forEach(function(t){try{t.stop();}catch(e){}}); pipStream=null; }
       v.srcObject=null;
+      try{ localStorage.setItem('mg.inspect.macCam','0'); }catch(e0){}
       paintMediaBtns();
-      window.__mgDevLog('info','Inspect camera off','pip');
+      window.__mgDevLog('info','Inspect Mac cam off · still-pipe primary','pip');
+      return;
+    }
+    /* Prefer existing stream — full-session reuse, no re-prompt */
+    if(pipStream && pipStream.getVideoTracks && pipStream.getVideoTracks().some(function(t){return t.readyState==='live';})){
+      v.srcObject=pipStream;
+      v.play().catch(function(){});
+      paintMediaBtns();
+      window.__mgDevLog('ok','Inspect Mac cam · session stream reused','pip');
       return;
     }
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -1863,20 +2276,32 @@ fn inspect_panel_html() -> String {
       window.__mgDevLog('warn','Inspect PIP · no mediaDevices (insecure origin)','pip');
       return;
     }
+    /* One native prompt max for this process; then getUserMedia reuses TCC grant */
+    try{
+      if(window.ipc&&window.ipc.postMessage){
+        window.ipc.postMessage(JSON.stringify({op:'request_camera'}));
+      }
+    }catch(eReq){}
     navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){
       pipStream=s; v.srcObject=s;
+      camSessionGranted=true;
+      try{
+        localStorage.setItem('mg.camera.session_ok','1');
+        sessionStorage.setItem('mg.camera.session_ok','1');
+        localStorage.setItem('mg.inspect.macCam','1');
+      }catch(eLs){}
       var p=v.play();
       if(p&&p.then) p.then(function(){ paintMediaBtns(); }).catch(function(){
         if(lbl) lbl.textContent='pip · tap to play';
         v.addEventListener('click', function once(){ v.play().catch(function(){}); v.removeEventListener('click', once); }, {once:true});
       });
       paintMediaBtns();
-      window.__mgDevLog('ok','Inspect PIP camera live','pip');
+      window.__mgDevLog('ok','Inspect Mac cam live · session grant saved','pip');
     }).catch(function(err){
       camOn=false;
       paintMediaBtns();
       if(lbl) lbl.textContent='pip · denied';
-      window.__mgDevLog('warn','Inspect PIP camera · '+(err&&err.name||'fail'),'pip');
+      window.__mgDevLog('warn','Inspect PIP camera · '+(err&&err.name||'fail')+' · still-pipe still works','pip');
     });
   };
   window.__mgInspectMic=function(on){
@@ -1915,9 +2340,33 @@ fn inspect_panel_html() -> String {
   try{
     post('mic_status');
   }catch(eM){}
-  setTimeout(function(){ window.__mgInspectCam(true); paintMediaBtns(); }, 400);
+  /* Do NOT auto getUserMedia — that OS sheet blocks WebGrid.
+   * Still-pipe (phone) owns face/hands. Mac cam only if user opted in this session. */
+  setTimeout(function(){
+    var wantMac=false;
+    try{ wantMac=localStorage.getItem('mg.inspect.macCam')==='1' && camSessionGranted; }catch(eW){}
+    if(wantMac){
+      window.__mgInspectCam(true);
+    }else{
+      camOn=false;
+      paintMediaBtns();
+      var lbl=document.getElementById('pip-lbl');
+      if(lbl) lbl.textContent='pip · still-pipe · Mac cam off';
+      window.__mgDevLog('ok','Inspect · still-pipe primary · Mac cam deferred (no prompt)','pip');
+    }
+  }, 400);
   paintMediaBtns();
-  window.__mgDevLog('ok','Inspect · cam/mic · coverflow · hot-pipe','inspect');
+  /* Mark fill / vertical-screen maximize so CSS keeps glass (not solid black card) */
+  function markInspectFill(){
+    try{
+      var tall=window.innerHeight>=900 && window.innerWidth<=960;
+      var fill=window.innerHeight>=(screen.availHeight*0.9) || tall;
+      document.documentElement.classList.toggle('mg-inspect-fill', !!fill);
+    }catch(eF){}
+  }
+  markInspectFill();
+  window.addEventListener('resize', markInspectFill);
+  window.__mgDevLog('ok','Inspect · cam/mic · coverflow · hot-pipe · glass reassert on move/FS','inspect');
 })();
 </script>
 </body></html>
@@ -1973,6 +2422,60 @@ fn begin_system_window_drag(window: &Window) {
 fn begin_system_window_drag(window: &Window) {
     let _ = window.drag_window();
 }
+
+/// Trusted mouse click delivered in-process to the NSWindow (hits WKWebView).
+/// JS synthetic events often set `isTrusted=false` and WebGrid ignores them.
+/// `client_x` / `client_y`: CSS viewport coords (top-left origin).
+#[cfg(target_os = "macos")]
+fn synthetic_webview_click(window: &Window, client_x: f64, client_y: f64) {
+    use objc::{class, msg_send, runtime::Object, sel, sel_impl};
+    use tao::platform::macos::WindowExtMacOS;
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct NSPoint {
+        x: f64,
+        y: f64,
+    }
+
+    unsafe {
+        let ns_window = window.ns_window() as *mut Object;
+        if ns_window.is_null() {
+            return;
+        }
+        // AppKit window coords: origin bottom-left of window content
+        let scale = window.scale_factor().max(1.0);
+        let inner = window.inner_size();
+        let logical_h = inner.height as f64 / scale;
+        // Map CSS client (top-left of web content) → window base (bottom-left).
+        let loc = NSPoint {
+            x: client_x,
+            y: (logical_h - client_y).max(0.0),
+        };
+        let window_number: i64 = msg_send![ns_window, windowNumber];
+        // NSEventTypeLeftMouseDown = 1, LeftMouseUp = 2
+        for (etype, pressure) in [(1u64, 1f64), (2u64, 0f64)] {
+            let event: *mut Object = msg_send![
+                class!(NSEvent),
+                mouseEventWithType: etype
+                location: loc
+                modifierFlags: 0u64
+                timestamp: 0f64
+                windowNumber: window_number
+                context: std::ptr::null_mut::<Object>()
+                eventNumber: 0i64
+                clickCount: 1i64
+                pressure: pressure
+            ];
+            if !event.is_null() {
+                let _: () = msg_send![ns_window, sendEvent: event];
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn synthetic_webview_click(_window: &Window, _x: f64, _y: f64) {}
 
 fn hud_init_script() -> &'static str {
     r##"
@@ -2191,63 +2694,82 @@ fn hud_init_script() -> &'static str {
   drop.id = "mg-droplet-mask";
   drop.textContent = ""
     /*
-     * Readable glass: solid underplate on html so the window is always findable.
-     * Soft droplet only feathers the outer rim of body — not the whole page.
-     * (Previous fully-transparent html/body made the shell nearly invisible.)
+     * See-through glass (Drop / Glow sliders live again):
+     *  - html stays clear so desktop shows at the lip
+     *  - body fill alpha via --mg-fill-a (Drop drives it)
+     *  - long soft droplet mask via --mg-drop-w/h (Drop)
+     *  - single 12px corner clip on content layer (native) only — no clip-path crunch
      */
     + "html{"
-    + "  background:#0b0d12!important;"
-    + "  background-color:#0b0d12!important;"
+    + "  height:100%!important;"
+    + "  background:transparent!important;"
+    + "  background-color:transparent!important;"
+    + "  border-radius:12px!important;"
+    + "  overflow:hidden!important;"
+    + "  -webkit-mask-image:none!important;mask-image:none!important;"
+    + "  clip-path:none!important;-webkit-clip-path:none!important;"
+    + "}"
+    + "html,body{box-shadow:none!important;outline:none!important}"
+    + "body{"
+    + "  height:100%!important;"
     + "  min-height:100%!important;"
-    + "}"
-    + "html,body{"
-    + "  box-shadow:none!important;"
-    + "  outline:none!important;"
-    + "}"
-    /* Feather mask on body only — solid core, soft rim (glass edge) */
-    + "body{"
-    + "  min-height:100vh!important;"
-    + "  background-color:rgba(12,14,18,0.97)!important;"
-    + "  -webkit-mask-image:radial-gradient(ellipse var(--mg-drop-w,94%) var(--mg-drop-h,90%) at 50% 48%,"
-    + "    #fff 0%,#fff 68%,"
-    + "    rgba(255,255,255,0.98) 78%,"
-    + "    rgba(255,255,255,0.82) 88%,"
-    + "    rgba(255,255,255,0.45) 94%,"
-    + "    rgba(255,255,255,0.12) 98%,"
-    + "    transparent 100%);"
-    + "  mask-image:radial-gradient(ellipse var(--mg-drop-w,94%) var(--mg-drop-h,90%) at 50% 48%,"
-    + "    #fff 0%,#fff 68%,"
-    + "    rgba(255,255,255,0.98) 78%,"
-    + "    rgba(255,255,255,0.82) 88%,"
-    + "    rgba(255,255,255,0.45) 94%,"
-    + "    rgba(255,255,255,0.12) 98%,"
-    + "    transparent 100%);"
-    + "  -webkit-mask-mode:alpha;mask-mode:alpha;"
-    + "}"
-    /* Visible rim so you can grab the window bounds */
-    + "html::after{"
-    + "  content:'';pointer-events:none;position:fixed;inset:0;z-index:2147483000;"
-    + "  border-radius:22px;"
-    + "  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.22),"
-    + "    inset 0 0 48px rgba(255,255,255,0.06),"
-    + "    0 0 0 1px rgba(0,0,0,0.35);"
-    + "}"
-    /* Default flat; page-axis mode applies viewRay lean (auto-off in YT theater) */
-    + "body{"
+    + "  margin:0!important;"
+    + "  overflow-x:hidden!important;"
+    + "  overflow-y:auto!important;"
+    + "  background:rgba(12,14,18,var(--mg-fill-a,0.78))!important;"
+    + "  background-color:rgba(12,14,18,var(--mg-fill-a,0.78))!important;"
+    /* Soft corners only — hard 12px clip fights long glass vignette */
+    + "  border-radius:0!important;"
+    /*
+     * Drop = long soft glass lip (organic-sphere feel), NOT a small cookie-cutter ellipse.
+     * Ellipse stays near full-window; --mg-drop-core moves where the soft fade begins.
+     * JS applySeeThrough() rewrites a concrete mask (WK var recompute is flaky).
+     */
+    + "  -webkit-mask-image:radial-gradient(ellipse var(--mg-drop-w,108%) var(--mg-drop-h,104%) at 50% 48%,"
+    + "    #fff 0%,"
+    + "    #fff var(--mg-drop-core,72%),"
+    + "    rgba(255,255,255,0.88) var(--mg-drop-mid,82%),"
+    + "    rgba(255,255,255,0.48) var(--mg-drop-soft,90%),"
+    + "    rgba(255,255,255,0.14) 96%,"
+    + "    transparent 100%)!important;"
+    + "  mask-image:radial-gradient(ellipse var(--mg-drop-w,108%) var(--mg-drop-h,104%) at 50% 48%,"
+    + "    #fff 0%,"
+    + "    #fff var(--mg-drop-core,72%),"
+    + "    rgba(255,255,255,0.88) var(--mg-drop-mid,82%),"
+    + "    rgba(255,255,255,0.48) var(--mg-drop-soft,90%),"
+    + "    rgba(255,255,255,0.14) 96%,"
+    + "    transparent 100%)!important;"
+    + "  -webkit-mask-mode:alpha!important;mask-mode:alpha!important;"
+    + "  -webkit-mask-repeat:no-repeat!important;mask-repeat:no-repeat!important;"
+    + "  -webkit-mask-size:100% 100%!important;mask-size:100% 100%!important;"
     + "  transform:none;"
     + "  transform-origin:50% 46%;"
     + "  perspective:none;"
+    + "  -webkit-overflow-scrolling:touch;"
+    + "}"
+    + "body::-webkit-scrollbar{width:9px;height:9px}"
+    + "body::-webkit-scrollbar-track{background:transparent;margin:12px 2px}"
+    + "body::-webkit-scrollbar-thumb{"
+    + "  background:rgba(255,255,255,0.18);border-radius:8px;"
+    + "  border:2px solid transparent;background-clip:padding-box}"
+    + "body::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.28);"
+    + "  border:2px solid transparent;background-clip:padding-box}"
+    + "body::-webkit-scrollbar-corner{background:transparent}"
+    + "html::after{"
+    + "  content:'';pointer-events:none;position:fixed;inset:0;z-index:2147483000;"
+    + "  border-radius:12px;"
+    + "  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10),"
+    + "    inset 0 0 36px rgba(255,255,255,0.04);"
+    + "  background:transparent;"
     + "}"
     + "html.mg-axis-on:not(.mg-yt-theater):not(.mg-yt-fs):not(.mg-scrolling) body{"
     + "  transform:perspective(var(--mg-fov,1600px))"
     + "    rotateX(var(--mg-rx,0deg)) rotateY(var(--mg-ry,0deg))"
-    /* No translateY — vertical hop fights native scroll; only slight X/Z + rotate */
     + "    translate3d(var(--mg-px,0px),0px,var(--mg-pz,0px))"
     + "    scale(var(--mg-sc,1))!important;"
     + "  transform-style:preserve-3d;"
     + "  will-change:transform;"
     + "}"
-    /* While scrolling: freeze body flat so wheel/trackpad isn't fighting CSS transform */
     + "html.mg-axis-on.mg-scrolling body,"
     + "html.mg-yt-theater body,html.mg-yt-fs body{"
     + "  transform:none!important;"
@@ -2293,25 +2815,26 @@ fn hud_init_script() -> &'static str {
     + "  pointer-events:none!important}"
     /* Scrim only blocks page when panel open — never covers chrome z-order */
     + "#mg-dragon.is-open ~ #mg-scrim{pointer-events:auto!important}"
-    /* Edge resize hit strips (macOS borderless/webview eats system edges) */
-    + ".mg-edge{position:fixed;z-index:2147483645;background:transparent;padding:0;margin:0;border:0}"
-    + ".mg-edge.n{top:0;left:8px;right:8px;height:6px;cursor:ns-resize}"
-    + ".mg-edge.s{bottom:0;left:8px;right:8px;height:6px;cursor:ns-resize}"
-    + ".mg-edge.e{top:8px;right:0;bottom:8px;width:6px;cursor:ew-resize}"
-    + ".mg-edge.w{top:8px;left:0;bottom:8px;width:6px;cursor:ew-resize}"
-    + ".mg-edge.ne{top:0;right:0;width:12px;height:12px;cursor:nesw-resize}"
-    + ".mg-edge.nw{top:0;left:0;width:12px;height:12px;cursor:nwse-resize}"
-    + ".mg-edge.se{bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize}"
-    + ".mg-edge.sw{bottom:0;left:0;width:12px;height:12px;cursor:nesw-resize}"
-    /* ── Depth stack: layered parallax + interior room (portal depth) ── */
+    /* Edge resize hit strips — thick enough to grab; above page, under open CTRL panel */
+    + ".mg-edge{position:fixed!important;z-index:2147483630!important;"
+    + "  background:transparent;padding:0;margin:0;border:0;"
+    + "  pointer-events:auto!important;-webkit-app-region:no-drag}"
+    + ".mg-edge.n{top:0;left:14px;right:14px;height:10px;cursor:ns-resize}"
+    + ".mg-edge.s{bottom:0;left:14px;right:14px;height:12px;cursor:ns-resize}"
+    + ".mg-edge.e{top:14px;right:0;bottom:14px;width:10px;cursor:ew-resize}"
+    + ".mg-edge.w{top:14px;left:0;bottom:14px;width:10px;cursor:ew-resize}"
+    + ".mg-edge.ne{top:0;right:0;width:18px;height:18px;cursor:nesw-resize}"
+    + ".mg-edge.nw{top:0;left:0;width:18px;height:18px;cursor:nwse-resize}"
+    + ".mg-edge.se{bottom:0;right:0;width:20px;height:20px;cursor:nwse-resize}"
+    + ".mg-edge.sw{bottom:0;left:0;width:18px;height:18px;cursor:nesw-resize}"
+    /* ── Depth stack: overlays only — no second full-window mask (avoids edge double-glass) ── */
     + "#mg-lf{"
     + "  position:fixed;inset:0;z-index:0;pointer-events:none;"
     + "  perspective:var(--mg-fov,1600px);perspective-origin:50% 46%;"
     + "  transform-style:preserve-3d;"
-    + "  -webkit-mask-image:radial-gradient(ellipse var(--mg-drop-w,86%) var(--mg-drop-h,80%) at 50% 46%,"
-    + "    #fff 0%,#fff 50%,rgba(255,255,255,0.5) 72%,transparent 100%);"
-    + "  mask-image:radial-gradient(ellipse var(--mg-drop-w,86%) var(--mg-drop-h,80%) at 50% 46%,"
-    + "    #fff 0%,#fff 50%,rgba(255,255,255,0.5) 72%,transparent 100%)}"
+    + "  -webkit-mask-image:none;mask-image:none;"
+    + "  opacity:0}"
+    + "html.mg-mode-depth #mg-lf{opacity:1}"
     + ".mg-lf-plane{position:absolute;left:50%;top:50%;will-change:transform;transform-style:preserve-3d}"
     /* Interior-mapping room (cubic infinite window behind the page plane) */
     + "#mg-im-room{position:absolute;left:50%;top:50%;width:140%;height:140%;"
@@ -2371,28 +2894,36 @@ fn hud_init_script() -> &'static str {
     + "  mask-image:radial-gradient(ellipse var(--mg-drop-w,86%) var(--mg-drop-h,80%) at 50% 46%,"
     + "    transparent 0%,transparent 58%,#000 88%,#000 100%);"
     + "  mix-blend-mode:screen}"
-    /* Liquid glass rim — irradiance (glow) only on the lip, no outer black */
+    /* Glass rim overlays — Glow + organic-sphere breathe (CSS only, no Three) */
+    + "#mg-lens,#mg-irradiance,#mg-chroma,#mg-hud-ring,#mg-vignette,#mg-spec{"
+    + "  visibility:visible;pointer-events:none}"
+    + "@keyframes mg-orb-breathe{"
+    + "  0%,100%{transform:translate3d(var(--mg-lx,0px),var(--mg-ly,0px),0) scale(1)}"
+    + "  50%{transform:translate3d(var(--mg-lx,0px),var(--mg-ly,0px),0) scale(1.012)}"
+    + "}"
     + "#mg-lens{"
-    + "  position:fixed;inset:5% 6%;z-index:3;pointer-events:none;"
+    + "  position:fixed;inset:4% 5%;z-index:3;pointer-events:none;"
     + "  border-radius:48% 48% 52% 52% / 42% 42% 58% 58%;"
+    + "  opacity:0.45;"
     + "  transform:translate3d(var(--mg-lx,0px),var(--mg-ly,0px),0);"
-    + "  will-change:transform;"
+    + "  will-change:transform,opacity;"
     + "  box-shadow:"
-    + "    inset 0 0 0 1px rgba(255,255,255,0.5),"
-    + "    inset 0 20px 60px rgba(255,255,255,0.2),"
+    + "    inset 0 0 0 1px rgba(255,255,255,0.42),"
+    + "    inset 0 20px 60px rgba(255,255,255,0.16),"
     + "    inset 0 -24px 50px rgba(160,200,255,0.1),"
-    + "    0 0 50px 8px rgba(255,255,255,0.14),"
+    + "    0 0 50px 8px rgba(255,255,255,0.1),"
     + "    0 0 90px 20px rgba(140,190,255,0.08);"
     + "  background:"
-    + "    radial-gradient(ellipse 65% 48% at 32% 26%,rgba(255,255,255,0.28),transparent 52%),"
+    + "    radial-gradient(ellipse 65% 48% at 32% 26%,rgba(255,255,255,0.24),transparent 52%),"
     + "    radial-gradient(ellipse 50% 40% at 72% 68%,rgba(120,180,255,0.1),transparent 55%),"
-    + "    radial-gradient(ellipse 90% 85% at 50% 50%,transparent 50%,rgba(255,255,255,0.06) 100%);"
-    + "  -webkit-mask-image:radial-gradient(ellipse 93% 91% at 50% 48%,"
-    + "    transparent 0%,transparent 56%,rgba(0,0,0,0.25) 68%,#000 86%,#000 100%);"
-    + "  mask-image:radial-gradient(ellipse 93% 91% at 50% 48%,"
-    + "    transparent 0%,transparent 56%,rgba(0,0,0,0.25) 68%,#000 86%,#000 100%);"
-    + "  backdrop-filter:blur(8px) saturate(1.45) brightness(1.06);"
-    + "  -webkit-backdrop-filter:blur(8px) saturate(1.45) brightness(1.06)}"
+    + "    radial-gradient(ellipse 90% 85% at 50% 50%,transparent 50%,rgba(255,255,255,0.05) 100%);"
+    /* Rim-only mask — long soft band, no hard ring */
+    + "  -webkit-mask-image:radial-gradient(ellipse 96% 94% at 50% 48%,"
+    + "    transparent 0%,transparent 52%,rgba(0,0,0,0.15) 66%,rgba(0,0,0,0.55) 78%,#000 92%,transparent 100%);"
+    + "  mask-image:radial-gradient(ellipse 96% 94% at 50% 48%,"
+    + "    transparent 0%,transparent 52%,rgba(0,0,0,0.15) 66%,rgba(0,0,0,0.55) 78%,#000 92%,transparent 100%);"
+    + "  backdrop-filter:blur(6px) saturate(1.35) brightness(1.04);"
+    + "  -webkit-backdrop-filter:blur(6px) saturate(1.35) brightness(1.04)}"
     /* Edge tone shift + irradiance: warm L, cool R, white top caustic */
     + "#mg-irradiance{"
     + "  position:fixed;inset:4.5% 5.5%;z-index:4;pointer-events:none;"
@@ -2457,16 +2988,18 @@ fn hud_init_script() -> &'static str {
      *   TOP band (high):  . . .  |  CTRL  |  . track ▾   — same header line
      *   BOTTOM: tabs strip, then ..... search peek
      */
-    + "html{--mg-shell-top:2px;--mg-dots-top:2px;--mg-page-pad-top:40px;--mg-page-pad-bot:56px;"
+    + "html{--mg-shell-top:2px;--mg-dots-top:2px;--mg-page-pad-top:40px;"
+    /* Leave room for tabs + search dock so content/scroll ends above chrome */
+    + "  --mg-page-pad-bot:96px;--mg-search-bottom:12px;--mg-tabs-bottom:58px;"
     + "  --mg-hdr-fs:11px;--mg-hdr-ls:0.22em;--mg-hdr-pad-y:6px;"
     + "  --mg-cf-yaw:0;--mg-cf-pitch:0;--mg-cf-z:0;"
     + "  --mg-focal-scale:1;--mg-sharp:1;--mg-contrast:1}"
     + "body{"
     + "  padding-top:var(--mg-page-pad-top,40px)!important;"
-    + "  padding-bottom:var(--mg-page-pad-bot,56px)!important;"
+    + "  padding-bottom:var(--mg-page-pad-bot,96px)!important;"
     + "  box-sizing:border-box!important;"
     + "  scroll-padding-top:var(--mg-page-pad-top,40px)!important;"
-    + "  scroll-padding-bottom:var(--mg-page-pad-bot,56px)!important;"
+    + "  scroll-padding-bottom:var(--mg-page-pad-bot,96px)!important;"
     + "  transform-origin:var(--mg-fovea-x,50%) var(--mg-fovea-y,46%);"
     + "  will-change:transform,filter}"
     /* Mild focal zoom + sharpness (no-glasses reading assist) */
@@ -2497,16 +3030,16 @@ fn hud_init_script() -> &'static str {
     /* Coverflow + PIP live in the inspect float — hide on main browser page */
     + "#mg-coverflow,#mg-page-stack,#mg-cf-stage,#mg-cf-credit,.mg-cf-card{display:none!important}"
     + "#mg-cam-pip{display:none!important}"
-    /* Compact tab strip near bottom (coverflow no longer here) */
+    /* Tabs sit above search dock (both fixed to viewport, above page scroll) */
     + "#mg-tabs{"
     + "  position:fixed!important;left:50%!important;transform:translateX(-50%)!important;"
-    + "  bottom:calc(max(14px,env(safe-area-inset-bottom)) + 36px)!important;"
-    + "  top:auto!important;z-index:2147483501!important;"
+    + "  bottom:calc(var(--mg-tabs-bottom,58px) + env(safe-area-inset-bottom,0px))!important;"
+    + "  top:auto!important;z-index:2147483602!important;"
     + "  display:flex!important;align-items:center;justify-content:center;gap:2px;"
     + "  max-width:min(720px,94vw);min-height:18px;"
     + "  overflow-x:auto;padding:2px 4px;margin:0!important;scrollbar-width:none;"
     + "  background:transparent;border:none;border-radius:0;"
-    + "  pointer-events:auto!important;opacity:0.7}"
+    + "  pointer-events:auto!important;opacity:0.85}"
     + "#mg-tabs:hover{opacity:1}"
     + ".mg-grip{"
     + "  appearance:none;cursor:grab;user-select:none;"
@@ -2965,51 +3498,58 @@ fn hud_init_script() -> &'static str {
     + "#mg-dev-badge.has-warn{background:transparent;color:rgba(255,200,120,0.9)}"
     + "#mg-dev-panel{display:none!important}"
     + "html.mg-cinema-on #mg-dev,html.mg-dim-on #mg-dev{opacity:1}"
-    /* Bottom: ..... at floor; tabs float just above it */
+    /* Search dock: fixed to viewport bottom — never scrolls with page content */
     + "#mg-search-dock{"
-    + "  position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));"
-    + "  transform:translateX(-50%);z-index:2147483500;pointer-events:auto!important;"
-    + "  display:flex!important;flex-direction:column;align-items:center;"
+    + "  position:fixed!important;left:50%!important;"
+    + "  bottom:calc(var(--mg-search-bottom,12px) + env(safe-area-inset-bottom,0px))!important;"
+    + "  top:auto!important;right:auto!important;"
+    + "  transform:translateX(-50%)!important;z-index:2147483605!important;"
+    + "  pointer-events:auto!important;"
+    + "  display:flex!important;flex-direction:column-reverse!important;align-items:center;"
     + "  visibility:visible!important;opacity:1!important;"
-    + "  touch-action:manipulation}"
+    + "  max-width:min(680px,96vw);width:auto;"
+    + "  touch-action:manipulation;"
+    + "  -webkit-mask-image:none!important;mask-image:none!important}"
     + "html.mg-yt-theater #mg-search-dock,html.mg-yt-fs #mg-search-dock{"
     + "  z-index:2147483640}"
     + "#mg-search-peek{"
     + "  appearance:none;cursor:pointer;user-select:none;"
-    + "  padding:6px 10px;border-radius:0;"
+    + "  padding:8px 14px;border-radius:0;"
     + "  background:transparent!important;border:none!important;box-shadow:none!important;"
     + "  outline:none;"
-    + "  color:rgba(255,255,255,0.78);"
+    + "  color:rgba(255,255,255,0.88);"
     + "  font:700 14px/1 ui-monospace,Menlo,monospace;letter-spacing:0.2em;"
-    + "  text-shadow:0 1px 2px rgba(0,0,0,0.35);"
-    + "  transition:opacity .25s,color .15s,text-shadow .15s;opacity:0.9;"
-    + "  display:block!important;visibility:visible!important}"
+    + "  text-shadow:0 1px 2px rgba(0,0,0,0.45);"
+    + "  transition:opacity .25s,color .15s,text-shadow .15s;opacity:0.95;"
+    + "  display:block!important;visibility:visible!important;"
+    + "  position:relative;z-index:2}"
     + "#mg-search-peek:hover{opacity:1;color:#fff;"
     + "  text-shadow:0 0 12px rgba(255,255,255,0.55);background:transparent!important}"
+    /* Open bar grows UPWARD (column-reverse parent) so it never falls under the window */
     + "#mg-search{"
     + "  display:flex;align-items:center;gap:6px;padding:7px 9px;"
     + "  width:min(640px,92vw);border-radius:999px;"
-    + "  background:rgba(255,255,255,0.14);"
+    + "  background:rgba(18,22,30,0.72);"
     + "  backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);"
     + "  border:1px solid rgba(255,255,255,0.28);"
-    + "  box-shadow:0 10px 32px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.4);"
-    + "  opacity:0;transform:translateY(10px) scale(0.98);pointer-events:none;"
-    + "  max-height:0;overflow:hidden;margin:0;padding-top:0;padding-bottom:0;"
-    + "  transition:opacity .26s ease,transform .26s ease,max-height .26s ease,padding .26s}"
+    + "  box-shadow:0 10px 32px rgba(0,0,0,0.28),inset 0 1px 0 rgba(255,255,255,0.35);"
+    + "  opacity:0;transform:translateY(8px) scale(0.98);pointer-events:none;"
+    + "  max-height:0;overflow:hidden;margin:0 0 6px 0;padding-top:0;padding-bottom:0;"
+    + "  transition:opacity .22s ease,transform .22s ease,max-height .22s ease,padding .22s,margin .22s}"
     + "#mg-search-dock.is-open #mg-search{"
     + "  opacity:1;transform:translateY(0) scale(1);pointer-events:auto;"
-    + "  max-height:72px;padding:7px 9px}"
+    + "  max-height:80px;padding:7px 9px;margin:0 0 6px 0}"
     + "#mg-search-dock.is-open #mg-search-peek{"
-    + "  opacity:0;transform:scale(0.9);pointer-events:none;position:absolute;bottom:0}"
-    + "#mg-search-dock:not(.is-open) #mg-search{border-width:0}"
+    + "  opacity:0.35;pointer-events:none}"
+    + "#mg-search-dock:not(.is-open) #mg-search{border-width:0;margin:0}"
     + "#mg-search form{flex:1;display:flex;gap:6px;min-width:0;margin:0;position:relative}"
     + "#mg-search input{flex:1;min-width:0;height:36px;border-radius:999px;padding:0 14px;"
     + "border:1px solid rgba(255,255,255,0.2);outline:none;"
-    + "background:rgba(0,0,0,0.12);color:rgba(255,255,255,0.95);"
+    + "background:rgba(0,0,0,0.28);color:rgba(255,255,255,0.95);"
     + "font:13px/1 system-ui,sans-serif}"
     + "#mg-search input::placeholder{color:rgba(255,255,255,0.4)}"
-    + "#mg-search input:focus{border-color:rgba(255,255,255,0.45);"
-    + "box-shadow:0 0 0 3px rgba(255,255,255,0.1);background:rgba(0,0,0,0.18)}"
+    + "#mg-search input:focus{border-color:rgba(110,203,255,0.55);"
+    + "box-shadow:0 0 0 3px rgba(110,203,255,0.12);background:rgba(0,0,0,0.35)}"
     + "#mg-search .nav{appearance:none;width:36px;height:36px;border-radius:999px;cursor:pointer;"
     + "border:1px solid rgba(255,255,255,0.18);"
     + "background:rgba(255,255,255,0.08);"
@@ -3102,6 +3642,7 @@ fn hud_init_script() -> &'static str {
         '</button>' +
         '<div id="mg-mode-drop" role="menu">' +
           '<button type="button" role="menuitem" data-mode="page" class="on"><span class="dot">.</span>page</button>' +
+          '<button type="button" role="menuitem" data-mode="phone" title="Live device relay (lean CTRL)"><span class="dot">.</span>phone</button>' +
           '<button type="button" role="menuitem" data-mode="cinema"><span class="dot">.</span>cinema</button>' +
           '<button type="button" role="menuitem" data-mode="depth"><span class="dot">.</span>depth</button>' +
         '</div>' +
@@ -3134,6 +3675,7 @@ fn hud_init_script() -> &'static str {
                 '<button type="button" data-op="forward">▶</button>' +
                 '<button type="button" data-op="reload">↻</button>' +
                 '<button type="button" class="accent" id="mg-recenter">MAIN</button>' +
+                '<button type="button" id="mg-phone-relay" title="PHONE live relay">PHONE</button>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -3249,7 +3791,7 @@ fn hud_init_script() -> &'static str {
                 '<label>Sharp <input type="range" id="mg-c-sharp" min="0" max="100" value="62"/><span class="v" id="mg-v-sharp">62</span></label>' +
                 '<label>Zoom <input type="range" id="mg-c-zoom" min="0" max="14" value="5"/><span class="v" id="mg-v-zoom">5</span></label>' +
                 '<label>Accom <input type="range" id="mg-c-accom" min="0" max="100" value="12"/><span class="v" id="mg-v-accom">12</span></label>' +
-                '<label>Drop <input type="range" id="mg-c-drop" min="40" max="98" value="94"/><span class="v" id="mg-v-drop">94</span></label>' +
+                '<label>Drop <input type="range" id="mg-c-drop" min="40" max="98" value="82"/><span class="v" id="mg-v-drop">82</span></label>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -3282,7 +3824,7 @@ fn hud_init_script() -> &'static str {
             '</div>' +
           '</div>' +
           '<div id="mg-calib">Head lock · expand hands · coverflow+PIP above inspect</div>' +
-          '<div id="mg-foot">PAGE · CINEMA · DEPTH · EYE PRESETS · ⌘T/N/W</div>' +
+          '<div id="mg-foot">PAGE · PHONE · CINEMA · DEPTH · ⌘T/N/W</div>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -3352,7 +3894,7 @@ fn hud_init_script() -> &'static str {
     var ctrl = {
       /* Default no-glasses reading stack (auto-calibrated on boot) */
       fov: 1800, focal: 95, ipd: 14, accom: 0.12, fovea: 34,
-      drop: 94, lf: 0.42, glow: 0.40, follow: 0.42,
+      drop: 82, lf: 0.42, glow: 0.40, follow: 0.42,
       lean: 0.55, tilt: 0.48, gain: 1.12,
       sharp: 0.62, zoom: 0.05,
       ana: 0.18, anaOn: false, mirror: false, hoverFocus: true,
@@ -3489,6 +4031,99 @@ fn hud_init_script() -> &'static str {
     document.querySelectorAll("#mg-eyes button").forEach(function (b) {
       b.addEventListener("click", function () { applyEye(b.getAttribute("data-eye")); });
     });
+    function applySeeThrough() {
+      /*
+       * Drop → long soft glass lip (organic-sphere feel), NOT a small hard ellipse.
+       * Glow → lens rim overlays + slight underplate soften.
+       *
+       * Model: ellipse stays near full-window (soft edge can be long).
+       * Drop only moves the solid core % inside that large ellipse.
+       * Concrete mask-image inline — WK often won't recompute mask from CSS vars alone.
+       */
+      var d = Math.max(20, Math.min(100, +ctrl.drop || 80));
+      var t = Math.max(0, Math.min(1, (d - 40) / 58)); /* 0 at Drop40 … 1 at Drop98 */
+      /* Keep aperture large so falloff is never a cookie-cutter */
+      var dw = (104 + t * 12).toFixed(1) + "%"; /* ~104% … 116% */
+      var dh = (100 + t * 12).toFixed(1) + "%";
+      /* Solid core: low Drop → deep glass (small core, long soft tail) */
+      var core = 22 + t * 56;   /* ~22% … ~78% */
+      var mid  = core + 10 + (1 - t) * 6;
+      var soft = Math.min(94, core + 22 + (1 - t) * 8);
+      var coreS = core.toFixed(1) + "%";
+      var midS  = mid.toFixed(1) + "%";
+      var softS = soft.toFixed(1) + "%";
+      rootEl.style.setProperty("--mg-drop-w", dw);
+      rootEl.style.setProperty("--mg-drop-h", dh);
+      rootEl.style.setProperty("--mg-drop-core", coreS);
+      rootEl.style.setProperty("--mg-drop-mid", midS);
+      rootEl.style.setProperty("--mg-drop-soft", softS);
+      /* fill: Drop40 ≈ 0.14 glass, Drop98 ≈ 0.92 */
+      var fillA = 0.14 + t * 0.78;
+      rootEl.style.setProperty("--mg-fill-a", fillA.toFixed(3));
+      var mask =
+        "radial-gradient(ellipse " + dw + " " + dh + " at 50% 48%," +
+        "#fff 0%," +
+        "#fff " + coreS + "," +
+        "rgba(255,255,255,0.88) " + midS + "," +
+        "rgba(255,255,255,0.48) " + softS + "," +
+        "rgba(255,255,255,0.14) 96%," +
+        "transparent 100%)";
+      var cinema = rootEl.classList.contains("mg-cinema-on") || rootEl.classList.contains("mg-dim-on");
+      try {
+        document.documentElement.style.setProperty("background", "transparent", "important");
+        document.documentElement.style.setProperty("background-color", "transparent", "important");
+        if (document.body) {
+          var b = document.body;
+          if (!cinema) {
+            b.style.setProperty("background", "rgba(12,14,18," + fillA.toFixed(3) + ")", "important");
+            b.style.setProperty("background-color", "rgba(12,14,18," + fillA.toFixed(3) + ")", "important");
+            b.style.setProperty("border-radius", "0", "important");
+            b.style.setProperty("-webkit-mask-image", mask, "important");
+            b.style.setProperty("mask-image", mask, "important");
+            b.style.setProperty("-webkit-mask-mode", "alpha", "important");
+            b.style.setProperty("mask-mode", "alpha", "important");
+            b.style.setProperty("-webkit-mask-repeat", "no-repeat", "important");
+            b.style.setProperty("mask-repeat", "no-repeat", "important");
+            b.style.setProperty("-webkit-mask-size", "100% 100%", "important");
+            b.style.setProperty("mask-size", "100% 100%", "important");
+          }
+        }
+      } catch (eBg) {}
+      var g = +ctrl.glow || 0;
+      var ir = document.getElementById("mg-irradiance");
+      var ch = document.getElementById("mg-chroma");
+      var ln = document.getElementById("mg-lens");
+      var vg = document.getElementById("mg-vignette");
+      var sp = document.getElementById("mg-spec");
+      var hr = document.getElementById("mg-hud-ring");
+      /* Glow softens underplate slightly + organic breathe on lens rim */
+      if (!cinema && document.body && g > 0.02) {
+        try {
+          var glowFill = Math.max(0.08, fillA - g * 0.16);
+          document.body.style.setProperty(
+            "background-color",
+            "rgba(12,14,18," + glowFill.toFixed(3) + ")",
+            "important"
+          );
+          rootEl.style.setProperty("--mg-fill-a", glowFill.toFixed(3));
+        } catch (eG) {}
+      }
+      rootEl.style.setProperty("--mg-orb-g", String(g));
+      if (ir) { ir.style.visibility = "visible"; ir.style.opacity = String(0.12 + g * 0.85); }
+      if (ch) { ch.style.visibility = "visible"; ch.style.opacity = String(0.1 + g * 0.8); }
+      if (ln) {
+        ln.style.visibility = "visible";
+        ln.style.opacity = String(0.18 + g * 0.82);
+        /* organic-sphere-ish slow breathe when glow is up */
+        ln.style.animation = g > 0.08 ? "mg-orb-breathe " + (4.2 - g * 1.4).toFixed(2) + "s ease-in-out infinite" : "none";
+      }
+      if (vg) { vg.style.visibility = "visible"; vg.style.opacity = String(0.12 + g * 0.5); }
+      if (sp) { sp.style.visibility = "visible"; sp.style.opacity = String(0.18 + g * 0.65); }
+      if (hr) {
+        hr.style.visibility = "visible";
+        hr.style.opacity = String(0.2 + g * 0.55);
+      }
+    }
     function bind(id, key, map, outId) {
       var el = document.getElementById(id);
       var out = document.getElementById(outId);
@@ -3498,8 +4133,6 @@ fn hud_init_script() -> &'static str {
         ctrl[key] = map(raw);
         if (out) out.textContent = String(raw);
         rootEl.style.setProperty("--mg-fov", ctrl.fov + "px");
-        rootEl.style.setProperty("--mg-drop-w", Math.max(40, ctrl.drop) + "%");
-        rootEl.style.setProperty("--mg-drop-h", (Math.max(40, ctrl.drop) * 0.96).toFixed(1) + "%");
         rootEl.style.setProperty("--mg-ipd", ctrl.ipd + "px");
         rootEl.style.setProperty("--mg-stereo-a", (ctrl.ipd / 80 * 0.22).toFixed(3));
         rootEl.style.setProperty("--mg-fovea-r", ctrl.fovea + "%");
@@ -3508,13 +4141,7 @@ fn hud_init_script() -> &'static str {
         var half = Math.max(0, ctrl.ipd * 0.22 * (0.4 + ctrl.ana));
         rootEl.style.setProperty("--mg-ana-off", half.toFixed(2) + "px");
         updateAnaglyphFilter(half);
-        var g = ctrl.glow;
-        var ir = document.getElementById("mg-irradiance");
-        var ch = document.getElementById("mg-chroma");
-        var ln = document.getElementById("mg-lens");
-        if (ir) ir.style.opacity = String(0.45 + g * 0.5);
-        if (ch) ch.style.opacity = String(0.35 + g * 0.5);
-        if (ln) ln.style.opacity = String(0.5 + g * 0.5);
+        applySeeThrough();
       }
       el.addEventListener("input", apply);
       apply();
@@ -4350,12 +4977,12 @@ fn hud_init_script() -> &'static str {
         setToggleUi("mg-zoom-toggle", false);
         setToggleUi("mg-focus-toggle", false);
         setToggleUi("mg-ana-toggle", false);
-        rootEl.classList.remove("mg-focal-zoom", "mg-focus-on", "mg-ana-on", "mg-no-glasses", "mg-axis-on");
+        rootEl.classList.remove("mg-focal-zoom", "mg-focus-on", "mg-ana-on", "mg-no-glasses", "mg-axis-on", "mg-drop-rim");
         window.LabViewRay.source = "pointer";
-        setSlider("mg-c-drop", 94);
+        setSlider("mg-c-drop", 88);
         setSlider("mg-c-lf", 12);
-        setSlider("mg-c-glow", 18);
-        setCalibMsg("PAGE · normal site view · pointer only");
+        setSlider("mg-c-glow", 35);
+        setCalibMsg("PAGE · glass aperture · Drop/Glow = see-through");
         return;
       }
 
@@ -4375,14 +5002,14 @@ fn hud_init_script() -> &'static str {
         setToggleUi("mg-focus-toggle", true);
         setToggleUi("mg-ana-toggle", false);
         rootEl.classList.add("mg-focal-zoom", "mg-focus-on");
-        rootEl.classList.remove("mg-ana-on", "mg-axis-on", "mg-no-glasses");
+        rootEl.classList.remove("mg-ana-on", "mg-axis-on", "mg-no-glasses", "mg-drop-rim");
         window.LabViewRay.source = "pointer";
-        setSlider("mg-c-drop", 78);
+        setSlider("mg-c-drop", 72);
         setSlider("mg-c-lf", 35);
-        setSlider("mg-c-glow", 45);
+        setSlider("mg-c-glow", 55);
         setSlider("mg-c-follow", 38);
         if (typeof window.__mgSetCinema === "function") window.__mgSetCinema(true);
-        setCalibMsg("CINEMA · theater dim · see-through · mouse tracking");
+        setCalibMsg("CINEMA · more glass · Drop/Glow live");
         return;
       }
 
@@ -4409,9 +5036,9 @@ fn hud_init_script() -> &'static str {
         setSlider("mg-c-follow", 46);
         setSlider("mg-c-lf", 55);
         setSlider("mg-c-ana", 28);
-        setSlider("mg-c-drop", 94);
-        setSlider("mg-c-glow", 40);
-        setCalibMsg("DEPTH · face lock · hands/lidar OPT-IN (inspect owns H1 air pointer)");
+        setSlider("mg-c-drop", 82);
+        setSlider("mg-c-glow", 50);
+        setCalibMsg("DEPTH · glass + face lock · Drop/Glow live");
         return;
       }
 
@@ -5023,14 +5650,41 @@ fn hud_init_script() -> &'static str {
         [5,9,13,17]
       ];
       var tips = [4, 8, 12, 16, 20];
+      /* Phone still-pipe wide FOV: boost hand IK around palm (matches hotpipe live-v19) */
+      var handRigBoost = (ctrl.handRigScale != null) ? +ctrl.handRigScale : 1.45;
+      if (!(handRigBoost > 0)) handRigBoost = 1.45;
+      var handTargetSpan = 0.24;
       var maxExpand = 0;
       var primary = null;
       for (var hi = 0; hi < hands.length; hi++) {
         var lm = hands[hi];
         if (!lm || lm.length < 21) continue;
+        var palmIds = [0, 5, 9, 13, 17];
+        var pcxN = 0, pcyN = 0;
+        for (var pi0 = 0; pi0 < palmIds.length; pi0++) {
+          pcxN += lm[palmIds[pi0]].x;
+          pcyN += lm[palmIds[pi0]].y;
+        }
+        pcxN /= palmIds.length;
+        pcyN /= palmIds.length;
+        var spanN = 0;
+        for (var ti0 = 0; ti0 < tips.length; ti0++) {
+          var tip0 = lm[tips[ti0]];
+          spanN += Math.hypot(tip0.x - pcxN, tip0.y - pcyN);
+        }
+        spanN /= tips.length;
+        var autoS = Math.max(1, Math.min(3.4, handTargetSpan / Math.max(spanN, 0.035)));
+        var rigS = Math.max(1, Math.min(4.2, autoS * handRigBoost));
         function HP(i) {
           var p = lm[i];
-          return { x: (1 - p.x) * W, y: p.y * H, nx: 1 - p.x, ny: p.y };
+          var nx = pcxN + (p.x - pcxN) * rigS;
+          var ny = pcyN + (p.y - pcyN) * rigS;
+          if (nx < -0.08) nx = -0.08;
+          if (nx > 1.08) nx = 1.08;
+          if (ny < -0.08) ny = -0.08;
+          if (ny > 1.08) ny = 1.08;
+          /* mirror x for selfie-style page overlay */
+          return { x: (1 - nx) * W, y: ny * H, nx: 1 - nx, ny: ny };
         }
         var wrist = HP(0);
         var midTip = HP(12);
@@ -5047,14 +5701,14 @@ fn hud_init_script() -> &'static str {
           openSpan += dist2(wrist, HP(tips[ti]));
         }
         openSpan /= tips.length;
-        var expandN = Math.max(0, Math.min(1.6, (openSpan / Math.max(H * 0.18, 1)) - 0.35));
+        var expandN = Math.max(0, Math.min(1.8, (openSpan / Math.max(H * 0.14, 1)) - 0.2));
         var pinchD = dist2(thumbTip, idxTip);
-        var pinchN = Math.max(0.35, Math.min(1.8, pinchD / Math.max(H * 0.06, 1)));
+        var pinchN = Math.max(0.35, Math.min(1.8, pinchD / Math.max(H * 0.05, 1)));
         if (expandN > maxExpand) maxExpand = expandN;
         if (!primary || hi === 0) {
           primary = {
             x: idxTip.x, y: idxTip.y, nx: idxTip.nx, ny: idxTip.ny,
-            pinch: pinchN, expand: expandN, palmX: palmCx, palmY: palmCy
+            pinch: pinchN, expand: expandN, palmX: palmCx, palmY: palmCy, rigS: rigS
           };
         }
         /* Solid occlusion fill (optional Quest-style) */
@@ -5069,25 +5723,27 @@ fn hud_init_script() -> &'static str {
           ctx.fill();
         }
         /* Expanding palm rings (Ash Thorp / Ender interface language) */
-        var ringMax = 28 + expandN * 90;
+        var srt = Math.sqrt(rigS);
+        var ringMax = (32 + expandN * 100) * srt;
         for (var r = 0; r < 4; r++) {
           var rr = ringMax * (0.35 + r * 0.22);
           ctx.beginPath();
           ctx.arc(palmCx, palmCy, rr, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(120,200,255," + (0.28 - r * 0.05).toFixed(2) + ")";
-          ctx.lineWidth = 1 + (3 - r) * 0.4;
+          ctx.strokeStyle = "rgba(120,200,255," + (0.32 - r * 0.05).toFixed(2) + ")";
+          ctx.lineWidth = (1.1 + (3 - r) * 0.45) * Math.min(1.9, srt);
           ctx.stroke();
         }
         /* Crosshair at palm */
         ctx.strokeStyle = "rgba(180,230,255,0.45)";
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.2 * srt;
         ctx.beginPath();
-        ctx.moveTo(palmCx - 18, palmCy); ctx.lineTo(palmCx + 18, palmCy);
-        ctx.moveTo(palmCx, palmCy - 18); ctx.lineTo(palmCx, palmCy + 18);
+        ctx.moveTo(palmCx - 18 * srt, palmCy); ctx.lineTo(palmCx + 18 * srt, palmCy);
+        ctx.moveTo(palmCx, palmCy - 18 * srt); ctx.lineTo(palmCx, palmCy + 18 * srt);
         ctx.stroke();
         /* Wire skeleton */
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
+        var lw = Math.min(3, 1.55 * srt);
         for (var ci = 0; ci < chains.length; ci++) {
           var ch = chains[ci];
           ctx.beginPath();
@@ -5096,18 +5752,19 @@ fn hud_init_script() -> &'static str {
             if (j === 0) ctx.moveTo(q.x, q.y);
             else ctx.lineTo(q.x, q.y);
           }
-          ctx.strokeStyle = "rgba(140,210,255," + (ci === 5 ? "0.35" : "0.55") + ")";
-          ctx.lineWidth = ci === 5 ? 2.5 : 1.6;
+          ctx.strokeStyle = "rgba(140,210,255," + (ci === 5 ? "0.4" : "0.6") + ")";
+          ctx.lineWidth = ci === 5 ? lw * 1.4 : lw;
           ctx.stroke();
         }
         /* Joint nodes */
+        var jR = Math.max(2.3, 2.1 * srt);
         for (var ji = 0; ji < 21; ji++) {
           var jn = HP(ji);
           ctx.fillStyle = ji === 8 || ji === 4
             ? "rgba(255,255,255,0.95)"
             : "rgba(120,200,255,0.7)";
           ctx.beginPath();
-          ctx.arc(jn.x, jn.y, ji === 0 ? 3.5 : 2.2, 0, Math.PI * 2);
+          ctx.arc(jn.x, jn.y, ji === 0 ? jR * 1.5 : jR, 0, Math.PI * 2);
           ctx.fill();
         }
         /* Pinch bond */
@@ -5117,12 +5774,12 @@ fn hud_init_script() -> &'static str {
         ctx.strokeStyle = pinchN < 0.75
           ? "rgba(255,220,140,0.85)"
           : "rgba(140,200,255,0.25)";
-        ctx.lineWidth = pinchN < 0.75 ? 2 : 1;
+        ctx.lineWidth = pinchN < 0.75 ? 2.2 * srt : 1;
         ctx.stroke();
         /* Fingertip expansion blossoms */
         for (var t = 0; t < tips.length; t++) {
           var tip = HP(tips[t]);
-          var tr = 10 + expandN * 14;
+          var tr = (12 + expandN * 16) * srt;
           var grd = ctx.createRadialGradient(tip.x, tip.y, 1, tip.x, tip.y, tr);
           grd.addColorStop(0, "rgba(255,255,255,0.55)");
           grd.addColorStop(0.4, "rgba(100,190,255,0.22)");
@@ -5764,12 +6421,18 @@ fn hud_init_script() -> &'static str {
       try { savedEye = localStorage.getItem("mg.eye"); } catch (e0) {}
       var bootEye = (savedEye && EYES[savedEye]) ? savedEye : "calibrate";
       applyEye(bootEye);
-      /* Never boot drop at 0% — that made the whole page invisible */
-      var dropTarget = 94;
+      /* Glass default: soft lip visible without hard cookie-cutter */
+      var dropTarget = 78;
       setSlider("mg-c-drop", dropTarget);
       ctrl.drop = dropTarget;
-      rootEl.style.setProperty("--mg-drop-w", dropTarget + "%");
-      rootEl.style.setProperty("--mg-drop-h", (dropTarget * 0.96).toFixed(1) + "%");
+      if (typeof applySeeThrough === "function") applySeeThrough();
+      else {
+        rootEl.style.setProperty("--mg-drop-w", "110%");
+        rootEl.style.setProperty("--mg-drop-h", "106%");
+        rootEl.style.setProperty("--mg-drop-core", "58%");
+        rootEl.style.setProperty("--mg-fill-a", "0.66");
+      }
+      rootEl.classList.remove("mg-drop-rim");
       /* Eye distance auto-adjust runs from live PIP face track (single camera). */
     } catch (e) {}
   })(); } catch (ePortal) {
@@ -5813,7 +6476,7 @@ fn hud_init_script() -> &'static str {
     var SHELL_TOP = "2px";
     var DOTS_TOP = "2px";
     var PAD_TOP = "40px";
-    var PAD_BOT = "56px"; /* coverflow lives in inspect float now */
+    var PAD_BOT = "96px"; /* tabs + search dock above fold; content scrolls above chrome */
     function apply() {
       try {
         document.documentElement.style.setProperty("--mg-shell-top", SHELL_TOP);
@@ -5917,6 +6580,7 @@ fn hud_init_script() -> &'static str {
   var lastNonCinemaMode = "page";
   var MODE_LABELS = {
     page: "page",
+    phone: "phone",
     cinema: "cinema",
     depth: "depth",
     /* legacy */
@@ -5924,6 +6588,7 @@ fn hud_init_script() -> &'static str {
     noglasses: "depth",
     xr: "depth"
   };
+  var PHONE_RELAY_URL = "http://127.0.0.1:9877/relay.html";
   var shellMenusWired = false;
   function syncModeMenu(mode) {
     viewMode = mode || viewMode;
@@ -5973,20 +6638,28 @@ fn hud_init_script() -> &'static str {
         document.documentElement.style.setProperty("background-color", "#000", "important");
       } else {
         document.documentElement.style.setProperty("--mg-page-pad-top", "40px");
-        document.documentElement.style.setProperty("--mg-page-pad-bot", "56px");
-        document.documentElement.style.removeProperty("background");
-        document.documentElement.style.removeProperty("background-color");
+        document.documentElement.style.setProperty("--mg-page-pad-bot", "96px");
+        document.documentElement.style.setProperty("background", "transparent", "important");
+        document.documentElement.style.setProperty("background-color", "transparent", "important");
         if (document.body) {
           document.body.style.setProperty("padding-top", "40px", "important");
-          document.body.style.setProperty("padding-bottom", "56px", "important");
+          document.body.style.setProperty("padding-bottom", "96px", "important");
+          /* clear cinema solid black — Drop/Glow re-apply via applySeeThrough */
           document.body.style.removeProperty("background");
           document.body.style.removeProperty("background-color");
+          document.body.style.removeProperty("-webkit-mask-image");
+          document.body.style.removeProperty("mask-image");
         }
         var dw = document.documentElement.style.getPropertyValue("--mg-drop-w");
         if (!dw || dw === "100%") {
-          document.documentElement.style.setProperty("--mg-drop-w", "94%");
-          document.documentElement.style.setProperty("--mg-drop-h", "90%");
+          document.documentElement.style.setProperty("--mg-drop-w", "88%");
+          document.documentElement.style.setProperty("--mg-drop-h", "84%");
         }
+        /* Restore glass lip after theater */
+        try {
+          var dropEl = document.getElementById("mg-c-drop");
+          if (dropEl) dropEl.dispatchEvent(new Event("input"));
+        } catch (e3) {}
       }
     } catch (e2) {}
   }
@@ -5994,9 +6667,32 @@ fn hud_init_script() -> &'static str {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     setCinema(!cinemaOn);
   }
+  function openPhoneRelay() {
+    /* Lean CTRL-style multi-device relay (still-pipe LAN hub) */
+    try {
+      post({ op: "new_window", url: PHONE_RELAY_URL });
+    } catch (e0) {
+      try { window.open(PHONE_RELAY_URL, "_blank"); } catch (e1) {}
+    }
+    try {
+      if (typeof setCalibMsg === "function") {
+        setCalibMsg("PHONE · relay " + PHONE_RELAY_URL + " · chat/talk/cam links");
+      }
+      if (window.__mgDevLog) {
+        window.__mgDevLog("ok", "PHONE relay → " + PHONE_RELAY_URL, "phone");
+      }
+    } catch (e2) {}
+  }
   function applyViewMode(mode) {
     mode = mode || "page";
     if (mode === "track" || mode === "xr" || mode === "noglasses") mode = "depth";
+    /* phone is an action under page menu — open relay, stay in page mode */
+    if (mode === "phone") {
+      setModeMenuOpen(false);
+      openPhoneRelay();
+      syncModeMenu(viewMode === "cinema" || viewMode === "depth" ? viewMode : "page");
+      return;
+    }
     setModeMenuOpen(false);
     syncModeMenu(mode);
     try {
@@ -6465,10 +7161,12 @@ fn hud_init_script() -> &'static str {
     try { urlEl.value = u; } catch (e) {}
     renderTabs();
   }
-  function newWindow(_url) {
-    /* ⌘N always boots SpaceX home — never inherit current tab / YouTube / etc. */
-    post({ op: "new_window", url: "https://www.spacex.com/" });
+  function newWindow(url) {
+    /* ⌘N default SpaceX home; callers (PHONE relay) may pass an explicit URL. */
+    var u = url && String(url).trim() ? String(url).trim() : "https://www.spacex.com/";
+    post({ op: "new_window", url: u });
   }
+  try { window.__mgOpenPhoneRelay = openPhoneRelay; } catch (ePh) {}
   renderTabs();
   try {
     if (window.__mgDevLog) {
@@ -6554,13 +7252,23 @@ fn hud_init_script() -> &'static str {
     e.stopPropagation();
     post({ op: "recenter" });
   });
+  mgOn(mgEl("mg-phone-relay"), "click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    openPhoneRelay();
+  });
 
-  /* Search: collapsed ..::.. · expand on click · auto-hide when idle */
+  /* Search: collapsed ..... · expand on click · stays above page scroll (fixed dock) */
   (function searchDock() {
     var dock = document.getElementById("mg-search-dock");
     var peek = document.getElementById("mg-search-peek");
     var bar = document.getElementById("mg-search");
     if (!dock || !peek || !bar) return;
+    /* Guarantee dock is a direct fixed child under #mg-root / html (not trapped in transformed body) */
+    try {
+      var host = document.getElementById("mg-root") || document.documentElement;
+      if (dock.parentNode !== host) host.appendChild(dock);
+    } catch (eRe) {}
     var hideT = 0;
     function openSearch() {
       dock.classList.add("is-open");
@@ -6577,15 +7285,25 @@ fn hud_init_script() -> &'static str {
       hideT = setTimeout(function () {
         if (document.activeElement === urlEl) { armHide(); return; }
         closeSearch();
-      }, 2800);
+      }, 4800);
     }
-    peek.addEventListener("click", openSearch);
+    peek.addEventListener("click", function (e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      openSearch();
+    });
     bar.addEventListener("pointerdown", function () { clearTimeout(hideT); });
     bar.addEventListener("focusin", function () { clearTimeout(hideT); });
     bar.addEventListener("focusout", function () { armHide(); });
-    bar.addEventListener("pointerleave", function () {
-      if (document.activeElement !== urlEl) armHide();
-    });
+    /* ⌘L / Ctrl+L focuses search */
+    if (!window.__mgSearchKeyBound) {
+      window.__mgSearchKeyBound = true;
+      window.addEventListener("keydown", function (e) {
+        if ((e.metaKey || e.ctrlKey) && (e.key === "l" || e.key === "L")) {
+          e.preventDefault();
+          openSearch();
+        }
+      }, true);
+    }
   })();
 
   mgOn(mgEl("mg-form"), "submit", function (e) {
@@ -6653,12 +7371,31 @@ fn main() -> Result<()> {
     let event_loop: EventLoop<Cmd> = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
 
+    let webgrid_mode = start.to_ascii_lowercase().contains("webgrid")
+        || start.to_ascii_lowercase().contains("neuralink.com/webgrid");
+    let webgrid_small = webgrid_mode && webgrid_wants_small_window();
     let mut wb = WindowBuilder::new()
         .with_title(format!("Memory Glass · {ver_short}"))
-        // Leave room for inspect (~380) + gap on a 1440–1512 logical display
-        .with_inner_size(LogicalSize::new(980.0, 820.0))
-        .with_min_inner_size(LogicalSize::new(640.0, 480.0))
-        // Decorations ON so macOS keeps system resize edges (borderless ate all hits via WKWebView).
+        // Medium browser for play (WebGrid); slightly wider default otherwise
+        .with_inner_size(LogicalSize::new(
+            // WebGrid large → 30×30; small → 12×12 (h≤600 / w≤751)
+            if webgrid_small {
+                720.0
+            } else if webgrid_mode {
+                1600.0
+            } else {
+                980.0
+            },
+            if webgrid_small {
+                560.0
+            } else if webgrid_mode {
+                1000.0
+            } else {
+                820.0
+            },
+        ))
+        .with_min_inner_size(LogicalSize::new(520.0, 400.0))
+        // Decorations ON so macOS keeps system resize edges; custom .mg-edge strips as backup.
         .with_decorations(true)
         .with_transparent(true)
         .with_resizable(true)
@@ -6682,7 +7419,17 @@ fn main() -> Result<()> {
     }
 
     let window = wb.build(&event_loop).context("tao window")?;
-    place_on_primary(&window);
+    if webgrid_mode {
+        // Defer full place until inspect exists — still park on landscape left now
+        if let Some(mon) = leftmost_landscape_monitor(&window) {
+            let mpos = mon.position();
+            window.set_outer_position(PhysicalPosition::new(mpos.x + 24, mpos.y + 48));
+        } else {
+            place_on_primary(&window);
+        }
+    } else {
+        place_on_primary(&window);
+    }
     clear_window_bg(&window);
     // App / Navigate / View / Edit / Window — Reload + controls in dropdowns
     install_standard_edit_menu(proxy.clone());
@@ -6693,13 +7440,40 @@ fn main() -> Result<()> {
     window.set_visible(true);
     window.set_focus();
 
-    // Fire async camera prompt once (non-blocking — do not freeze launch)
-    let cam_ok = request_camera_access_native();
-    if !cam_ok {
+    // Camera: never block WebGrid / play with OS permission sheet at boot.
+    // - already authorized → mark session grant (no sheet)
+    // - webgrid / play URLs → defer completely (still-pipe phone vision)
+    // - otherwise soft check without prompting unless user later enables Cam
+    let start_l = start.to_ascii_lowercase();
+    let defer_cam = webgrid_mode
+        || start_l.contains("play")
+        || std::env::var("MG_CAMERA_DEFER")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+    let status0 = camera_auth_status();
+    if status0 == 3 {
+        let _ = request_camera_access_native_opts(false);
+        eprintln!("camera: already authorized · session grant recorded · no prompt");
+    } else if defer_cam {
+        let _ = request_camera_access_native_opts(false);
         eprintln!(
-            "camera: status={} — if denied, enable Memory Glass under System Settings › Privacy & Security › Camera",
-            camera_auth_status()
+            "camera: deferred for play session (status={}) · still-pipe OK · Cam toggle later if needed",
+            status0
         );
+    } else if camera_grant_fresh() {
+        // Prior grant in 30d window but TCC notDetermined (unsigned rebuilds) —
+        // still avoid auto-sheet; user can enable Cam once.
+        let _ = request_camera_access_native_opts(false);
+        eprintln!("camera: prior session grant on file · skip boot prompt (status={status0})");
+    } else {
+        // First run only: optional soft prompt (still non-blocking)
+        let cam_ok = request_camera_access_native_opts(true);
+        if !cam_ok {
+            eprintln!(
+                "camera: status={} — enable Memory Glass under System Settings › Privacy & Security › Camera if needed",
+                camera_auth_status()
+            );
+        }
     }
 
     let make_ipc = |proxy: tao::event_loop::EventLoopProxy<Cmd>| {
@@ -6718,6 +7492,10 @@ fn main() -> Result<()> {
                 "forward" => Some(Cmd::Forward),
                 "reload" => Some(Cmd::Reload),
                 "drag" => Some(Cmd::Drag),
+                "click_at" | "synthetic_click" => Some(Cmd::SyntheticClick {
+                    x: v.get("x").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                    y: v.get("y").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                }),
                 "resize_by" => {
                     let dir = v
                         .get("dir")
@@ -6734,7 +7512,15 @@ fn main() -> Result<()> {
                 "win_max" => Some(Cmd::WinZoom),
                 // cinema is CSS-only (native opaque toggle crashed with transparent WKWebView)
                 "cinema" => None,
-                "new_window" => Some(Cmd::NewWindow(HOME_URL.to_string())),
+                "new_window" => {
+                    let url = v
+                        .get("url")
+                        .and_then(|x| x.as_str())
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or(HOME_URL)
+                        .to_string();
+                    Some(Cmd::NewWindow(url))
+                }
                 "dev_log" => Some(Cmd::DevLog {
                     lvl: v
                         .get("lvl")
@@ -6759,6 +7545,14 @@ fn main() -> Result<()> {
                 "open_camera_prefs" => Some(Cmd::OpenCameraPrefs),
                 "request_camera" => Some(Cmd::RequestCameraAccess),
                 "hot_reload" => Some(Cmd::HotReload),
+                "page_zoom" | "zoom" => Some(Cmd::PageZoom {
+                    scale: v
+                        .get("scale")
+                        .or_else(|| v.get("z"))
+                        .and_then(|x| x.as_f64())
+                        .unwrap_or(1.0),
+                }),
+                "reassert_glass" | "glass" => Some(Cmd::ReassertGlass),
                 "hot_mitigate" => Some(Cmd::HotMitigate {
                     msg: v
                         .get("msg")
@@ -6856,16 +7650,35 @@ fn main() -> Result<()> {
     let handler_main = make_ipc(proxy.clone());
     let handler_insp = make_ipc(proxy.clone());
 
-    // Early paint: solid underplate so the window is findable (rim stays glass).
+    // Early paint — long soft glass lip (not cookie-cutter ellipse).
     let shell_clear = r#"
-      document.documentElement.style.background = '#0b0d12';
-      document.documentElement.style.backgroundColor = '#0b0d12';
+      var de = document.documentElement;
+      de.style.background = 'transparent';
+      de.style.backgroundColor = 'transparent';
+      de.style.borderRadius = '12px';
+      de.style.overflow = 'hidden';
+      de.style.clipPath = 'none';
+      de.style.height = '100%';
+      de.style.setProperty('--mg-fill-a', '0.70');
+      de.style.setProperty('--mg-drop-w', '110%');
+      de.style.setProperty('--mg-drop-h', '106%');
+      de.style.setProperty('--mg-drop-core', '62%');
+      de.style.setProperty('--mg-drop-mid', '74%');
+      de.style.setProperty('--mg-drop-soft', '86%');
       if (document.body) {
-        document.body.style.background = 'rgba(12,14,18,0.97)';
-        document.body.style.backgroundColor = 'rgba(12,14,18,0.97)';
+        var b = document.body;
+        var mask = 'radial-gradient(ellipse 110% 106% at 50% 48%,#fff 0%,#fff 62%,rgba(255,255,255,0.88) 74%,rgba(255,255,255,0.48) 86%,rgba(255,255,255,0.14) 96%,transparent 100%)';
+        b.style.background = 'rgba(12,14,18,0.70)';
+        b.style.backgroundColor = 'rgba(12,14,18,0.70)';
+        b.style.borderRadius = '0';
+        b.style.height = '100%';
+        b.style.overflowY = 'auto';
+        b.style.overflowX = 'hidden';
+        b.style.clipPath = 'none';
+        b.style.webkitMaskImage = mask;
+        b.style.maskImage = mask;
       }
-      document.documentElement.style.setProperty('--mg-drop-w', '94%');
-      document.documentElement.style.setProperty('--mg-drop-h', '90%');
+      de.classList.remove('mg-drop-rim');
     "#;
 
     let webview = WebViewBuilder::new()
@@ -6908,8 +7721,33 @@ fn main() -> Result<()> {
     }
     let inspect_window = inspect_wb.build(&event_loop).context("inspect window")?;
     clear_window_bg(&inspect_window);
-    // Force dual-pane: browser left, inspect fully on-screen (not half off the right)
-    tile_browser_and_inspect(&window, &inspect_window, true);
+    // Transparent float: native NSShadow reads as a hard black crunch — off; CSS lift only.
+    #[cfg(target_os = "macos")]
+    {
+        use objc::{msg_send, runtime::Object, sel, sel_impl};
+        use tao::platform::macos::WindowExtMacOS;
+        unsafe {
+            let ns = inspect_window.ns_window() as *mut Object;
+            if !ns.is_null() {
+                let _: () = msg_send![ns, setHasShadow: false];
+                let _: () = msg_send![ns, invalidateShadow];
+            }
+        }
+    }
+    // Dual-pane default — WebGrid uses left landscape medium + inspect parked
+    if webgrid_mode {
+        place_for_webgrid_play(&window, Some(&inspect_window));
+        eprintln!("  layout : webgrid play · large landscape · 30×30 desktop grid · chrome-safe");
+        // Layout CSS expands the play canvas; keep page zoom at 1.0 so grid can fill
+        // (zoom < 1 shrank the whole page including Neuralink's max-height cap).
+        if let Err(e) = webview.zoom(1.0) {
+            eprintln!("webgrid default zoom: {e}");
+        } else {
+            eprintln!("  zoom   : 1.0 (fill play area via CSS — not shrink)");
+        }
+    } else {
+        tile_browser_and_inspect(&window, &inspect_window, true);
+    }
 
     let inspect_wv = WebViewBuilder::new()
         .with_html(inspect_panel_html())
@@ -7101,8 +7939,52 @@ fn main() -> Result<()> {
                     }
                 }
                 Cmd::DevLog { lvl, msg, src } => {
+                    // WebGrid playthrough watch: append JSON samples to disk (https page
+                    // cannot fetch http://localhost — IPC is the only reliable path).
+                    if src == "webgrid-watch" || msg.starts_with("MGW:") {
+                        let payload = if let Some(rest) = msg.strip_prefix("MGW:") {
+                            rest.to_string()
+                        } else {
+                            msg.clone()
+                        };
+                        let watch_dir = std::path::PathBuf::from(
+                            std::env::var("HOME").unwrap_or_else(|_| ".".into()),
+                        )
+                        .join(".panda/mg-soak/watch");
+                        let _ = std::fs::create_dir_all(&watch_dir);
+                        let line = if payload.trim_start().starts_with('{') {
+                            payload
+                        } else {
+                            serde_json::json!({
+                                "kind": "log",
+                                "msg": payload,
+                                "src": src,
+                                "t": std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .map(|d| d.as_millis() as u64)
+                                    .unwrap_or(0),
+                            })
+                            .to_string()
+                        };
+                        if let Ok(mut f) = std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(watch_dir.join("play.jsonl"))
+                        {
+                            use std::io::Write;
+                            let _ = writeln!(f, "{line}");
+                        }
+                        let _ = std::fs::write(
+                            watch_dir.join("live-summary.json"),
+                            &line,
+                        );
+                        eprintln!("MG_WATCH {line}");
+                    }
                     if let Some(wv) = inspect_wv.as_ref() {
-                        inject_dev_line(wv, &lvl, &msg, &src);
+                        // Don't spam inspect UI with full JSON every 350ms
+                        if src != "webgrid-watch" && !msg.starts_with("MGW:") {
+                            inject_dev_line(wv, &lvl, &msg, &src);
+                        }
                     }
                     // Auto-show on errors so spit is never missed
                     if lvl == "err" {
@@ -7344,13 +8226,14 @@ fn main() -> Result<()> {
                     }
                 }
                 Cmd::RequestCameraAccess => {
-                    let ok = request_camera_access_native();
+                    // Explicit Cam / feature request — one OS prompt max per process
+                    let ok = request_camera_access_native_opts(true);
                     let msg = if ok {
-                        "Camera authorized (AVFoundation) — getUserMedia should work"
+                        "Camera authorized · session grant active (no re-nag this launch)"
                     } else {
-                        "Camera still denied — System Settings › Privacy & Security › Camera › Memory Glass"
+                        "Camera prompt once / pending — allow Memory Glass; won't re-block play every tick"
                     };
-                    let lvl = if ok { "ok" } else { "err" };
+                    let lvl = if ok { "ok" } else { "info" };
                     eprintln!("camera: RequestCameraAccess → {msg}");
                     if let Some(wv) = inspect_wv.as_ref() {
                         inject_dev_line(wv, lvl, msg, "camera");
@@ -7359,7 +8242,7 @@ fn main() -> Result<()> {
                         inject_dev_line(wv, lvl, msg, "camera");
                         if ok {
                             let _ = wv.evaluate_script(
-                                "(function(){try{if(window.__mgDevLog)window.__mgDevLog('ok','Native camera authorized','camera');}catch(e){}})();",
+                                "(function(){try{localStorage.setItem('mg.camera.session_ok','1');sessionStorage.setItem('mg.camera.session_ok','1');if(window.__mgDevLog)window.__mgDevLog('ok','Native camera authorized · session','camera');}catch(e){}})();",
                             );
                         }
                     }
@@ -7384,45 +8267,97 @@ fn main() -> Result<()> {
                     // (nil NSApp.currentEvent under async IPC → crash).
                     begin_system_window_drag(&window);
                 }
-                Cmd::ResizeBy { dir, dx, dy } => {
-                    // Conservative resize — physical pixels, no monitor queries, capped steps.
-                    if !dx.is_finite() || !dy.is_finite() {
-                        // drop
+                Cmd::SyntheticClick { x, y } => {
+                    // Opt-in autoplay only — never flood (rate-limit hard).
+                    // Human mouse always wins; this is scoped to main window content.
+                    static LAST_CLICK_MS: std::sync::atomic::AtomicU64 =
+                        std::sync::atomic::AtomicU64::new(0);
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0);
+                    let prev = LAST_CLICK_MS.load(std::sync::atomic::Ordering::Relaxed);
+                    if now.saturating_sub(prev) < 16 {
+                        // max ~60/s — never a full-screen click storm
+                    } else if x.is_finite() && y.is_finite() && x >= 0.0 && y >= 0.0 {
+                        LAST_CLICK_MS.store(now, std::sync::atomic::Ordering::Relaxed);
+                        synthetic_webview_click(&window, x, y);
+                    }
+                }
+                Cmd::PageZoom { scale } => {
+                    // WebGrid zoom-out so large window shows full 30×30 (not cropped UI).
+                    // Do NOT reassert glass here — zoom is spammed from JS interval and
+                    // reassert storms were crashing AppKit.
+                    static LAST_Z: std::sync::atomic::AtomicU64 =
+                        std::sync::atomic::AtomicU64::new(0);
+                    // Safari-like range: up to ~2.5 so ⌘+ can reach big-cell 12×12 look
+                    let z = if scale.is_finite() {
+                        scale.clamp(0.45, 2.5)
                     } else {
+                        1.0
+                    };
+                    // Skip no-op / micro-repeat (encode scale*1000 as u64)
+                    let zkey = (z * 1000.0).round() as u64;
+                    let prev = LAST_Z.swap(zkey, std::sync::atomic::Ordering::Relaxed);
+                    if prev == zkey {
+                        // same zoom already applied
+                    } else if let Some(wv) = webview.as_ref() {
+                        if let Err(e) = wv.zoom(z) {
+                            eprintln!("page_zoom: {e}");
+                        } else {
+                            eprintln!("page_zoom: main → {z:.2}");
+                        }
+                    }
+                }
+                Cmd::ReassertGlass => {
+                    reassert_all_glass(
+                        &window,
+                        webview.as_ref(),
+                        &inspect_window,
+                        inspect_wv.as_ref(),
+                    );
+                }
+                Cmd::ResizeBy { dir, dx, dy } => {
+                    // Physical-pixel resize (screenX/Y deltas from JS are already logical-ish;
+                    // multiply by scale once and keep size/position in physical units).
+                    if dx.is_finite() && dy.is_finite() {
                         let scale = window.scale_factor();
                         if scale.is_finite() && scale > 0.1 && scale < 8.0 {
-                            let ndx = (dx.clamp(-80.0, 80.0) * scale).round() as i32;
-                            let ndy = (dy.clamp(-80.0, 80.0) * scale).round() as i32;
+                            // dx/dy arrive in CSS/logical screen coords from browser
+                            let ndx = (dx.clamp(-120.0, 120.0) * scale).round() as i32;
+                            let ndy = (dy.clamp(-120.0, 120.0) * scale).round() as i32;
                             if let Ok(pos) = window.outer_position() {
-                                let size = window.inner_size();
+                                let size = window.inner_size(); // physical
                                 let mut x = pos.x;
                                 let mut y = pos.y;
                                 let mut w = size.width as i32;
                                 let mut h = size.height as i32;
+                                let min_w = (520.0 * scale).round() as i32;
+                                let min_h = (400.0 * scale).round() as i32;
                                 let d = dir.as_str();
                                 if d.contains('e') {
-                                    w = (w + ndx).max(640);
+                                    w = (w + ndx).max(min_w);
                                 }
                                 if d.contains('w') {
-                                    let nw = (w - ndx).max(640);
+                                    let nw = (w - ndx).max(min_w);
                                     x += w - nw;
                                     w = nw;
                                 }
                                 if d.contains('s') {
-                                    h = (h + ndy).max(480);
+                                    h = (h + ndy).max(min_h);
                                 }
                                 if d.contains('n') {
-                                    let nh = (h - ndy).max(480);
+                                    let nh = (h - ndy).max(min_h);
                                     y += h - nh;
                                     h = nh;
                                 }
                                 if w > 0 && h > 0 {
+                                    use tao::dpi::PhysicalSize;
                                     window.set_outer_position(PhysicalPosition::new(x, y));
-                                    window
-                                        .set_inner_size(LogicalSize::new(
-                                            (w as f64) / scale,
-                                            (h as f64) / scale,
-                                        ));
+                                    let _ = window.set_inner_size(PhysicalSize::new(
+                                        w as u32,
+                                        h as u32,
+                                    ));
                                 }
                             }
                         }
@@ -7445,8 +8380,13 @@ fn main() -> Result<()> {
                     window.set_maximized(!maxed);
                     place_inspect_right_of(&window, &inspect_window);
                 }
-                Cmd::NewWindow(_url) => {
-                    spawn_new_window(HOME_URL);
+                Cmd::NewWindow(url) => {
+                    let u = if url.trim().is_empty() {
+                        HOME_URL
+                    } else {
+                        url.as_str()
+                    };
+                    spawn_new_window(u);
                 }
                 Cmd::MicMute(mute) => {
                     voice_mic_mute(mute);
@@ -7602,7 +8542,59 @@ fn main() -> Result<()> {
                 ..
             } if window_id == main_id && inspect_visible => {
                 place_inspect_right_of(&window, &inspect_window);
+                // Debounced — do not queue a second ReassertGlass (that storms)
+                reassert_all_glass(
+                    &window,
+                    webview.as_ref(),
+                    &inspect_window,
+                    inspect_wv.as_ref(),
+                );
             }
+            Event::WindowEvent {
+                window_id,
+                event: WindowEvent::Moved(_) | WindowEvent::Resized(_),
+                ..
+            } if window_id == inspect_id => {
+                // Inspect dragged to vertical second screen / maximized there
+                reassert_all_glass(
+                    &window,
+                    webview.as_ref(),
+                    &inspect_window,
+                    inspect_wv.as_ref(),
+                );
+            }
+            Event::WindowEvent {
+                window_id,
+                event: WindowEvent::ScaleFactorChanged { scale_factor, .. },
+                ..
+            } => {
+                eprintln!(
+                    "glass: ScaleFactorChanged window={:?} scale={scale_factor:.2}",
+                    window_id
+                );
+                reassert_all_glass(
+                    &window,
+                    webview.as_ref(),
+                    &inspect_window,
+                    inspect_wv.as_ref(),
+                );
+            }
+            Event::WindowEvent {
+                window_id,
+                event: WindowEvent::Focused(true),
+                ..
+            } => {
+                // Focus after Spaces / fullscreen exit — debounced reassert only
+                if window_id == main_id || window_id == inspect_id {
+                    reassert_all_glass(
+                        &window,
+                        webview.as_ref(),
+                        &inspect_window,
+                        inspect_wv.as_ref(),
+                    );
+                }
+            }
+            // No MainEventsCleared glass heartbeat — that was storming and crashing
             _ => {}
         }
     });

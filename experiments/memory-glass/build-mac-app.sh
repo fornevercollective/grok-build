@@ -37,7 +37,8 @@ chmod +x "$MACOS/memory-glass"
   echo "exe_path=Contents/MacOS/memory-glass"
   if [[ -f "$ROOT/BUILD_STAMP" ]]; then cat "$ROOT/BUILD_STAMP"; fi
 } > "$RES/BUILD_STAMP"
-cp -f "$RES/BUILD_STAMP" "$MACOS/BUILD_STAMP" 2>/dev/null || true
+# Do NOT put BUILD_STAMP in MacOS/ — taskgated treats extra files there as
+# unsigned code objects → SIGKILL (Code Signature Invalid) on launch.
 
 # CFBundleExecutable wrapper — passes URL args through
 cat > "$MACOS/Memory Glass" << 'WRAP'
@@ -149,11 +150,33 @@ touch "$APP_DIR" "$APP_DIR/Contents/Info.plist" "$RES/AppIcon.icns" 2>/dev/null 
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
   -f "$APP_DIR" 2>/dev/null || true
 
+# Ad-hoc codesign so TCC Camera permission sticks across launches
+# (unsigned rebuilds look like a new app → "would like to access the camera" every time)
+if command -v codesign >/dev/null 2>&1; then
+  xattr -cr "$APP_DIR" 2>/dev/null || true
+  if codesign --force --deep -s - \
+    --identifier "dev.fornevercollective.memory-glass" \
+    --entitlements /dev/null \
+    "$APP_DIR" 2>/dev/null \
+    || codesign --force --deep -s - --identifier "dev.fornevercollective.memory-glass" "$APP_DIR" 2>/dev/null; then
+    echo "  Codesign: ad-hoc (stable id · TCC camera can persist)"
+  else
+    echo "  Codesign: skipped/fail (camera TCC may re-prompt each rebuild)" >&2
+  fi
+fi
+
 # Mirror to ~/Applications so "open -a Memory Glass" / Dock hits the same build
 if [[ -d "$HOME/Applications" ]]; then
   rm -rf "$HOME/Applications/Memory Glass.app"
   cp -R "$APP_DIR" "$HOME/Applications/Memory Glass.app"
   xattr -cr "$HOME/Applications/Memory Glass.app" 2>/dev/null || true
+  # Re-sign AFTER copy — cp can invalidate sealed hashes / leave binary linker-only signed
+  if command -v codesign >/dev/null 2>&1; then
+    codesign --force --deep -s - \
+      --identifier "dev.fornevercollective.memory-glass" \
+      "$HOME/Applications/Memory Glass.app" 2>/dev/null \
+      || echo "  WARN: post-install codesign failed" >&2
+  fi
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
     -f "$HOME/Applications/Memory Glass.app" 2>/dev/null || true
   echo "  Installed: $HOME/Applications/Memory Glass.app"

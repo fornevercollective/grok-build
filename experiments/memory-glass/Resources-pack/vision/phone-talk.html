@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>MG · phone talk</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100dvh; padding: 14px;
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0a0e14; color: #e8f0ff;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    h1 { font-size: 1.05rem; color: #8ecbff; margin: 0; }
+    .sub { font-size: 0.85rem; color: #9ab; line-height: 1.35; }
+    .banner {
+      display: none; padding: 10px 12px; border-radius: 10px;
+      background: #2a1a10; border: 1px solid #a06030; color: #ffd0a0; font-size: 13px;
+    }
+    .banner.show { display: block; }
+    .row { display: flex; gap: 8px; }
+    button {
+      flex: 1; min-height: 52px; border-radius: 12px; border: 1px solid #2a3a50;
+      background: #152033; color: #e8f0ff; font-size: 16px; font-weight: 700;
+    }
+    button.go { background: #1a5a3a; border-color: #3a9a5a; }
+    button.stop { background: #4a1a1a; border-color: #a04040; }
+    button:disabled { opacity: 0.4; }
+    #pulse {
+      height: 8px; border-radius: 4px; background: #1a2535; overflow: hidden;
+    }
+    #pulse > i {
+      display: block; height: 100%; width: 0%; background: #3d8; transition: width 0.15s;
+    }
+    #log {
+      flex: 1; font: 12px/1.4 ui-monospace, Menlo, monospace; color: #9ab;
+      white-space: pre-wrap; overflow: auto; min-height: 6em;
+    }
+    .ok { color: #6d6; } .err { color: #f66; } .you { color: #8ecbff; }
+  </style>
+</head>
+<body>
+  <h1>Phone mic → Mini → Grok → headphones</h1>
+  <p class="sub">
+    You speak on the phone. Mini hears the transcript, Grok answers,
+    audio plays on Mini <b>headphone jack</b> (not phone speaker).
+  </p>
+  <div id="insecure" class="banner"></div>
+  <div class="row">
+    <button class="go" id="start" type="button">Talk</button>
+    <button class="stop" id="stop" type="button">Stop</button>
+  </div>
+  <div id="pulse"><i id="bar"></i></div>
+  <div id="log">…</div>
+  <script>
+    (function () {
+      var logEl = document.getElementById("log");
+      var bar = document.getElementById("bar");
+      var banner = document.getElementById("insecure");
+      var BASE = location.origin;
+      var rec = null, stream = null, mr = null, running = false, n = 0;
+
+      var secure = window.isSecureContext === true
+        || location.protocol === "https:"
+        || location.hostname === "localhost"
+        || location.hostname === "127.0.0.1";
+
+      function errText(e) {
+        if (e == null) return "unknown";
+        if (typeof e === "string") return e;
+        if (e.name && e.message) return e.name + ": " + e.message;
+        if (e.message) return String(e.message);
+        try { return String(e); } catch (_) { return "error"; }
+      }
+      function log(msg, cls) {
+        logEl.textContent = (cls ? "[" + cls + "] " : "") + msg + "\n" + logEl.textContent.slice(0, 1600);
+      }
+
+      if (!secure) {
+        banner.className = "banner show";
+        var h = location.hostname;
+        banner.innerHTML =
+          "Need HTTPS for mic. Open <a href=\"https://" + h + ":9878/phone-talk.html\">https://" +
+          h + ":9878/phone-talk.html</a> (cert trusted via setup page).";
+        document.getElementById("start").disabled = true;
+        log("insecure · use HTTPS :9878", "err");
+      } else {
+        log("secure · " + BASE, "ok");
+      }
+
+      function postTranscript(text) {
+        text = (text || "").trim();
+        if (text.length < 2) return;
+        n += 1;
+        log("you: " + text, "you");
+        fetch(BASE + "/transcript", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text, src: "phone-talk" }),
+          cache: "no-store"
+        }).then(function (r) { return r.json(); }).then(function (j) {
+          if (j && j.ok) log("→ Mini inbox", "ok");
+          else log("inbox fail " + JSON.stringify(j), "err");
+        }).catch(function (e) { log("transcript: " + errText(e), "err"); });
+      }
+
+      function postAudioBlob(blob) {
+        if (!blob || blob.size < 200) return;
+        fetch(BASE + "/audio", {
+          method: "POST",
+          headers: { "Content-Type": blob.type || "audio/mp4" },
+          body: blob,
+          cache: "no-store"
+        }).catch(function () {});
+      }
+
+      async function start() {
+        stop();
+        running = true;
+        bar.style.width = "30%";
+
+        // 1) Prefer on-device speech recognition → text to Mini (fast path, no whisper)
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR) {
+          rec = new SR();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = "en-US";
+          rec.onresult = function (ev) {
+            var i = ev.resultIndex;
+            for (; i < ev.results.length; i++) {
+              if (ev.results[i].isFinal) {
+                postTranscript(ev.results[i][0].transcript);
+                bar.style.width = "90%";
+                setTimeout(function () { if (running) bar.style.width = "40%"; }, 200);
+              } else {
+                bar.style.width = String(20 + Math.min(60, (ev.results[i][0].transcript || "").length)) + "%";
+              }
+            }
+          };
+          rec.onerror = function (e) {
+            log("speech: " + (e.error || errText(e)), "err");
+          };
+          rec.onend = function () {
+            if (running) {
+              try { rec.start(); } catch (_) {}
+            }
+          };
+          try {
+            rec.start();
+            log("speech recognition on (phone → transcript → Mini)", "ok");
+          } catch (e) {
+            log("speech start: " + errText(e), "err");
+          }
+        } else {
+          log("no SpeechRecognition — audio chunks only", "err");
+        }
+
+        // 2) Also stream audio blobs for optional whisper / archive
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          var mime = "";
+          if (window.MediaRecorder) {
+            ["audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm"].forEach(function (m) {
+              if (!mime && MediaRecorder.isTypeSupported(m)) mime = m;
+            });
+            mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+            mr.ondataavailable = function (e) {
+              if (e.data && e.data.size) postAudioBlob(e.data);
+            };
+            mr.start(2500);
+            log("audio chunks → /audio (" + (mime || "default") + ")", "ok");
+          }
+        } catch (e) {
+          log("mic: " + errText(e), "err");
+        }
+      }
+
+      function stop() {
+        running = false;
+        bar.style.width = "0%";
+        try { if (rec) rec.stop(); } catch (_) {}
+        rec = null;
+        try { if (mr && mr.state !== "inactive") mr.stop(); } catch (_) {}
+        mr = null;
+        if (stream) {
+          stream.getTracks().forEach(function (t) { try { t.stop(); } catch (_) {} });
+          stream = null;
+        }
+      }
+
+      document.getElementById("start").onclick = function () {
+        start().catch(function (e) { log(errText(e), "err"); });
+      };
+      document.getElementById("stop").onclick = function () {
+        stop();
+        log("stopped", "ok");
+      };
+    })();
+  </script>
+</body>
+</html>

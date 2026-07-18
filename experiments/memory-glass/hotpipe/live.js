@@ -1,14 +1,22 @@
 /* Memory Glass hotpipe/live.js v18-hurdles
  * H1 hands/air + bridge for hurdles.js (H2–H9)
  * Inspect-first · still-pipe only · no main PAGE thrash
+ * v24: iPhone still-pipe camera flip — no double-mirror skeleton (inverted controller)
+ * v25: full-body IK hooks (body-pose.js MediaPipe Pose) + hand camflip
  */
 (function () {
   "use strict";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
-  var VER = "live-v18-hurdles";
+  var VER = "live-v25-body-ik";
   var MAX_FACES = 4;
   var PATH_MAX = 96; /* fencing trail length (samples) */
   var PATH_MIN_DIST = 0.0018; /* ignore micro-jitter in norm space */
+  /* Hand IK scale: match real palm in the still-pipe frame.
+   * Far/tiny hands get a mild boost; close/large palms stay ~1× (no giant skeleton). */
+  var HAND_TARGET_SPAN = 0.16; /* mild far-hand boost only */
+  var HAND_MAX_SPAN = 0.22; /* never draw open hand larger than this of frame */
+  var lastSrcW = 720,
+    lastSrcH = 960;
   var HAND_CHAINS = [
     [0, 1, 2, 3, 4],
     [0, 5, 6, 7, 8],
@@ -132,6 +140,29 @@
     showHands: true,
     handOpacity: 0.72,
     handPaths: true,
+    handRigAuto: true,
+    handRigScale: 1.0, /* identity — auto only boosts when palm is tiny */
+    handTargetSpan: HAND_TARGET_SPAN,
+    handMaxSpan: HAND_MAX_SPAN,
+    handMatchFace: true, /* soft cap to face size; never inflate past real palm */
+    /* iPhone / still-pipe selfie:
+     * #pip-stream + #pip-overlay already CSS scaleX(-1).
+     * MediaPipe landmarks are in raw JPEG space (sensor, not preview-mirrored).
+     * Drawing with an extra X flip = double-mirror = inverted gamepad
+     * (thumb/pinky swapped, palm facing you wrong). Keep draw unflipped;
+     * flip only IPC air-pointer so page coords match the mirrored view. */
+    pipCssMirror: true,
+    handLandmarkMirror: false,
+    handIpcFlipX: true,
+    /* full-body IK (body-pose.js) — same cam-flip rules as hands */
+    showBody: true,
+    bodyOpacity: 0.7,
+    bodyRigAuto: true,
+    bodyRigScale: 1.0,
+    showBodyAngles: true,
+    poseFast: true,
+    poseGainYaw: 1.75,
+    poseGainPitch: 1.55,
   });
   /* migrate old overpowering saves downward once */
   if (ui.meshOpacity > 0.45) ui.meshOpacity = 0.28;
@@ -140,6 +171,59 @@
   if (ui.showHands == null) ui.showHands = true;
   if (ui.handOpacity == null) ui.handOpacity = 0.72;
   if (ui.handPaths == null) ui.handPaths = true;
+  if (ui.handRigAuto == null) ui.handRigAuto = true;
+  /* v22: kill giant-hand defaults from v21 localStorage */
+  if (ui.handRigScale == null || ui.handRigScale > 1.15) ui.handRigScale = 1.0;
+  if (ui.handTargetSpan == null || ui.handTargetSpan > 0.2) ui.handTargetSpan = HAND_TARGET_SPAN;
+  if (ui.handMaxSpan == null || ui.handMaxSpan > 0.28) ui.handMaxSpan = HAND_MAX_SPAN;
+  if (ui.handMatchFace == null) ui.handMatchFace = true;
+  if (ui.pipCssMirror == null) ui.pipCssMirror = true;
+  if (ui.handLandmarkMirror == null) ui.handLandmarkMirror = false;
+  if (ui.handIpcFlipX == null) ui.handIpcFlipX = true;
+  if (ui.showBody == null) ui.showBody = true;
+  if (ui.bodyOpacity == null) ui.bodyOpacity = 0.7;
+  if (ui.bodyRigAuto == null) ui.bodyRigAuto = true;
+  if (ui.bodyRigScale == null) ui.bodyRigScale = 1.0;
+  if (ui.showBodyAngles == null) ui.showBodyAngles = true;
+  if (ui.poseFast == null) ui.poseFast = true;
+  if (ui.poseGainYaw == null) ui.poseGainYaw = 1.75;
+  if (ui.poseGainPitch == null) ui.poseGainPitch = 1.55;
+  try {
+    /* one-shot force-save sane hand keys so sticky v21 1.55 dies */
+    if (!ui._handFitV22) {
+      ui.handRigScale = 1.0;
+      ui.handTargetSpan = HAND_TARGET_SPAN;
+      ui.handMaxSpan = HAND_MAX_SPAN;
+      ui._handFitV22 = true;
+      saveJSON("mg.calibUi.v1", ui);
+    }
+    /* v24: ALWAYS kill sticky handLandmarkMirror:true from older sessions.
+     * Hot-reload alone used to leave the closed-over ui inverted. */
+    if (!ui._handMirrorV24 || ui.handLandmarkMirror === true) {
+      ui.handLandmarkMirror = false;
+      ui.pipCssMirror = true;
+      ui.handIpcFlipX = true;
+      ui._handMirrorV24 = true;
+      saveJSON("mg.calibUi.v1", ui);
+    }
+  } catch (eMig) {}
+  /* live object for hot-reload patches (same reference drawHands closes over) */
+  window.__mgCalibUi = ui;
+  function applyIphoneCamFlipFix(target) {
+    if (!target) return;
+    target.handLandmarkMirror = false;
+    target.pipCssMirror = true;
+    target.handIpcFlipX = true;
+    target._handMirrorV24 = true;
+    try {
+      if (window.__mgLens && window.__mgLens.state) window.__mgLens.state.mirror = false;
+    } catch (eL) {}
+  }
+  applyIphoneCamFlipFix(ui);
+  /* If inspect already running from prior inject, patch THAT ui and bail early later */
+  if (window.__mgCalibUiLive && window.__mgCalibUiLive !== ui) {
+    applyIphoneCamFlipFix(window.__mgCalibUiLive);
+  }
 
   /* Spatial head-lock calibration state */
   var spatial = loadJSON("mg.spatialCalib.v1", {
@@ -349,8 +433,19 @@
     window.__mgInspectSetAxis = function () {};
   }
 
-  if (HP._run15) return;
+  if (HP._run15) {
+    /* Hot Reload: cannot rebind closed-over loops, but CAN fix cam-flip on live ui */
+    try {
+      applyIphoneCamFlipFix(window.__mgCalibUiLive || window.__mgCalibUi);
+      var lblR = document.getElementById("pip-lbl");
+      if (lblR) lblR.textContent = "SPATIAL · " + VER + " · camflip";
+      ok("hot patch camflip · " + VER + " · handLandmarkMirror=false");
+    } catch (eHR) {}
+    return;
+  }
   HP._run15 = true;
+  /* stable ref so later hot-reloads can patch without re-init */
+  window.__mgCalibUiLive = ui;
 
   var tracks = [];
   var nextId = 1;
@@ -535,7 +630,10 @@
     tog("showPaths", "PATHS");
     tog("showHands", "HANDS");
     tog("handPaths", "HAND PATH");
+    tog("handRigAuto", "HAND FOV AUTO");
     slider("handOpacity", "HAND α", 0.2, 1, 0.02);
+    slider("handRigScale", "HAND RIG ×", 0.8, 3.5, 0.05);
+    slider("handTargetSpan", "HAND SPAN", 0.12, 0.4, 0.01);
     btn(
       "TIP · " + (ui.pathTips || "all").toUpperCase(),
       "on",
@@ -868,18 +966,92 @@
       dy = R.y - L.y;
     var eyeD = Math.hypot(dx, dy) || 0.12;
     var roll = Math.atan2(dy, dx);
-    var yaw = clamp(((N.x - (L.x + R.x) * 0.5) / eyeD) * 1.4, -1.2, 1.2);
-    var pitch = F && C ? clamp(((N.y - (F.y + C.y) * 0.5) / eyeD) * 1.2, -1.2, 1.2) : 0;
-    var zScale = clamp((0.14 - eyeD) * 5, -1.2, 1.2);
-    var zMesh = N.z != null ? clamp(N.z * 8, -1, 1) : 0;
+    /* Phone still-pipe: small faces + soft light → weak pivot signal.
+     * Higher gains + light FOV depthScale so pans read faster off screen. */
+    var gY = ui.poseGainYaw != null ? +ui.poseGainYaw : 1.75;
+    var gP = ui.poseGainPitch != null ? +ui.poseGainPitch : 1.55;
+    try {
+      if (window.__mgLens && window.__mgLens.depthScale) {
+        var dg = window.__mgLens.depthScale(eyeD);
+        gY *= 0.85 + dg * 0.2;
+        gP *= 0.85 + dg * 0.2;
+      }
+    } catch (eG) {}
+    var yaw = clamp(((N.x - (L.x + R.x) * 0.5) / eyeD) * gY, -1.35, 1.35);
+    var pitch = F && C ? clamp(((N.y - (F.y + C.y) * 0.5) / eyeD) * gP, -1.35, 1.35) : 0;
+    /* cheek asymmetry as yaw assist when nose offset is weak (soft light) */
+    try {
+      var chL = lm[234] || lm[93],
+        chR = lm[454] || lm[323];
+      if (chL && chR && eyeD > 0.02) {
+        var cheek = ((chR.x - N.x) - (N.x - chL.x)) / eyeD;
+        yaw = clamp(yaw * 0.72 + cheek * 0.55 * (gY / 1.75), -1.35, 1.35);
+      }
+    } catch (eC) {}
+    var zScale = clamp((0.14 - eyeD) * 5.5, -1.2, 1.2);
+    var zMesh = N.z != null ? clamp(N.z * 9, -1, 1) : 0;
     return {
       yaw: yaw,
       pitch: pitch,
       roll: roll,
-      z: zScale * 0.65 + zMesh * 0.35,
+      z: zScale * 0.6 + zMesh * 0.4,
       nx: (L.x + R.x) * 0.5,
       ny: N.y,
+      eyeD: eyeD,
     };
+  }
+
+  /** Adaptive EMA: big head pans snap faster; micro jitter stays soft (still-pipe lag). */
+  function smoothPose(prev, next, baseA) {
+    if (prev == null || !ui.poseFast) return next;
+    var dy = Math.abs((next.yaw || 0) - (prev.yaw || 0));
+    var dp = Math.abs((next.pitch || 0) - (prev.pitch || 0));
+    var dr = Math.abs((next.roll || 0) - (prev.roll || 0));
+    var mag = Math.max(dy, dp, dr * 0.5);
+    /* baseA default ~0.35; pan → up to 0.72; idle → ~0.22 */
+    var a = baseA != null ? baseA : 0.35;
+    if (mag > 0.08) a = Math.min(0.78, a + mag * 2.2);
+    else if (mag < 0.015) a = Math.max(0.18, a * 0.7);
+    return {
+      yaw: lerp(prev.yaw || 0, next.yaw || 0, a),
+      pitch: lerp(prev.pitch || 0, next.pitch || 0, a),
+      roll: lerp(prev.roll || 0, next.roll || 0, a),
+      z: lerp(prev.z || 0, next.z || 0, Math.min(0.65, a + 0.05)),
+      nx: next.nx,
+      ny: next.ny,
+      eyeD: next.eyeD,
+    };
+  }
+
+  function applyPoseToTrack(tr, pose, baseA) {
+    var sm = smoothPose(
+      { yaw: tr.yaw, pitch: tr.pitch, roll: tr.roll, z: tr.z, nx: tr.nx, ny: tr.ny },
+      pose,
+      baseA
+    );
+    tr.yaw = sm.yaw;
+    tr.pitch = sm.pitch;
+    tr.roll = sm.roll;
+    tr.z = sm.z;
+    tr.nx = sm.nx;
+    tr.ny = sm.ny;
+    /* box center velocity → pan assist when mesh weak / phone lag */
+    if (tr.box && tr._lastBoxCx != null && ui.poseFast) {
+      var cx = tr.box.x + tr.box.width * 0.5;
+      var cy = tr.box.y + tr.box.height * 0.5;
+      var vw = tr._vw || lastSrcW || 640;
+      var vh = tr._vh || lastSrcH || 480;
+      var vx = (cx - tr._lastBoxCx) / Math.max(1, vw);
+      var vy = (cy - tr._lastBoxCy) / Math.max(1, vh);
+      /* only blend when box is moving more than pose (soft light nose fails) */
+      if (Math.abs(vx) > 0.004) tr.yaw = clamp(tr.yaw + vx * 3.2, -1.35, 1.35);
+      if (Math.abs(vy) > 0.004) tr.pitch = clamp(tr.pitch + vy * 2.8, -1.35, 1.35);
+      tr._lastBoxCx = cx;
+      tr._lastBoxCy = cy;
+    } else if (tr.box) {
+      tr._lastBoxCx = tr.box.x + tr.box.width * 0.5;
+      tr._lastBoxCy = tr.box.y + tr.box.height * 0.5;
+    }
   }
 
   function matchTracks(dets) {
@@ -1201,6 +1373,120 @@
     ctx.fill();
   }
 
+  /**
+   * Hand IK size-fit (v22):
+   *  - Close palm (large span in frame) → scale ≈ 1 (match real hand; NO giant)
+   *  - Far/tiny palm → mild boost toward handTargetSpan
+   *  - Hard cap: span * s ≤ handMaxSpan (and ≤ ~face height if face present)
+   *  - May shrink slightly if previous boost left hand oversized
+   */
+  function handFovRig(lm) {
+    var palmIds = [0, 5, 9, 13, 17];
+    var pcx = 0,
+      pcy = 0,
+      nPalm = 0;
+    for (var i = 0; i < palmIds.length; i++) {
+      var p = lm[palmIds[i]];
+      if (!p) continue;
+      pcx += p.x;
+      pcy += p.y;
+      nPalm++;
+    }
+    if (!nPalm) return { pcx: 0.5, pcy: 0.5, span: 0.1, s: 1, auto: 1, zBoost: 1, target: 0.16 };
+    pcx /= nPalm;
+    pcy /= nPalm;
+    var span = 0,
+      nTip = 0;
+    for (var t = 0; t < HAND_TIPS.length; t++) {
+      var tip = lm[HAND_TIPS[t]];
+      if (!tip) continue;
+      span += Math.hypot(tip.x - pcx, tip.y - pcy);
+      nTip++;
+    }
+    span = nTip ? span / nTip : 0.08;
+    span = Math.max(0.02, span);
+
+    var target = ui.handTargetSpan != null ? +ui.handTargetSpan : HAND_TARGET_SPAN;
+    var maxSpan = ui.handMaxSpan != null ? +ui.handMaxSpan : HAND_MAX_SPAN;
+    try {
+      if (window.__mgLens && window.__mgLens.handTargetSpan) {
+        /* lens may suggest a mild far-hand target — never force huge */
+        target = Math.min(0.2, Math.max(target, window.__mgLens.handTargetSpan() * 0.55));
+      }
+    } catch (eT) {}
+
+    var faceH = 0;
+    if (ui.handMatchFace !== false && tracks[0] && tracks[0].box) {
+      var vh = tracks[0]._vh || lastSrcH || 960;
+      faceH = (tracks[0].box.height || 0) / Math.max(1, vh);
+      if (faceH > 0.05 && faceH < 0.6) {
+        /* open hand at same depth ≈ 0.75–0.95 face height — use as CAP not inflate floor */
+        maxSpan = Math.min(maxSpan, Math.max(0.14, faceH * 0.9));
+      }
+    }
+
+    var auto = 1;
+    if (ui.handRigAuto !== false) {
+      if (span >= maxSpan * 0.92) {
+        /* already large / close — stay true to landmarks (maybe tiny shrink) */
+        auto = Math.min(1, maxSpan / span);
+      } else if (span >= target) {
+        /* mid size — no boost */
+        auto = 1;
+      } else {
+        /* far / tiny — mild boost only */
+        auto = Math.min(1.85, target / span);
+      }
+    }
+    var manual = ui.handRigScale != null ? +ui.handRigScale : 1.0;
+    if (!(manual > 0.5)) manual = 1;
+    var s = auto * manual;
+    /* hard cap: never let drawn span exceed maxSpan */
+    if (span * s > maxSpan) s = maxSpan / span;
+    /* clamp overall */
+    s = Math.max(0.75, Math.min(2.0, s));
+
+    var zBoost = 1 + Math.max(0, s - 1) * 0.35;
+    return {
+      pcx: pcx,
+      pcy: pcy,
+      span: span,
+      s: s,
+      auto: auto,
+      zBoost: zBoost,
+      target: target,
+      maxSpan: maxSpan,
+      faceH: faceH,
+    };
+  }
+
+  /**
+   * Landmark → overlay px.
+   * When #pip-overlay is CSS scaleX(-1) (selfie), landmarks stay in JPEG space
+   * and the CSS flip aligns them with the mirrored video. Flipping here too
+   * double-mirrors → inverted hand (thumb/pinky swapped like bad controller).
+   */
+  function lmToPx(nx, ny, W, H) {
+    var mirrorDraw = ui.handLandmarkMirror === true;
+    /* if CSS already mirrors the overlay, never double-flip */
+    if (ui.pipCssMirror !== false && ui.handLandmarkMirror !== true) {
+      mirrorDraw = false;
+    }
+    try {
+      if (typeof window.__mgMapCover === "function") {
+        var m = window.__mgMapCover(nx, ny, W, H, {
+          srcW: lastSrcW,
+          srcH: lastSrcH,
+          mirror: mirrorDraw,
+        });
+        return { x: m.x, y: m.y };
+      }
+    } catch (eM) {}
+    /* fallback: same rule as cover map */
+    var x = mirrorDraw ? (1 - nx) * W : nx * W;
+    return { x: x, y: ny * H };
+  }
+
   /** Inspect-only expansion hands (Ender / Ash-Thorp rings) — never touches main body */
   function drawHandsInspect(ctx, W, H) {
     if (!ui.showHands) {
@@ -1221,12 +1507,29 @@
     }
     var maxExpand = 0;
     var primary = null;
+    var lastRigS = 1;
     for (var hi = 0; hi < hands.length; hi++) {
       var lm = hands[hi];
       if (!lm || lm.length < 21) continue;
+      var rig = handFovRig(lm);
+      lastRigS = rig.s;
       function HP(i) {
         var p = lm[i];
-        return { x: p.x * W, y: p.y * H, nx: p.x, ny: p.y, z: p.z || 0 };
+        var nx = rig.pcx + (p.x - rig.pcx) * rig.s;
+        var ny = rig.pcy + (p.y - rig.pcy) * rig.s;
+        /* soft clamp so expanded tips stay drawable */
+        if (nx < -0.08) nx = -0.08;
+        if (nx > 1.08) nx = 1.08;
+        if (ny < -0.08) ny = -0.08;
+        if (ny > 1.08) ny = 1.08;
+        var px = lmToPx(nx, ny, W, H);
+        return {
+          x: px.x,
+          y: px.y,
+          nx: nx,
+          ny: ny,
+          z: (p.z || 0) * rig.zBoost,
+        };
       }
       var wrist = HP(0);
       var idxTip = HP(8);
@@ -1243,9 +1546,10 @@
       var openSpan = 0;
       for (var ti = 0; ti < HAND_TIPS.length; ti++) openSpan += dist2(wrist, HP(HAND_TIPS[ti]));
       openSpan /= HAND_TIPS.length;
-      var expandN = Math.max(0, Math.min(1.6, openSpan / Math.max(H * 0.18, 1) - 0.35));
+      /* expand relative to scaled span (phone FOV already compensated) */
+      var expandN = Math.max(0, Math.min(1.8, openSpan / Math.max(H * 0.14, 1) - 0.2));
       var pinchD = dist2(thumbTip, idxTip);
-      var pinchN = Math.max(0.35, Math.min(1.8, pinchD / Math.max(H * 0.06, 1)));
+      var pinchN = Math.max(0.35, Math.min(1.8, pinchD / Math.max(H * 0.05, 1)));
       if (expandN > maxExpand) maxExpand = expandN;
       if (!primary) {
         primary = {
@@ -1255,21 +1559,23 @@
           expand: expandN,
           palmX: palmCx / W,
           palmY: palmCy / H,
+          rigS: rig.s,
         };
       }
-      /* palm rings */
-      var ringMax = 22 + expandN * 70;
+      /* palm rings — grow with FOV rig so they don't look like pin-dots */
+      var ringMax = (26 + expandN * 85) * Math.sqrt(rig.s);
       for (var r = 0; r < 4; r++) {
         var rr = ringMax * (0.35 + r * 0.22);
         ctx.beginPath();
         ctx.arc(palmCx, palmCy, rr, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(120,200,255," + (a * (0.32 - r * 0.05)).toFixed(2) + ")";
-        ctx.lineWidth = 1 + (3 - r) * 0.35;
+        ctx.strokeStyle = "rgba(120,200,255," + (a * (0.35 - r * 0.05)).toFixed(2) + ")";
+        ctx.lineWidth = (1.1 + (3 - r) * 0.4) * Math.min(1.8, Math.sqrt(rig.s));
         ctx.stroke();
       }
       /* skeleton */
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
+      var lw = Math.min(2.8, 1.4 * Math.sqrt(rig.s));
       for (var ci = 0; ci < HAND_CHAINS.length; ci++) {
         var ch = HAND_CHAINS[ci];
         ctx.beginPath();
@@ -1278,19 +1584,30 @@
           if (j === 0) ctx.moveTo(q.x, q.y);
           else ctx.lineTo(q.x, q.y);
         }
-        ctx.strokeStyle = "rgba(140,210,255," + (a * (ci === 5 ? 0.4 : 0.65)).toFixed(2) + ")";
-        ctx.lineWidth = ci === 5 ? 2.2 : 1.5;
+        ctx.strokeStyle = "rgba(140,210,255," + (a * (ci === 5 ? 0.45 : 0.7)).toFixed(2) + ")";
+        ctx.lineWidth = ci === 5 ? lw * 1.35 : lw;
         ctx.stroke();
       }
+      /* Joint pivots: wrist + MCP + PIP + tips — general IK pivots readable under soft light */
+      var pivotSet = { 0: 1, 5: 1, 9: 1, 13: 1, 17: 1, 6: 1, 10: 1, 14: 1, 18: 1, 8: 1, 4: 1, 12: 1, 16: 1, 20: 1 };
+      var jR = Math.max(2.4, 2.15 * Math.sqrt(rig.s));
       for (var ji = 0; ji < 21; ji++) {
         var jn = HP(ji);
-        ctx.fillStyle =
-          ji === 8 || ji === 4
-            ? "rgba(255,255,255," + (a * 0.95).toFixed(2) + ")"
-            : "rgba(120,200,255," + (a * 0.75).toFixed(2) + ")";
+        var isPivot = !!pivotSet[ji];
+        var isTip = ji === 8 || ji === 4 || ji === 12 || ji === 16 || ji === 20;
+        ctx.fillStyle = isTip
+          ? "rgba(255,255,255," + (a * 0.96).toFixed(2) + ")"
+          : isPivot
+            ? "rgba(160,230,255," + (a * 0.88).toFixed(2) + ")"
+            : "rgba(100,180,230," + (a * 0.55).toFixed(2) + ")";
         ctx.beginPath();
-        ctx.arc(jn.x, jn.y, ji === 0 ? 3.2 : 2, 0, Math.PI * 2);
+        ctx.arc(jn.x, jn.y, ji === 0 ? jR * 1.55 : isPivot ? jR * 1.15 : jR * 0.75, 0, Math.PI * 2);
         ctx.fill();
+        if (isPivot) {
+          ctx.strokeStyle = "rgba(255,255,255," + (a * 0.35).toFixed(2) + ")";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
       }
       /* pinch bond */
       ctx.beginPath();
@@ -1298,31 +1615,40 @@
       ctx.lineTo(idxTip.x, idxTip.y);
       ctx.strokeStyle =
         pinchN < 0.75 ? "rgba(255,220,140," + (a * 0.9).toFixed(2) + ")" : "rgba(140,200,255," + (a * 0.25).toFixed(2) + ")";
-      ctx.lineWidth = pinchN < 0.75 ? 2 : 1;
+      ctx.lineWidth = pinchN < 0.75 ? 2.2 * Math.sqrt(rig.s) : 1;
       ctx.stroke();
       /* air pointer = index tip */
+      var cross = 10 * Math.sqrt(rig.s);
       ctx.strokeStyle = "rgba(255,255,255," + (a * 0.85).toFixed(2) + ")";
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.3 * Math.sqrt(rig.s);
       ctx.beginPath();
-      ctx.moveTo(idxTip.x - 10, idxTip.y);
-      ctx.lineTo(idxTip.x + 10, idxTip.y);
-      ctx.moveTo(idxTip.x, idxTip.y - 10);
-      ctx.lineTo(idxTip.x, idxTip.y + 10);
+      ctx.moveTo(idxTip.x - cross, idxTip.y);
+      ctx.lineTo(idxTip.x + cross, idxTip.y);
+      ctx.moveTo(idxTip.x, idxTip.y - cross);
+      ctx.lineTo(idxTip.x, idxTip.y + cross);
       ctx.stroke();
     }
     if (primary) {
       var prev = handGesture;
-      var spd = prev.present ? Math.hypot(primary.nx - prev.nx, primary.ny - prev.ny) * 40 : 0;
+      /* Display / IPC X: flip when PIP is selfie-mirrored so air pointer matches what you see */
+      var ipcNx = primary.nx;
+      if (ui.handIpcFlipX !== false && ui.pipCssMirror !== false) {
+        ipcNx = 1 - primary.nx;
+      }
+      var spd = prev.present ? Math.hypot(ipcNx - prev.nx, primary.ny - prev.ny) * 40 : 0;
       handGesture = {
         present: true,
-        nx: primary.nx,
+        nx: ipcNx,
         ny: primary.ny,
         pinch: primary.pinch,
         expand: maxExpand,
         conf: 0.9,
         engine: "mediapipe-hands",
         hands: hands,
+        rigS: lastRigS,
+        rawNx: primary.nx,
       };
+      /* path samples in draw space (JPEG/norm, CSS overlay mirrors) */
       pushHandPathSample(primary.nx, primary.ny, spd);
       drawHandPath(ctx, W, H, a * 0.9);
       ctx.fillStyle = "rgba(160,210,255," + (a * 0.75).toFixed(2) + ")";
@@ -1332,6 +1658,8 @@
           primary.pinch.toFixed(2) +
           " · expand " +
           maxExpand.toFixed(2) +
+          " · IK×" +
+          lastRigS.toFixed(2) +
           " · n" +
           hands.length,
         10,
@@ -1343,7 +1671,7 @@
   function postHand() {
     if (!ui.showHands) return;
     var now = Date.now();
-    if (now - lastHandPost < 120) return;
+    if (now - lastHandPost < 70) return; /* snappier air pointer from phone */
     lastHandPost = now;
     var h = handGesture;
     try {
@@ -1606,6 +1934,12 @@
 
     /* H1: hands + air pointer on inspect only (after face HUD) */
     drawHandsInspect(ctx, W, H);
+    /* full-body IK skeleton (body-pose.js) — same cam-flip as hands */
+    try {
+      if (typeof window.__mgDrawBodyAfterHands === "function") {
+        window.__mgDrawBodyAfterHands(ctx, W, H);
+      }
+    } catch (eBodyDraw) {}
   }
 
   function paintGsplat() {
@@ -1774,7 +2108,7 @@
 
   function postPeople() {
     var now = Date.now();
-    if (now - lastPost < 100) return;
+    if (now - lastPost < 55) return; /* faster head pans → main (was 100ms) */
     lastPost = now;
     var people = tracks
       .filter(function (t) {
@@ -1845,13 +2179,7 @@
       tr.scaleRef = built.scaleRef;
       tr.scale = built.scale;
       var pose = poseFromMesh(tr.lm);
-      var a = 0.22;
-      tr.yaw = tr.yaw != null ? lerp(tr.yaw, pose.yaw, a) : pose.yaw;
-      tr.pitch = tr.pitch != null ? lerp(tr.pitch, pose.pitch, a) : pose.pitch;
-      tr.roll = tr.roll != null ? lerp(tr.roll, pose.roll, a) : pose.roll;
-      tr.z = tr.z != null ? lerp(tr.z, pose.z, a) : pose.z;
-      tr.nx = pose.nx;
-      tr.ny = pose.ny;
+      applyPoseToTrack(tr, pose, 0.38);
       /* movement estimation sample (fencing tip path) */
       if (ui.showPaths !== false) pushPathSample(tr);
     });
@@ -1959,12 +2287,7 @@
             if (lms[i]) {
               t.lm = lms[i];
               var pose = poseFromMesh(t.lm);
-              t.yaw = lerp(t.yaw || 0, pose.yaw, 0.28);
-              t.pitch = lerp(t.pitch || 0, pose.pitch, 0.28);
-              t.roll = lerp(t.roll || 0, pose.roll, 0.28);
-              t.z = lerp(t.z || 0, pose.z, 0.28);
-              t.nx = pose.nx;
-              t.ny = pose.ny;
+              applyPoseToTrack(t, pose, 0.42);
               t.scale = t.box.width / vw;
               t.conf = 0.93;
               if (ui.showPaths !== false) pushPathSample(t);
@@ -2064,6 +2387,17 @@
       if (trackImg) trackImg.src = img.src;
       var vw = img.naturalWidth || 1,
         vh = img.naturalHeight || 1;
+      lastSrcW = vw;
+      lastSrcH = vh;
+      try {
+        if (window.__mgLens && window.__mgLens.setSourceSize) {
+          window.__mgLens.setSourceSize(vw, vh);
+        }
+      } catch (eLens) {}
+      /* full-body pose kit (throttled inside body-pose.js) */
+      try {
+        if (typeof window.__mgOnStillFrame === "function") window.__mgOnStillFrame(img);
+      } catch (eBody) {}
       /* H1: alternate / throttle hands send so face path stays primary */
       handTick++;
       if (ui.showHands && mpHands && !mpHandsBusy && handTick % 2 === 0) {
@@ -2143,7 +2477,7 @@
     img.src = FACE + "?t=" + Date.now();
   }
 
-  ok("H1 hands/air · path contrails · spatial lock · " + VER);
+  ok("H1 hands/air · body IK hooks · path contrails · spatial lock · " + VER);
   tick();
 
   window.__mgRoster = roster;
@@ -2157,6 +2491,9 @@
   window.__mgGetLastHands = function () {
     return lastHands;
   };
+  try {
+    if (typeof window.__mgBodyPoseHotPatch === "function") window.__mgBodyPoseHotPatch();
+  } catch (eBp) {}
   window.__mgEditSubject = function (id, patch) {
     Object.assign(rosterById(id), patch || {});
     saveAll();

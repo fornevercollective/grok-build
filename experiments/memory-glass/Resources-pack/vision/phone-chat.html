@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#05060a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Memory Glass" />
+  <title>Memory Glass · phone</title>
+  <meta name="description" content="Memory Glass phone — glass orb · live wallpaper · share photos & links" />
+  <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/brand/grok-logomark-dark.png" />
+  <link rel="stylesheet" href="assets/phone-mg.css?v=mg3" />
+</head>
+<body class="mg-phone">
+  <!-- Full-bleed ambient: live feed + voice-orb aurora (fills top/bottom, no white bars) -->
+  <div class="mg-ambient" aria-hidden="true">
+    <img class="mg-ambient-live is-off" id="ambient-live" alt="" />
+    <div class="mg-ambient-aurora"></div>
+    <div class="mg-ambient-veil"></div>
+    <div class="mg-ambient-grid"></div>
+  </div>
+
+  <div class="mg-app">
+    <header class="mg-top">
+      <img class="mark" src="assets/brand/grok-logomark-light.svg" width="22" height="22" alt="" />
+      <div class="title">Memory Glass · <span id="ph-mode">phone</span></div>
+      <div class="host on" id="ph-host">…</div>
+      <button type="button" class="ghost" id="btn-relay">Relay</button>
+      <button type="button" class="ghost" id="btn-lab">Lab</button>
+    </header>
+
+    <section class="mg-face">
+      <div class="glass-orb" id="orb">
+        <div class="shell"></div>
+        <div class="core">
+          <img src="assets/brand/grok-logomark-light.svg" alt="" draggable="false" />
+        </div>
+      </div>
+      <div class="mg-face-meta">
+        <div class="mode" id="face-mode">glass orb</div>
+        <p class="status" id="status">boot…</p>
+        <div class="mg-quick">
+          <button type="button" class="mg-chip primary" id="btn-hold">Hold</button>
+          <button type="button" class="mg-chip" id="btn-cam">Cam</button>
+          <button type="button" class="mg-chip" id="btn-wallpaper" title="Toggle live wallpaper">Live</button>
+          <button type="button" class="mg-chip" id="btn-refresh">↻</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="insecure" class="mg-banner"></div>
+
+    <main class="mg-panes">
+      <div class="mg-peek mg-panel">
+        <img id="peek" alt="" />
+        <span class="lab" id="peek-lab">still-pipe · live.jpg</span>
+      </div>
+      <div class="mg-log mg-panel" id="log" role="log">
+        <div class="empty">Hold to talk · share photo/link · Mini replies + snapshots</div>
+      </div>
+    </main>
+
+    <footer class="mg-compose">
+      <div class="mg-share-preview" id="share-preview">
+        <img id="share-thumb" alt="" />
+        <div class="meta" id="share-meta">photo ready</div>
+        <button type="button" class="x" id="share-clear" aria-label="Clear">×</button>
+      </div>
+      <div class="mg-compose-tools">
+        <button type="button" class="mg-chip" id="btn-photo">Photo</button>
+        <button type="button" class="mg-chip" id="btn-camera">Snap</button>
+        <button type="button" class="mg-chip" id="btn-link">Link</button>
+      </div>
+      <div class="mg-compose-row">
+        <textarea id="input" rows="2" maxlength="2000" placeholder="Message Mini… paste a link, or attach a photo" aria-label="Composer"></textarea>
+        <button type="button" class="go" id="send">Go</button>
+      </div>
+      <div class="mg-compose-meta">photo · link · Enter send · Hold = talk · Live = wallpaper</div>
+      <input class="mg-hidden" type="file" id="file-photo" accept="image/*" />
+      <input class="mg-hidden" type="file" id="file-camera" accept="image/*" capture="environment" />
+    </footer>
+
+    <nav class="mg-nav" aria-label="Primary">
+      <button type="button" class="on" id="nav-chat"><span class="ico">◎</span>Chat</button>
+      <button type="button" id="nav-cam"><span class="ico">◉</span>Cam</button>
+      <button type="button" id="nav-talk"><span class="ico">◌</span>Talk</button>
+      <button type="button" id="nav-relay"><span class="ico">◈</span>Relay</button>
+    </nav>
+  </div>
+  <div class="mg-toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var BASE = location.origin;
+      var HOST = location.hostname;
+      var secure = window.isSecureContext === true
+        || location.protocol === "https:"
+        || HOST === "localhost" || HOST === "127.0.0.1";
+      var stillHttp = "http://" + HOST + ":9877";
+      var httpsBase = "https://" + HOST + ":9878";
+      /* Prefer same-origin for media when on 9877/9878 */
+      var mediaBase = (location.port === "9877" || location.port === "9878")
+        ? location.origin
+        : stillHttp;
+
+      var $ = function (id) { return document.getElementById(id); };
+      var logEl = $("log"), statusEl = $("status"), orb = $("orb");
+      var holdBtn = $("btn-hold"), toastEl = $("toast");
+      var ambient = $("ambient-live");
+      var rec = null, running = false, toastT = 0;
+      var pendingPhoto = null; /* { blob, name, url } */
+      var wallpaperOn = true;
+      try {
+        var w = localStorage.getItem("mg.phone.wallpaper");
+        if (w === "0") wallpaperOn = false;
+      } catch (e) {}
+
+      $("ph-host").textContent = HOST + (secure ? ":9878" : ":9877");
+
+      function toast(m) {
+        toastEl.textContent = m;
+        toastEl.classList.add("show");
+        clearTimeout(toastT);
+        toastT = setTimeout(function () { toastEl.classList.remove("show"); }, 2000);
+      }
+      function setStatus(html) { statusEl.innerHTML = html; }
+      function errText(e) {
+        if (!e) return "unknown";
+        if (typeof e === "string") return e;
+        return e.message || e.error || String(e);
+      }
+      function esc(s) {
+        return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      }
+      function absMedia(path) {
+        if (!path) return "";
+        if (/^https?:\/\//i.test(path)) return path;
+        if (path.charAt(0) !== "/") path = "/" + path;
+        return mediaBase + path;
+      }
+      function looksLikeUrl(s) {
+        s = (s || "").trim();
+        if (!s) return null;
+        if (/^https?:\/\/\S+/i.test(s)) return s.match(/^https?:\/\/\S+/i)[0];
+        if (/^(www\.)\S+/i.test(s)) return "https://" + s.match(/^\S+/)[0];
+        return null;
+      }
+
+      if (!secure) {
+        var b = $("insecure");
+        b.className = "mg-banner show";
+        b.innerHTML = "Mic / cam need HTTPS. Open <a href=\"" + httpsBase + "/phone-chat.html\">" + httpsBase + "/phone-chat.html</a>";
+        holdBtn.disabled = true;
+      }
+
+      function render(messages) {
+        if (!messages || !messages.length) {
+          logEl.innerHTML = '<div class="empty">Hold to talk · share photo/link · Mini replies + snapshots</div>';
+          return;
+        }
+        var stick = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 80;
+        logEl.innerHTML = messages.map(function (m) {
+          var you = m.role !== "assistant";
+          var t = esc(m.text || "");
+          var ts = m.ts ? m.ts.slice(11, 19) : "";
+          var kind = m.kind || "text";
+          var tag = kind !== "text" ? '<span class="kind-tag">' + esc(kind) + "</span>" : "";
+          var media = "";
+          if (m.image) {
+            var src = absMedia(m.image);
+            media += '<a class="media" href="' + esc(src) + '" target="_blank" rel="noopener">' +
+              '<img src="' + esc(src) + '" alt="" loading="lazy"/></a>';
+          }
+          var link = m.link || looksLikeUrl(m.text);
+          if (link && kind !== "photo") {
+            media += '<a class="link-chip" href="' + esc(link) + '" target="_blank" rel="noopener">' +
+              esc(link.length > 48 ? link.slice(0, 45) + "…" : link) + "</a>";
+          }
+          return '<div class="line ' + (you ? "you" : "lab") + '"><span class="who">' +
+            (you ? "you" : "mini") + (ts ? " " + ts : "") + "</span>" + tag +
+            (t ? " " + t : "") + media + "</div>";
+        }).join("");
+        if (stick) logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function tickLive() {
+        var t = Date.now();
+        var url = stillHttp + "/live.jpg?t=" + t;
+        $("peek").src = url;
+        if (wallpaperOn && ambient) {
+          ambient.src = url;
+          ambient.classList.add("is-on");
+          ambient.classList.remove("is-off");
+        }
+      }
+
+      function setWallpaper(on) {
+        wallpaperOn = !!on;
+        try { localStorage.setItem("mg.phone.wallpaper", wallpaperOn ? "1" : "0"); } catch (e) {}
+        $("btn-wallpaper").classList.toggle("on", wallpaperOn);
+        if (!wallpaperOn && ambient) {
+          ambient.classList.remove("is-on");
+          ambient.classList.add("is-off");
+        } else {
+          tickLive();
+        }
+      }
+      setWallpaper(wallpaperOn);
+
+      function poll() {
+        fetch(stillHttp + "/conversation?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.messages) render(j.messages);
+            if (!running) setStatus("<em>idle</em> · glass · n=" + (j.n || 0));
+          })
+          .catch(function (e) { setStatus("poll · " + errText(e)); });
+        tickLive();
+        fetch(stillHttp + "/health", { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (h) {
+            var age = h.live_age_s;
+            $("peek-lab").textContent = h.live
+              ? "still-pipe · live " + (age != null ? age.toFixed(1) + "s" : "ok")
+              : "still-pipe · waiting · aurora on";
+          })
+          .catch(function () {});
+      }
+
+      function postText(text) {
+        text = (text || "").trim();
+        if (!text && !pendingPhoto) return;
+        var link = looksLikeUrl(text);
+
+        if (pendingPhoto) {
+          setStatus("<em>you</em> → photo…");
+          var fd = new FormData();
+          fd.append("file", pendingPhoto.blob, pendingPhoto.name || "share.jpg");
+          if (text) fd.append("text", text);
+          if (link) fd.append("link", link);
+          fetch(stillHttp + "/share", { method: "POST", body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function () {
+              clearShare();
+              $("input").value = "";
+              setStatus("<em>sent</em> · photo");
+              poll();
+              toast("Photo sent");
+            })
+            .catch(function (e) { setStatus("share · " + errText(e)); });
+          return;
+        }
+
+        if (link && text === link) {
+          setStatus("<em>you</em> → link…");
+          fetch(stillHttp + "/share", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text, link: link, src: "phone-chat" })
+          }).then(function () {
+            $("input").value = "";
+            setStatus("<em>sent</em> · link");
+            poll();
+            toast("Link sent");
+          }).catch(function (e) { setStatus("share · " + errText(e)); });
+          return;
+        }
+
+        setStatus("<em>you</em> → mini…");
+        fetch(stillHttp + "/transcript", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text, src: "phone-chat" })
+        }).then(function () {
+          $("input").value = "";
+          setStatus("<em>sent</em> · waiting Mini…");
+          poll();
+          toast("Sent");
+        }).catch(function (e) { setStatus("send · " + errText(e)); });
+      }
+
+      function clearShare() {
+        if (pendingPhoto && pendingPhoto.url) {
+          try { URL.revokeObjectURL(pendingPhoto.url); } catch (e) {}
+        }
+        pendingPhoto = null;
+        $("share-preview").classList.remove("show");
+        $("share-thumb").removeAttribute("src");
+        $("file-photo").value = "";
+        $("file-camera").value = "";
+      }
+      function setPendingPhoto(file) {
+        if (!file) return;
+        if (pendingPhoto && pendingPhoto.url) {
+          try { URL.revokeObjectURL(pendingPhoto.url); } catch (e) {}
+        }
+        var url = URL.createObjectURL(file);
+        pendingPhoto = { blob: file, name: file.name || "share.jpg", url: url };
+        $("share-thumb").src = url;
+        $("share-meta").textContent = (file.name || "photo") + " · " + Math.round(file.size / 1024) + " KB";
+        $("share-preview").classList.add("show");
+        toast("Photo ready · Go");
+      }
+
+      function startTalk() {
+        if (!secure) { toast("Open HTTPS :9878"); return; }
+        stopTalk();
+        running = true;
+        holdBtn.classList.add("on");
+        holdBtn.textContent = "Live";
+        orb.classList.add("live");
+        $("face-mode").textContent = "talk live";
+        setStatus("<em>listening</em>");
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { setStatus("no speech API"); return; }
+        rec = new SR();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = "en-US";
+        rec.onresult = function (ev) {
+          for (var i = ev.resultIndex; i < ev.results.length; i++) {
+            var tr = (ev.results[i][0].transcript || "");
+            var conf = ev.results[i][0].confidence;
+            /* organic voice energy for orb (interim length + conf) */
+            var energy = Math.min(1, (tr.length / 28) * 0.55 + (isFinite(conf) ? conf * 0.45 : 0.35));
+            try { orb.style.setProperty("--mg-voice", energy.toFixed(3)); } catch (eV) {}
+            if (ev.results[i].isFinal) {
+              postText(tr);
+              try { orb.style.setProperty("--mg-voice", "0.2"); } catch (eV2) {}
+            } else {
+              setStatus("… " + tr.slice(0, 36));
+            }
+          }
+        };
+        rec.onerror = function (e) { setStatus("speech · " + (e.error || errText(e))); };
+        rec.onend = function () { if (running) try { rec.start(); } catch (_) {} };
+        try { rec.start(); toast("Talk on"); } catch (e) { setStatus(errText(e)); }
+      }
+      function stopTalk() {
+        running = false;
+        holdBtn.classList.remove("on");
+        holdBtn.textContent = "Hold";
+        orb.classList.remove("live");
+        $("face-mode").textContent = "glass orb";
+        try { if (rec) rec.stop(); } catch (_) {}
+        rec = null;
+        try { orb.style.setProperty("--mg-voice", "0"); } catch (eV3) {}
+      }
+
+      holdBtn.onclick = function () {
+        if (running) { stopTalk(); setStatus("<em>idle</em>"); toast("Talk off"); }
+        else startTalk();
+      };
+      $("send").onclick = function () { postText($("input").value); };
+      $("input").addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          $("send").click();
+        }
+      });
+      $("btn-photo").onclick = function () { $("file-photo").click(); };
+      $("btn-camera").onclick = function () { $("file-camera").click(); };
+      $("file-photo").onchange = function () {
+        if (this.files && this.files[0]) setPendingPhoto(this.files[0]);
+      };
+      $("file-camera").onchange = function () {
+        if (this.files && this.files[0]) setPendingPhoto(this.files[0]);
+      };
+      $("share-clear").onclick = clearShare;
+      $("btn-link").onclick = function () {
+        var u = window.prompt("Paste a link to share with Mini", $("input").value || "https://");
+        if (!u) return;
+        u = u.trim();
+        if (!looksLikeUrl(u) && !/^https?:\/\//i.test(u)) u = "https://" + u;
+        $("input").value = u;
+        postText(u);
+      };
+      $("btn-wallpaper").onclick = function () {
+        setWallpaper(!wallpaperOn);
+        toast(wallpaperOn ? "Live wallpaper on" : "Aurora only");
+      };
+
+      function go(path, preferHttps) {
+        var https = preferHttps !== false;
+        var port = https ? "9878" : "9877";
+        var proto = https ? "https:" : "http:";
+        location.href = proto + "//" + HOST + ":" + port + path;
+      }
+      $("btn-cam").onclick = function () { go("/phone.html", true); };
+      $("btn-relay").onclick = function () { go("/relay.html", false); };
+      $("btn-lab").onclick = function () {
+        location.href = "https://fornevercollective.github.io/grok-build/phone.html#/chat";
+      };
+      $("btn-refresh").onclick = function () { poll(); toast("↻"); };
+      $("nav-cam").onclick = function () { go("/phone.html", true); };
+      $("nav-talk").onclick = function () { go("/phone-talk.html", true); };
+      $("nav-relay").onclick = function () { go("/relay.html", false); };
+
+      /* Drag/drop or paste image */
+      document.addEventListener("paste", function (e) {
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].type && items[i].type.indexOf("image") === 0) {
+            var f = items[i].getAsFile();
+            if (f) { setPendingPhoto(f); e.preventDefault(); break; }
+          }
+        }
+      });
+
+      poll();
+      setInterval(poll, 900);
+      setStatus(secure ? "<em>ready</em> · glass · share photo/link" : "<em>open HTTPS</em> for mic");
+    })();
+  </script>
+</body>
+</html>

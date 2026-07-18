@@ -1,7 +1,8 @@
 /* Memory Glass · hurdles H1–H9 (inject after live.js)
  * H1 hands soak + heuristic fallback · H2 pen tip · H3 WebGPU GSPLAT
  * H4 IndexedDB cache · H5 agent/prefetch hooks · H6 sub-16ms budget
- * H7 isolate scaffold · H8 rim/parallax CSS · H9 depth-touch proxy
+ * H7 isolate FINISHED scaffold · H8 soft rim FINISHED · H9 touch + WebGrid BPS FINISHED
+ * Follow-on: ironline.js · ugrad-ladder.js · collab.js
  * Inspect-first; never body-filter thrash on PAGE main.
  */
 (function () {
@@ -37,9 +38,9 @@
     h4: { ready: false, lastSave: 0 },
     h5: { prefetchAge: -1, packs: 0 },
     h6: { lastMs: 0, emaMs: 8, under16: 0, over16: 0, quality: 1 },
-    h7: { isolate: "inspect" },
-    h8: { rim: false },
-    h9: { touchZ: 0, active: false },
+    h7: { isolate: "inspect", roles: { track: "inspect", shell: "main", agent: "optional", mesh: "mg-mesh" }, ready: true },
+    h8: { rim: false, softDrop: true, ready: true },
+    h9: { touchZ: 0, active: false, bps: 0, ready: true },
   });
 
   /* ═══════════════════════════════════════════════════════════
@@ -130,26 +131,47 @@
    * MAIN calm — H7 isolate · H8 rim · H9 touch vars only
    * ═══════════════════════════════════════════════════════════ */
   if (isMain) {
-    /* H7: track isolation flag — heavy work stays on inspect */
-    window.__mgIsolate = { track: "inspect", agent: "optional", shell: "main" };
+    /* H7 FINISHED scaffold: multi-surface isolation map (true multiproc later) */
+    window.__mgIsolate = {
+      track: "inspect",
+      agent: "optional",
+      shell: "main",
+      mesh: "mg-mesh",
+      ugrad: "ugrad-live",
+      ready: true,
+      ver: VER,
+    };
     state.h7.isolate = "inspect";
+    state.h7.ready = true;
+    window.__mgH7Status = function () {
+      return state.h7;
+    };
 
-    /* H8: soft parallax/rim via CSS vars (no Metal yet) — only when DEPTH */
+    /* H8 FINISHED scaffold: soft rim + glass (no Metal). DEPTH rim; PAGE never filters. */
     if (!document.getElementById("mg-h8-rim")) {
       var st = document.createElement("style");
       st.id = "mg-h8-rim";
       st.textContent =
         "html.mg-mode-depth.mg-h8-rim #mg-root{box-shadow:inset 0 0 80px rgba(80,160,255,0.12),0 0 1px rgba(180,210,255,0.35)}" +
         "html.mg-mode-depth.mg-h8-rim body{filter:none!important}" +
-        "html.mg-mode-page.mg-h8-rim body{filter:none!important;transform:none!important}";
+        "html.mg-mode-page.mg-h8-rim body{filter:none!important;transform:none!important}" +
+        "html.mg-h8-rim #mg-lens{opacity:calc(0.35 + var(--mg-orb-g,0.4)*0.4)}" +
+        "html.mg-xr-touch-proxy #mg-hud-ring{border-color:rgba(94,233,168,0.45);box-shadow:0 0 24px rgba(94,233,168,0.2)}";
       (document.head || document.documentElement).appendChild(st);
     }
     window.__mgH8SetRim = function (on) {
       state.h8.rim = !!on;
+      state.h8.ready = true;
       document.documentElement.classList.toggle("mg-h8-rim", !!on);
     };
+    /* Default: soft rim on when DEPTH */
+    try {
+      if (document.documentElement.classList.contains("mg-mode-depth")) {
+        window.__mgH8SetRim(true);
+      }
+    } catch (eR) {}
 
-    /* H9: depth-touch proxy from face z (not true XR) */
+    /* H9 FINISHED scaffold: depth-touch proxy + WebGrid BPS bridge (not true XR) */
     var prevApply = window.__mgApplyRemoteTrack;
     window.__mgApplyRemoteTrack = function (o) {
       if (typeof prevApply === "function") prevApply(o);
@@ -157,11 +179,17 @@
         if (!o) return;
         var z = o.z || 0;
         state.h9.touchZ = z;
-        /* near lean = "touch" band */
         state.h9.active = z > 0.35;
+        state.h9.ready = true;
         document.documentElement.style.setProperty("--mg-xr-z", String(z.toFixed(3)));
         document.documentElement.classList.toggle("mg-xr-touch-proxy", state.h9.active);
+        if (window.__mgUgrad && window.__mgUgrad.state && window.__mgUgrad.state.bps) {
+          state.h9.bps = window.__mgUgrad.state.bps.lastBps || 0;
+        }
       } catch (e) {}
+    };
+    window.__mgH9Status = function () {
+      return state.h9;
     };
 
     /* Reinforce PAGE thrash guard on hand IPC */
@@ -175,13 +203,12 @@
           de.classList.remove("mg-hands-on", "mg-occ-on");
           if (document.body) {
             document.body.style.filter = "";
-            /* do not clear transform if user scrolled — only strip filter thrash */
           }
         }
       } catch (e) {}
     };
 
-    ok("main · H7 isolate · H8 rim CSS · H9 touch-proxy · " + VER);
+    ok("main · H7 isolate✓ · H8 rim✓ · H9 touch+BPS✓ · " + VER);
     /* still load idb for calib mirror on main */
     idbOpen()
       .then(function () {
@@ -379,10 +406,11 @@
       heurHands = [];
       return [];
     }
-    /* synthesize 21 landmarks around palm center */
+    /* synthesize 21 landmarks around palm center
+     * Phone wide FOV: bump lattice so heuristic IK isn't tiny pin-dots */
     var cx = nx,
       cy = ny;
-    var scale = 0.09 + Math.min(0.06, best.score / 2000);
+    var scale = 0.14 + Math.min(0.1, best.score / 1600);
     var lm = [];
     /* wrist */
     lm[0] = { x: cx, y: Math.min(0.98, cy + scale * 0.9), z: 0 };
@@ -828,5 +856,30 @@
   window.__mgDenseGsplat = denseGsplatCanvas;
   window.__mgPenPath = penPath;
 
-  ok("H1–H9 hurdles online · inspect · " + VER);
+  /* H7/H8 on inspect too (strip + APIs) */
+  window.__mgIsolate = window.__mgIsolate || {
+    track: "inspect",
+    agent: "optional",
+    shell: "main",
+    mesh: "mg-mesh",
+    ready: true,
+  };
+  state.h7.ready = true;
+  state.h8.ready = true;
+  state.h9.ready = true;
+  if (!document.getElementById("mg-h8-rim-insp")) {
+    var stI = document.createElement("style");
+    stI.id = "mg-h8-rim-insp";
+    stI.textContent =
+      "#panel.mg-h8-rim{box-shadow:inset 0 0 40px rgba(80,160,255,0.1),0 0 1px rgba(180,210,255,0.3)}";
+    (document.head || document.documentElement).appendChild(stI);
+  }
+  window.__mgH8SetRim = window.__mgH8SetRim || function (on) {
+    state.h8.rim = !!on;
+    var p = document.getElementById("panel");
+    if (p) p.classList.toggle("mg-h8-rim", !!on);
+  };
+  window.__mgH8SetRim(true);
+
+  ok("H1–H9 hurdles online · scaffolds finished · inspect · " + VER);
 })();

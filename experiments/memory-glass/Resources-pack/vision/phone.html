@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Memory Glass · phone cam</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; font-family: system-ui, sans-serif;
+      background: #0a0e14; color: #e8f0ff; display: flex; flex-direction: column;
+      align-items: stretch; gap: 10px; padding: 12px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    h1 { font-size: 1rem; font-weight: 600; margin: 0; letter-spacing: 0.04em; color: #8ecbff; }
+    .banner {
+      font-size: 13px; line-height: 1.35; padding: 10px 12px; border-radius: 10px;
+      background: #2a1a10; border: 1px solid #a06030; color: #ffd0a0;
+      display: none;
+    }
+    .banner.show { display: block; }
+    .banner a { color: #8ecbff; word-break: break-all; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    button, select, label.filebtn {
+      flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid #2a3a50;
+      background: #152033; color: #e8f0ff; font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    button.go { background: #1a4a7a; border-color: #3a7ab8; }
+    button.stop { background: #4a1a1a; border-color: #a04040; }
+    button:disabled { opacity: 0.45; }
+    video, canvas, img#snap {
+      width: 100%; max-height: 42dvh; border-radius: 12px; background: #000;
+      object-fit: cover;
+    }
+    canvas { display: none; }
+    #log {
+      font: 12px/1.4 ui-monospace, Menlo, monospace; color: #9ab;
+      white-space: pre-wrap; min-height: 4em; flex: 1; overflow: auto;
+    }
+    input[type=file] { display: none; }
+  </style>
+</head>
+<body>
+  <h1>MG PHONE → still-pipe</h1>
+  <div id="insecure" class="banner"></div>
+  <div class="row">
+    <select id="facing">
+      <option value="user">Front</option>
+      <option value="environment" selected>Back</option>
+    </select>
+    <select id="fps">
+      <option value="4">4 fps</option>
+      <option value="8" selected>8 fps</option>
+      <option value="12">12 fps</option>
+    </select>
+  </div>
+  <div class="row">
+    <button class="go" id="start" type="button">Start → Mini</button>
+    <button class="stop" id="stop" type="button">Stop</button>
+  </div>
+  <div class="row">
+    <label class="filebtn" for="file">Snap (works on HTTP)</label>
+    <input id="file" type="file" accept="image/*" capture="environment" />
+  </div>
+  <video id="v" playsinline autoplay muted></video>
+  <img id="snap" alt="" hidden />
+  <canvas id="c"></canvas>
+  <div id="log">…</div>
+  <script>
+    (function () {
+      var v = document.getElementById("v");
+      var c = document.getElementById("c");
+      var snap = document.getElementById("snap");
+      var logEl = document.getElementById("log");
+      var banner = document.getElementById("insecure");
+      var stream = null, timer = null, n = 0, fails = 0;
+      var BASE = location.origin;
+      var secure = window.isSecureContext === true
+        || location.protocol === "https:"
+        || location.hostname === "localhost"
+        || location.hostname === "127.0.0.1";
+
+      function errText(e) {
+        if (e == null) return "unknown";
+        if (typeof e === "string") return e;
+        if (e.name && e.message) return e.name + ": " + e.message;
+        if (e.message) return String(e.message);
+        try { return String(e); } catch (_) { return "error"; }
+      }
+
+      function log(msg, cls) {
+        var line = (cls ? "[" + cls + "] " : "") + msg;
+        logEl.textContent = line + "\n" + logEl.textContent.slice(0, 1400);
+      }
+
+      function gum() {
+        var md = navigator.mediaDevices;
+        if (md && typeof md.getUserMedia === "function") {
+          return function (c) { return md.getUserMedia(c); };
+        }
+        var legacy = navigator.getUserMedia
+          || navigator.webkitGetUserMedia
+          || navigator.mozGetUserMedia;
+        if (legacy) {
+          return function (c) {
+            return new Promise(function (res, rej) {
+              legacy.call(navigator, c, res, rej);
+            });
+          };
+        }
+        return null;
+      }
+
+      // iOS: camera live stream needs HTTPS (secure context). HTTP → mediaDevices is undefined.
+      if (!secure) {
+        var host = location.hostname;
+        var httpsUrl = "https://" + host + ":9878/phone.html";
+        banner.className = "banner show";
+        banner.innerHTML =
+          "<b>iPhone needs HTTPS for live cam.</b><br>" +
+          "HTTP blocks getUserMedia → “undefined is not an object”.<br>" +
+          "Open: <a href=\"" + httpsUrl + "\">" + httpsUrl + "</a><br>" +
+          "(Tap Advanced → proceed if self‑signed cert warning.) " +
+          "Or use <b>Snap</b> below on this HTTP page.";
+        document.getElementById("start").disabled = true;
+        log("insecure context · use HTTPS :9878 or Snap", "err");
+      } else {
+        log("secure · ready " + BASE, "ok");
+      }
+
+      async function start() {
+        stop();
+        var get = gum();
+        if (!get) {
+          log(
+            "Camera API missing. On iPhone open HTTPS: https://" +
+              location.hostname + ":9878/phone.html  (not plain http)",
+            "err"
+          );
+          return;
+        }
+        var facing = document.getElementById("facing").value;
+        try {
+          stream = await get({
+            audio: false,
+            video: {
+              facingMode: { ideal: facing },
+              width: { ideal: 960 },
+              height: { ideal: 720 }
+            }
+          });
+        } catch (e) {
+          log("cam denied: " + errText(e), "err");
+          return;
+        }
+        v.hidden = false;
+        snap.hidden = true;
+        v.srcObject = stream;
+        try { await v.play(); } catch (e) { log("play: " + errText(e), "err"); }
+        var fps = Math.max(2, Math.min(20, +document.getElementById("fps").value || 8));
+        n = 0; fails = 0;
+        log("streaming → " + BASE + "/upload @ " + fps + " fps", "ok");
+        timer = setInterval(tick, Math.round(1000 / fps));
+      }
+
+      function stop() {
+        if (timer) { clearInterval(timer); timer = null; }
+        if (stream) {
+          stream.getTracks().forEach(function (t) { try { t.stop(); } catch (_) {} });
+          stream = null;
+        }
+        v.srcObject = null;
+      }
+
+      function postBlob(blob) {
+        if (!blob) return;
+        return fetch(BASE + "/upload", {
+          method: "POST",
+          headers: { "Content-Type": "image/jpeg" },
+          body: blob,
+          cache: "no-store"
+        }).then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        }).then(function (j) {
+          n += 1; fails = 0;
+          if (n % 6 === 1) log("frame #" + n + " " + (j.bytes || blob.size) + " B", "ok");
+        }).catch(function (e) {
+          fails += 1;
+          if (fails <= 3 || fails % 10 === 0) log("upload fail: " + errText(e), "err");
+        });
+      }
+
+      function tick() {
+        if (!stream || v.videoWidth < 2) return;
+        var w = v.videoWidth, h = v.videoHeight;
+        var maxW = 720;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(v, 0, 0, w, h);
+        if (c.toBlob) {
+          c.toBlob(function (blob) { postBlob(blob); }, "image/jpeg", 0.72);
+        } else {
+          // older WebKit fallback
+          try {
+            var dataUrl = c.toDataURL("image/jpeg", 0.72);
+            var bin = atob(dataUrl.split(",")[1]);
+            var arr = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+            postBlob(new Blob([arr], { type: "image/jpeg" }));
+          } catch (e) {
+            log("encode: " + errText(e), "err");
+          }
+        }
+      }
+
+      document.getElementById("start").onclick = function () {
+        start().catch(function (e) { log("start: " + errText(e), "err"); });
+      };
+      document.getElementById("stop").onclick = function () {
+        stop();
+        log("stopped", "ok");
+      };
+
+      // HTTP-safe: one photo at a time via capture input (iOS allows this without secure context)
+      document.getElementById("file").onchange = function (ev) {
+        var f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        var url = URL.createObjectURL(f);
+        snap.hidden = false;
+        v.hidden = true;
+        snap.onload = function () {
+          var maxW = 720;
+          var w = snap.naturalWidth || 720;
+          var h = snap.naturalHeight || 960;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          c.width = w; c.height = h;
+          c.getContext("2d").drawImage(snap, 0, 0, w, h);
+          c.toBlob(function (blob) {
+            postBlob(blob);
+            log("snap uploaded " + (blob && blob.size) + " B", "ok");
+          }, "image/jpeg", 0.8);
+          URL.revokeObjectURL(url);
+        };
+        snap.src = url;
+        ev.target.value = "";
+      };
+    })();
+  </script>
+</body>
+</html>

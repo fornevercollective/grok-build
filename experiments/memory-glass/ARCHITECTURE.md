@@ -29,9 +29,12 @@ phone or laptop cam
 | | |
 |--|--|
 | **North-star** | Lightweight native droplet + ~1s hot-pipe + spatial mix + live Grok → **sub-16ms** stretch, no Electron |
-| **H0–H6** | **Hard-pushed** — `live.js` + `hurdles.js` (hands, pen, dense GSPLAT, IDB, prefetch, frame budget) |
-| **H7–H9** | Scaffold (isolate / CSS rim / face-z proxy) |
-| **Inject** | Rust injects `live.js` then `hurdles.js`; stats `live.jpg` for H5 (no second cam) |
+| **H0–H6** | **Hard-pushed** — hands, pen, dense GSPLAT, IDB, prefetch, frame budget |
+| **H7–H9** | Scaffolds **finished** — isolate map · soft rim · touch + WebGrid BPS |
+| **Iron / ugrad / collab** | `ironline.js` · `ugrad-ladder.js` · `collab.js` |
+| **Inject** | live→lens→hurdles→research→ego→dock→ironline→ugrad→collab |
+| **Competitive truth** | `hotpipe/plans/COMPETITIVE_HARD_TRUTH.md` |
+| **Overnight soak** | `scripts/overnight-soak.sh` · `plans/OVERNIGHT_SANDBOX.md` |
 
 Full criteria: `hotpipe/GOALS.md`.
 ## Plugin / packet for Grok Build users

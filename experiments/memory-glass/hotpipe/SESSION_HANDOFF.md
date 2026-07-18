@@ -1,3 +1,12 @@
+# Memory Glass · Session handoff
+
+> **2026-07-18:** H7–H9 scaffolds **finished**. Ironline · μgrad ladder · collab mesh injected.  
+> Plans: `GOALS.md` · `plans/COMPETITIVE_*` · `plans/IRONLINE_*` · `plans/UGRAD_*` · `plans/COLLAB_*` · **`plans/COMPETITIVE_HARD_TRUTH.md`**  
+> Training: [WebGrid](https://neuralink.com/webgrid/) · [μgrad R0](https://mueee.qbitos.ai/ugrad-r0.html) · games hub  
+> **KBatch tool session:** `KBATCH_SESSION.md` · `prompt-kbatch.md` · live [kbatch.ugrad.ai](https://kbatch.ugrad.ai) · repo `…/KBatch-dictionary`  
+> Dock tabs: **PIPE · CORP · R1 · EGO · CAL · UGRAD · IRON · MESH**  
+> Inject: live→lens→hurdles→research→ego→dock→**ironline→ugrad-ladder→collab**
+
 # Memory Glass · session handoff
 
 **Saved:** 2026-07-18T00:48:22Z  

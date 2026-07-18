@@ -379,10 +379,11 @@
       heurHands = [];
       return [];
     }
-    /* synthesize 21 landmarks around palm center */
+    /* synthesize 21 landmarks around palm center
+     * Phone wide FOV: bump lattice so heuristic IK isn't tiny pin-dots */
     var cx = nx,
       cy = ny;
-    var scale = 0.09 + Math.min(0.06, best.score / 2000);
+    var scale = 0.14 + Math.min(0.1, best.score / 1600);
     var lm = [];
     /* wrist */
     lm[0] = { x: cx, y: Math.min(0.98, cy + scale * 0.9), z: 0 };

@@ -1,20 +1,44 @@
 {
   "name": "memory-glass-hotpipe",
-  "iteration": 3,
-  "status": "hot_refresh",
-  "last_build_epoch": 1784324780,
-  "run_epoch": 1784325873,
-  "last_pack": null,
-  "last_mitigation": "camera_denied once-per-stem; no prefs spam",
-  "last_live_js": "quad 2x2 safe one-shot",
-  "agent_url": "agent.html",
-  "continue_via": "hotpipe/SESSION_HANDOFF.md",
-  "hotpipe": "/Users/qbit/Projects/grok-build/experiments/memory-glass/hotpipe",
-  "user_launch": [
-    "open -n \"$HOME/Applications/Memory Glass.app\"",
-    "MG_HOTPIPE_OFF=1 open -n \"$HOME/Applications/Memory Glass.app\""
+  "iteration": 4,
+  "status": "scaffolds_finished_plans_loaded",
+  "last_updated": "2026-07-18",
+  "hurdles": {
+    "H0-H6": "hard_pushed",
+    "H7-H9": "scaffolds_finished"
+  },
+  "tracks": {
+    "ironline": "I0-I7 L0-L7 cortical 24ms",
+    "ugrad": "U0-U6 + WebGrid BPS + games",
+    "collab": "M0-M3 mg-mesh",
+    "competitive": "C0-C5 posture vs Safari/Chrome/Ladybird"
+  },
+  "inject": "live+lens+hurdles+research+ego+dock+ironline+ugrad+collab",
+  "plans": [
+    "GOALS.md",
+    "plans/COMPETITIVE_BROWSERS.md",
+    "plans/IRONLINE_CORTICAL.md",
+    "plans/UGRAD_WEBGRID.md",
+    "plans/COLLAB_SCALE.md"
   ],
-  "notes": "Live steer session: browse in MG, report here or Inspect \u2192 Grok; agent watches packs + hotpipe.",
-  "last_voice": "can you zoom back a little / less skewed",
-  "last_hot_refresh": 1784327486
+  "training_curves": {
+    "webgrid": "https://neuralink.com/webgrid/",
+    "ugrad_r0": "https://mueee.qbitos.ai/ugrad-r0.html",
+    "games": "https://mueee.qbitos.ai/games-ugrad-hub.html",
+    "local_mu": "/Volumes/qbitOS/00.dev/mu.eee/web/"
+  },
+  "concepts": {
+    "qbit_codec": "concepts/qbit-codec.js",
+    "game_registry": "concepts/ugrad-game-registry.js",
+    "ironline": "concepts/IRONLINE.md"
+  },
+  "continue_via": "hotpipe/SESSION_HANDOFF.md",
+  "agent_seed": "H0-H6 hard; H7-H9 done scaffolds; ironline+ugrad+collab; speed first; WebGrid+μgrad training; competitive C-track posture not parity",
+  "kbatch": {
+    "session": "KBATCH_SESSION.md",
+    "prompt": "prompt-kbatch.md",
+    "live": "https://kbatch.ugrad.ai/",
+    "repo": "/Volumes/qbitOS/00.dev/projects/KBatch-dictionary"
+  },
+  "notes": "Cold launch: MG → UGRAD/KBATCH → R0/WebGrid/games → ironline → mesh. KBatch = geometry tool surface in this shell."
 }

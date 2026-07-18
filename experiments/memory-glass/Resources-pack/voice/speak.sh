@@ -1,5 +1,6 @@
 #!/bin/bash
-# Memory Glass / GY speak — prefer xAI TTS (+ optional clone), fall back to macOS say.
+# Memory Glass / GY speak — xAI TTS (voice_id + output_format) → headphones; fallback macOS say.
+# Docs: https://docs.x.ai/developers/model-capabilities/audio/text-to-speech
 # Always sets tts.mute window + spoken.log for echo filtering.
 set -u
 TEXT="${*:-}"
@@ -26,37 +27,51 @@ XAI_KEY="${XAI_API_KEY:-}"
 if [[ -z "$XAI_KEY" && -f "$HOME/.xai_api_key" ]]; then
   XAI_KEY=$(tr -d ' \n' < "$HOME/.xai_api_key")
 fi
+if [[ -z "$XAI_KEY" && -f "$HOME/.grok/xai_api_key" ]]; then
+  XAI_KEY=$(tr -d ' \n' < "$HOME/.grok/xai_api_key")
+fi
 if [[ -z "$XAI_KEY" && -f "$HOME/.config/xai/api_key" ]]; then
   XAI_KEY=$(tr -d ' \n' < "$HOME/.config/xai/api_key")
 fi
 
-# Voice: clone id file > env > named default
+# voice_id: env > voice_id file > XAI_TTS_VOICE > Carina (user demo default)
 VOICE_ID="${XAI_VOICE_ID:-}"
 if [[ -z "$VOICE_ID" && -f "$DIR/voice_id" ]]; then
   VOICE_ID=$(tr -d ' \n' < "$DIR/voice_id")
 fi
-# Named xAI voices if no clone (API may accept voice name or id)
-TTS_VOICE="${VOICE_ID:-${XAI_TTS_VOICE:-}}"
+VOICE_ID="${VOICE_ID:-${XAI_TTS_VOICE:-Carina}}"
+LANG="${XAI_TTS_LANG:-en}"
+SAMPLE_RATE="${XAI_TTS_SAMPLE_RATE:-44100}"
+BIT_RATE="${XAI_TTS_BIT_RATE:-128000}"
 
 OUT="$DIR/tts-out.mp3"
 ENGINE="say"
 ok=0
 
 if [[ -n "$XAI_KEY" ]]; then
-  # Build JSON payload
-  if [[ -n "$TTS_VOICE" ]]; then
-    PAYLOAD=$(python3 -c 'import json,sys; print(json.dumps({"text":sys.argv[1],"voice":sys.argv[2]}))' "$CLEAN" "$TTS_VOICE")
-  else
-    # Some deployments accept text-only with a default voice
-    PAYLOAD=$(python3 -c 'import json,sys; print(json.dumps({"text":sys.argv[1]}))' "$CLEAN")
-  fi
+  # Official payload shape (voice_id + output_format + language)
+  PAYLOAD=$(python3 -c '
+import json, sys
+print(json.dumps({
+  "text": sys.argv[1],
+  "voice_id": sys.argv[2],
+  "language": sys.argv[3],
+  "output_format": {
+    "codec": "mp3",
+    "sample_rate": int(sys.argv[4]),
+    "bit_rate": int(sys.argv[5]),
+  },
+}))
+' "$CLEAN" "$VOICE_ID" "$LANG" "$SAMPLE_RATE" "$BIT_RATE")
+
   HTTP=$(curl -sS -o "$OUT" -w "%{http_code}" \
     -X POST "https://api.x.ai/v1/tts" \
     -H "Authorization: Bearer $XAI_KEY" \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" 2>"$DIR/tts.err" || echo "000")
-  if [[ "$HTTP" == "200" ]] && [[ -s "$OUT" ]]; then
-    # play without blocking forever
+
+  # Real MP3 starts with ID3 or 0xFFEx; JSON error bodies are "{"
+  if [[ "$HTTP" == "200" ]] && [[ -s "$OUT" ]] && ! head -c 1 "$OUT" | grep -q '{'; then
     if command -v afplay >/dev/null 2>&1; then
       afplay "$OUT" 2>/dev/null &
       ENGINE="xai-tts"
@@ -67,7 +82,10 @@ if [[ -n "$XAI_KEY" ]]; then
       ok=1
     fi
   else
-    echo "TTS_FALLBACK http=${HTTP} $(head -c 120 "$DIR/tts.err" 2>/dev/null)" >> "$DIR/bridge.log"
+    ERR_SNIP=$(head -c 180 "$OUT" 2>/dev/null | tr '\n' ' ')
+    echo "TTS_FALLBACK http=${HTTP} voice=${VOICE_ID} ${ERR_SNIP}" >> "$DIR/bridge.log"
+    # copy body to tts.err for debugging
+    head -c 400 "$OUT" > "$DIR/tts.err" 2>/dev/null || true
   fi
 fi
 
@@ -77,4 +95,4 @@ if [[ "$ok" -eq 0 ]]; then
   ENGINE="say"
 fi
 
-echo "SPOKE $(date -u +%H:%M:%SZ) ${#CLEAN}c mute=${SECS}s engine=${ENGINE} voice=${TTS_VOICE:-macOS}"
+echo "SPOKE $(date -u +%H:%M:%SZ) ${#CLEAN}c mute=${SECS}s engine=${ENGINE} voice=${VOICE_ID}"

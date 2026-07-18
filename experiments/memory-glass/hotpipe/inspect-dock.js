@@ -1,11 +1,11 @@
 /* Memory Glass · unified inspect dock (declutter)
- * Tabs: PIPE | CORP | R1 | EGO | CAL
- * Collapses research/ego/hurdles button sprawl into one rail.
- * Inject last (after live, hurdles, research, ego).
+ * Tabs: PIPE | CORP | R1 | EGO | CAL | UGRAD | IRON | MESH
+ * Collapses research/ego/hurdles + training/collab into one rail.
+ * Inject after live, hurdles, research, ego (ironline/ugrad/collab may follow).
  */
 (function () {
   "use strict";
-  var VER = "dock-v1";
+  var VER = "dock-v2";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._dockVer === VER) return;
   HP._dockVer = VER;
@@ -425,6 +425,156 @@
       );
     }
 
+    if (tab === "ugrad") {
+      hintEl.textContent =
+        "Cold → full μgrad: R0 train · WebGrid BPS · games hub · U0–U6 staircase (mueee.qbitos.ai).";
+      row.appendChild(
+        act("R0", "ok", function () {
+          if (window.__mgUgrad) window.__mgUgrad.openR0();
+          else window.open("https://mueee.qbitos.ai/ugrad-r0.html", "_blank");
+          setStatus("μgrad R0");
+        })
+      );
+      row.appendChild(
+        act("WEBGRID", "hot", function () {
+          if (window.__mgUgrad) window.__mgUgrad.openWebGrid();
+          else window.open("https://neuralink.com/webgrid/", "_blank");
+          setStatus("Neuralink WebGrid");
+        })
+      );
+      row.appendChild(
+        act("μGRID", "", function () {
+          if (window.__mgUgrad) window.__mgUgrad.openWebGridUgrad();
+          else window.open("https://mueee.qbitos.ai/webgrid-ugrad.html", "_blank");
+          setStatus("webgrid-ugrad");
+        })
+      );
+      row.appendChild(
+        act("GAMES", "", function () {
+          if (window.__mgUgrad) window.__mgUgrad.openGames();
+          else window.open("https://mueee.qbitos.ai/games-ugrad-hub.html", "_blank");
+          setStatus("games hub");
+        })
+      );
+      row.appendChild(
+        act("TRAIN", "ok", function () {
+          if (window.__mgUgrad) {
+            var on = !window.__mgUgrad.state.gridActive;
+            window.__mgUgrad.armGridTraining(on);
+            setStatus(on ? "BPS train ON · click stage" : "BPS train off");
+          } else setStatus("ugrad-ladder not loaded");
+        })
+      );
+      row.appendChild(
+        act("U+1", "", function () {
+          if (window.__mgUgrad) {
+            var n = Math.min(6, (window.__mgUgrad.state.level | 0) + 1);
+            window.__mgUgrad.openLevel(n);
+            setStatus("U" + n);
+          }
+        })
+      );
+      row.appendChild(
+        act("KBATCH", "hot", function () {
+          if (window.__mgUgrad && window.__mgUgrad.openKBatch) window.__mgUgrad.openKBatch("/");
+          else window.open("https://kbatch.ugrad.ai/", "_blank");
+          setStatus("KBatch geometry dict");
+        })
+      );
+      row.appendChild(
+        act("DOJO", "", function () {
+          if (window.__mgUgrad && window.__mgUgrad.openKBatch) window.__mgUgrad.openKBatch("/dojo/");
+          else window.open("https://kbatch.ugrad.ai/dojo/", "_blank");
+          setStatus("KBatch MCP dojo");
+        })
+      );
+    }
+
+    if (tab === "iron") {
+      hintEl.textContent =
+        "Iron Line L0–L7 · cortical 24ms target · qbit codec concepts · speed budgets (see GOALS).";
+      row.appendChild(
+        act("REPORT", "ok", function () {
+          var r = window.__mgIronline ? window.__mgIronline.report() : "no ironline";
+          setStatus(r);
+          if (window.__mgDevLog) window.__mgDevLog("info", r, "iron");
+        })
+      );
+      row.appendChild(
+        act("L5", "", function () {
+          try {
+            var ms = window.__mgHurdles && window.__mgHurdles.h6 ? window.__mgHurdles.h6.emaMs : 0;
+            if (window.__mgIronline) window.__mgIronline.tick("L5", ms);
+            setStatus("L5 sample " + (ms && ms.toFixed ? ms.toFixed(1) : ms) + "ms");
+          } catch (e) {
+            setStatus("L5 err");
+          }
+        })
+      );
+      row.appendChild(
+        act("QBIT", "", function () {
+          if (window.__mgIronline) {
+            var o = window.__mgIronline.classify("0: hello +n: if +2: loop");
+            setStatus("qbit prefixes " + ((o && o.prefixes) || []).join(" "));
+          }
+        })
+      );
+      row.appendChild(
+        act("CORT", "hot", function () {
+          var c = window.__mgIronline ? window.__mgIronline.corticalMs : 24;
+          setStatus("cortical target " + c + "ms · body ecosystem");
+        })
+      );
+      row.appendChild(
+        act("H7–9", "", function () {
+          var h = window.__mgHurdles || {};
+          setStatus(
+            "H7 " +
+              (h.h7 && h.h7.ready ? "✓" : "?") +
+              " H8 " +
+              (h.h8 && h.h8.ready ? "✓" : "?") +
+              " H9 " +
+              (h.h9 && h.h9.ready ? "✓" : "?")
+          );
+        })
+      );
+    }
+
+    if (tab === "mesh") {
+      hintEl.textContent =
+        "Collab mesh mg-mesh + ugrad-live · presence · BPS share · multi-agent ready (M0–M3).";
+      row.appendChild(
+        act("PING", "ok", function () {
+          if (window.__mgMesh) {
+            window.__mgMesh.broadcast("presence", { ping: 1 });
+            setStatus(window.__mgMesh.report());
+          } else setStatus("collab.js not loaded");
+        })
+      );
+      row.appendChild(
+        act("PEERS", "", function () {
+          if (window.__mgMesh) setStatus("peers " + window.__mgMesh.peerCount() + " · " + window.__mgMesh.seatId);
+          else setStatus("no mesh");
+        })
+      );
+      row.appendChild(
+        act("BPS→", "hot", function () {
+          if (window.__mgMesh && window.__mgUgrad) {
+            window.__mgMesh.broadcast("bps", window.__mgUgrad.state.bps);
+            setStatus("bps broadcast " + window.__mgUgrad.state.bps.lastBps.toFixed(2));
+          } else setStatus("need mesh+ugrad");
+        })
+      );
+      row.appendChild(
+        act("PACK→", "", function () {
+          if (window.__mgMesh) {
+            window.__mgMesh.broadcast("pack", { note: "inspect-pack-pointer", t: Date.now() });
+            setStatus("pack pointer shared");
+          }
+        })
+      );
+    }
+
     body.appendChild(row);
     body.appendChild(hintEl);
   }
@@ -453,6 +603,13 @@
       if (window.__mgHurdles && window.__mgHurdles.h6)
         bits.push(window.__mgHurdles.h6.emaMs.toFixed(0) + "ms");
     } catch (e) {}
+    try {
+      if (window.__mgUgrad && window.__mgUgrad.state.bps.lastBps)
+        bits.push(window.__mgUgrad.state.bps.lastBps.toFixed(1) + "bps");
+    } catch (e2) {}
+    try {
+      if (window.__mgMesh) bits.push("p" + window.__mgMesh.peerCount());
+    } catch (e3) {}
     setStatus(bits.join(" · "));
   }
 
@@ -477,6 +634,9 @@
       ["r1", "R1"],
       ["ego", "EGO"],
       ["cal", "CAL"],
+      ["ugrad", "UGRAD"],
+      ["iron", "IRON"],
+      ["mesh", "MESH"],
     ].forEach(function (pair) {
       var b = document.createElement("button");
       b.type = "button";
@@ -501,7 +661,7 @@
       hideLegacyClutter();
       tickStatus();
     }, 2500);
-    ok("inspect dock · PIPE/CORP/R1/EGO/CAL · " + VER);
+    ok("inspect dock · PIPE/CORP/R1/EGO/CAL/UGRAD/IRON/MESH · " + VER);
   }
 
   window.__mgDock = {

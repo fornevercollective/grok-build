@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Memory Glass · phone cert setup</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom));
+      font-family: system-ui, -apple-system, sans-serif; background: #0a0e14; color: #e8f0ff;
+      line-height: 1.45; max-width: 40rem;
+    }
+    h1 { font-size: 1.15rem; color: #8ecbff; margin: 0 0 8px; }
+    h2 { font-size: 0.95rem; color: #cde; margin: 1.25rem 0 0.4rem; }
+    p, li { font-size: 0.95rem; color: #c8d4e8; }
+    .warn {
+      background: #2a1a10; border: 1px solid #a06030; color: #ffd0a0;
+      padding: 12px; border-radius: 10px; margin: 12px 0;
+    }
+    a.btn {
+      display: block; text-align: center; text-decoration: none;
+      background: #1a4a7a; border: 1px solid #3a7ab8; color: #fff;
+      padding: 14px; border-radius: 12px; font-weight: 700; margin: 10px 0;
+    }
+    a.btn.sec { background: #152033; border-color: #2a3a50; }
+    a.btn.go { background: #1a5a3a; border-color: #3a9a5a; }
+    code { font-size: 0.85em; word-break: break-all; color: #9cf; }
+    ol { padding-left: 1.25rem; }
+    .muted { color: #8899aa; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>iPhone: trust cert (then live cam)</h1>
+  <div class="warn">
+    Safari won’t let you “click through” a self‑signed HTTPS page until the
+    cert is <b>installed + fully trusted</b>. That’s normal on modern iOS.
+  </div>
+
+  <h2>1 · Install profile (this HTTP page is fine)</h2>
+  <p>Tap this on the iPhone (same Wi‑Fi as Mini):</p>
+  <a class="btn" id="cfg" href="/certs/MemoryGlass-Still.mobileconfig">Install Memory Glass cert profile</a>
+  <a class="btn sec" href="/certs/still.cer">Or download still.cer</a>
+
+  <h2>2 · Finish install in Settings</h2>
+  <ol>
+    <li>Open <b>Settings</b> — you should see <b>Profile Downloaded</b> at the top.</li>
+    <li>Tap it → <b>Install</b> → enter passcode → <b>Install</b> again.</li>
+    <li>Then: <b>Settings → General → About → Certificate Trust Settings</b></li>
+    <li>Enable full trust for <b>Memory Glass Still</b> / the MemoryGlass cert.</li>
+  </ol>
+  <p class="muted">If you skip Certificate Trust Settings, HTTPS still fails even after “install”.</p>
+
+  <h2>3 · Open live cam (HTTPS)</h2>
+  <a class="btn go" id="live" href="#">Open phone live cam →</a>
+  <p class="muted">After trust is on, this should load without a dead-end cert wall.</p>
+
+  <h2>4 · Live chat (lab-ship style)</h2>
+  <a class="btn go" id="chat" href="#">Open mg-ship chat →</a>
+  <p class="muted">See you + Mini replies · Hold to talk · headphones on Mini.</p>
+
+  <h2>5 · Talk (phone mic → Mini headphones)</h2>
+  <a class="btn go" id="talk" href="#">Open phone talk →</a>
+  <p class="muted">Speech on phone · Grok replies play on Mini headphone jack.</p>
+
+  <h2>No live stream yet?</h2>
+  <p>Single frames still work over HTTP (no cert):</p>
+  <a class="btn sec" id="snap" href="/phone.html">HTTP phone page · Snap only</a>
+
+  <script>
+    (function () {
+      var host = location.hostname;
+      // Prefer LAN host the phone already used
+      document.getElementById("live").href = "https://" + host + ":9878/phone.html";
+      var ch = document.getElementById("chat"); if (ch) ch.href = "https://" + host + ":9878/phone-chat.html";
+      document.getElementById("talk").href = "https://" + host + ":9878/phone-talk.html";
+      document.getElementById("snap").href = "http://" + host + ":9877/phone.html";
+      document.getElementById("cfg").href = "/certs/MemoryGlass-Still.mobileconfig";
+    })();
+  </script>
+</body>
+</html>

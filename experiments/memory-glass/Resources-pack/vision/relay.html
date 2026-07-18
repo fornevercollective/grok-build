@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0b0e" />
+  <title>Memory Glass · relay</title>
+  <link rel="stylesheet" href="assets/phone-mg.css?v=mg2" />
+  <style>
+    /* Lean CTRL collapsible — match Memory Glass dragon panel */
+    :root {
+      --bg: #0a0b0e;
+      --panel: rgba(12, 14, 18, 0.92);
+      --line: rgba(200, 210, 220, 0.14);
+      --text: rgba(236, 240, 246, 0.92);
+      --dim: rgba(160, 180, 200, 0.55);
+      --mute: rgba(120, 140, 160, 0.45);
+      --accent: #6ecbff;
+      --ok: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
+      font-family: var(--sans);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(110, 203, 255, 0.08), transparent 55%);
+    }
+    #mg-relay {
+      max-width: 420px; margin: 0 auto; min-height: 100dvh;
+      padding: 10px 10px max(14px, env(safe-area-inset-bottom));
+    }
+    .hdr {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 6px 4px 10px; font-family: var(--mono); font-size: 10px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim);
+    }
+    .hdr em { color: var(--accent); font-style: normal; font-weight: 600; }
+    .hdr .sys { color: var(--ok); opacity: 0.85; }
+    .sec {
+      border: 1px solid var(--line); border-radius: 4px; background: var(--panel);
+      margin-bottom: 6px; overflow: hidden;
+    }
+    .sec-toggle {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      appearance: none; border: 0; background: transparent; color: var(--text);
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 9px 10px; cursor: pointer; text-align: left;
+    }
+    .sec-toggle .meta { display: flex; gap: 8px; align-items: center; }
+    .sec-toggle .count {
+      font-size: 9px; color: var(--mute); letter-spacing: 0.06em;
+    }
+    .sec-toggle .chev { opacity: 0.5; font-size: 10px; transition: transform 0.15s; }
+    .sec.is-open .chev { transform: rotate(180deg); }
+    .sec-body { display: none; padding: 0 10px 10px; border-top: 1px solid rgba(255,255,255,0.04); }
+    .sec.is-open .sec-body { display: block; }
+    .row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    button.chip {
+      appearance: none; cursor: pointer;
+      border: 1px solid var(--line); background: rgba(255,255,255,0.03);
+      color: var(--dim); font-family: var(--mono); font-size: 9px;
+      letter-spacing: 0.08em; text-transform: uppercase; padding: 7px 9px; border-radius: 2px;
+    }
+    button.chip:hover { color: #fff; border-color: rgba(110, 203, 255, 0.35); }
+    button.chip.on { color: #fff; border-color: rgba(110, 203, 255, 0.5); background: rgba(30, 50, 70, 0.55); }
+    button.chip.accent {
+      color: var(--accent); border-color: rgba(110, 203, 255, 0.4);
+      background: rgba(110, 203, 255, 0.08);
+    }
+    .kv {
+      font-family: var(--mono); font-size: 10px; color: var(--dim); line-height: 1.55;
+      margin-top: 8px;
+    }
+    .kv b { color: var(--text); font-weight: 600; }
+    .kv a { color: var(--accent); word-break: break-all; }
+    .peek {
+      margin-top: 8px; height: 120px; border-radius: 3px; overflow: hidden;
+      border: 1px solid var(--line); background: #050608; position: relative;
+    }
+    .peek img { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .peek .lab {
+      position: absolute; left: 6px; bottom: 5px; font: 600 8px/1 var(--mono);
+      letter-spacing: 0.1em; text-transform: uppercase; color: rgba(220,240,255,0.85);
+      text-shadow: 0 1px 3px #000;
+    }
+    .log {
+      margin-top: 8px; max-height: 42vh; overflow-y: auto;
+      font-family: var(--mono); font-size: 10px; line-height: 1.45; color: var(--dim);
+    }
+    .log .line { margin: 0 0 0.4rem; }
+    .log .you { color: var(--text); }
+    .log .lab { color: var(--accent); }
+    .log .who {
+      font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase;
+      opacity: 0.65; margin-right: 6px;
+    }
+    textarea {
+      width: 100%; margin-top: 8px; min-height: 56px; resize: vertical;
+      border: 1px solid var(--line); border-radius: 2px; background: rgba(0,0,0,0.35);
+      color: var(--text); font-family: var(--sans); font-size: 13px; padding: 8px;
+    }
+    .foot {
+      margin-top: 10px; font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--mute); text-align: center;
+    }
+  </style>
+</head>
+<body class="mg-phone" style="overflow:auto;height:auto;min-height:100dvh">
+  <div id="mg-relay">
+    <div class="hdr" style="align-items:center;gap:10px">
+      <div class="glass-orb" style="--orb:40px;flex-shrink:0"><div class="shell"></div><div class="core"><img src="assets/brand/grok-logomark-light.svg" alt=""/></div></div>
+      <span style="flex:1">PHONE · <em>RELAY</em></span>
+      <span class="sys" id="sys">…</span>
+    </div>
+
+    <div class="sec is-open" data-sec="links">
+      <button type="button" class="sec-toggle">
+        <span class="meta"><span class="sec-title">Devices</span><span class="count" id="dev-count">LAN</span></span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="sec-body">
+        <div class="kv" id="links">…</div>
+        <div class="row">
+          <button type="button" class="chip accent" data-go="chat">Chat</button>
+          <button type="button" class="chip" data-go="talk">Talk</button>
+          <button type="button" class="chip" data-go="cam">Cam</button>
+          <button type="button" class="chip" data-go="setup">Setup</button>
+          <button type="button" class="chip" data-go="lab">Lab Pages</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec is-open" data-sec="pipe">
+      <button type="button" class="sec-toggle">
+        <span class="meta"><span class="sec-title">Still-pipe</span><span class="count" id="pipe-count">—</span></span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="sec-body">
+        <div class="peek">
+          <img id="peek" alt="" />
+          <span class="lab" id="peek-lab">live.jpg</span>
+        </div>
+        <div class="kv" id="pipe-kv">…</div>
+      </div>
+    </div>
+
+    <div class="sec is-open" data-sec="conv">
+      <button type="button" class="sec-toggle">
+        <span class="meta"><span class="sec-title">Conversation</span><span class="count" id="conv-count">0</span></span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="sec-body">
+        <div class="log" id="log"><div class="line">relay idle · open Talk on phone</div></div>
+        <textarea id="msg" placeholder="Type to Mini…"></textarea>
+        <div class="row">
+          <button type="button" class="chip accent" id="send">Send</button>
+          <button type="button" class="chip" id="refresh">↻</button>
+          <button type="button" class="chip" id="copy-links">Copy LAN URLs</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" data-sec="help">
+      <button type="button" class="sec-toggle">
+        <span class="meta"><span class="sec-title">Relay</span><span class="count">how</span></span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="sec-body">
+        <div class="kv">
+          Live hub between <b>Memory Glass</b>, phones, and this Mini.<br/>
+          Cam → still-pipe · Talk/Chat → conversation · headphones on Mini.<br/>
+          Style: lean CTRL sections (collapse/expand). Not the full lab-ship chrome.
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">page · cinema · depth · <b style="color:var(--accent)">phone</b> · ⌘T/N</div>
+  </div>
+  <script>
+    (function () {
+      var host = location.hostname || "127.0.0.1";
+      var httpBase = "http://" + host + ":9877";
+      var httpsBase = "https://" + host + ":9878";
+      // Prefer same origin for APIs when already on 9877/9878
+      var apiBase = (location.port === "9878" || location.port === "9877")
+        ? location.origin
+        : httpBase;
+      // live.jpg always from HTTP still-server
+      var stillHttp = httpBase;
+
+      function $(id) { return document.getElementById(id); }
+
+      // collapsible sections
+      document.querySelectorAll(".sec-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          btn.parentElement.classList.toggle("is-open");
+        });
+      });
+
+      var linksHtml =
+        "<b>HTTPS</b> (mic/cam)<br/>" +
+        "<a href=\"" + httpsBase + "/phone-chat.html\">" + httpsBase + "/phone-chat.html</a><br/>" +
+        "<a href=\"" + httpsBase + "/phone-talk.html\">" + httpsBase + "/phone-talk.html</a><br/>" +
+        "<a href=\"" + httpsBase + "/phone.html\">" + httpsBase + "/phone.html</a><br/><br/>" +
+        "<b>HTTP</b><br/>" +
+        "<a href=\"" + httpBase + "/relay.html\">" + httpBase + "/relay.html</a><br/>" +
+        "<a href=\"" + httpBase + "/phone-setup.html\">" + httpBase + "/phone-setup.html</a>";
+      $("links").innerHTML = linksHtml;
+
+      document.querySelectorAll("[data-go]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var k = b.getAttribute("data-go");
+          var map = {
+            chat: httpsBase + "/phone-chat.html",
+            talk: httpsBase + "/phone-talk.html",
+            cam: httpsBase + "/phone.html",
+            setup: httpBase + "/phone-setup.html",
+            lab: "https://fornevercollective.github.io/grok-build/phone.html#/chat"
+          };
+          if (map[k]) location.href = map[k];
+        });
+      });
+
+      function renderConv(messages) {
+        var el = $("log");
+        if (!messages || !messages.length) {
+          el.innerHTML = '<div class="line">relay idle · open Talk on phone</div>';
+          $("conv-count").textContent = "0";
+          return;
+        }
+        $("conv-count").textContent = String(messages.length);
+        var stick = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+        el.innerHTML = messages.map(function (m) {
+          var you = m.role !== "assistant";
+          var t = (m.text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+          var ts = m.ts ? m.ts.slice(11, 19) : "";
+          return '<div class="line ' + (you ? "you" : "lab") + '"><span class="who">' +
+            (you ? "you" : "mini") + (ts ? " " + ts : "") + "</span>" + t + "</div>";
+        }).join("");
+        if (stick) el.scrollTop = el.scrollHeight;
+      }
+
+      function tick() {
+        // conversation — try same origin first, then HTTP still
+        var convUrl = stillHttp + "/conversation?t=" + Date.now();
+        fetch(convUrl, { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { if (j && j.messages) renderConv(j.messages); })
+          .catch(function () {});
+
+        fetch(stillHttp + "/health", { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (h) {
+            $("sys").textContent = h.ok ? "LIVE" : "…";
+            var age = h.live_age_s;
+            $("pipe-count").textContent = h.live
+              ? (age != null ? age.toFixed(1) + "s" : "ok")
+              : "no live";
+            $("pipe-kv").innerHTML =
+              "live <b>" + !!h.live + "</b> · age <b>" +
+              (age != null ? age.toFixed(2) + "s" : "—") +
+              "</b><br/>audio age <b>" +
+              (h.audio_age_s != null ? h.audio_age_s.toFixed(1) + "s" : "—") +
+              "</b> · inbox <b>" + !!h.inbox + "</b>";
+            $("peek-lab").textContent = h.live ? "still-pipe · live.jpg" : "still-pipe · waiting";
+          })
+          .catch(function () {
+            $("sys").textContent = "DOWN";
+            $("pipe-count").textContent = "err";
+          });
+
+        $("peek").src = stillHttp + "/live.jpg?t=" + Date.now();
+      }
+
+      $("send").onclick = function () {
+        var t = ($("msg").value || "").trim();
+        if (!t) return;
+        fetch(stillHttp + "/transcript", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: t, src: "relay" })
+        }).then(function () {
+          $("msg").value = "";
+          tick();
+        });
+      };
+      $("msg").addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          $("send").click();
+        }
+      });
+      $("refresh").onclick = tick;
+      $("copy-links").onclick = function () {
+        var text =
+          httpsBase + "/phone-chat.html\n" +
+          httpsBase + "/phone-talk.html\n" +
+          httpsBase + "/phone.html\n" +
+          httpBase + "/relay.html\n";
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function () {});
+        }
+        $("sys").textContent = "COPIED";
+        setTimeout(function () { $("sys").textContent = "LIVE"; }, 1200);
+      };
+
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+</body>
+</html>

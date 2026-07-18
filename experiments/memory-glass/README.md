@@ -9,8 +9,9 @@ Droplet-glass concept browser for the SpaceX cool-test surface: transparent shel
 | | |
 |--|--|
 | **Goal** | Native low-overhead droplet browser with ~1s hot-pipe iteration, spatial face/path instrument, and live Grok integration — lighter than Electron; stretch **sub-16ms** spatial HUD frames |
-| **H0–H6** | Hard-pushed — hands/air, pen tip, dense GSPLAT, IndexedDB, prefetch, frame budget (`live.js` + `hurdles.js`) |
-| **H7–H9** | Scaffold (isolation / rim CSS / depth-touch proxy) |
+| **H0–H6** | Hard-pushed — hands/air, pen tip, dense GSPLAT, IndexedDB, prefetch, frame budget |
+| **H7–H9** | Scaffolds **finished** — isolate map · soft rim · touch + WebGrid BPS |
+| **Ironline / μgrad / collab** | `ironline.js` · `ugrad-ladder.js` · `collab.js` · `plans/*` |
 | **Full ladder** | `hotpipe/GOALS.md` |
 | Piece | Stack |
 |-------|--------|
