@@ -101,7 +101,10 @@ URL="${URL}&mg_pace=intel"
 export MG_WEBGRID_W="$W"
 export MG_WEBGRID_H="$H"
 
-echo "==> scale=$SCALE window ${W}x${H} rounds=$ROUNDS"
+# Lean hot-pipe on WebGrid (skip maze/rubik/beats/filmstrip — Intel thrash)
+export MG_HOTPIPE_LEAN=1
+
+echo "==> scale=$SCALE window ${W}x${H} rounds=$ROUNDS lean=1"
 echo "==> url=$URL"
 echo "==> app=$APP"
 
@@ -119,6 +122,7 @@ if [[ -x "$BIN" ]]; then
     MG_WEBGRID_SCALE="$MG_WEBGRID_SCALE" \
     MG_WEBGRID_W="$W" \
     MG_WEBGRID_H="$H" \
+    MG_HOTPIPE_LEAN=1 \
     MG_LOCAL_LLM="${MG_LOCAL_LLM:-}" \
     "$BIN" "$URL" >>"$HOME/Library/Logs/MemoryGlass/launch.log" 2>&1
   ) &

@@ -23,7 +23,7 @@
  * Local LLM pace: ?mg_local_llm=1 polls http://127.0.0.1:9880/pace (llama3.2:1b advisor).
  * P-001 score truth: NEVER use marketing body BPS/grid (10.39 / 40×40); sidebar+peak only.
  * P-002 Intel laptop: auto pace profile + play-perf mode (canvas buffer lag).
- * VER: webgrid-play-v21-intel-pace
+ * VER: webgrid-play-v22-lean-intel
  */
 (function () {
   "use strict";
@@ -32,7 +32,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v21-intel-pace";
+  var VER = "webgrid-play-v22-lean-intel";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -63,7 +63,7 @@
   var PACE_PROFILES = {
     fast: { sleep_ms: 4, wait_loops: 16, mode: "fast", source: "profile-fast" },
     heavy: { sleep_ms: 9, wait_loops: 13, mode: "heavy-retina", source: "profile-heavy" },
-    intel: { sleep_ms: 14, wait_loops: 12, mode: "intel-buffer", source: "profile-intel" },
+    intel: { sleep_ms: 18, wait_loops: 14, mode: "intel-buffer", source: "profile-intel" },
   };
   var _pace = Object.assign({}, PACE_PROFILES.intel);
   var _paceTimer = null;

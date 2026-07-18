@@ -1343,12 +1343,48 @@ fn inject_filmstrip_board(wv: &wry::WebView) {
     eprintln!("filmstrip: no board file found");
 }
 
+/// `lean=true` for WebGrid play: agent + board only (Intel/WK thrash guard).
 fn inject_live_js(targets: &[&wry::WebView]) -> bool {
+    inject_live_js_mode(targets, false)
+}
+
+fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let Some(js) = read_hotpipe_file("live.js") else {
         eprintln!("hotpipe: live.js missing under {}", hotpipe_dir().display());
         return false;
     };
-    // live → body-pose → lens → hurdles → research → ego → dock → ironline → ugrad → collab → webgrid-play
+    let lean = lean
+        || std::env::var("MG_HOTPIPE_LEAN")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("webgrid"))
+            .unwrap_or(false);
+
+    let webgrid = read_hotpipe_file("webgrid-play.js").unwrap_or_default();
+    let activity_board = read_hotpipe_file("activity-leaderboard.js").unwrap_or_default();
+    let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
+
+    if lean {
+        // WebGrid play path: no maze/rubik/beats/filmstrip/contrail (Intel FPS buffer)
+        for wv in targets {
+            inject_js_blob(wv, &js);
+            if !webgrid.is_empty() {
+                inject_js_blob(wv, &webgrid);
+            }
+            if !activity_board.is_empty() {
+                inject_js_blob(wv, &activity_board);
+            }
+            if !session_rec.is_empty() {
+                inject_js_blob(wv, &session_rec);
+            }
+            inject_leaderboard_handoff(wv);
+        }
+        eprintln!(
+            "hotpipe: LEAN live+webgrid+board+rec → {} surface(s)",
+            targets.len()
+        );
+        return true;
+    }
+
+    // Full stack (normal browse / inspect / research)
     let body = read_hotpipe_file("body-pose.js").unwrap_or_default();
     let lens = read_hotpipe_file("lens.js").unwrap_or_default();
     let hurdles = read_hotpipe_file("hurdles.js").unwrap_or_default();
@@ -1359,8 +1395,6 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let ugrad = read_hotpipe_file("ugrad-ladder.js").unwrap_or_default();
     let ugrad_wg = read_hotpipe_file("ugrad-webgrid-tensor.js").unwrap_or_default();
     let collab = read_hotpipe_file("collab.js").unwrap_or_default();
-    let webgrid = read_hotpipe_file("webgrid-play.js").unwrap_or_default();
-    // P-010 leap: market filmstrip · video feed · Lark governance · quantum WebGrid
     let market = read_hotpipe_file("market-filmstrip.js").unwrap_or_default();
     let video = read_hotpipe_file("video-feed-panel.js").unwrap_or_default();
     let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
@@ -1371,8 +1405,6 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
     let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
     let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
-    let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
-    let activity_board = read_hotpipe_file("activity-leaderboard.js").unwrap_or_default();
     let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
     let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
     let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
@@ -1380,7 +1412,6 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
-        // full-body IK after live so hooks + calib ui exist
         if !body.is_empty() {
             inject_js_blob(wv, &body);
         }
@@ -1411,7 +1442,6 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !collab.is_empty() {
             inject_js_blob(wv, &collab);
         }
-        // Neuralink WebGrid auto-play ONLY inside our WKWebView (never Chromium)
         if !webgrid.is_empty() {
             inject_js_blob(wv, &webgrid);
         }
@@ -1421,7 +1451,6 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !contrail.is_empty() {
             inject_js_blob(wv, &contrail);
         }
-        // SpaceX rail chrome before side panels
         if !sx_rail.is_empty() {
             inject_js_blob(wv, &sx_rail);
         }
@@ -1437,22 +1466,18 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !quantum.is_empty() {
             inject_js_blob(wv, &quantum);
         }
-        // Unified glass Dragon capsule + floating Neuralink keyboard (after tool APIs exist)
         if !glass_cap.is_empty() {
             inject_js_blob(wv, &glass_cap);
         }
         if !float_kb.is_empty() {
             inject_js_blob(wv, &float_kb);
         }
-        // P0 dual Bloch←contrail (after quantum + contrail APIs)
         if !bloch_bus.is_empty() {
             inject_js_blob(wv, &bloch_bus);
         }
-        // Activity leaderboard before session-rec so X draft can use board metrics
         if !activity_board.is_empty() {
             inject_js_blob(wv, &activity_board);
         }
-        // P2 session recorder + P4 X draft from board (no auto-post)
         if !session_rec.is_empty() {
             inject_js_blob(wv, &session_rec);
         }
@@ -1465,104 +1490,19 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !rubik_lang.is_empty() {
             inject_js_blob(wv, &rubik_lang);
         }
-        // Collab communication day (mesh share + Grok brief + X draft human)
         if !collab_day.is_empty() {
             inject_js_blob(wv, &collab_day);
         }
         if !live_hud.is_empty() {
             inject_js_blob(wv, &live_hud);
         }
-        // Auto-hydrate MKT filmstrip from ~/.panda board (or hotpipe sample)
         inject_filmstrip_board(wv);
-        // Clean leaderboard window: hydrate playthrough handoff if present
         inject_leaderboard_handoff(wv);
     }
-    let mut tag = String::from("live.js");
-    if !body.is_empty() {
-        tag.push_str("+body");
-    }
-    if !lens.is_empty() {
-        tag.push_str("+lens");
-    }
-    if !hurdles.is_empty() {
-        tag.push_str("+hurdles");
-    }
-    if !research.is_empty() {
-        tag.push_str("+research");
-    }
-    if !ego.is_empty() {
-        tag.push_str("+ego");
-    }
-    if !ironline.is_empty() {
-        tag.push_str("+iron");
-    }
-    if !ugrad.is_empty() {
-        tag.push_str("+ugrad");
-    }
-    if !ugrad_wg.is_empty() {
-        tag.push_str("+ugrad-wg");
-    }
-    if !collab.is_empty() {
-        tag.push_str("+collab");
-    }
-    if !dock.is_empty() {
-        tag.push_str("+dock");
-    }
-    if !webgrid.is_empty() {
-        tag.push_str("+webgrid");
-    }
-    if !market.is_empty() {
-        tag.push_str("+mkt");
-    }
-    if !video.is_empty() {
-        tag.push_str("+vid");
-    }
-    if !lark.is_empty() {
-        tag.push_str("+lark");
-    }
-    if !quantum.is_empty() {
-        tag.push_str("+qwg");
-    }
-    if !sx_rail.is_empty() {
-        tag.push_str("+sx");
-    }
-    if !kbatch_dojo.is_empty() {
-        tag.push_str("+kbatch");
-    }
-    if !contrail.is_empty() {
-        tag.push_str("+contrail");
-    }
-    if !glass_cap.is_empty() {
-        tag.push_str("+gcap");
-    }
-    if !float_kb.is_empty() {
-        tag.push_str("+fkb");
-    }
-    if !bloch_bus.is_empty() {
-        tag.push_str("+bloch");
-    }
-    if !activity_board.is_empty() {
-        tag.push_str("+board");
-    }
-    if !session_rec.is_empty() {
-        tag.push_str("+rec");
-    }
-    if !mem_maze.is_empty() {
-        tag.push_str("+maze");
-    }
-    if !kb_beats.is_empty() {
-        tag.push_str("+beats");
-    }
-    if !rubik_lang.is_empty() {
-        tag.push_str("+rubik");
-    }
-    if !collab_day.is_empty() {
-        tag.push_str("+day");
-    }
-    if !live_hud.is_empty() {
-        tag.push_str("+hud");
-    }
-    eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
+    eprintln!(
+        "hotpipe: FULL stack injected → {} surface(s)",
+        targets.len()
+    );
     true
 }
 
@@ -8096,8 +8036,9 @@ fn main() -> Result<()> {
     inject_dev_boot_spit(&[&inspect_wv], &start);
     inject_dev_line(&inspect_wv, "ok", &ver_full, "version");
     inject_dev_line(&webview, "ok", &ver_full, "version");
-    // Initial hot-pipe inject (live.js)
-    inject_live_js(&[&webview, &inspect_wv]);
+    // Initial hot-pipe inject — LEAN on WebGrid (Intel FPS thrash guard)
+    let hotpipe_lean = webgrid_mode;
+    inject_live_js_mode(&[&webview, &inspect_wv], hotpipe_lean);
 
     let main_id = window.id();
     let inspect_id = inspect_window.id();
@@ -8121,8 +8062,9 @@ fn main() -> Result<()> {
     let hotpipe_enabled = std::env::var("MG_HOTPIPE_OFF").ok().as_deref() != Some("1");
     let start_for_spit = start.clone();
     eprintln!(
-        "  hotpipe: {} ({})",
+        "  hotpipe: {} lean={} ({})",
         if hotpipe_enabled { "on" } else { "OFF (MG_HOTPIPE_OFF=1)" },
+        hotpipe_lean,
         hotpipe_dir().display()
     );
 
@@ -8142,7 +8084,7 @@ fn main() -> Result<()> {
                     if let Some(wv) = inspect_wv.as_ref() {
                         t.push(wv);
                     }
-                    inject_live_js(&t);
+                    inject_live_js_mode(&t, hotpipe_lean);
                 }
                 if let Some(wv) = webview.as_ref() {
                     inject_version_stamp(wv, run_epoch);
@@ -8160,7 +8102,7 @@ fn main() -> Result<()> {
                     push_prompt_to_webview(wv);
                     push_loop_to_webview(wv);
                     if hotpipe_enabled {
-                        inject_live_js(&[wv]);
+                        inject_live_js_mode(&[wv], hotpipe_lean);
                     }
                     inject_version_stamp(wv, run_epoch);
                 }
@@ -8234,8 +8176,8 @@ fn main() -> Result<()> {
                 if let Some(wv) = inspect_wv.as_ref() {
                     t.push(wv);
                 }
-                if inject_live_js(&t) {
-                    eprintln!("hotpipe: stack reloaded (+dock)");
+                if inject_live_js_mode(&t, hotpipe_lean) {
+                    eprintln!("hotpipe: stack reloaded lean={hotpipe_lean}");
                 }
             }
         }
@@ -8367,7 +8309,7 @@ fn main() -> Result<()> {
                         if let Some(wv) = inspect_wv.as_ref() {
                             t.push(wv);
                         }
-                        inject_live_js(&t);
+                        inject_live_js_mode(&t, hotpipe_lean);
                         live_mtime = mtime_of(&hotpipe_dir().join("live.js"));
                     }
                 }
