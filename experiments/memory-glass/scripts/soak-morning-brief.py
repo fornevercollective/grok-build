@@ -26,13 +26,23 @@ import mg_local_llm as llm  # noqa: E402
 SYSTEM = """You are Memory Glass + flip-train overnight ops. Offline only — no inventing metrics.
 Write a crisp morning brief for an engineer from the evidence pack.
 
+REQUIRED outline (use these ## headings in order):
+## Train (primary)
+## Board freshness
+## WebGrid agent (secondary)
+## Soak / process
+## Next 3 actions
+
 Priority order (highest first):
-1) Train model test_eval / metrics curve / top_weights
-2) Flip board refresh stamp (is rows.json live or stale?)
+1) Train model test_eval / metrics curve / top_weights — OPEN with these numbers
+2) Flip board REFRESH_STAMP / n_rows / asOf — say LIVE or STALE explicitly
 3) Learn/soak cycle counts and crashes
 4) WebGrid agent_end peaks only (never lobby marketing)
 
 Hard rules:
+- First paragraph MUST cite test_eval acc for webgrid, flip, and all if present in evidence.
+- First section MUST cite n_rows and refreshedAt from REFRESH_STAMP if present.
+- Do NOT open with WebGrid lobby/phase telemetry or marketing numbers.
 - BPS means bits per second from WebGrid formula log2(N²-1)*NTPM/60 — NOT audio bitrate.
 - NTPM means net targets per minute — NOT "non-terminating pause message".
 - 10.39 BPS on the public page is MARKETING (implant PR). Never call it the session score.
@@ -165,26 +175,10 @@ def build_evidence(run_dir: Path) -> str:
 
     parts = [
         f"# Run directory\n{run_dir}",
-        f"\n# Parsed soak/learn stats\n```json\n{json.dumps(stats, indent=2)}\n```",
+        "\n# INSTRUCTION TO MODEL: Lead with TRAIN + BOARD STAMP sections below. "
+        "Ignore lobby marketing. WebGrid agent peaks are secondary.\n",
     ]
-    if summary.exists():
-        parts.append("\n# Existing summary.md\n" + summary.read_text(errors="replace")[:4000])
-    if analysis.exists():
-        parts.append(
-            "\n# Analysis (stale board / features) — TRUST THIS OVER LOBBY MARKETING\n"
-            + analysis.read_text(errors="replace")[:5000]
-        )
-    # Train bus — primary truth for overnight learn
-    if train_manifest.exists():
-        try:
-            man = json.loads(train_manifest.read_text())
-            parts.append(
-                "\n# Train manifest stats (joint WebGrid+flip bus)\n```json\n"
-                + json.dumps(man.get("stats") or man, indent=2)[:2000]
-                + "\n```"
-            )
-        except Exception:
-            pass
+    # Train bus FIRST — primary truth for overnight learn
     if train_model.exists():
         try:
             mod = json.loads(train_model.read_text())
@@ -197,8 +191,18 @@ def build_evidence(run_dir: Path) -> str:
                 "honest_note": mod.get("honest_note"),
             }
             parts.append(
-                "\n# Final model (logreg) — primary outcome\n```json\n"
+                "\n# Final model (logreg) — PRIMARY OUTCOME — LEAD WITH THIS\n```json\n"
                 + json.dumps(slim, indent=2)
+                + "\n```"
+            )
+        except Exception:
+            pass
+    if train_manifest.exists():
+        try:
+            man = json.loads(train_manifest.read_text())
+            parts.append(
+                "\n# Train manifest stats (joint WebGrid+flip bus)\n```json\n"
+                + json.dumps(man.get("stats") or man, indent=2)[:2000]
                 + "\n```"
             )
         except Exception:
@@ -208,9 +212,26 @@ def build_evidence(run_dir: Path) -> str:
         parts.append("\n# Train metrics tail (curve)\n```\n" + "\n".join(mets) + "\n```")
     if refresh_stamp.exists():
         parts.append(
-            "\n# Flip board refresh stamp\n```json\n"
+            "\n# Flip board refresh stamp — SAY LIVE OR STALE\n```json\n"
             + refresh_stamp.read_text(errors="replace")[:1500]
             + "\n```"
+        )
+    film_stamp = Path.home() / ".panda/mg-soak/flip-board-live/FILMSTRIP_STAMP.json"
+    if film_stamp.exists():
+        parts.append(
+            "\n# Filmstrip export stamp\n```json\n"
+            + film_stamp.read_text(errors="replace")[:800]
+            + "\n```"
+        )
+    parts.append(
+        f"\n# Parsed soak/learn stats (secondary)\n```json\n{json.dumps(stats, indent=2)}\n```"
+    )
+    if summary.exists():
+        parts.append("\n# Existing summary.md\n" + summary.read_text(errors="replace")[:4000])
+    if analysis.exists():
+        parts.append(
+            "\n# Analysis (stale board / features) — TRUST THIS OVER LOBBY MARKETING\n"
+            + analysis.read_text(errors="replace")[:5000]
         )
     parts.append("\n# soak/learn.jsonl tail\n```\n" + "\n".join(_tail_lines(learn if learn.exists() else soak, 30)) + "\n```")
     if still.exists():

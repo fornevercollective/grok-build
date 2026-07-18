@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "market-filmstrip-v1";
+  var VER = "market-filmstrip-v2";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._marketFilmstripVer === VER) return;
   HP._marketFilmstripVer = VER;
@@ -29,6 +29,9 @@
     condor: { wingK: 1.6, midK: 0.35, hits: 0, misses: 0, trials: 0 },
     volBand: { min: 0.02, max: 0.45 }, // BB width fraction "stabilized window"
     stripCursor: 0,
+    viewMode: "list", // list | graph
+    graphNodes: [],
+    graphEdges: [],
     lastReport: "",
   };
 
@@ -103,6 +106,136 @@
       }
       return true;
     });
+  }
+
+  /** P-010c: force-graph of list/sector co-membership (X cashtag + RH lists) */
+  function buildForceGraph(rows) {
+    var maxN = Math.min(rows.length, 80);
+    var nodes = [];
+    var idx = {};
+    for (var i = 0; i < maxN; i++) {
+      var r = rows[i];
+      idx[r.id] = nodes.length;
+      nodes.push({
+        id: r.id,
+        x: 40 + Math.random() * 280,
+        y: 30 + Math.random() * 160,
+        vx: 0,
+        vy: 0,
+        bias: biasScore(r),
+        sector: r.sector || "",
+      });
+    }
+    var edges = [];
+    var listMap = {};
+    for (var j = 0; j < maxN; j++) {
+      var rr = rows[j];
+      (rr.lists || []).concat(rr.sector ? [rr.sector] : []).forEach(function (L) {
+        if (!listMap[L]) listMap[L] = [];
+        listMap[L].push(rr.id);
+      });
+    }
+    Object.keys(listMap).forEach(function (L) {
+      var arr = listMap[L];
+      if (arr.length < 2 || arr.length > 24) return;
+      for (var a = 0; a < arr.length; a++) {
+        for (var b = a + 1; b < Math.min(arr.length, a + 4); b++) {
+          if (idx[arr[a]] == null || idx[arr[b]] == null) continue;
+          edges.push({ a: idx[arr[a]], b: idx[arr[b]], list: L });
+        }
+      }
+    });
+    state.graphNodes = nodes;
+    state.graphEdges = edges.slice(0, 200);
+  }
+
+  function stepForceGraph() {
+    var nodes = state.graphNodes;
+    var edges = state.graphEdges;
+    if (!nodes.length) return;
+    var i, j, n, m, dx, dy, d, f;
+    for (i = 0; i < nodes.length; i++) {
+      n = nodes[i];
+      n.vx *= 0.85;
+      n.vy *= 0.85;
+      // mild center pull
+      n.vx += (180 - n.x) * 0.002;
+      n.vy += (100 - n.y) * 0.002;
+    }
+    for (i = 0; i < nodes.length; i++) {
+      for (j = i + 1; j < nodes.length; j++) {
+        dx = nodes[j].x - nodes[i].x;
+        dy = nodes[j].y - nodes[i].y;
+        d = Math.sqrt(dx * dx + dy * dy) || 1;
+        f = 40 / (d * d);
+        nodes[i].vx -= (dx / d) * f;
+        nodes[i].vy -= (dy / d) * f;
+        nodes[j].vx += (dx / d) * f;
+        nodes[j].vy += (dy / d) * f;
+      }
+    }
+    for (i = 0; i < edges.length; i++) {
+      var e = edges[i];
+      n = nodes[e.a];
+      m = nodes[e.b];
+      if (!n || !m) continue;
+      dx = m.x - n.x;
+      dy = m.y - n.y;
+      d = Math.sqrt(dx * dx + dy * dy) || 1;
+      f = (d - 55) * 0.01;
+      n.vx += (dx / d) * f;
+      n.vy += (dy / d) * f;
+      m.vx -= (dx / d) * f;
+      m.vy -= (dy / d) * f;
+    }
+    for (i = 0; i < nodes.length; i++) {
+      n = nodes[i];
+      n.x = Math.max(12, Math.min(340, n.x + n.vx));
+      n.y = Math.max(12, Math.min(188, n.y + n.vy));
+    }
+  }
+
+  function drawForceGraph(cv) {
+    if (!cv) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = cv.clientWidth || 360;
+    var h = cv.clientHeight || 200;
+    cv.width = Math.floor(w * dpr);
+    cv.height = Math.floor(h * dpr);
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var sx = w / 360;
+    var sy = h / 200;
+    stepForceGraph();
+    var edges = state.graphEdges;
+    var nodes = state.graphNodes;
+    ctx.strokeStyle = "rgba(120,180,150,0.25)";
+    for (var i = 0; i < edges.length; i++) {
+      var e = edges[i];
+      var a = nodes[e.a];
+      var b = nodes[e.b];
+      if (!a || !b) continue;
+      ctx.beginPath();
+      ctx.moveTo(a.x * sx, a.y * sy);
+      ctx.lineTo(b.x * sx, b.y * sy);
+      ctx.stroke();
+    }
+    for (var j = 0; j < nodes.length; j++) {
+      var n = nodes[j];
+      ctx.fillStyle =
+        n.bias > 0
+          ? "rgba(100,220,160,0.9)"
+          : n.bias < 0
+            ? "rgba(240,140,120,0.9)"
+            : "rgba(180,200,190,0.85)";
+      ctx.beginPath();
+      ctx.arc(n.x * sx, n.y * sy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(220,240,230,0.75)";
+      ctx.font = "8px ui-monospace,Menlo,monospace";
+      ctx.fillText(n.id, n.x * sx + 5, n.y * sy + 3);
+    }
   }
 
   function sectors() {
@@ -248,6 +381,10 @@
       "#mg-mkt-strip{height:56px;margin:0 8px 6px;border:1px solid rgba(100,160,140,0.22);",
       "  border-radius:3px;background:rgba(0,0,0,0.35);position:relative;overflow:hidden}",
       "#mg-mkt-strip canvas{width:100%;height:100%;display:block}",
+      "#mg-mkt-graph{height:0;margin:0 8px 6px;border:1px solid rgba(100,160,140,0.22);",
+      "  border-radius:3px;background:rgba(0,0,0,0.35);overflow:hidden;transition:height .15s}",
+      "#mg-mkt-rail.graph #mg-mkt-graph{height:200px}",
+      "#mg-mkt-graph canvas{width:100%;height:100%;display:block}",
       "#mg-mkt-list{flex:1;overflow:auto;padding:0 8px 10px;min-height:120px}",
       "#mg-mkt-list .row{display:grid;grid-template-columns:52px 1fr 48px 56px;gap:4px;",
       "  padding:4px 2px;border-bottom:1px solid rgba(80,120,100,0.15);cursor:pointer}",
@@ -261,7 +398,7 @@
     (document.head || document.documentElement).appendChild(st);
   }
 
-  var rail, listEl, stripCv, statusEl, condorEl;
+  var rail, listEl, stripCv, graphCv, statusEl, condorEl, graphRaf;
 
   function drawStrip(rows) {
     if (!stripCv) return;
@@ -337,6 +474,25 @@
     var rows = filtered();
     drawStrip(rows);
     paintList(rows);
+    if (state.viewMode === "graph") {
+      if (!state.graphNodes.length || state.graphNodes.length !== Math.min(rows.length, 80)) {
+        buildForceGraph(rows);
+      }
+      if (rail) rail.classList.add("graph");
+      drawForceGraph(graphCv);
+      if (!graphRaf) {
+        graphRaf = requestAnimationFrame(function tick() {
+          if (state.viewMode !== "graph" || !state.open) {
+            graphRaf = 0;
+            return;
+          }
+          drawForceGraph(graphCv);
+          graphRaf = requestAnimationFrame(tick);
+        });
+      }
+    } else if (rail) {
+      rail.classList.remove("graph");
+    }
     if (condorEl) {
       var f = state.focus;
       if (f) {
@@ -404,12 +560,15 @@
       "  </div>" +
       '  <div id="mg-mkt-acts">' +
       '    <button type="button" id="mg-mkt-load">LOAD</button>' +
+      '    <button type="button" id="mg-mkt-reload">FILE</button>' +
       '    <button type="button" id="mg-mkt-paste">PASTE</button>' +
+      '    <button type="button" id="mg-mkt-graph-btn">GRAPH</button>' +
       '    <button type="button" id="mg-mkt-hit" class="hot">HIT IN</button>' +
       '    <button type="button" id="mg-mkt-edge">HIT EDGE</button>' +
       '    <button type="button" id="mg-mkt-export">TRIALS→</button>' +
       "  </div>" +
       '  <div id="mg-mkt-strip"><canvas id="mg-mkt-cv"></canvas></div>' +
+      '  <div id="mg-mkt-graph"><canvas id="mg-mkt-gcv"></canvas></div>' +
       '  <div id="mg-mkt-list"></div>' +
       '  <div id="mg-mkt-condor"></div>' +
       '  <div id="mg-mkt-status"></div>' +
@@ -417,6 +576,7 @@
     (document.body || document.documentElement).appendChild(rail);
     listEl = rail.querySelector("#mg-mkt-list");
     stripCv = rail.querySelector("#mg-mkt-cv");
+    graphCv = rail.querySelector("#mg-mkt-gcv");
     statusEl = rail.querySelector("#mg-mkt-status");
     condorEl = rail.querySelector("#mg-mkt-condor");
 
@@ -459,6 +619,25 @@
         if (s === cur) o.selected = true;
         sel.appendChild(o);
       });
+      state.graphNodes = [];
+      paint();
+    };
+    rail.querySelector("#mg-mkt-reload").onclick = function () {
+      try {
+        if (window.ipc && window.ipc.postMessage) {
+          window.ipc.postMessage(JSON.stringify({ op: "load_filmstrip" }));
+          state.lastReport = "native filmstrip reload";
+        } else {
+          tryHydrate();
+        }
+      } catch (e) {
+        tryHydrate();
+      }
+      paint();
+    };
+    rail.querySelector("#mg-mkt-graph-btn").onclick = function () {
+      state.viewMode = state.viewMode === "graph" ? "list" : "graph";
+      state.graphNodes = [];
       paint();
     };
     rail.querySelector("#mg-mkt-paste").onclick = function () {

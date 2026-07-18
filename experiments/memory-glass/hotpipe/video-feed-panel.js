@@ -60,38 +60,30 @@
     persist();
   }
 
-  /** Native bridge: ipc op media_feed, or copy shell command for agent */
+  /** Native bridge: ipc op media_feed → mg-video-feed.sh (Rust spawns). Clipboard fallback. */
   function nativeMedia(op, payload) {
-    var body = Object.assign({ op: "media_feed", media_op: op }, payload || {});
+    var url = (payload && payload.url) || state.url || "";
+    var body = { op: "media_feed", media_op: op, url: url };
     try {
       if (window.ipc && typeof window.ipc.postMessage === "function") {
         window.ipc.postMessage(JSON.stringify(body));
+        state.lastStatus = op + " · ipc → mg-video-feed.sh";
+        log("ok", state.lastStatus + " · " + String(url).slice(0, 60));
+        paintStatus();
         return { ok: true, via: "ipc" };
       }
     } catch (e) {}
-    // Fallback: expose shell for Grok agent / user paste
-    var url = (payload && payload.url) || state.url || "";
     var cmd =
-      'bash "' +
-      (window.__mgVideoScript ||
-        "$HOME/../Volumes/qbitOS/00.dev/projects/grok-build/experiments/memory-glass/scripts/mg-video-feed.sh") +
-      '" ' +
-      op +
-      " " +
-      JSON.stringify(url);
-    // Prefer known repo path
-    cmd =
       'bash "/Volumes/qbitOS/00.dev/projects/grok-build/experiments/memory-glass/scripts/mg-video-feed.sh" ' +
       op +
-      " " +
-      JSON.stringify(url);
+      (url ? " " + JSON.stringify(url) : "");
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(cmd);
       }
     } catch (e2) {}
-    state.lastStatus = op + " · cmd copied (run in terminal / agent)";
-    log("info", state.lastStatus + " · " + url.slice(0, 60));
+    state.lastStatus = op + " · cmd copied (no ipc)";
+    log("info", state.lastStatus + " · " + String(url).slice(0, 60));
     paintStatus();
     return { ok: true, via: "clipboard", cmd: cmd };
   }

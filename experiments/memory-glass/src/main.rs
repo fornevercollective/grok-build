@@ -179,6 +179,13 @@ enum Cmd {
     PageZoom {
         scale: f64,
     },
+    /// Streaming video under-hood: yt-dlp / ffmpeg / ffplay / blank / gy via mg-video-feed.sh
+    MediaFeed {
+        media_op: String,
+        url: String,
+    },
+    /// Re-read flip-board filmstrip JSON and inject into main for MKT rail
+    LoadFilmstrip,
     /// Re-assert NSWindow/WK glass on both panes (after FS / multi-scale display move).
     ReassertGlass,
 }
@@ -249,13 +256,25 @@ fn webgrid_wants_small_window() -> bool {
     false
 }
 
+/// Prefer primary monitor when it is landscape (laptop main display); else leftmost landscape.
+fn webgrid_target_monitor(window: &Window) -> Option<tao::monitor::MonitorHandle> {
+    if let Some(pri) = window.primary_monitor() {
+        let s = pri.size();
+        if (s.width as f64) >= (s.height as f64) * 1.05 {
+            return Some(pri);
+        }
+    }
+    leftmost_landscape_monitor(window)
+}
+
 /// WebGrid layout (once at boot).
 /// Neuralink: 12×12 if innerWidth≤751 OR innerHeight≤600, else 30×30.
-/// Large (default): near-fullscreen → 30×30.
+/// Large (default): near-fullscreen on laptop main display → 30×30.
 /// Small: `?mg_scale=small` / `?grid=12` / env `MG_WEBGRID_SCALE=small` → compact window → 12×12.
+/// Override size: MG_WEBGRID_W / MG_WEBGRID_H (logical px).
 fn place_for_webgrid_play(main: &Window, inspect: Option<&Window>) {
     let scale = main.scale_factor().max(1.0);
-    let Some(mon) = leftmost_landscape_monitor(main) else {
+    let Some(mon) = webgrid_target_monitor(main) else {
         place_on_primary(main);
         return;
     };
@@ -264,14 +283,27 @@ fn place_for_webgrid_play(main: &Window, inspect: Option<&Window>) {
     let mon_w = msize.width as f64 / scale;
     let mon_h = msize.height as f64 / scale;
     let small = webgrid_wants_small_window();
+    let env_w = std::env::var("MG_WEBGRID_W")
+        .ok()
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|w| *w >= 400.0 && *w <= 8000.0);
+    let env_h = std::env::var("MG_WEBGRID_H")
+        .ok()
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|h| *h >= 400.0 && *h <= 8000.0);
     let (logical_w, logical_h, target) = if small {
         // Compact browser — Safari zoom-in / mobile breakpoint → big-cell 12×12
-        (720.0_f64.min(mon_w - 40.0).max(560.0), 560.0_f64.min(mon_h - 60.0).max(480.0), "12×12")
-    } else {
-        // Near-fullscreen — height > 600 for desktop 30×30
         (
-            (mon_w - 48.0).clamp(1280.0, 2200.0),
-            (mon_h - 80.0).clamp(780.0, 1400.0),
+            env_w.unwrap_or_else(|| 720.0_f64.min(mon_w - 40.0).max(560.0)),
+            env_h.unwrap_or_else(|| 560.0_f64.min(mon_h - 60.0).max(480.0)),
+            "12×12",
+        )
+    } else {
+        // Near-fullscreen on this display (e.g. 2560×1440 laptop) → 30×30
+        // Leave chrome margins; do not hard-cap below modern QHD.
+        (
+            env_w.unwrap_or_else(|| (mon_w - 32.0).clamp(1280.0, mon_w - 16.0)),
+            env_h.unwrap_or_else(|| (mon_h - 56.0).clamp(780.0, mon_h - 28.0)),
             "30×30",
         )
     };
@@ -279,12 +311,12 @@ fn place_for_webgrid_play(main: &Window, inspect: Option<&Window>) {
     let outer = main.outer_size();
     let ow = outer.width as i32;
     let oh = outer.height as i32;
-    let x = mpos.x + (16.0 * scale).round() as i32;
-    let y = mpos.y + (36.0 * scale).round() as i32;
+    let x = mpos.x + (12.0 * scale).round() as i32;
+    let y = mpos.y + (28.0 * scale).round() as i32;
     main.set_outer_position(PhysicalPosition::new(x, y));
     eprintln!(
-        "webgrid layout (once): landscape {}x{} · main {}x{} @ ({},{}) · target {target} (small={small})",
-        msize.width, msize.height, ow, oh, x, y
+        "webgrid layout (once): display {}x{} (log {:.0}x{:.0}) · main {}x{} @ ({},{}) · target {target} (small={small})",
+        msize.width, msize.height, mon_w, mon_h, ow, oh, x, y
     );
     // Inspect: only nudge if it would sit on top of main; otherwise leave alone
     if let Some(insp) = inspect {
@@ -1226,6 +1258,86 @@ fn inject_js_blob(webview: &wry::WebView, js: &str) {
     let _ = webview.evaluate_script(&wrapped);
 }
 
+
+fn mg_video_feed_script() -> std::path::PathBuf {
+    // Prefer source tree next to hotpipe; fall back to ~/.panda copy
+    let cand = [
+        hotpipe_dir().join("../scripts/mg-video-feed.sh"),
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("scripts/mg-video-feed.sh"),
+        std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_default().join(".panda/mg-soak/bin/mg-video-feed.sh"),
+    ];
+    for p in cand {
+        if p.is_file() {
+            return p;
+        }
+    }
+    hotpipe_dir().join("../scripts/mg-video-feed.sh")
+}
+
+fn spawn_media_feed(media_op: &str, url: &str) {
+    let script = mg_video_feed_script();
+    let op = if media_op.is_empty() { "tools" } else { media_op };
+    eprintln!("media_feed: {} {} {}", script.display(), op, url);
+    let mut cmd = std::process::Command::new("bash");
+    cmd.arg(&script).arg(op);
+    if !url.is_empty() {
+        cmd.arg(url);
+    }
+    match cmd.spawn() {
+        Ok(child) => eprintln!("media_feed: spawned pid={}", child.id()),
+        Err(e) => eprintln!("media_feed: spawn failed: {e}"),
+    }
+}
+
+fn filmstrip_paths() -> Vec<std::path::PathBuf> {
+    let mut v = Vec::new();
+    if let Some(h) = std::env::var_os("HOME").map(std::path::PathBuf::from) {
+        v.push(h.join(".panda/mg-soak/flip-board-live/filmstrip.json"));
+        v.push(h.join(".panda/mg-soak/flip-board-live/rows.json"));
+    }
+    v.push(hotpipe_dir().join("data/filmstrip-board.json"));
+    v.push(std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("hotpipe/data/filmstrip-board.json"));
+    v
+}
+
+/// Inject window.__mgFilmstripBoard from local JSON (auto-hydrate MKT rail).
+fn inject_filmstrip_board(wv: &wry::WebView) {
+    for path in filmstrip_paths() {
+        if !path.is_file() {
+            continue;
+        }
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        // Cap payload size for evaluate_script (~ few MB max practical)
+        if raw.len() > 4_000_000 {
+            eprintln!("filmstrip: skip large {} ({} bytes)", path.display(), raw.len());
+            continue;
+        }
+        // Validate JSON
+        if serde_json::from_str::<serde_json::Value>(&raw).is_err() {
+            continue;
+        }
+        let js = format!(
+            r#"(function(){{try{{
+  var data = {raw};
+  window.__mgFilmstripBoard = data;
+  if (window.__mgMarket && window.__mgMarket.loadBoard) {{
+    var n = window.__mgMarket.loadBoard(data);
+    if (window.__mgDevLog) window.__mgDevLog('ok','filmstrip auto n='+n,'mkt');
+  }}
+}}catch(e){{try{{if(window.__mgDevLog)window.__mgDevLog('err',String(e),'mkt');}}catch(_e){{}}}}}})();"#
+        );
+        if let Err(e) = wv.evaluate_script(&js) {
+            eprintln!("filmstrip inject: {e}");
+        } else {
+            eprintln!("filmstrip: injected from {}", path.display());
+            return;
+        }
+    }
+    eprintln!("filmstrip: no board file found");
+}
+
 fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let Some(js) = read_hotpipe_file("live.js") else {
         eprintln!("hotpipe: live.js missing under {}", hotpipe_dir().display());
@@ -1297,6 +1409,8 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !quantum.is_empty() {
             inject_js_blob(wv, &quantum);
         }
+        // Auto-hydrate MKT filmstrip from ~/.panda board (or hotpipe sample)
+        inject_filmstrip_board(wv);
     }
     let mut tag = String::from("live.js");
     if !body.is_empty() {
@@ -7408,17 +7522,18 @@ fn main() -> Result<()> {
         // Medium browser for play (WebGrid); slightly wider default otherwise
         .with_inner_size(LogicalSize::new(
             // WebGrid large → 30×30; small → 12×12 (h≤600 / w≤751)
+            // Initial size; place_for_webgrid_play resizes to laptop display.
             if webgrid_small {
                 720.0
             } else if webgrid_mode {
-                1600.0
+                2400.0
             } else {
                 980.0
             },
             if webgrid_small {
                 560.0
             } else if webgrid_mode {
-                1000.0
+                1350.0
             } else {
                 820.0
             },
@@ -7581,6 +7696,20 @@ fn main() -> Result<()> {
                         .and_then(|x| x.as_f64())
                         .unwrap_or(1.0),
                 }),
+                "media_feed" => Some(Cmd::MediaFeed {
+                    media_op: v
+                        .get("media_op")
+                        .or_else(|| v.get("action"))
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("tools")
+                        .to_string(),
+                    url: v
+                        .get("url")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                }),
+                "load_filmstrip" | "filmstrip" => Some(Cmd::LoadFilmstrip),
                 "reassert_glass" | "glass" => Some(Cmd::ReassertGlass),
                 "hot_mitigate" => Some(Cmd::HotMitigate {
                     msg: v
@@ -8336,6 +8465,14 @@ fn main() -> Result<()> {
                         } else {
                             eprintln!("page_zoom: main → {z:.2}");
                         }
+                    }
+                }
+                Cmd::MediaFeed { media_op, url } => {
+                    spawn_media_feed(&media_op, &url);
+                }
+                Cmd::LoadFilmstrip => {
+                    if let Some(wv) = webview.as_ref() {
+                        inject_filmstrip_board(wv);
                     }
                 }
                 Cmd::ReassertGlass => {
