@@ -483,6 +483,33 @@
         })
       );
       row.appendChild(
+        act("BOOKS", "ok", function () {
+          var u = "file:///Volumes/qbitOS/00.dev/projects/KBatch-dictionary/labs/living-books.html";
+          try {
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+          } catch (e) {
+            window.open(u, "_blank");
+          }
+          setStatus("living books lab");
+        })
+      );
+      row.appendChild(
+        act("BEATS→", "", function () {
+          try {
+            if (window.__mgContrail && window.__mgContrail.exportStoryBeats) {
+              var b = window.__mgContrail.exportStoryBeats();
+              var t = JSON.stringify(b, null, 2);
+              if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "clipboard_copy", text: t }));
+              else if (navigator.clipboard) navigator.clipboard.writeText(t);
+              setStatus("story beats " + ((b.beats && b.beats.length) || 0));
+            } else setStatus("contrail only on WebGrid");
+          } catch (e) {
+            setStatus("beats err");
+          }
+        })
+      );
+      row.appendChild(
         act("DOJO", "", function () {
           if (window.__mgUgrad && window.__mgUgrad.openKBatch) window.__mgUgrad.openKBatch("/dojo/");
           else window.open("https://kbatch.ugrad.ai/dojo/", "_blank");
