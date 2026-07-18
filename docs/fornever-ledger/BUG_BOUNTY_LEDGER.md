@@ -18,13 +18,13 @@ Severity: **S0** ship-blocker · **S1** high · **S2** medium · **S3** polish �
 | MG-003 | S1 | Synthetic click / drag crash | Nil NSApp.currentEvent | Async IPC + set_outer_position flood | Rate-limit clicks; safe drag path | **Mitigated** |
 | MG-004 | S1 | Camera multi-grab thrash | LED thrash · auth flaps · spool stall | Multiple capture-stream / snap-loop | Single writer rule; mg-stop-cams; defer cam on webgrid | **Open** ops discipline |
 | MG-005 | S2 | WebGrid 12 vs 30 surprise | Dense vs big cells | Viewport breakpoints + WK pageZoom ≠ Safari | mg_scale=small; viewport spoof; layout once | **Partial** |
-| MG-006 | S2 | Score scrape pollution | False 10.39 / 40×40 in agent logs | Marketing copy in body text | Prefer sidebar regex only; filter phase=playing | **Open** |
+| MG-006 | S2 | Score scrape pollution | False 10.39 / 40×40 in agent logs | Marketing copy in body text | Prefer sidebar regex only; filter phase=playing | **Mitigated** (v20-score-truth · fixtures OK) |
 | MG-007 | S2 | Agent missGuess inflation | Soft-misses while waiting for blue move | Tight wait loops count as miss | Pace advisor; separate soft-wait from real miss | **Open** |
 | MG-008 | S2 | Hotpipe edit invalidates seal | App won't launch after JS copy | Sealed Resources hash | Always resign; future: post-copy hook | **Open** automation |
 | MG-009 | S3 | MediaPipe CDN blocked | Hands degrade | Network / CSP | Heuristic H1 fallback | **Mitigated** |
 | MG-010 | S3 | Cinema + transparent WK | Opaque toggle crash | Platform limit | CSS-only cinema | **Mitigated** |
 | MG-011 | S2 | Ollama brief timeout | morning-brief fails cold start | Large model load >120s | Timeout 300s; model fallback chain | **Mitigated** |
-| MG-012 | S3 | Pace advisor misreads grid | N=40 from marketing | Same as MG-006 | Fix scrape before LLM digest | **Open** |
+| MG-012 | S3 | Pace advisor misreads grid | N=40 from marketing | Same as MG-006 | Fix scrape before LLM digest | **Mitigated** (pace digest N∈{12,30}) |
 | MG-013 | INFO | BPS mouse ≠ BCI | Inflated agent BPS | Synthetic pointer channel | Label demos; never claim implant parity | **Policy** |
 | MG-014 | S2 | Spaces fullscreen glass black | Vertical 2nd screen | Layer / scale | Reassert + fill CSS; may need simple FS | **Partial** |
 | MG-015 | S3 | Dock icon stale | After rebuild | LaunchServices cache | lsregister; killall Dock tip | **Known** |

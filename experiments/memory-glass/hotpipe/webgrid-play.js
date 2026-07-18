@@ -10,7 +10,7 @@
  *   - no isTrusted check → synthetic pointerup works if coords match
  *
  * Autoplay off unless ?mg_autoplay=1 | localStorage play_once | AgentPlayOnce
- * VER: webgrid-play-v19-local-llm
+ * VER: webgrid-play-v20-score-truth
  *
  * Safari reference (user screenshots):
  *   ⌘− zoom OUT → dense 30×30 (many small cells)
@@ -21,6 +21,7 @@
  * Canvas keeps real layout px → 12 cells look big, 30 look dense (matches Safari shots).
  * ⌘0 = 100% / 30×30 desktop.
  * Local LLM pace: ?mg_local_llm=1 polls http://127.0.0.1:9880/pace (llama3.2:1b advisor).
+ * P-001 score truth: NEVER use marketing body BPS/grid (10.39 / 40×40); sidebar+peak only.
  */
 (function () {
   "use strict";
@@ -29,7 +30,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v19-local-llm";
+  var VER = "webgrid-play-v20-score-truth";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -616,33 +617,61 @@
     }
   }
 
+  /**
+   * Score scrape (P-001 truth):
+   * - LIVE: only "MM:SS BPS NTPM · N×N" sidebar while playing
+   * - PEAK: only "Your peak score: X BPS (Y NTPM)" on end card
+   * - NEVER bare "X BPS" (picks marketing 10.39) or bare "N×N" (picks 40×40 copy)
+   * - Grid N only 12 or 30 (public page); ignore 16/35/40 marketing
+   */
   function scrapeScore() {
     var body = ((document.body && document.body.innerText) || "").replace(/\s+/g, " ");
     var bps = null,
       ntpm = null,
       timer = null,
       grid = null;
-    /* Prefer in-game sidebar: "X.XX BPS" near timer, not marketing 10.39 */
-    var mSide = body.match(/(\d+:\d{2})\s*([\d.]+)\s*BPS\s*([\d.]+)\s*NTPM\s*[·.]\s*(\d+)\s*[×x]\s*(\d+)/i);
+    var phase = "lobby";
+    var mSide = body.match(
+      /(\d{1,2}:\d{2})\s+([\d.]+)\s*BPS\s+(-?[\d.]+)\s*NTPM\s*[·•.]\s*(\d+)\s*[×x]\s*(\d+)/i
+    );
     if (mSide) {
       timer = mSide[1];
       bps = parseFloat(mSide[2]);
       ntpm = parseFloat(mSide[3]);
-      grid = mSide[4] + "x" + mSide[5];
-    } else {
-      var mB = body.match(/([\d.]+)\s*BPS/i);
-      if (mB) bps = parseFloat(mB[1]);
-      var mN = body.match(/(-?[\d.]+)\s*NTPM/i);
-      if (mN) ntpm = parseFloat(mN[1]);
-      var mT = body.match(/\b(\d{1,2}:\d{2})\b/);
-      if (mT) timer = mT[1];
-      var mG = body.match(/(\d+)\s*[×x]\s*(\d+)/i);
-      if (mG) grid = mG[1] + "x" + mG[2];
+      var nA = parseInt(mSide[4], 10);
+      var nB = parseInt(mSide[5], 10);
+      if ((nA === 12 || nA === 30) && nA === nB) {
+        grid = nA + "x" + nB;
+      }
+      phase = timer === "00:00" ? "end" : "playing";
+      /* Reject absurd live bps if somehow marketing leaked into same line */
+      if (bps === 10.39 && ntpm == null) {
+        bps = null;
+      }
     }
     var peak = null;
-    var mP = body.match(/peak score:\s*([\d.]+)\s*BPS\s*\(([\d.]+)\s*NTPM\)/i);
-    if (mP) peak = { bps: parseFloat(mP[1]), ntpm: parseFloat(mP[2]) };
-    return { bps: bps, ntpm: ntpm, timer: timer, grid: grid, body: body, peak: peak };
+    var mP = body.match(/Your peak score:\s*([\d.]+)\s*BPS\s*\((-?[\d.]+)\s*NTPM\)/i);
+    if (!mP) {
+      mP = body.match(/peak score:\s*([\d.]+)\s*BPS\s*\((-?[\d.]+)\s*NTPM\)/i);
+    }
+    if (mP) {
+      peak = { bps: parseFloat(mP[1]), ntpm: parseFloat(mP[2]) };
+      if (!timer) phase = "end";
+    }
+    /* End card without live sidebar: use peak as display only, not live */
+    if (!timer && peak && /play again/i.test(body)) {
+      phase = "end";
+    }
+    return {
+      bps: bps,
+      ntpm: ntpm,
+      timer: timer,
+      grid: grid,
+      phase: phase,
+      body: body.slice(0, 500),
+      peak: peak,
+      truth: true,
+    };
   }
 
   function detectGridSize() {
@@ -650,10 +679,9 @@
     if (sc.grid) {
       var p = sc.grid.split("x");
       var n = parseInt(p[0], 10);
-      if (n === 12 || n === 30 || n === 40) return n;
+      /* Public WebGrid: only 12 or 30 — never marketing 40 */
+      if (n === 12 || n === 30) return n;
     }
-    /* page: mobile if width<=751 or height<=600 → 12 else 30
-     * Full-screen / large MG window required for 30×30. */
     try {
       if (window.innerWidth <= NL_MOBILE_W || window.innerHeight <= NL_MOBILE_H) return 12;
     } catch (e) {}

@@ -51,16 +51,48 @@ def recent_samples(n: int = 25) -> list[dict]:
     return out
 
 
+def _clean_n(raw) -> int | None:
+    """Public WebGrid only 12 or 30 — never marketing 40."""
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return n if n in (12, 30) else None
+
+
+def _clean_bps(bps, ntpm, phase: str | None) -> float | None:
+    """Drop marketing 10.39 when not a real playing sample."""
+    if not isinstance(bps, (int, float)):
+        return None
+    if phase not in ("playing", None) and phase != "playing":
+        # allow agent_tick without phase
+        pass
+    # classic marketing bar without NTPM
+    if abs(float(bps) - 10.39) < 0.001 and not isinstance(ntpm, (int, float)):
+        return None
+    return float(bps)
+
+
 def digest(samples: list[dict]) -> dict:
-    playing = [s for s in samples if s.get("phase") == "playing" or s.get("timer")]
+    # Prefer agent_tick / samples with timer (live play), not lobby
     ticks = [s for s in samples if s.get("kind") == "agent_tick"]
-    last = playing[-1] if playing else (ticks[-1] if ticks else (samples[-1] if samples else {}))
-    bps = last.get("bps")
-    ntpm = last.get("ntpm")
+    playing = [
+        s
+        for s in samples
+        if s.get("phase") == "playing"
+        or (s.get("timer") and str(s.get("timer")).count(":") == 1)
+    ]
+    pool = ticks or playing or []
+    last = pool[-1] if pool else {}
+    bps = _clean_bps(last.get("bps"), last.get("ntpm"), last.get("phase"))
+    ntpm = last.get("ntpm") if isinstance(last.get("ntpm"), (int, float)) else None
     grid = last.get("grid")
     timer = last.get("timer")
-    # trend
-    bps_series = [s.get("bps") for s in (playing or ticks) if isinstance(s.get("bps"), (int, float))]
+    bps_series = [
+        _clean_bps(s.get("bps"), s.get("ntpm"), s.get("phase"))
+        for s in pool
+    ]
+    bps_series = [x for x in bps_series if x is not None]
     trend = "flat"
     if len(bps_series) >= 3:
         if bps_series[-1] > bps_series[0] * 1.05:
@@ -68,20 +100,21 @@ def digest(samples: list[dict]) -> dict:
         elif bps_series[-1] < bps_series[0] * 0.95:
             trend = "down"
     N = None
-    if grid and re.match(r"\d+x\d+", str(grid)):
-        N = int(str(grid).split("x")[0])
-    elif isinstance(last.get("N"), int):
-        N = last["N"]
+    if grid and re.match(r"^\d+x\d+$", str(grid)):
+        N = _clean_n(str(grid).split("x")[0])
+    if N is None:
+        N = _clean_n(last.get("N"))
     return {
         "bps": bps,
         "ntpm": ntpm,
-        "grid": grid,
+        "grid": f"{N}x{N}" if N else None,
         "N": N,
         "timer": timer,
         "trend": trend,
         "last_kind": last.get("kind"),
         "clicks": last.get("clicks"),
         "missGuess": last.get("missGuess"),
+        "truth": True,
     }
 
 

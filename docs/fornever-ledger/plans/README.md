@@ -19,5 +19,8 @@ bash experiments/memory-glass/scripts/panda-loop.sh next \
 | P-006 | Upstream grok-build merge dry-run | P2 | GB-001 |
 | P-007 | Panda fleet triple-pane ship | P2 | panda-shell roadmap |
 | P-008 | Bug bounty agent automation | P2 | ledger skill |
+| P-009 | WebGrid ↔ flip train bridge | P0 | train bus · RSI/MACD/BB |
 
 **Rules:** enumerate · do not delete repos · resign after `.app` edits · append ledger on new breaks.
+
+**Closed loop:** P-001 mitigated 2026-07-18 via panda-loop β→γ.
