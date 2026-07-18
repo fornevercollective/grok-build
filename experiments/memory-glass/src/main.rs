@@ -1445,6 +1445,7 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     }
 
     // Full stack (normal browse / inspect / research)
+    // (webgrid/contrail/maze/bloch/rubik/beats/board/kb/day already loaded above)
     let body = read_hotpipe_file("body-pose.js").unwrap_or_default();
     let lens = read_hotpipe_file("lens.js").unwrap_or_default();
     let hurdles = read_hotpipe_file("hurdles.js").unwrap_or_default();
@@ -1454,22 +1455,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let ironline = read_hotpipe_file("ironline.js").unwrap_or_default();
     let ugrad = read_hotpipe_file("ugrad-ladder.js").unwrap_or_default();
     let ugrad_wg = read_hotpipe_file("ugrad-webgrid-tensor.js").unwrap_or_default();
-    let collab = read_hotpipe_file("collab.js").unwrap_or_default();
     let market = read_hotpipe_file("market-filmstrip.js").unwrap_or_default();
     let video = read_hotpipe_file("video-feed-panel.js").unwrap_or_default();
     let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
-    let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
-    let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
-    let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
-    let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
-    let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
-    let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
-    let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
-    let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
-    let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
-    let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
-    let collab_day = read_hotpipe_file("collab-day.js").unwrap_or_default();
-    let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         if !body.is_empty() {
