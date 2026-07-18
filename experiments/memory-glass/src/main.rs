@@ -1362,6 +1362,8 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
     let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
     let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
+    let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
+    let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         // full-body IK after live so hooks + calib ui exist
@@ -1418,6 +1420,13 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !quantum.is_empty() {
             inject_js_blob(wv, &quantum);
         }
+        // Unified glass Dragon capsule + floating Neuralink keyboard (after tool APIs exist)
+        if !glass_cap.is_empty() {
+            inject_js_blob(wv, &glass_cap);
+        }
+        if !float_kb.is_empty() {
+            inject_js_blob(wv, &float_kb);
+        }
         // Auto-hydrate MKT filmstrip from ~/.panda board (or hotpipe sample)
         inject_filmstrip_board(wv);
     }
@@ -1472,6 +1481,12 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !contrail.is_empty() {
         tag.push_str("+contrail");
+    }
+    if !glass_cap.is_empty() {
+        tag.push_str("+gcap");
+    }
+    if !float_kb.is_empty() {
+        tag.push_str("+fkb");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true
