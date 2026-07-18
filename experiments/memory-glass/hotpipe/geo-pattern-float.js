@@ -128,6 +128,7 @@
       '<div class="hunt" id="mg-geo-hunt">Scavenger: refresh or HUNT for a target clue.</div>' +
       '<div class="ft">' +
       '<button type="button" class="hot" id="mg-geo-hunt-btn">HUNT</button>' +
+      '<button type="button" class="ok" id="mg-geo-claim-btn">CLAIM ✓</button>' +
       '<button type="button" id="mg-geo-usgs">USGS MAP</button>' +
       '<button type="button" id="mg-geo-pdx">PDX MAPS</button>' +
       '<button type="button" class="ok" id="mg-geo-pdx-sample">AIRPORT WAY</button>' +
@@ -151,6 +152,9 @@
       };
     });
     panel.querySelector("#mg-geo-hunt-btn").onclick = pickHunt;
+    panel.querySelector("#mg-geo-claim-btn").onclick = function () {
+      claimHunt();
+    };
     panel.querySelector("#mg-geo-usgs").onclick = function () {
       nav(MAP_USGS);
     };
@@ -491,18 +495,48 @@
           q.lat.toFixed(2) +
           " · depth " +
           (q.depth || 0).toFixed(0) +
-          " km · follow pattern flow color (green→cyan→amber→red by mag)",
+          " km · follow pattern flow color (green→cyan→amber→red by mag) · type claim in search bar when found",
         url: q.url || MAP_USGS,
       });
+      try {
+        if (window.__mgSearchComms && window.__mgSearchComms.sendChat)
+          window.__mgSearchComms.sendChat(
+            "hunt · " + "M" + q.mag.toFixed(1) + " " + (q.place || "").slice(0, 40)
+          );
+      } catch (eH) {}
       return;
     }
     /* fallback property scavenger (Portland Maps spirit) */
     setHuntCard({
       kind: "property",
       title: "7000 WI/NE AIRPORT WAY · R316936",
-      clue: "Year 1942 · INDUSTRIAL · 6400 sq ft · PDX Airport Area · Owner PORT OF PORTLAND · elev ~14 ft",
+      clue: "Year 1942 · INDUSTRIAL · 6400 sq ft · PDX Airport Area · Owner PORT OF PORTLAND · elev ~14 ft · type claim when verified",
       url: PDX_SAMPLE,
     });
+    try {
+      if (window.__mgSearchComms && window.__mgSearchComms.sendChat)
+        window.__mgSearchComms.sendChat("hunt · PDX Airport Way parcel");
+    } catch (eP) {}
+  }
+
+  function claimHunt() {
+    try {
+      if (window.__mgSearchComms && window.__mgSearchComms.claimHunt)
+        return window.__mgSearchComms.claimHunt(hunt && hunt.title);
+    } catch (e) {}
+    try {
+      if (window.__mgActivityBoard)
+        window.__mgActivityBoard.submitRun("scavenger", {
+          game: "scavenger",
+          synopsis: "geo hunt · " + ((hunt && hunt.title) || "claim"),
+        });
+      if (window.__mgCollabDay) {
+        if (!window.__mgCollabDay.day()) window.__mgCollabDay.start({});
+        window.__mgCollabDay.chat("🏆 geo hunt claim");
+        window.__mgCollabDay.shareScore();
+      }
+    } catch (e2) {}
+    return true;
   }
 
   function pushToMaze() {
@@ -554,6 +588,7 @@
       return stats;
     },
     hunt: pickHunt,
+    claim: claimHunt,
     report: function () {
       return (
         VER +

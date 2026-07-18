@@ -146,14 +146,35 @@ live → body-pose → lens → hurdles → research → ego → dock
 
 ---
 
+## Biggest leap (next 1–2 product bets)
+
+| Leap | Why it wins | Status |
+|------|-------------|--------|
+| **1. Unified bottom bar OS** | Search + chat + mesh + tool verbs in one place = daily driver UX | **shipping** `search-comms.js` |
+| **2. Shared fleet board** | Local board + mesh + optional ugrad publish = multi-seat day | partial (mesh + claim) |
+| **3. Dual-space as default open surface** | Floats live on WebGrid + geo scavenger + sportsfield | strong |
+| **4. Open web lab for regular users** | Pages `browser.html` without native install | **yes — keep shipping** |
+
+**Biggest single leap:** make the **bottom bar a full comms + command OS** (navigate · chat · mesh · hunt · floats) so training lab + open browser feel like one product — without becoming Dia.
+
+## Open version for regular users — **yes, still alive**
+
+| Path | Audience |
+|------|----------|
+| **https://fornevercollective.github.io/grok-build/** | Public Lab (docs + tools) |
+| **`docs/architecture-lab/browser.html`** | Open Grok/X feed shell + Memory Glass chrome · footer search/chat · no install |
+| **`docs/architecture-lab/browser-classic.html`** | Classic open shell |
+| **Native `Memory Glass.app`** | Full dual-space / WebGrid / inject stack |
+
+Open browser stays under **architecture-lab** (Pages-safe). Native experiment stays under **experiments/memory-glass** (monorepo-safe).
+
 ## What “grow further” means (priority)
 
-1. **Collab day** — multi-seat mesh shares runs, scores, Grok briefs; human posts X  
-2. **Fleet board** — `~/.panda` + optional ugrad publish (not auto-X)  
-3. **Communication** — day channel, research packs, SpaceXAI optional in capsule  
-4. **Training quality** — pace truth on Intel + Mini; hit-rate soaks  
-5. **Dual-space depth** — rain packs, Bloch curriculum, Rubik language drills  
-6. **Never** — become Dia clone; never auto-post to X
+1. **Bottom-bar comms OS** — chat/mesh/hunt/geo in search dock (**live**)  
+2. **Collab day + scavenger claims** — hunt → board score → mesh  
+3. **Fleet board publish** — optional ugrad (human-gated)  
+4. **Training quality** — Intel pace + Mini soaks  
+5. **Never** — Dia clone; auto-X; merge upstream/main blindly
 
 ---
 

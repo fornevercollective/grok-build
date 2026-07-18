@@ -1377,6 +1377,7 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let collab_day = read_hotpipe_file("collab-day.js").unwrap_or_default();
     let sports_field = read_hotpipe_file("sportsfield-bridge.js").unwrap_or_default();
     let geo_pattern = read_hotpipe_file("geo-pattern-float.js").unwrap_or_default();
+    let search_comms = read_hotpipe_file("search-comms.js").unwrap_or_default();
     let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
@@ -1431,6 +1432,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 }
                 if !collab_day.is_empty() {
                     inject_js_blob(wv, &collab_day);
+                }
+                if !search_comms.is_empty() {
+                    inject_js_blob(wv, &search_comms);
                 }
                 if !live_hud.is_empty() {
                     inject_js_blob(wv, &live_hud);
@@ -1554,6 +1558,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         }
         if !collab_day.is_empty() {
             inject_js_blob(wv, &collab_day);
+        }
+        if !search_comms.is_empty() {
+            inject_js_blob(wv, &search_comms);
         }
         if !live_hud.is_empty() {
             inject_js_blob(wv, &live_hud);

@@ -98,25 +98,39 @@ __mgGeoPattern.load()   // refresh USGS feed
 
 ---
 
+## Biggest leap + open users
+
+**Biggest leap:** bottom search bar as **comms OS** (Go · Chat · Mesh · hunt/geo verbs) so native training and open Lab browser share one language.
+
+**Open version for regular users (still shipping):**
+
+| Entry | Use |
+|-------|-----|
+| [Lab Pages](https://fornevercollective.github.io/grok-build/) | No install · docs + tools |
+| [`browser.html`](../browser.html) | Open X/Grok feed shell · **footer search + chat:** / mesh: |
+| Native Memory Glass.app | Full dual-space floats · WebGrid · geo scavenger |
+
 ## Quick ops
 
 ```bash
-# App
+# Native app
 open -n "$HOME/Applications/Memory Glass.app"
-# or laptop WebGrid
 bash experiments/memory-glass/scripts/launch-webgrid-laptop.sh --large --rounds 3
 
-# Hotpipe edit → copy into app Resources when running .app
-cp experiments/memory-glass/hotpipe/*.js \
-  "$HOME/Applications/Memory Glass.app/Contents/Resources/hotpipe/"
+# Open browser (no install) — serve Lab or open file
+open docs/architecture-lab/browser.html
+# or after Pages deploy: …/grok-build/browser.html
 ```
 
 ```js
-// Floats live on WebGrid
-// Capsule: FLOATS · DAY · BOARD · BEATS
-__mgActivityBoard?.open()
-__mgMemoryMaze?.open()
-__mgSportsField?.open()  // if sportsfield-bridge loaded
+// Bottom bar (native)
+// chat: hello seats
+// mesh: status
+// hunt · claim · geo · floats · day · grok · x draft · help
+
+// Floats
+__mgGeoPattern?.open(); __mgGeoPattern?.hunt(); __mgGeoPattern?.claim()
+__mgSearchComms?.setMode('chat')
 ```
 
 ---

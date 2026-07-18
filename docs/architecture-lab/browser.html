@@ -1248,16 +1248,17 @@
         <input
           id="xb-footer-q"
           type="search"
-          placeholder="Search X · @handle · url · search:… · nav:home · rail:open"
+          placeholder="URL · @handle · chat: hi · mesh: status · search…"
           autocomplete="off"
           spellcheck="false"
-          aria-label="Footer search and Grok commands"
+          aria-label="Footer search chat and Grok commands"
         />
       </form>
       <div class="xb-footer-actions">
         <button type="submit" form="xb-footer-form" class="xb-btn primary" id="btn-footer-go">Go</button>
+        <button type="button" class="xb-btn" id="btn-footer-chat" title="Chat mode (prefix chat:)">Chat</button>
         <button type="button" class="xb-btn" id="btn-footer-rail" title="Expand right rail">Rail «</button>
-        <span class="xb-footer-hint" title="Automation API">LabX · /api/control</span>
+        <span class="xb-footer-hint" title="chat: · mesh: · nav: · LabX">comms · LabX</span>
       </div>
     </footer>
 
@@ -1603,6 +1604,49 @@
 
           // prefixes
           var m;
+          /* chat / mesh comms (human + Grok in footer bar) */
+          if ((m = s.match(/^(?:chat|say|msg)[:=\s]\s*(.+)$/i))) {
+            var msg = m[1].trim();
+            try {
+              var ch = new BroadcastChannel("mg-mesh");
+              ch.postMessage({
+                v: 2,
+                t: "day-chat",
+                id: "lab-browser",
+                role: "open-lab",
+                payload: { text: msg, via: "browser-footer" },
+                ts: Date.now(),
+              });
+              ch.close();
+            } catch (_) {}
+            try {
+              if (hint) {
+                hint.style.display = "block";
+                hint.textContent = "chat · " + msg.slice(0, 80);
+              }
+            } catch (_) {}
+            note("chat", msg);
+            setStatus("chat");
+            return { ok: true, kind: "chat", text: msg };
+          }
+          if ((m = s.match(/^(?:mesh|status)[:=\s]\s*(.*)$/i))) {
+            var st = (m[1] || "ping").trim() || "ping";
+            try {
+              var ch2 = new BroadcastChannel("mg-mesh");
+              ch2.postMessage({
+                v: 2,
+                t: "day-score",
+                id: "lab-browser",
+                role: "open-lab",
+                payload: { text: st, via: "browser-footer" },
+                ts: Date.now(),
+              });
+              ch2.close();
+            } catch (_) {}
+            note("mesh", st);
+            setStatus("mesh");
+            return { ok: true, kind: "mesh", text: st };
+          }
           if ((m = s.match(/^(?:search|q|find|query)[:=]\s*(.+)$/i))) return searchX(m[1]);
           if ((m = s.match(/^(?:nav|section|go|open)[:=]\s*(.+)$/i))) {
             var id = m[1].trim().toLowerCase();
@@ -1788,8 +1832,24 @@
 
         document.getElementById("xb-footer-form").addEventListener("submit", function (e) {
           e.preventDefault();
-          run(footerQ.value);
+          var r = run(footerQ.value);
+          if (r && r.kind === "chat") footerQ.value = "";
         });
+
+        var footerChat = document.getElementById("btn-footer-chat");
+        if (footerChat) {
+          footerChat.addEventListener("click", function () {
+            var v = String(footerQ.value || "").trim();
+            if (!v) {
+              footerQ.value = "chat: ";
+              footerQ.focus();
+              return;
+            }
+            if (!/^(chat|say|msg)[:=\s]/i.test(v)) v = "chat: " + v;
+            run(v);
+            footerQ.value = "";
+          });
+        }
 
         // keep rail + footer search in sync while typing
         function bindSync(a, b) {

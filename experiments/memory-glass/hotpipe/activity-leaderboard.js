@@ -329,22 +329,28 @@
 
   function submitRun(kind, extra) {
     var m = collectMetrics();
+    var forcedScore = null;
+    var forcedSyn = null;
     if (extra && typeof extra === "object") {
+      if (extra.score != null && isFinite(extra.score)) forcedScore = Number(extra.score);
+      if (extra.synopsis) forcedSyn = String(extra.synopsis);
       Object.keys(extra).forEach(function (k) {
+        if (k === "score" || k === "synopsis") return;
         if (k === "webgrid" && extra.webgrid && m.webgrid)
           m.webgrid = Object.assign({}, m.webgrid, extra.webgrid);
         else if (extra[k] != null) m[k] = extra[k];
       });
-      m.score = rankScore(m);
+      m.score = forcedScore != null ? forcedScore : rankScore(m);
     }
+    if (forcedScore != null) m.score = forcedScore;
     var run = {
       id: "r" + Date.now().toString(36),
       kind: kind || "snapshot",
       t: m.t,
       iso: m.iso,
-      game: m.game,
+      game: m.game || (extra && extra.game) || "session",
       score: m.score,
-      synopsis: synopsis(m),
+      synopsis: forcedSyn || synopsis(m),
       metrics: m,
     };
     lastRun = run;
