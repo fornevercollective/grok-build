@@ -619,7 +619,8 @@
         el.style.cssText =
           "order:0;font:600 8px/1.3 ui-monospace,Menlo,monospace;padding:3px 6px;" +
           "border:1px solid rgba(120,200,160,0.3);border-radius:3px;" +
-          "background:rgba(6,14,12,0.8);color:rgba(160,220,190,0.9);margin:0 0 4px";
+          "background:rgba(6,14,12,0.8);color:rgba(160,220,190,0.9);margin:0 0 4px;" +
+          "pointer-events:none;position:relative;z-index:30";
         stage.insertBefore(el, stage.firstChild);
       }
       el.textContent =
@@ -639,7 +640,9 @@
     if (!document.getElementById("mg-research-btns")) {
       var row = document.createElement("div");
       row.id = "mg-research-btns";
-      row.style.cssText = "order:0;display:flex;gap:4px;flex-wrap:wrap;margin:0 0 4px";
+      row.style.cssText =
+        "order:0;display:flex;gap:4px;flex-wrap:wrap;margin:0 0 4px;" +
+        "pointer-events:auto;position:relative;z-index:40";
       function btn(label, fn) {
         var b = document.createElement("button");
         b.type = "button";
@@ -647,8 +650,19 @@
         b.style.cssText =
           "font:600 8px ui-monospace,Menlo,monospace;padding:3px 6px;" +
           "border:1px solid rgba(120,180,160,0.35);border-radius:3px;" +
-          "background:rgba(10,20,16,0.9);color:rgba(180,230,200,0.95);cursor:pointer";
-        b.onclick = fn;
+          "background:rgba(10,20,16,0.9);color:rgba(180,230,200,0.95);cursor:pointer;" +
+          "pointer-events:auto;position:relative;z-index:41";
+        b.onclick = function (ev) {
+          if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+          }
+          try {
+            fn();
+          } catch (e) {
+            warn(String(e));
+          }
+        };
         row.appendChild(b);
       }
       btn("TOPIC", function () {

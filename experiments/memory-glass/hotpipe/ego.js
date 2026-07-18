@@ -355,7 +355,9 @@
     if (!document.getElementById("mg-ego-btns")) {
       var row = document.createElement("div");
       row.id = "mg-ego-btns";
-      row.style.cssText = "order:0;display:flex;gap:4px;flex-wrap:wrap;margin:0 0 4px";
+      row.style.cssText =
+        "order:0;display:flex;gap:4px;flex-wrap:wrap;margin:0 0 4px;" +
+        "pointer-events:auto;position:relative;z-index:40";
       function btn(label, fn) {
         var b = document.createElement("button");
         b.type = "button";
@@ -363,8 +365,19 @@
         b.style.cssText =
           "font:600 8px ui-monospace,Menlo,monospace;padding:3px 6px;" +
           "border:1px solid rgba(200,160,120,0.4);border-radius:3px;" +
-          "background:rgba(20,14,10,0.9);color:rgba(255,210,170,0.95);cursor:pointer";
-        b.onclick = fn;
+          "background:rgba(20,14,10,0.9);color:rgba(255,210,170,0.95);cursor:pointer;" +
+          "pointer-events:auto;position:relative;z-index:41";
+        b.onclick = function (ev) {
+          if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+          }
+          try {
+            fn();
+          } catch (e) {
+            warn(String(e));
+          }
+        };
         row.appendChild(b);
       }
       btn("EGO REC", function () {

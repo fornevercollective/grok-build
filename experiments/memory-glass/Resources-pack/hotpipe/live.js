@@ -276,12 +276,13 @@
       "#pip-stream{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center 28%!important;transform:scaleX(-1)!important;z-index:1!important;}",
       "#pip-overlay{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:4!important;pointer-events:none!important;transform:scaleX(-1)!important;}",
       "#pip-lbl{z-index:6!important;font:600 8px/1.2 ui-monospace,Menlo,monospace!important;letter-spacing:0.06em!important;text-transform:uppercase!important;color:rgba(180,210,230,0.85)!important;}",
-      /* control strip — adult, dense, no cartoon chips */
-      "#mg-pro{order:1!important;display:flex!important;flex-direction:column!important;gap:6px!important;padding:2px 0!important;}",
-      "#mg-pro .row{display:flex;flex-wrap:wrap;gap:4px;align-items:center}",
-      "#mg-pro button,#mg-pro label.chip{appearance:none;cursor:pointer;border:1px solid rgba(200,210,220,0.2);",
+      /* control strip — adult, dense; high z so clicks hit buttons not overlays */
+      "#mg-pro{order:0!important;display:flex!important;flex-direction:column!important;gap:6px!important;padding:2px 0!important;",
+      "  position:relative!important;z-index:50!important;pointer-events:auto!important;}",
+      "#mg-pro .row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;pointer-events:auto!important}",
+      "#mg-pro button,#mg-pro label.chip{appearance:none;cursor:pointer;pointer-events:auto!important;border:1px solid rgba(200,210,220,0.2);",
       "  background:rgba(12,14,18,0.85);color:rgba(220,230,240,0.88);font:600 8px/1 ui-monospace,Menlo,monospace;",
-      "  letter-spacing:0.08em;text-transform:uppercase;padding:6px 8px;border-radius:2px}",
+      "  letter-spacing:0.08em;text-transform:uppercase;padding:6px 8px;border-radius:2px;position:relative;z-index:51}",
       "#mg-pro button:hover{border-color:rgba(160,200,255,0.45);color:#fff}",
       "#mg-pro button.on{border-color:rgba(120,200,255,0.55);background:rgba(30,50,70,0.75);color:#fff}",
       "#mg-pro button.warn{border-color:rgba(255,180,80,0.5)}",
@@ -386,19 +387,57 @@
   var lbl = document.getElementById("pip-lbl");
   if (lbl) lbl.textContent = "SPATIAL · " + VER;
 
-  /* ── control strip ── */
-  function paintControls() {
+  /* ── control strip ──
+   * IMPORTANT: do NOT call paintControls every rAF/render — wiping innerHTML
+   * kills in-flight clicks (buttons "don't work"). Rebuild only on user action.
+   */
+  var controlsBuilt = false;
+  function paintStatusOnly() {
+    var stEl = document.getElementById("mg-pro-status");
+    if (!stEl) return;
+    var t = tracks[0];
+    var bits = [
+      spatial.locked ? "LOCK" : "OPEN",
+      engine || "mesh",
+      handGesture && handGesture.present ? "AIR" : ui.showHands ? "HANDS…" : "—",
+      "src " + tracks.length,
+    ];
+    if (t && t.lm) {
+      bits.push("Y" + (t.yaw || 0).toFixed(2));
+      bits.push("Z" + (t.z || 0).toFixed(2));
+    }
+    stEl.textContent = bits.join(" · ");
+  }
+  function paintControls(force) {
     var act = document.getElementById("mg-pro-actions");
     var sl = document.getElementById("mg-pro-sliders");
     var stEl = document.getElementById("mg-pro-status");
     if (!act || !sl) return;
+    if (controlsBuilt && !force) {
+      paintStatusOnly();
+      return;
+    }
+    controlsBuilt = true;
     act.innerHTML = "";
+    sl.innerHTML = "";
     function btn(label, cls, fn) {
       var b = document.createElement("button");
       b.type = "button";
       b.textContent = label;
       if (cls) b.className = cls;
-      b.onclick = fn;
+      b.style.pointerEvents = "auto";
+      b.style.cursor = "pointer";
+      b.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+        try {
+          fn();
+        } catch (eBtn) {
+          warn(String(eBtn));
+        }
+      };
       act.appendChild(b);
       return b;
     }
@@ -410,7 +449,7 @@
       if (!spatial.rest) captureRest();
       spatial.locked = !spatial.locked;
       saveAll();
-      paintControls();
+      paintControls(true);
       ok(spatial.locked ? "Spatial head lock ENGAGED" : "Spatial head lock released");
     });
     btn("CAPTURE REST", "", function () {
@@ -425,14 +464,13 @@
         spatial.samples = spatial.samples || [];
         ok("Look left · right · up · down — samples auto-record");
       }
-      paintControls();
+      paintControls(true);
     });
     btn("MOCAP REF", spatial.refType === "mocap" ? "on" : "", function () {
       captureMeanMesh("mocap");
     });
     btn("HDRI / GSPLAT", spatial.refType === "hdri" || spatial.refType === "gsplat" ? "on" : "", function () {
-      captureMeanMesh(spatial.refType === "hdri" ? "gsplat" : "hdri");
-    });
+      captureMeanMesh(spatial.refType === "hdri" ? "gsplat" : "hdri");    });
     btn("CLEAR CALIB", "", function () {
       spatial.locked = false;
       spatial.rest = null;
@@ -441,7 +479,7 @@
       spatial.refType = null;
       spatial.mode = "idle";
       saveAll();
-      paintControls();
+      paintControls(true);
       ok("Calibration cleared");
     });
     btn("CLEAR PATHS", "", function () {
@@ -453,7 +491,6 @@
       ok("Movement paths cleared");
     });
 
-    sl.innerHTML = "";
     function slider(key, label, min, max, step) {
       var wrap = document.createElement("label");
       wrap.className = "sl";
@@ -478,10 +515,16 @@
       b.type = "button";
       b.textContent = label;
       b.className = ui[key] ? "on" : "";
-      b.onclick = function () {
+      b.style.pointerEvents = "auto";
+      b.style.cursor = "pointer";
+      b.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
         ui[key] = !ui[key];
         saveAll();
-        paintControls();
+        paintControls(true);
       };
       sl.appendChild(b);
     }
@@ -501,7 +544,7 @@
         var i = order.indexOf(ui.pathTips || "all");
         ui.pathTips = order[(i + 1) % order.length];
         saveAll();
-        paintControls();
+        paintControls(true);
         ok("Path tip · " + ui.pathTips + " (fencing tip trail)");
       }
     );
@@ -1849,7 +1892,8 @@
     try {
       if (window.__mgSysStillOk) window.__mgSysStillOk();
     } catch (e) {}
-    paintControls();
+    /* status only — never rebuild buttons mid-frame (kills clicks) */
+    paintStatusOnly();
   }
 
   /* MediaPipe optional */
