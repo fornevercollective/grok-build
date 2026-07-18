@@ -1,0 +1,71 @@
+{
+  "schema": "mg-music-packs-v1",
+  "source": "piano-buddy · qbpm · uvqbit soft tones",
+  "packs": [
+    {
+      "id": "raindrop",
+      "label": "Raindrop",
+      "from": "qbpm ambient + piano-buddy colors",
+      "root": 72,
+      "scale": [0, 2, 4, 7, 9],
+      "mode": "major-pent",
+      "bpm": 72,
+      "decay": 1.1,
+      "gain": 0.055,
+      "wave": "sine",
+      "spread": 14
+    },
+    {
+      "id": "aeolian",
+      "label": "Aeolian soft",
+      "from": "qbpm notation-chart Mode VI",
+      "root": 67,
+      "scale": [0, 2, 3, 5, 7, 8, 10],
+      "mode": "aeolian",
+      "bpm": 84,
+      "decay": 0.95,
+      "gain": 0.05,
+      "wave": "triangle",
+      "spread": 12
+    },
+    {
+      "id": "c-major",
+      "label": "C major scale",
+      "from": "piano-buddy practice pack",
+      "root": 60,
+      "scale": [0, 2, 4, 5, 7, 9, 11],
+      "mode": "ionian",
+      "bpm": 80,
+      "decay": 0.7,
+      "gain": 0.048,
+      "wave": "sine",
+      "spread": 12
+    },
+    {
+      "id": "uvqbit",
+      "label": "uvQbit soft",
+      "from": "uvqbit calibration / gate tones (H≈220 · soft pluck)",
+      "root": 69,
+      "scale": [0, 3, 5, 7, 10],
+      "mode": "minor-pent",
+      "bpm": 96,
+      "decay": 0.85,
+      "gain": 0.05,
+      "wave": "sine",
+      "spread": 16
+    },
+    {
+      "id": "qbpm-pads",
+      "label": "qbpm pads",
+      "from": "qbpm music-core MPC pad tones",
+      "root": 60,
+      "scale": [0, 3, 7, 12, 15, 19],
+      "mode": "pad-stack",
+      "bpm": 100,
+      "decay": 1.3,
+      "gain": 0.042,
+      "wave": "triangle",
+      "spread": 10
+    }
+  ]
+}
