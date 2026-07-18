@@ -1367,6 +1367,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
     let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
     let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
+    let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
+    let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
+    let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         // full-body IK after live so hooks + calib ui exist
@@ -1441,6 +1444,15 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !session_rec.is_empty() {
             inject_js_blob(wv, &session_rec);
         }
+        if !mem_maze.is_empty() {
+            inject_js_blob(wv, &mem_maze);
+        }
+        if !kb_beats.is_empty() {
+            inject_js_blob(wv, &kb_beats);
+        }
+        if !live_hud.is_empty() {
+            inject_js_blob(wv, &live_hud);
+        }
         // Auto-hydrate MKT filmstrip from ~/.panda board (or hotpipe sample)
         inject_filmstrip_board(wv);
     }
@@ -1510,6 +1522,15 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !session_rec.is_empty() {
         tag.push_str("+rec");
+    }
+    if !mem_maze.is_empty() {
+        tag.push_str("+maze");
+    }
+    if !kb_beats.is_empty() {
+        tag.push_str("+beats");
+    }
+    if !live_hud.is_empty() {
+        tag.push_str("+hud");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true

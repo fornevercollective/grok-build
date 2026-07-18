@@ -21,7 +21,7 @@
     } catch (e) {}
   }
 
-  var EVERY_N = 14; /* gate on sample count — not every pixel */
+  var EVERY_N = 10; /* always-learning cadence */ /* gate on sample count — not every pixel */
   var sampleCount = 0;
   var lastGate = "";
   var lastDist = null;

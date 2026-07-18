@@ -19,7 +19,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v5-bloch";
+  var VER = "webgrid-contrail-v6-bright";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -231,6 +231,10 @@
     maybeCloseStroke();
     draw();
     paintFlow();
+    try {
+      if (window.__mgMemoryMaze && path.length)
+        window.__mgMemoryMaze.ingestContrailPath(path.slice(-40));
+    } catch (eMz) {}
   }
 
   function maybeCloseStroke() {
@@ -621,20 +625,20 @@
     ctx.clearRect(0, 0, w, h);
     if (path.length < 2) return;
     /* D4: only last 80 samples — no solid green sheet */
-    var start = Math.max(1, path.length - 80);
+    var start = Math.max(1, path.length - 140);
     var span = path.length - start;
     for (var i = start; i < path.length; i++) {
       var a0 = path[i - 1],
         a1 = path[i];
       var age = (i - start + 1) / Math.max(1, span);
-      var alpha = 0.12 + age * 0.65;
-      if (a1.src === "agent" || a0.src === "agent") alpha *= 0.28;
+      var alpha = 0.28 + age * 0.72;
+      if (a1.src === "agent" || a0.src === "agent") alpha *= 0.45;
       ctx.strokeStyle = trajColor(
         a1.traj || a0.traj || "cruise",
         alpha,
         a1.strain != null ? a1.strain : lastStrain
       );
-      ctx.lineWidth = (a1.src === "agent" ? 0.9 : 1.4) + age * 1.0;
+      ctx.lineWidth = (a1.src === "agent" ? 1.6 : 2.4) + age * 1.8;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(a0.nx * w, a0.ny * h);
@@ -644,8 +648,13 @@
     var tip = path[path.length - 1];
     ctx.fillStyle = trajColor(tip.traj || "cruise", 0.95, tip.strain != null ? tip.strain : lastStrain);
     ctx.beginPath();
-    ctx.arc(tip.nx * w, tip.ny * h, 3.8, 0, Math.PI * 2);
+    ctx.arc(tip.nx * w, tip.ny * h, 6.2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(tip.nx * w, tip.ny * h, 8.5, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.font = "600 10px ui-monospace,Menlo,monospace";
     ctx.fillStyle = "rgba(160,210,255,0.8)";
     ctx.fillText(

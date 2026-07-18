@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v2-playclear";
+  var VER = "glass-capsule-v3-tools";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
@@ -26,7 +26,7 @@
   var MODES = [
     { id: "tools", label: "TOOLS" },
     { id: "qbit", label: "QBIT" },
-    { id: "lark", label: "LARK" },
+    { id: "gt", label: "GT" },
     { id: "mkt", label: "MKT" },
     { id: "vid", label: "VID" },
     { id: "books", label: "BOOKS" },
@@ -88,6 +88,14 @@
         })
       );
       row.appendChild(
+        act("MAZE", "primary", function () {
+          if (window.__mgMemoryMaze) {
+            window.__mgMemoryMaze.toggle();
+            setStatus(window.__mgMemoryMaze.report());
+          } else setStatus("maze missing");
+        })
+      );
+      row.appendChild(
         act("CONTRAIL", "ok", function () {
           if (window.__mgContrail) {
             window.__mgContrail.setFlow(true);
@@ -144,11 +152,21 @@
         })
       );
       row.appendChild(
-        act("TERM", "", function () {
-          /* terminal independence · mueee */
-          var u = "https://mueee.qbitos.ai/terminal.html";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
+        act("TERM", "ok", function () {
+          /* distilled terminal tool — local metrics, not full site */
+          var lines = [
+            "term · local independence",
+            window.__mgLiveSolveHud ? "solve hud on" : "solve hud —",
+            window.__mgBlochSolve ? window.__mgBlochSolve.report() : "bloch —",
+            window.__mgKeyboardBeats ? window.__mgKeyboardBeats.report() : "beats —",
+            window.__mgSessionRec ? window.__mgSessionRec.report() : "rec —",
+            "full lab: mueee terminal (opt)",
+          ];
+          setStatus(lines.slice(0, 4).join(" · "));
+          try {
+            if (navigator.clipboard)
+              navigator.clipboard.writeText(lines.join("\n"));
+          } catch (e) {}
         })
       );
       row.appendChild(
@@ -209,10 +227,36 @@
         })
       );
       row.appendChild(
-        act("NOTEPAD", "", function () {
-          var u = "https://mueee.qbitos.ai/quantum-notepad.html";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
-          else window.open(u, "_blank");
+        act("NOTEPAD", "ok", function () {
+          /* distilled quantum notepad tool — gate pad in glass, not whole site */
+          var pad = document.createElement("div");
+          pad.className = "mg-cap-row";
+          ["H", "X", "Y", "Z", "S", "T"].forEach(function (g) {
+            pad.appendChild(
+              act(g, "", function () {
+                if (window.__mgQuantum)
+                  window.__mgQuantum.applyGate({ id: g, name: g });
+                if (window.__mgBlochSolve) setStatus(window.__mgBlochSolve.report());
+                else if (window.__mgQuantum) setStatus(window.__mgQuantum.report());
+              })
+            );
+          });
+          pad.appendChild(
+            act("SCORE", "hot", function () {
+              if (window.__mgQuantum) window.__mgQuantum.scoreHit();
+              setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "?");
+            })
+          );
+          pad.appendChild(
+            act("OPEN↗", "", function () {
+              var u = "https://mueee.qbitos.ai/quantum-notepad.html";
+              if (window.ipc)
+                window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            })
+          );
+          body.appendChild(pad);
+          setStatus("notepad tool · gates in-glass");
+          measure();
         })
       );
       row.appendChild(
@@ -297,46 +341,90 @@
       setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "qbit ready");
       measure();
       return;
-    } else if (mode === "lark") {
-      hint.textContent = "Lark governance · unix/epoch/hops · fleet policy (glass).";
+    } else if (mode === "gt") {
+      hint.textContent =
+        "GT · governance tree trace (live hops/epoch/layer) — not full Lark site.";
       row.appendChild(
         act("TICK", "ok", function () {
           if (window.__mgLark) window.__mgLark.tick();
-          setStatus(window.__mgLark ? window.__mgLark.report() : "?");
+          setStatus(window.__mgLark ? window.__mgLark.report() : "gt");
+        })
+      );
+      row.appendChild(
+        act("TRACE", "primary", function () {
+          if (!window.__mgLark) {
+            setStatus("no tree");
+            return;
+          }
+          window.__mgLark.tick();
+          var s = window.__mgLark.state || {};
+          var layers = window.__mgLark.layers || [];
+          var focus = layers.filter(function (L) {
+            return L.id === s.focusLayer;
+          })[0];
+          setStatus(
+            "unix " +
+              s.unix +
+              " · hops " +
+              s.hops +
+              " · " +
+              (focus ? focus.label : s.focusLayer) +
+              " · ip " +
+              (s.ipHint || "?")
+          );
         })
       );
       row.appendChild(
         act("EXPORT", "", function () {
           if (window.__mgLark) window.__mgLark.exportSnapshot();
-          setStatus("exported");
+          setStatus("gt snapshot");
         })
       );
       row.appendChild(
-        act("FLEET", "hot", function () {
-          var u = "https://github.com/fornevercollective";
-          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+        act("UP+", "", function () {
+          if (!window.__mgLark || !window.__mgLark.layers) return;
+          var layers = window.__mgLark.layers;
+          var ids = layers.map(function (L) {
+            return L.id;
+          });
+          var i = ids.indexOf(window.__mgLark.state.focusLayer);
+          i = Math.max(0, i - 1);
+          window.__mgLark.state.focusLayer = ids[i];
+          paint();
+        })
+      );
+      row.appendChild(
+        act("DOWN+", "", function () {
+          if (!window.__mgLark || !window.__mgLark.layers) return;
+          var layers = window.__mgLark.layers;
+          var ids = layers.map(function (L) {
+            return L.id;
+          });
+          var i = ids.indexOf(window.__mgLark.state.focusLayer);
+          i = Math.min(ids.length - 1, i + 1);
+          window.__mgLark.state.focusLayer = ids[i];
+          paint();
         })
       );
       if (window.__mgLark && window.__mgLark.layers) {
+        body.appendChild(hint);
+        body.appendChild(row);
         window.__mgLark.layers.forEach(function (L) {
           var card = document.createElement("div");
           card.className =
-            "mg-cap-card" +
-            (window.__mgLark.state.focusLayer === L.id ? " on" : "");
+            "mg-cap-card" + (window.__mgLark.state.focusLayer === L.id ? " on" : "");
           card.innerHTML =
             "<div>" +
             L.label +
             ' <span style="opacity:0.5">h' +
             L.hops +
-            "</span></div><div class=\"sub\">" +
+            '</span></div><div class="sub">' +
             (L.tools || []).slice(0, 4).join(" · ") +
             "</div>";
           card.onclick = function () {
             window.__mgLark.state.focusLayer = L.id;
             paint();
           };
-          body.appendChild(hint);
-          body.appendChild(row);
           body.appendChild(card);
         });
         setStatus(window.__mgLark.report());
@@ -344,28 +432,50 @@
         return;
       }
     } else if (mode === "mkt") {
-      hint.textContent = "Market filmstrip · iron condor · no auto-trade.";
+      hint.textContent =
+        "MKT live · filterable board · condor train · no auto-trade (tools in glass).";
       row.appendChild(
         act("LOAD", "ok", function () {
           if (window.__mgMarket) {
-            window.__mgMarket.loadBoard(window.__mgFilmstripBoard || window.__mgMarket.state.rows);
+            window.__mgMarket.loadBoard(
+              window.__mgFilmstripBoard || window.__mgMarket.state.rows
+            );
             setStatus(window.__mgMarket.report());
+          } else if (window.ipc) {
+            window.ipc.postMessage(JSON.stringify({ op: "load_filmstrip" }));
+            setStatus("filmstrip ipc");
           } else setStatus("no market");
         })
       );
       row.appendChild(
-        act("FILE", "", function () {
-          if (window.ipc)
-            window.ipc.postMessage(JSON.stringify({ op: "load_filmstrip" }));
-          setStatus("filmstrip reload");
+        act("STABLE", "primary", function () {
+          if (!window.__mgMarket) return;
+          window.__mgMarket.state.filter.stableOnly = !window.__mgMarket.state.filter.stableOnly;
+          setStatus("stable " + window.__mgMarket.state.filter.stableOnly);
         })
       );
       row.appendChild(
-        act("GRAPH", "primary", function () {
+        act("BULL", "", function () {
+          if (!window.__mgMarket) return;
+          window.__mgMarket.state.filter.bias =
+            window.__mgMarket.state.filter.bias === "bullish" ? "" : "bullish";
+          setStatus("bias " + (window.__mgMarket.state.filter.bias || "any"));
+        })
+      );
+      row.appendChild(
+        act("BEAR", "", function () {
+          if (!window.__mgMarket) return;
+          window.__mgMarket.state.filter.bias =
+            window.__mgMarket.state.filter.bias === "bearish" ? "" : "bearish";
+          setStatus("bias " + (window.__mgMarket.state.filter.bias || "any"));
+        })
+      );
+      row.appendChild(
+        act("GRAPH", "", function () {
           if (window.__mgMarket) {
             window.__mgMarket.state.viewMode =
               window.__mgMarket.state.viewMode === "graph" ? "list" : "graph";
-            setStatus("graph " + window.__mgMarket.state.viewMode);
+            setStatus("view " + window.__mgMarket.state.viewMode);
           }
         })
       );
@@ -373,17 +483,26 @@
         act("HIT IN", "hot", function () {
           if (window.__mgMarket && window.__mgMarket.state.focus)
             window.__mgMarket.scoreCondorTrial(window.__mgMarket.state.focus, "in");
+          else if (window.__mgMarket) {
+            var rows = window.__mgMarket.filtered();
+            if (rows[0]) {
+              window.__mgMarket.state.focus = rows[0];
+              window.__mgMarket.scoreCondorTrial(rows[0], "in");
+            }
+          }
           setStatus(window.__mgMarket ? window.__mgMarket.report() : "?");
         })
       );
       row.appendChild(
-        act("OPEN RAIL", "", function () {
-          var r = document.getElementById("mg-mkt-rail");
-          if (r) {
-            r.style.display = "flex";
-            if (window.__mgMarket) window.__mgMarket.open();
-          }
-          setStatus("mkt rail");
+        act("HIT EDGE", "hot", function () {
+          if (window.__mgMarket && window.__mgMarket.state.focus)
+            window.__mgMarket.scoreCondorTrial(window.__mgMarket.state.focus, "edge");
+          setStatus(window.__mgMarket ? window.__mgMarket.report() : "?");
+        })
+      );
+      row.appendChild(
+        act("REPORT", "ok", function () {
+          setStatus(window.__mgMarket ? window.__mgMarket.report() : "no mkt");
         })
       );
     } else if (mode === "vid") {
