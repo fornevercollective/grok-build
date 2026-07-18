@@ -137,6 +137,7 @@
             if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
             if (window.__mgActivityBoard) window.__mgActivityBoard.open();
             if (window.__mgSportsField) window.__mgSportsField.open();
+            if (window.__mgGeoPattern) window.__mgGeoPattern.open();
             if (window.__mgFloatKb) window.__mgFloatKb.open();
             setStatus("all floats live · play lab");
           } catch (eF) {
@@ -155,6 +156,23 @@
             else window.open(u, "_blank");
             setStatus("sports-field site");
           }
+        })
+      );
+      row.appendChild(
+        act("GEO", "hot", function () {
+          if (window.__mgGeoPattern) {
+            window.__mgGeoPattern.toggle();
+            setStatus(window.__mgGeoPattern.report());
+          } else setStatus("geo-pattern missing");
+        })
+      );
+      row.appendChild(
+        act("HUNT", "ok", function () {
+          if (window.__mgGeoPattern) {
+            window.__mgGeoPattern.open();
+            window.__mgGeoPattern.hunt();
+            setStatus("scavenger hunt clue");
+          } else setStatus("geo-pattern missing");
         })
       );
       row.appendChild(

@@ -1376,6 +1376,7 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let collab = read_hotpipe_file("collab.js").unwrap_or_default();
     let collab_day = read_hotpipe_file("collab-day.js").unwrap_or_default();
     let sports_field = read_hotpipe_file("sportsfield-bridge.js").unwrap_or_default();
+    let geo_pattern = read_hotpipe_file("geo-pattern-float.js").unwrap_or_default();
     let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
@@ -1421,6 +1422,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 }
                 if !sports_field.is_empty() {
                     inject_js_blob(wv, &sports_field);
+                }
+                if !geo_pattern.is_empty() {
+                    inject_js_blob(wv, &geo_pattern);
                 }
                 if !collab.is_empty() {
                     inject_js_blob(wv, &collab);
@@ -1544,6 +1548,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         }
         if !sports_field.is_empty() {
             inject_js_blob(wv, &sports_field);
+        }
+        if !geo_pattern.is_empty() {
+            inject_js_blob(wv, &geo_pattern);
         }
         if !collab_day.is_empty() {
             inject_js_blob(wv, &collab_day);

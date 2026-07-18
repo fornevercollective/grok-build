@@ -66,14 +66,22 @@ Full pillars: **MEMORY-GLASS-GROWTH.md**
 
 ---
 
-## Sports field · train · eind/wind predictions (extension path)
+## Sports field · train · eind/wind · geo scavenger (extension path)
 
 | Piece | Where | How MG uses it |
 |-------|--------|----------------|
-| Pitch / players / telemetry | [sports-field-ugrad.html](https://mueee.qbitos.ai/sports-field-ugrad.html) | Capsule / float **FIELD** → open lab; hexcast-stream language |
-| Brackets · sports hexbin · game desk | `train` repo predictions + sports data | Link + optional JSON sample in hotpipe; **not** vendored monorepo |
-| Stocks / wind topology (“eind tunnel”) | train `topology-predictions-viz` · listing desk | Educational viz only; no auto-trading claims |
-| MG sportsfield rank | `activity-leaderboard.js` sportsfield predictions | Live BPS/ELO-style rank during WebGrid |
+| Pitch / players / telemetry | [sports-field-ugrad.html](https://mueee.qbitos.ai/sports-field-ugrad.html) | Capsule **FIELD** · `__mgSportsField` |
+| Brackets · sports hexbin · game desk | `train` repo predictions | Link only; not vendored into monorepo crates |
+| Stocks / wind topology (“eind tunnel”) | train `topology-predictions-viz` | Educational viz only; no auto-trading |
+| **USGS earthquake paths** | [earthquake.usgs.gov map](https://earthquake.usgs.gov/earthquakes/map/) + public GeoJSON feeds | **`__mgGeoPattern`** · Pattern Flow (mag×t) like KBatch · map trail · → maze |
+| **Portland Maps–style data card** | [portlandmaps.com](https://www.portlandmaps.com/) · sample Airport Way parcel | Scavenger **HUNT** clues · property-style stats table |
+| MG sportsfield rank | `activity-leaderboard.js` | Live BPS/ELO-style rank during WebGrid |
+
+```js
+__mgGeoPattern.open()   // Pattern Flow / Map trail / Data card
+__mgGeoPattern.hunt()   // random quake or PDX property clue
+__mgGeoPattern.load()   // refresh USGS feed
+```
 
 **Rule:** bridge by **URL + BroadcastChannel + thin hotpipe JS** — do **not** copy the whole train Astro app into `crates/`.
 

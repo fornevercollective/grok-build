@@ -161,11 +161,15 @@
         window.__mgSportsField.open();
     } catch (e6b) {}
     try {
+      if (window.__mgGeoPattern && window.__mgGeoPattern.open)
+        window.__mgGeoPattern.open();
+    } catch (e6c) {}
+    try {
       if (window.__mgFloatKb && window.__mgFloatKb.open) {
         /* keyboard optional — open only if previously used; leave user control */
       }
     } catch (e7) {}
-    log(VER + " · play floats live (contrail/maze/bloch/rubik/beats/board/field)");
+    log(VER + " · play floats live (+geo pattern/hunt)");
   }
 
   function adaptPace(hitsGuess, missGuess) {
