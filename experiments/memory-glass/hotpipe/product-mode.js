@@ -1,14 +1,15 @@
 /* Memory Glass · PRODUCT MODE
  * One mode: full-screen WebGrid play + clean metrics + no overlapping ghosts.
  * Default ON for neuralink WebGrid unless MG_PRODUCT=0 or ?mg_lab_full=1.
- * VER: product-mode-v2-stable-chrome
+ * VER: product-mode-v2-drawer-aware
  *
  * v2: assertedOnce + never re-collapse user chrome (CTRL / keyboard / boards
  * the user opened). Fixes menu thrash where CTRL opens then force-closes.
+ * Drawer-aware: left TOOLS drawer counts as user chrome (replaces permanent CTRL).
  */
 (function () {
   "use strict";
-  var VER = "product-mode-v2-stable-chrome";
+  var VER = "product-mode-v2-drawer-aware";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._productModeVer === VER) return;
   HP._productModeVer = VER;
@@ -74,9 +75,12 @@
       "  width:min(280px,22vw)!important;max-width:min(280px,22vw)!important}",
       "html.mg-product #mg-mem-maze.fill canvas{",
       "  min-height:160px!important;max-height:min(28vh,240px)!important}",
-      /* board pill stays compact */
+      /* board collapsed = shell top word (INSPECT/PAGE language) */
       "html.mg-product #mg-activity-board.collapsed{",
-      "  top:52px!important;right:12px!important}",
+      "  top:var(--mg-shell-top,2px)!important;",
+      "  right:max(12px, calc(12px + var(--mg-top-right-w,168px)))!important;",
+      "  background:transparent!important;border:none!important;box-shadow:none!important;",
+      "  border-radius:0!important;width:auto!important}",
       /* beats dock bottom — don't float mid-card */
       "html.mg-product #mg-kb-beats{",
       "  max-height:min(28vh,220px)!important}",
@@ -128,6 +132,17 @@
 
     /* If user already opened chrome, never fight them on the first assert either */
     var respectUser = userTouchedChrome();
+
+    /* Search bar starts collapsed (peek only) — stop mid-screen float open */
+    try {
+      if (!window.__mgUserSearchOpen) {
+        var sd = document.getElementById("mg-search-dock");
+        if (sd) {
+          sd.classList.remove("is-open");
+          sd.classList.remove("chat-open");
+        }
+      }
+    } catch (eS) {}
 
     /* close lab ghosts (once) — skip if user already engaged chrome */
     if (!respectUser) {
@@ -220,11 +235,12 @@
               t.closest(
                 "#mg-glass-cap,#mg-float-kb,#mg-activity-board,#mg-board-chip," +
                   "#mg-search-dock,#mg-dragon,#mg-panel,#mg-tabs,#mg-mode-menu," +
-                  "#mg-rec-chip,#mg-sx-rail"
+                  "#mg-rec-chip,#mg-sx-rail,#mg-tools-drawer,#mg-tools-tab,#mg-tools-scrim"
               )
             ) {
               window.__mgUserChromeTouch = true;
-              if (t.closest("#mg-glass-cap")) window.__mgUserOpenedCtrl = true;
+              if (t.closest("#mg-glass-cap,#mg-tools-drawer,#mg-tools-tab"))
+                window.__mgUserOpenedCtrl = true;
               if (t.closest("#mg-float-kb")) window.__mgUserOpenedKb = true;
               if (t.closest("#mg-activity-board,#mg-board-chip"))
                 window.__mgUserOpenedBoard = true;

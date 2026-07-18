@@ -112,6 +112,8 @@ enum Cmd {
     HotMitigate { msg: String },
     /// Hot-pipe: write inspect pack + clipboard-friendly markdown for Grok Build
     SubmitInspect { dump: String },
+    /// Grok terminal bridge (Memory Glass float → host probes / open TUI)
+    GrokTerm { action: String, line: String },
     /// Hot-pipe: open agent.html in main webview
     OpenAgent,
     /// Clean new window → hotpipe/leaderboard.html with optional handoff JSON
@@ -1539,6 +1541,8 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let product_mode = read_hotpipe_file("product-mode.js").unwrap_or_default();
     let menu_health = read_hotpipe_file("menu-health-monitor.js").unwrap_or_default();
     let mg_cal = read_hotpipe_file("mg-calibrate-boot.js").unwrap_or_default();
+    let tools_drawer = read_hotpipe_file("mg-tools-drawer.js").unwrap_or_default();
+    let grok_term = read_hotpipe_file("mg-grok-terminal.js").unwrap_or_default();
     let kbatch_fleet = read_hotpipe_file("kbatch-fleet-bridge.js").unwrap_or_default();
     let qbit_codec = read_hotpipe_file("qbit-codec.js")
         .or_else(|| read_hotpipe_file("concepts/qbit-codec.js"))
@@ -1630,6 +1634,14 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !menu_health.is_empty() {
                     inject_js_blob(wv, &menu_health);
                 }
+                /* left tools drawer (primary chrome — not permanent floats) */
+                if !tools_drawer.is_empty() {
+                    inject_js_blob(wv, &tools_drawer);
+                }
+                /* Grok Build terminal bridge float */
+                if !grok_term.is_empty() {
+                    inject_js_blob(wv, &grok_term);
+                }
                 /* Grok CAL boot → flourish SHOW */
                 if !mg_cal.is_empty() {
                     inject_js_blob(wv, &mg_cal);
@@ -1644,9 +1656,11 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             inject_leaderboard_handoff(wv);
         }
         eprintln!(
-            "hotpipe: LEAN play-lab floats={} product={} → {} surface(s)",
+            "hotpipe: LEAN play-lab floats={} product={} drawer={} grok-term={} → {} surface(s)",
             !strict,
             !product_mode.is_empty(),
+            !tools_drawer.is_empty(),
+            !grok_term.is_empty(),
             targets.len()
         );
         return true;
@@ -1785,6 +1799,12 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         if !menu_health.is_empty() {
             inject_js_blob(wv, &menu_health);
         }
+        if !tools_drawer.is_empty() {
+            inject_js_blob(wv, &tools_drawer);
+        }
+        if !grok_term.is_empty() {
+            inject_js_blob(wv, &grok_term);
+        }
         if !mg_cal.is_empty() {
             inject_js_blob(wv, &mg_cal);
         }
@@ -1792,11 +1812,13 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         inject_leaderboard_handoff(wv);
     }
     eprintln!(
-        "hotpipe: FULL stack injected product={} kbatch={} menu-health={} cal={} → {} surface(s)",
+        "hotpipe: FULL stack injected product={} kbatch={} menu-health={} cal={} drawer={} grok-term={} → {} surface(s)",
         !product_mode.is_empty(),
         !kbatch_fleet.is_empty(),
         !menu_health.is_empty(),
         !mg_cal.is_empty(),
+        !tools_drawer.is_empty(),
+        !grok_term.is_empty(),
         targets.len()
     );
     true
@@ -2074,6 +2096,127 @@ fn inject_dev_line(webview: &wry::WebView, lvl: &str, msg: &str, src: &str) {
         js_single_quote(src)
     );
     let _ = webview.evaluate_script(&js);
+}
+
+/// Push a line into the Grok terminal float (window.__mgGrokTerm.push).
+fn inject_grok_term_line(webview: &wry::WebView, kind: &str, msg: &str) {
+    let js = format!(
+        "(function(){{try{{if(window.__mgGrokTerm&&window.__mgGrokTerm.push)window.__mgGrokTerm.push('{}','{}');}}catch(e){{}}}})();",
+        js_single_quote(kind),
+        js_single_quote(msg)
+    );
+    let _ = webview.evaluate_script(&js);
+}
+
+fn monorepo_source_rev() -> String {
+    // experiments/memory-glass → ../../SOURCE_REV (grok-build root)
+    let paths = [
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../SOURCE_REV"),
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("SOURCE_REV"),
+    ];
+    for p in paths {
+        if let Ok(s) = std::fs::read_to_string(&p) {
+            let t = s.trim();
+            if !t.is_empty() {
+                return t.to_string();
+            }
+        }
+    }
+    "unknown".into()
+}
+
+fn resolve_grok_bin() -> Option<std::path::PathBuf> {
+    let home = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into()));
+    let cands = [
+        home.join(".grok/bin/grok"),
+        home.join(".local/bin/grok"),
+        std::path::PathBuf::from("/opt/homebrew/bin/grok"),
+        std::path::PathBuf::from("/usr/local/bin/grok"),
+    ];
+    for p in cands {
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+    if let Ok(out) = std::process::Command::new("/usr/bin/which")
+        .arg("grok")
+        .output()
+    {
+        if out.status.success() {
+            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !s.is_empty() {
+                return Some(std::path::PathBuf::from(s));
+            }
+        }
+    }
+    None
+}
+
+fn grok_term_version_text() -> String {
+    let Some(bin) = resolve_grok_bin() else {
+        return "grok binary not found (~/.grok/bin/grok)".into();
+    };
+    match std::process::Command::new(&bin)
+        .arg("--version")
+        .output()
+    {
+        Ok(o) => {
+            let mut s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if s.is_empty() {
+                s = String::from_utf8_lossy(&o.stderr).trim().to_string();
+            }
+            if s.is_empty() {
+                format!("{} (no version output)", bin.display())
+            } else {
+                format!("{s}  ·  {}", bin.display())
+            }
+        }
+        Err(e) => format!("grok --version failed: {e}"),
+    }
+}
+
+/// Open interactive Grok TUI in Terminal.app (or run allowlisted prompt seed).
+fn grok_term_open_external(line: &str) {
+    let bin = resolve_grok_bin()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| "grok".into());
+    #[cfg(target_os = "macos")]
+    {
+        // Prefer Terminal.app interactive session (full TUI).
+        let script = if line.trim().is_empty() {
+            format!(
+                "tell application \"Terminal\"\n  activate\n  do script \"exec {}\"\nend tell",
+                bin.replace('\\', "\\\\").replace('"', "\\\"")
+            )
+        } else {
+            // Seed with a one-shot prompt then drop into shell note — keep simple
+            let escaped = line
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', " ");
+            format!(
+                "tell application \"Terminal\"\n  activate\n  do script \"exec {} -- \\\"{}\\\"\"\nend tell",
+                bin.replace('\\', "\\\\").replace('"', "\\\""),
+                escaped
+            )
+        };
+        let _ = std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = line;
+        let _ = std::process::Command::new(&bin)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+    }
 }
 
 /// Push boot + launch.log spit into inspect webview(s).
@@ -3345,18 +3488,18 @@ fn hud_init_script() -> &'static str {
     + "  pointer-events:none!important}"
     /* Scrim only blocks page when panel open — never covers chrome z-order */
     + "#mg-dragon.is-open ~ #mg-scrim{pointer-events:auto!important}"
-    /* Edge resize hit strips — thick enough to grab; above page, under open CTRL panel */
-    + ".mg-edge{position:fixed!important;z-index:2147483630!important;"
+    /* Edge resize hit strips — always top of hit stack (above floats/drawer) */
+    + ".mg-edge{position:fixed!important;z-index:2147483647!important;"
     + "  background:transparent;padding:0;margin:0;border:0;"
     + "  pointer-events:auto!important;-webkit-app-region:no-drag}"
-    + ".mg-edge.n{top:0;left:14px;right:14px;height:10px;cursor:ns-resize}"
-    + ".mg-edge.s{bottom:0;left:14px;right:14px;height:12px;cursor:ns-resize}"
-    + ".mg-edge.e{top:14px;right:0;bottom:14px;width:10px;cursor:ew-resize}"
-    + ".mg-edge.w{top:14px;left:0;bottom:14px;width:10px;cursor:ew-resize}"
-    + ".mg-edge.ne{top:0;right:0;width:18px;height:18px;cursor:nesw-resize}"
-    + ".mg-edge.nw{top:0;left:0;width:18px;height:18px;cursor:nwse-resize}"
-    + ".mg-edge.se{bottom:0;right:0;width:20px;height:20px;cursor:nwse-resize}"
-    + ".mg-edge.sw{bottom:0;left:0;width:18px;height:18px;cursor:nesw-resize}"
+    + ".mg-edge.n{top:0;left:16px;right:16px;height:14px;cursor:ns-resize}"
+    + ".mg-edge.s{bottom:0;left:16px;right:16px;height:16px;cursor:ns-resize}"
+    + ".mg-edge.e{top:16px;right:0;bottom:16px;width:14px;cursor:ew-resize}"
+    + ".mg-edge.w{top:16px;left:0;bottom:16px;width:14px;cursor:ew-resize}"
+    + ".mg-edge.ne{top:0;right:0;width:22px;height:22px;cursor:nesw-resize}"
+    + ".mg-edge.nw{top:0;left:0;width:22px;height:22px;cursor:nwse-resize}"
+    + ".mg-edge.se{bottom:0;right:0;width:24px;height:24px;cursor:nwse-resize}"
+    + ".mg-edge.sw{bottom:0;left:0;width:22px;height:22px;cursor:nesw-resize}"
     /* ── Depth stack: overlays only — no second full-window mask (avoids edge double-glass) ── */
     + "#mg-lf{"
     + "  position:fixed;inset:0;z-index:0;pointer-events:none;"
@@ -7813,7 +7956,10 @@ fn hud_init_script() -> &'static str {
       dock.classList.add("is-open");
       clearTimeout(hideT);
       pinned = false;
-      try { window.__mgUserChromeTouch = true; } catch (eU) {}
+      try {
+        window.__mgUserChromeTouch = true;
+        window.__mgUserSearchOpen = true;
+      } catch (eU) {}
       try { urlEl.focus(); urlEl.select(); } catch (e) {}
       armHide();
     }
@@ -7821,6 +7967,7 @@ fn hud_init_script() -> &'static str {
       if (pinned || dockHasFocus()) return;
       dock.classList.remove("is-open");
       dock.classList.remove("chat-open");
+      try { window.__mgUserSearchOpen = false; } catch (eU2) {}
     }
     function armHide() {
       clearTimeout(hideT);
@@ -8117,6 +8264,18 @@ fn main() -> Result<()> {
                 "open_camera_prefs" => Some(Cmd::OpenCameraPrefs),
                 "request_camera" => Some(Cmd::RequestCameraAccess),
                 "hot_reload" => Some(Cmd::HotReload),
+                "grok_term" => Some(Cmd::GrokTerm {
+                    action: v
+                        .get("action")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("status")
+                        .to_string(),
+                    line: v
+                        .get("line")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                }),
                 "page_zoom" | "zoom" => Some(Cmd::PageZoom {
                     scale: v
                         .get("scale")
@@ -8682,6 +8841,50 @@ fn main() -> Result<()> {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+                Cmd::GrokTerm { action, line } => {
+                    let act = action.to_ascii_lowercase();
+                    let push_all = |kind: &str, msg: &str| {
+                        if let Some(wv) = webview.as_ref() {
+                            inject_grok_term_line(wv, kind, msg);
+                        }
+                        if let Some(wv) = inspect_wv.as_ref() {
+                            inject_grok_term_line(wv, kind, msg);
+                        }
+                    };
+                    match act.as_str() {
+                        "version" => {
+                            let v = grok_term_version_text();
+                            push_all("ok", &v);
+                        }
+                        "status" => {
+                            let rev = monorepo_source_rev();
+                            let bin = resolve_grok_bin()
+                                .map(|p: std::path::PathBuf| p.display().to_string())
+                                .unwrap_or_else(|| "(not found)".into());
+                            push_all("ok", &format!("SOURCE_REV {rev}"));
+                            push_all("ok", &format!("grok bin {bin}"));
+                            push_all(
+                                "sys",
+                                "monorepo tools: bash · read_file · search_replace · grep · web_* · task · monitor · mcp · plan · image/video",
+                            );
+                            push_all(
+                                "sys",
+                                "shell changelog tip: 0.2.105 Grok 4.5 default · /summarize · login-env bash · /jump /timeline",
+                            );
+                        }
+                        "open" => {
+                            grok_term_open_external(&line);
+                            if line.trim().is_empty() {
+                                push_all("ok", "opened external Grok TUI (Terminal)");
+                            } else {
+                                push_all("ok", &format!("opened external grok with seed ({})", line.chars().take(80).collect::<String>()));
+                            }
+                        }
+                        _ => {
+                            push_all("err", &format!("unknown grok_term action: {act}"));
                         }
                     }
                 }

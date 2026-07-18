@@ -77,7 +77,7 @@ Path-checkout brings the open-source harness into the **workspace** Lab and tool
 | Pin | Value |
 |-----|--------|
 | Fork `main` tip (example) | check `git log -1 --oneline` |
-| `SOURCE_REV` | `124d85bc5dc6e7805560215fcc6d5413944920e1` |
+| `SOURCE_REV` | `f9736c7b86f8e1c0e99e20ebbbd1195cd0c147e3` |
 | Upstream product tree | matches `upstream/main` via path-checkout content (verify exit 0) |
 | Upstream remote | `https://github.com/xai-org/grok-build.git` |
 | Origin remote | `https://github.com/fornevercollective/grok-build.git` |
