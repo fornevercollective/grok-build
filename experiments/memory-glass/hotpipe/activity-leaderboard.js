@@ -1,11 +1,12 @@
 /* Memory Glass · built-in activity leaderboard + run synopsis
  * Aggregates WebGrid / contrail / Bloch / beats / Rubik / kbatch into ranked runs.
  * X draft consumes this (human post only — no auto-X).
- * VER: activity-board-v1
+ * Clean window → leaderboard.html after playthrough to post.
+ * VER: activity-board-v2-page
  */
 (function () {
   "use strict";
-  var VER = "activity-board-v1";
+  var VER = "activity-board-v2-page";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._activityBoardVer === VER) return;
   HP._activityBoardVer = VER;
@@ -19,6 +20,16 @@
   var panel = null;
   var open = false;
   var lastRun = null;
+  var postToast = null;
+  var lastPromptRunId = null;
+
+  /* If this is the clean leaderboard page, hydrate handoff into board APIs */
+  var IS_LB_PAGE = false;
+  try {
+    IS_LB_PAGE =
+      /leaderboard\.html/i.test(location.pathname || "") ||
+      /leaderboard\.html/i.test(location.href || "");
+  } catch (ePage) {}
 
   function log(m) {
     try {
@@ -348,6 +359,15 @@
     } catch (e) {}
     log("run " + run.id + " score=" + run.score + " · " + run.synopsis.slice(0, 60));
     if (open) paintPanel();
+    /* After real playthrough kinds, offer clean post window */
+    if (
+      kind === "agent_end" ||
+      kind === "agent_session" ||
+      kind === "rec-stop" ||
+      kind === "post-play"
+    ) {
+      showPostPrompt(run);
+    }
     return run;
   }
 
@@ -553,7 +573,8 @@
       '<div class="syn" id="mg-board-syn">no run yet</div>' +
       '<ol id="mg-board-ol"></ol>' +
       '<div class="ft">' +
-      '<button type="button" id="mg-board-xdraft" class="hot">X DRAFT</button>' +
+      '<button type="button" id="mg-board-post" class="hot">POST ↗</button>' +
+      '<button type="button" id="mg-board-xdraft">X DRAFT</button>' +
       '<button type="button" id="mg-board-clear">CLEAR</button>' +
       "</div>";
     (document.body || document.documentElement).appendChild(panel);
@@ -563,6 +584,9 @@
     panel.querySelector("#mg-board-snap").onclick = function () {
       submitRun("manual");
       paintPanel();
+    };
+    panel.querySelector("#mg-board-post").onclick = function () {
+      openLeaderboardWindow({ post: true, kind: "manual-post" });
     };
     panel.querySelector("#mg-board-xdraft").onclick = function () {
       var text = formatXDraft({ fresh: true, kind: "x-draft" });
@@ -577,6 +601,169 @@
       lastRun = null;
       paintPanel();
     };
+  }
+
+  function ensureToastCss() {
+    if (document.getElementById("mg-board-toast-css")) return;
+    var st = document.createElement("style");
+    st.id = "mg-board-toast-css";
+    st.textContent = [
+      "#mg-board-toast{position:fixed;right:12px;top:56px;z-index:2147483010;",
+      "  width:min(300px,42vw);border-radius:12px;overflow:hidden;",
+      "  background:rgba(10,12,16,0.58);backdrop-filter:blur(22px) saturate(1.35);",
+      "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
+      "  border:1px solid rgba(255,190,100,0.35);",
+      "  box-shadow:0 10px 28px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.1);",
+      "  font:650 10px/1.3 system-ui;color:rgba(244,246,250,0.95);pointer-events:auto}",
+      "#mg-board-toast.hidden{display:none}",
+      "#mg-board-toast .hd{padding:8px 10px;letter-spacing:0.1em;text-transform:uppercase;",
+      "  color:rgba(255,200,120,0.95);border-bottom:1px solid rgba(255,255,255,0.1)}",
+      "#mg-board-toast .bd{padding:8px 10px;font:500 11px/1.35 system-ui;color:rgba(220,230,240,0.92)}",
+      "#mg-board-toast .ft{display:flex;gap:6px;padding:0 10px 10px;flex-wrap:wrap}",
+      "#mg-board-toast button{appearance:none;cursor:pointer;padding:6px 10px;border-radius:999px;",
+      "  font:700 9px/1 system-ui;letter-spacing:0.06em;color:rgba(240,245,255,0.95);",
+      "  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14)}",
+      "#mg-board-toast button.hot{background:rgba(255,170,60,0.25);",
+      "  border-color:rgba(255,190,100,0.5);color:rgba(255,210,140,0.98)}",
+    ].join("");
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function showPostPrompt(run) {
+    if (IS_LB_PAGE || !run) return;
+    if (lastPromptRunId === run.id) return;
+    lastPromptRunId = run.id;
+    ensureToastCss();
+    if (!postToast) {
+      postToast = document.createElement("div");
+      postToast.id = "mg-board-toast";
+      postToast.innerHTML =
+        '<div class="hd">Playthrough done</div>' +
+        '<div class="bd" id="mg-board-toast-bd">Open clean leaderboard window to post.</div>' +
+        '<div class="ft">' +
+        '<button type="button" class="hot" id="mg-board-toast-go">POST BOARD ↗</button>' +
+        '<button type="button" id="mg-board-toast-x">X DRAFT</button>' +
+        '<button type="button" id="mg-board-toast-d">DISMISS</button>' +
+        "</div>";
+      (document.body || document.documentElement).appendChild(postToast);
+      postToast.querySelector("#mg-board-toast-go").onclick = function () {
+        openLeaderboardWindow({ post: true, run: lastRun, kind: "post-play" });
+        hidePostPrompt();
+      };
+      postToast.querySelector("#mg-board-toast-x").onclick = function () {
+        var text = formatXDraft({ run: lastRun, fresh: false });
+        copyText(text);
+        log("X draft · post-play · you post");
+      };
+      postToast.querySelector("#mg-board-toast-d").onclick = hidePostPrompt;
+    }
+    var bd = document.getElementById("mg-board-toast-bd");
+    if (bd)
+      bd.textContent =
+        (run.synopsis || "run scored " + run.score).slice(0, 140) +
+        " · open clean window to post";
+    postToast.classList.remove("hidden");
+  }
+
+  function hidePostPrompt() {
+    if (postToast) postToast.classList.add("hidden");
+  }
+
+  function slimRun(r) {
+    if (!r) return null;
+    return {
+      id: r.id,
+      kind: r.kind,
+      t: r.t,
+      iso: r.iso,
+      game: r.game,
+      score: r.score,
+      synopsis: r.synopsis,
+      metrics: r.metrics
+        ? {
+            game: r.metrics.game,
+            score: r.metrics.score,
+            webgrid: r.metrics.webgrid,
+            contrail: r.metrics.contrail
+              ? {
+                  samples: r.metrics.contrail.samples,
+                  strokes: r.metrics.contrail.strokes,
+                  phrase: r.metrics.contrail.phrase,
+                  successN: r.metrics.contrail.successN,
+                  stressN: r.metrics.contrail.stressN,
+                  slowN: r.metrics.contrail.slowN,
+                  strain: r.metrics.contrail.strain,
+                  worldWords: r.metrics.contrail.worldWords,
+                  so: r.metrics.contrail.so,
+                }
+              : null,
+            bloch: r.metrics.bloch,
+            beats: r.metrics.beats,
+            rubik: r.metrics.rubik,
+            maze: r.metrics.maze,
+            href: r.metrics.href,
+          }
+        : null,
+    };
+  }
+
+  function buildHandoff(run) {
+    var r = run || lastRun;
+    if (!r) r = submitRun("handoff");
+    return {
+      v: 1,
+      at: Date.now(),
+      run: slimRun(r),
+      board: boardRanked().slice(0, 20).map(slimRun),
+      draft: formatXDraft({ run: r, fresh: false }),
+    };
+  }
+
+  /** Open clean MG window on leaderboard.html to post this run */
+  function openLeaderboardWindow(opts) {
+    opts = opts || {};
+    var run = opts.run || lastRun;
+    if (!run || opts.fresh) run = submitRun(opts.kind || "post-play");
+    lastRun = run;
+    var handoff = buildHandoff(run);
+    try {
+      localStorage.setItem("mg.activity.lastRun", JSON.stringify(run));
+      localStorage.setItem("mg.activity.handoff", JSON.stringify(handoff));
+    } catch (e) {}
+
+    if (window.ipc) {
+      try {
+        window.ipc.postMessage(
+          JSON.stringify({
+            op: "open_leaderboard",
+            handoff: JSON.stringify(handoff),
+            post: !!opts.post,
+          })
+        );
+        log("open leaderboard window · score=" + run.score);
+        return true;
+      } catch (e2) {}
+    }
+
+    /* Fallback: same-tab navigate won't be "clean"; try window.open file path unknown */
+    try {
+      var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(handoff))))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+      var u =
+        (opts.pageUrl || "about:blank") +
+        (opts.post ? "?post=1" : "") +
+        "#h=" +
+        b64.slice(0, 6000);
+      if (opts.pageUrl) {
+        window.open(u, "_blank");
+        return true;
+      }
+    } catch (e3) {}
+    log("open leaderboard failed · ipc missing");
+    openPanel();
+    return false;
   }
 
   function copyText(text) {
@@ -669,8 +856,47 @@
     } catch (e2) {}
   }
 
+  function hydrateFromHandoffInject() {
+    try {
+      if (window.__mgLbHandoff) {
+        var h = window.__mgLbHandoff;
+        if (typeof h === "string") h = JSON.parse(h);
+        if (h && h.run) lastRun = h.run;
+        if (h && Array.isArray(h.board)) {
+          var cur = loadBoard();
+          var byId = {};
+          cur.forEach(function (r) {
+            byId[r.id] = r;
+          });
+          h.board.forEach(function (r) {
+            if (r && r.id) byId[r.id] = r;
+          });
+          var merged = Object.keys(byId).map(function (k) {
+            return byId[k];
+          });
+          merged.sort(function (a, b) {
+            return (b.score || 0) - (a.score || 0);
+          });
+          saveBoard(merged);
+        }
+        if (window.__mgLeaderboardPage && window.__mgLeaderboardPage.ingest)
+          window.__mgLeaderboardPage.ingest(h);
+      }
+    } catch (e) {}
+  }
+
   setTimeout(hookWebgrid, 600);
   setTimeout(hookWebgrid, 2000);
+  setTimeout(hydrateFromHandoffInject, 200);
+  setTimeout(hydrateFromHandoffInject, 900);
+
+  /* On leaderboard page: auto-open is the page itself */
+  if (IS_LB_PAGE) {
+    try {
+      var cached = localStorage.getItem("mg.activity.lastRun");
+      if (cached) lastRun = JSON.parse(cached);
+    } catch (eC) {}
+  }
 
   window.__mgActivityBoard = {
     ver: VER,
@@ -688,6 +914,10 @@
     isOpen: function () {
       return open;
     },
+    openLeaderboardWindow: openLeaderboardWindow,
+    openPage: openLeaderboardWindow,
+    buildHandoff: buildHandoff,
+    showPostPrompt: showPostPrompt,
     report: function () {
       var b = loadBoard();
       return (
@@ -701,5 +931,5 @@
     },
   };
 
-  log(VER + " · activity leaderboard + X metrics");
+  log(VER + " · board + clean post window");
 })();

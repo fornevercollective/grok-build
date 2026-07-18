@@ -310,6 +310,17 @@
         })
       );
       row.appendChild(
+        act("POST ↗", "hot", function () {
+          if (window.__mgActivityBoard && window.__mgActivityBoard.openLeaderboardWindow) {
+            window.__mgActivityBoard.openLeaderboardWindow({
+              post: true,
+              kind: "post-play",
+            });
+            setStatus("clean leaderboard window…");
+          } else setStatus("leaderboard page missing");
+        })
+      );
+      row.appendChild(
         act("X DRAFT", "hot", function () {
           if (window.__mgSessionRec && window.__mgSessionRec.exportXDraft) {
             window.__mgSessionRec.exportXDraft();

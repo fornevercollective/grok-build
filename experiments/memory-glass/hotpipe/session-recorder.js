@@ -58,6 +58,7 @@
       '<button type="button" id="mg-rec-toggle">REC</button>' +
       '<button type="button" id="mg-rec-snap">SNAP</button>' +
       '<button type="button" id="mg-rec-board">BOARD</button>' +
+      '<button type="button" id="mg-rec-post">POST ↗</button>' +
       '<button type="button" id="mg-rec-x">X DRAFT</button>';
     (document.body || document.documentElement).appendChild(recBtn);
     recBtn.querySelector("#mg-rec-toggle").onclick = function () {
@@ -73,6 +74,11 @@
     recBtn.querySelector("#mg-rec-board").onclick = function () {
       if (window.__mgActivityBoard) window.__mgActivityBoard.toggle();
       else log("board missing");
+    };
+    recBtn.querySelector("#mg-rec-post").onclick = function () {
+      if (window.__mgActivityBoard && window.__mgActivityBoard.openLeaderboardWindow) {
+        window.__mgActivityBoard.openLeaderboardWindow({ post: true, kind: "post-play" });
+      } else log("board page missing");
     };
     recBtn.querySelector("#mg-rec-x").onclick = function () {
       exportXDraft();
@@ -227,12 +233,14 @@
       recBtn.querySelector("#mg-rec-toggle").textContent = "REC";
     }
     var pack = buildPack();
-    /* submit run metrics to built-in leaderboard */
+    /* submit run metrics to built-in leaderboard + offer clean post window */
     try {
       if (window.__mgActivityBoard) {
         pack.run = window.__mgActivityBoard.submitRun("rec-stop", {
           rec: { frames: frames.length, meta: meta },
         });
+        if (window.__mgActivityBoard.showPostPrompt && pack.run)
+          window.__mgActivityBoard.showPostPrompt(pack.run);
       }
     } catch (eB) {}
     persistPack(pack);

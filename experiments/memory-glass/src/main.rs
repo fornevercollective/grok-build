@@ -114,6 +114,11 @@ enum Cmd {
     SubmitInspect { dump: String },
     /// Hot-pipe: open agent.html in main webview
     OpenAgent,
+    /// Clean new window → hotpipe/leaderboard.html with optional handoff JSON
+    OpenLeaderboard {
+        handoff: Option<String>,
+        post: bool,
+    },
     /// Push prompt.md / loop.json into agent page
     HotLoadPrompt,
     HotLoadLoop,
@@ -1464,6 +1469,8 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         }
         // Auto-hydrate MKT filmstrip from ~/.panda board (or hotpipe sample)
         inject_filmstrip_board(wv);
+        // Clean leaderboard window: hydrate playthrough handoff if present
+        inject_leaderboard_handoff(wv);
     }
     let mut tag = String::from("live.js");
     if !body.is_empty() {
@@ -1710,6 +1717,56 @@ fn agent_file_url() -> Option<String> {
         return None;
     }
     Some(format!("file://{}", p.display()))
+}
+
+fn leaderboard_file_url(post: bool) -> Option<String> {
+    let p = hotpipe_dir().join("leaderboard.html");
+    if !p.is_file() {
+        // bundled app Resources/hotpipe
+        return None;
+    }
+    let mut u = format!("file://{}", p.display());
+    if post {
+        u.push_str("?post=1");
+    }
+    Some(u)
+}
+
+fn mg_session_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into()))
+        .join(".panda/mg-session")
+}
+
+fn write_leaderboard_handoff(text: &str) -> std::path::PathBuf {
+    let dir = mg_session_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let p = dir.join("leaderboard-handoff.json");
+    let _ = std::fs::write(&p, text);
+    p
+}
+
+fn read_leaderboard_handoff() -> Option<String> {
+    let p = mg_session_dir().join("leaderboard-handoff.json");
+    std::fs::read_to_string(p).ok().filter(|s| !s.trim().is_empty())
+}
+
+/// Inject handoff JSON so clean leaderboard window can post the playthrough run.
+fn inject_leaderboard_handoff(wv: &wry::WebView) {
+    let Some(raw) = read_leaderboard_handoff() else {
+        return;
+    };
+    // Escape for single-quoted JS string via JSON encoding
+    let encoded = serde_json::to_string(&raw).unwrap_or_else(|_| "\"{}\"".into());
+    let js = format!(
+        r#"(function(){{try{{
+  var raw={encoded};
+  var h=typeof raw==='string'?JSON.parse(raw):raw;
+  window.__mgLbHandoff=h;
+  try{{if(window.__mgLeaderboardPage&&window.__mgLeaderboardPage.ingest)window.__mgLeaderboardPage.ingest(h);}}catch(e0){{}}
+  try{{if(window.__mgActivityBoard&&h&&h.run){{/* board module hydrates on timer */}}}}catch(e1){{}}
+}}catch(e){{}}}})();"#
+    );
+    let _ = wv.evaluate_script(&js);
 }
 
 fn push_prompt_to_webview(wv: &wry::WebView) {
@@ -7815,6 +7872,16 @@ fn main() -> Result<()> {
                         .to_string(),
                 }),
                 "open_agent" => Some(Cmd::OpenAgent),
+                "open_leaderboard" => Some(Cmd::OpenLeaderboard {
+                    handoff: v
+                        .get("handoff")
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string()),
+                    post: v
+                        .get("post")
+                        .and_then(|x| x.as_bool())
+                        .unwrap_or(false),
+                }),
                 "hot_load_prompt" => Some(Cmd::HotLoadPrompt),
                 "hot_load_loop" => Some(Cmd::HotLoadLoop),
                 "switch_tab" => Some(Cmd::SwitchTab {
@@ -8366,6 +8433,38 @@ fn main() -> Result<()> {
                         }
                     } else if let Some(wv) = inspect_wv.as_ref() {
                         inject_dev_line(wv, "err", "agent.html missing under hotpipe/", "hotpipe");
+                    }
+                }
+                Cmd::OpenLeaderboard { handoff, post } => {
+                    if let Some(ref h) = handoff {
+                        let p = write_leaderboard_handoff(h);
+                        eprintln!("leaderboard: handoff → {}", p.display());
+                    }
+                    if let Some(url) = leaderboard_file_url(post) {
+                        spawn_new_window(&url);
+                        if let Some(wv) = inspect_wv.as_ref() {
+                            inject_dev_line(
+                                wv,
+                                "ok",
+                                &format!("Clean leaderboard window · {url}"),
+                                "board",
+                            );
+                        }
+                        if let Some(wv) = webview.as_ref() {
+                            inject_dev_line(
+                                wv,
+                                "ok",
+                                "Leaderboard window opened · post your run",
+                                "board",
+                            );
+                        }
+                    } else if let Some(wv) = inspect_wv.as_ref() {
+                        inject_dev_line(
+                            wv,
+                            "err",
+                            "leaderboard.html missing under hotpipe/",
+                            "board",
+                        );
                     }
                 }
                 Cmd::HotLoadPrompt => {
