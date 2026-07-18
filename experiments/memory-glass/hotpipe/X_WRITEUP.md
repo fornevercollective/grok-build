@@ -2,25 +2,35 @@
 
 ## Goal (north-star · for posts)
 
-**Goal:** a native, low-overhead droplet browser — **tao + wry → WKWebView** — that stays lighter than Electron/Chromium, iterates HUD/mesh/contrails in ~1s via **hot-pipe**, and scales spatial mix + live Grok integration toward **sub-16ms** spatial HUD frames without abandoning the lightweight shell.
+**North-star:** native **WKWebView** droplet + ~1s **hot-pipe** + spatial mix / live Grok — **sub-16ms** target, **no Electron**.
 
-**Next hurdle:** **hands + in-air pointer without thrash** (inspect-first). Face instrument + path contrails are baseline; re-enabling hands must not reintroduce body/transform thrash or multi-cam load. After that: pen tip → WebGPU/Metal denser GSPLAT → cache + parallel subagents/pre-fetch → multi-process / XR.
-
-Canonical ladder: `hotpipe/GOALS.md`.
+Canonical ladder: `hotpipe/GOALS.md` · packs: `~/.panda/packs/mg-*`.
 
 ---
 
-## Single post — goal ladder (X / Grok · primary)
+## Single post — public accuracy (X / Grok · primary · transparent)
 
-North-star goal for **Memory Glass:** a native **WKWebView** droplet browser with ~1s **hot-pipe** JS iteration, spatial mix (**GSPLAT**, HUD, paths), and live Grok integration — avoiding Electron bloat while targeting **sub-16ms** spatial HUD frames.
+North-star for **Memory Glass:** a native **WKWebView** droplet browser with ~1s **hot-pipe** JS iteration, spatial mix (**GSPLAT**, HUD, paths), and live Grok integration — avoiding Electron bloat while targeting **sub-16ms** spatial HUD frames.
 
-**H0 baseline (shipped):** continuous cam · **6DOF** head lock · multi-subject paths · soft mesh/person matte · inspect tracking · performance meters.
+**H0 baseline (shipped):** continuous cam · **6DOF** head lock · multi-subject paths · soft mesh / person matte · inspect tracking · performance meters.
 
-**H1–H6 hard push:** inspect hands/air (+ heuristic fallback) · pen/object tip paths · denser GSPLAT · IndexedDB cache · Rust still-pipe pre-fetch meta · adaptive **sub-16ms** frame budget — calm **PAGE**, no multi-ffmpeg.
+**H1 (partial — transparent progress):** stable in-air hands / pointer **without thrash** — inspect-first Hands + `track_hand` IPC on still-pipe (`live-v18-hurdles` / `hurdles-v1`; builds on `live-v17-hands`); calm **PAGE**, no multi-ffmpeg. **5‑min soak** (green FPS/Spool with hands) still the lock-in bar — not claimed done until strip shows **SOAK✓**.
 
-**H7–H9 scaffold:** inspect isolation · CSS rim · face-z touch proxy (true multi-process / Metal / XR later).
+**Hard-push layers (path, not product lock-in):** H2 pen tip · H3 denser GSPLAT · H4 IndexedDB · H5 prefetch/agent hooks · H6 adaptive frame budget · H7–H9 isolate / rim / touch-proxy scaffolds.
 
-Supporting files (`GOALS.md`, `SESSION_HANDOFF`, `X_WRITEUP`, `ARCHITECTURE`, `hurdles.js`) plus `~/.panda` packs enable quick agent handoff and iteration.
+Supported by `GOALS.md`, `SESSION_HANDOFF`, `X_WRITEUP`, `ARCHITECTURE` + `~/.panda` packs for fast agent handoff and iteration.
+
+#MemoryGlass #WKWebView #Rust #GrokBuild #xAI
+
+---
+
+## Single post — marketing clean (alt · no soak caveat)
+
+North-star for **Memory Glass:** native **WKWebView** droplet + ~1s **hot-pipe** + spatial mix / live Grok — **sub-16ms** target, no Electron.
+
+**Shipped baseline:** continuous cam · 6DOF lock · multi-subject paths · soft mesh · inspect · meters · inspect hands/air · pen tip paths · denser GSPLAT · IDB cache · still-pipe prefetch · adaptive HUD budget.
+
+**Roadmap:** multi-process isolation · Metal rim · XR depth touch — keep the lightweight native footprint.
 
 #MemoryGlass #WKWebView #Rust #GrokBuild #xAI
 
