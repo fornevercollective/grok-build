@@ -10,4 +10,6 @@
 BUILD_STAMP
 hotpipe/out/
 hotpipe/patches/
+# full board lives in ~/.panda; keep only slim sample in hotpipe/data if present
+# (committed sample is intentionally small)
 icons/app-icon-xai-alt.jpg

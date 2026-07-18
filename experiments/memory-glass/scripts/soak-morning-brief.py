@@ -23,14 +23,25 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mg_local_llm as llm  # noqa: E402
 
-SYSTEM = """You are Memory Glass overnight ops. Offline only — no cloud, no inventing metrics.
-Given soak telemetry, write a crisp morning brief for an engineer.
-Rules:
-- Use ONLY numbers present in the evidence. If missing, say unknown.
-- Classify crashes: codesign / glass-reassert / OOM-ish RSS / WebKit / unknown.
-- Rank top 3 concrete fixes for today (actionable, files/scripts if known).
-- Separate shell liveness from browser quality (Speedometer etc. not claimed).
-- Keep under ~400 words. Markdown with ## headings.
+SYSTEM = """You are Memory Glass + flip-train overnight ops. Offline only — no inventing metrics.
+Write a crisp morning brief for an engineer from the evidence pack.
+
+Priority order (highest first):
+1) Train model test_eval / metrics curve / top_weights
+2) Flip board refresh stamp (is rows.json live or stale?)
+3) Learn/soak cycle counts and crashes
+4) WebGrid agent_end peaks only (never lobby marketing)
+
+Hard rules:
+- BPS means bits per second from WebGrid formula log2(N²-1)*NTPM/60 — NOT audio bitrate.
+- NTPM means net targets per minute — NOT "non-terminating pause message".
+- 10.39 BPS on the public page is MARKETING (implant PR). Never call it the session score.
+- 40×40 is marketing; live grids are 12×12 or 30×30 only.
+- WebGrid agent is synthetic pointer skill, NOT BCI implant performance.
+- Flip domain is MACD/Bollinger board timing from Yahoo (and X cashtag universe when merged).
+- If evidence includes ANALYSIS_ROWS_AND_FEATURES.md or model test_eval, LEAD with that.
+- Rank top 3 concrete next actions (refresh board, retrain, resign, scrape, etc.).
+- Keep under ~450 words. Markdown with ## headings.
 """
 
 
@@ -138,25 +149,73 @@ def _webgrid_peaks(play_jsonl: Path) -> list[dict]:
 
 def build_evidence(run_dir: Path) -> str:
     soak = run_dir / "soak.jsonl"
+    learn = run_dir / "learn.jsonl"
     summary = run_dir / "summary.md"
+    analysis = run_dir / "ANALYSIS_ROWS_AND_FEATURES.md"
     still = run_dir / "still-server.log"
     launch = Path.home() / "Library/Logs/MemoryGlass/launch.log"
     play = Path.home() / ".panda/mg-soak/watch/play.jsonl"
+    train_metrics = Path.home() / ".panda/mg-soak/train/metrics.jsonl"
+    train_model = Path.home() / ".panda/mg-soak/train/model.json"
+    train_manifest = Path.home() / ".panda/mg-soak/train/manifest.json"
+    refresh_stamp = Path.home() / ".panda/mg-soak/flip-board-live/REFRESH_STAMP.json"
 
-    stats = _parse_soak(soak)
+    stats = _parse_soak(soak if soak.exists() else learn)
     peaks = _webgrid_peaks(play)
 
     parts = [
         f"# Run directory\n{run_dir}",
-        f"\n# Parsed soak stats\n```json\n{json.dumps(stats, indent=2)}\n```",
+        f"\n# Parsed soak/learn stats\n```json\n{json.dumps(stats, indent=2)}\n```",
     ]
     if summary.exists():
         parts.append("\n# Existing summary.md\n" + summary.read_text(errors="replace")[:4000])
-    parts.append("\n# soak.jsonl tail\n```\n" + "\n".join(_tail_lines(soak, 40)) + "\n```")
+    if analysis.exists():
+        parts.append(
+            "\n# Analysis (stale board / features) — TRUST THIS OVER LOBBY MARKETING\n"
+            + analysis.read_text(errors="replace")[:5000]
+        )
+    # Train bus — primary truth for overnight learn
+    if train_manifest.exists():
+        try:
+            man = json.loads(train_manifest.read_text())
+            parts.append(
+                "\n# Train manifest stats (joint WebGrid+flip bus)\n```json\n"
+                + json.dumps(man.get("stats") or man, indent=2)[:2000]
+                + "\n```"
+            )
+        except Exception:
+            pass
+    if train_model.exists():
+        try:
+            mod = json.loads(train_model.read_text())
+            slim = {
+                "iso": mod.get("iso"),
+                "n_train": mod.get("n_train"),
+                "n_test": mod.get("n_test"),
+                "test_eval": mod.get("test_eval"),
+                "top_weights": (mod.get("top_weights") or [])[:5],
+                "honest_note": mod.get("honest_note"),
+            }
+            parts.append(
+                "\n# Final model (logreg) — primary outcome\n```json\n"
+                + json.dumps(slim, indent=2)
+                + "\n```"
+            )
+        except Exception:
+            pass
+    if train_metrics.exists():
+        mets = _tail_lines(train_metrics, 8)
+        parts.append("\n# Train metrics tail (curve)\n```\n" + "\n".join(mets) + "\n```")
+    if refresh_stamp.exists():
+        parts.append(
+            "\n# Flip board refresh stamp\n```json\n"
+            + refresh_stamp.read_text(errors="replace")[:1500]
+            + "\n```"
+        )
+    parts.append("\n# soak/learn.jsonl tail\n```\n" + "\n".join(_tail_lines(learn if learn.exists() else soak, 30)) + "\n```")
     if still.exists():
         parts.append("\n# still-server.log tail\n```\n" + "\n".join(_tail_lines(still, 15)) + "\n```")
     if launch.exists():
-        # only MG-relevant tails
         tail = _tail_lines(launch, 200)
         filt = [
             ln
@@ -178,17 +237,28 @@ def build_evidence(run_dir: Path) -> str:
         if filt:
             parts.append("\n# launch.log filtered tail\n```\n" + "\n".join(filt) + "\n```")
     if peaks:
+        # only peaks with N in 12/30 or from agent_end
+        clean = [
+            p
+            for p in peaks
+            if p.get("kind") in ("agent_end", "agent_round_result", "agent_session")
+            or (isinstance(p.get("peakBps"), (int, float)) and p.get("peakBps") != 10.39)
+        ]
         parts.append(
-            "\n# Recent WebGrid agent/page peaks\n```json\n"
-            + json.dumps(peaks, indent=2)[:3000]
+            "\n# WebGrid agent peaks only (ignore marketing 10.39)\n```json\n"
+            + json.dumps(clean[-8:], indent=2)[:2500]
             + "\n```"
         )
     parts.append(
-        "\n# Known MG context (facts)\n"
-        "- WebGrid: 12×12 if viewport mobile (w≤751|h≤600), else 30×30\n"
-        "- Agent peaks (historical): ~483 BPS 30×30, ~402 BPS 12×12 (synthetic pointer, not BCI)\n"
-        "- Invalid code signature → taskgated SIGKILL; fix with scripts/resign-app.sh\n"
-        "- Public BCI bar ~10.39 BPS is marketing implant path, not mouse agent\n"
+        "\n# Known MG facts (do not invent)\n"
+        "- WebGrid agent = synthetic pointer, NOT BCI implant\n"
+        "- Marketing page text often contains 10.39 BPS and 40×40 — never treat as live score\n"
+        "- Public grid sizes are 12×12 or 30×30 only\n"
+        "- BPS = log2(N²-1)*NTPM/60 (bits per second), not bitrate\n"
+        "- NTPM = net targets per minute, not a pause message\n"
+        "- Flip board: MACD/BB multi-timeframe from Yahoo; refresh stamp tells if live\n"
+        "- Codesign SIGKILL → scripts/resign-app.sh\n"
+        "- Prefer train_eval/test_eval and top_weights over lobby snippets\n"
     )
     return "\n".join(parts)
 

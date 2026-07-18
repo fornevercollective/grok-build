@@ -1243,6 +1243,11 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let ugrad_wg = read_hotpipe_file("ugrad-webgrid-tensor.js").unwrap_or_default();
     let collab = read_hotpipe_file("collab.js").unwrap_or_default();
     let webgrid = read_hotpipe_file("webgrid-play.js").unwrap_or_default();
+    // P-010 leap: market filmstrip · video feed · Lark governance · quantum WebGrid
+    let market = read_hotpipe_file("market-filmstrip.js").unwrap_or_default();
+    let video = read_hotpipe_file("video-feed-panel.js").unwrap_or_default();
+    let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
+    let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         // full-body IK after live so hooks + calib ui exist
@@ -1280,6 +1285,18 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !webgrid.is_empty() {
             inject_js_blob(wv, &webgrid);
         }
+        if !market.is_empty() {
+            inject_js_blob(wv, &market);
+        }
+        if !video.is_empty() {
+            inject_js_blob(wv, &video);
+        }
+        if !lark.is_empty() {
+            inject_js_blob(wv, &lark);
+        }
+        if !quantum.is_empty() {
+            inject_js_blob(wv, &quantum);
+        }
     }
     let mut tag = String::from("live.js");
     if !body.is_empty() {
@@ -1314,6 +1331,18 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !webgrid.is_empty() {
         tag.push_str("+webgrid");
+    }
+    if !market.is_empty() {
+        tag.push_str("+mkt");
+    }
+    if !video.is_empty() {
+        tag.push_str("+vid");
+    }
+    if !lark.is_empty() {
+        tag.push_str("+lark");
+    }
+    if !quantum.is_empty() {
+        tag.push_str("+qwg");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true

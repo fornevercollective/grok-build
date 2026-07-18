@@ -1,11 +1,12 @@
 /* Memory Glass · unified inspect dock (declutter)
- * Tabs: PIPE | CORP | R1 | EGO | CAL | UGRAD | IRON | MESH
+ * Tabs: PIPE | CORP | R1 | EGO | CAL | UGRAD | IRON | MESH | MKT | VID | LARK | QBIT
  * Collapses research/ego/hurdles + training/collab into one rail.
+ * Leap rails: market-filmstrip · video-feed · lark-governance · quantum-webgrid
  * Inject after live, hurdles, research, ego (ironline/ugrad/collab may follow).
  */
 (function () {
   "use strict";
-  var VER = "dock-v2";
+  var VER = "dock-v3-leap";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._dockVer === VER) return;
   HP._dockVer = VER;
@@ -575,6 +576,156 @@
       );
     }
 
+    if (tab === "mkt") {
+      hintEl.textContent =
+        "Market filmstrip · iron condor WebGrid · RH∪X board · stable window only · no auto-trade.";
+      row.appendChild(
+        act("OPEN", "ok", function () {
+          if (window.__mgMarket) window.__mgMarket.open();
+          setStatus(window.__mgMarket ? window.__mgMarket.report() : "market-filmstrip not loaded");
+        })
+      );
+      row.appendChild(
+        act("LOAD", "", function () {
+          if (window.__mgMarket) {
+            window.__mgMarket.open();
+            var b = document.getElementById("mg-mkt-load");
+            if (b) b.click();
+            setStatus(window.__mgMarket.report());
+          } else setStatus("no __mgMarket");
+        })
+      );
+      row.appendChild(
+        act("HIT IN", "hot", function () {
+          if (window.__mgMarket && window.__mgMarket.state.focus)
+            window.__mgMarket.scoreCondorTrial(window.__mgMarket.state.focus, "in");
+          setStatus(window.__mgMarket ? window.__mgMarket.report() : "no mkt");
+        })
+      );
+      row.appendChild(
+        act("HIT EDGE", "", function () {
+          if (window.__mgMarket && window.__mgMarket.state.focus)
+            window.__mgMarket.scoreCondorTrial(window.__mgMarket.state.focus, "edge");
+          setStatus(window.__mgMarket ? window.__mgMarket.report() : "no mkt");
+        })
+      );
+      row.appendChild(
+        act("REPORT", "", function () {
+          setStatus(window.__mgMarket ? window.__mgMarket.report() : "no mkt");
+        })
+      );
+    }
+
+    if (tab === "vid") {
+      hintEl.textContent =
+        "Streaming video handler · ffplay/yt-dlp/ffmpeg · blank/gy pop-out · agent __mgVideo.";
+      row.appendChild(
+        act("OPEN", "ok", function () {
+          if (window.__mgVideo) window.__mgVideo.toggle();
+          setStatus(window.__mgVideo ? window.__mgVideo.report() : "video-feed not loaded");
+        })
+      );
+      row.appendChild(
+        act("SPACEX", "hot", function () {
+          if (window.__mgVideo) window.__mgVideo.popBlank(window.__mgVideo.presets.spacex.url);
+          setStatus("blank SpaceX live");
+        })
+      );
+      row.appendChild(
+        act("FFPLAY", "", function () {
+          if (window.__mgVideo) window.__mgVideo.ffplay();
+          setStatus("ffplay cmd/ipc");
+        })
+      );
+      row.appendChild(
+        act("YT-DLP", "", function () {
+          if (window.__mgVideo) window.__mgVideo.ytdlp();
+          setStatus("ytdlp probe");
+        })
+      );
+      row.appendChild(
+        act("GY", "", function () {
+          if (window.__mgVideo) window.__mgVideo.popGy();
+          setStatus("gy pop");
+        })
+      );
+    }
+
+    if (tab === "lark") {
+      hintEl.textContent =
+        "Lark governance tree · unix/epoch/hops/ip · web-wide control surface · fleet policies.";
+      row.appendChild(
+        act("OPEN", "ok", function () {
+          if (window.__mgLark) window.__mgLark.open();
+          setStatus(window.__mgLark ? window.__mgLark.report() : "lark not loaded");
+        })
+      );
+      row.appendChild(
+        act("TICK", "hot", function () {
+          if (window.__mgLark) window.__mgLark.tick();
+          setStatus(window.__mgLark ? window.__mgLark.report() : "no lark");
+        })
+      );
+      row.appendChild(
+        act("EXPORT", "", function () {
+          if (window.__mgLark) window.__mgLark.exportSnapshot();
+          setStatus("lark snapshot");
+        })
+      );
+      row.appendChild(
+        act("FLEET", "", function () {
+          try {
+            if (window.ipc)
+              window.ipc.postMessage(
+                JSON.stringify({ op: "navigate", url: "https://github.com/fornevercollective" })
+              );
+          } catch (e) {}
+          setStatus("fornevercollective");
+        })
+      );
+    }
+
+    if (tab === "qbit") {
+      hintEl.textContent =
+        "Quantum WebGrid · Bloch gate filmstrip · periodic capsules · IBM/composer/uvqbit · school.";
+      row.appendChild(
+        act("OPEN", "ok", function () {
+          if (window.__mgQuantum) window.__mgQuantum.open();
+          setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "quantum not loaded");
+        })
+      );
+      row.appendChild(
+        act("H", "", function () {
+          if (window.__mgQuantum)
+            window.__mgQuantum.applyGate({ id: "H", name: "Hadamard" });
+          setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "no q");
+        })
+      );
+      row.appendChild(
+        act("SCORE", "hot", function () {
+          if (window.__mgQuantum) window.__mgQuantum.scoreHit();
+          setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "no q");
+        })
+      );
+      row.appendChild(
+        act("|0⟩", "", function () {
+          if (window.__mgQuantum) window.__mgQuantum.reset();
+          setStatus("reset |0⟩");
+        })
+      );
+      row.appendChild(
+        act("COMPOSER", "", function () {
+          try {
+            if (window.ipc)
+              window.ipc.postMessage(
+                JSON.stringify({ op: "navigate", url: "https://quantum.cloud.ibm.com/composer" })
+              );
+          } catch (e) {}
+          setStatus("IBM composer");
+        })
+      );
+    }
+
     body.appendChild(row);
     body.appendChild(hintEl);
   }
@@ -610,6 +761,13 @@
     try {
       if (window.__mgMesh) bits.push("p" + window.__mgMesh.peerCount());
     } catch (e3) {}
+    try {
+      if (window.__mgMarket && window.__mgMarket.state && window.__mgMarket.state.rows)
+        bits.push("mkt" + window.__mgMarket.state.rows.length);
+    } catch (e4) {}
+    try {
+      if (window.__mgLark && window.__mgLark.state) bits.push("e" + (window.__mgLark.state.unix % 100000));
+    } catch (e5) {}
     setStatus(bits.join(" · "));
   }
 
@@ -637,6 +795,10 @@
       ["ugrad", "UGRAD"],
       ["iron", "IRON"],
       ["mesh", "MESH"],
+      ["mkt", "MKT"],
+      ["vid", "VID"],
+      ["lark", "LARK"],
+      ["qbit", "QBIT"],
     ].forEach(function (pair) {
       var b = document.createElement("button");
       b.type = "button";
@@ -661,7 +823,7 @@
       hideLegacyClutter();
       tickStatus();
     }, 2500);
-    ok("inspect dock · PIPE/CORP/R1/EGO/CAL/UGRAD/IRON/MESH · " + VER);
+    ok("inspect dock · PIPE…MESH + MKT/VID/LARK/QBIT · " + VER);
   }
 
   window.__mgDock = {
