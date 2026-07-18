@@ -6,7 +6,7 @@
 |------|---------|
 | `Contents/MacOS/memory-glass` | Rust + WKWebView binary |
 | `Contents/MacOS/Memory Glass` | Launch wrapper → logs |
-| `Contents/Resources/hotpipe/` | live.js · agent · mitigations · packs |
+| `Contents/Resources/hotpipe/` | live.js · hurdles.js · research.js · agent · mitigations |
 | `Contents/Resources/voice/` | speak / mute / bridge / STS / clone scripts (snapshot) |
 | `Contents/Resources/vision/` | still-server + capture helpers (snapshot) |
 | `Contents/Resources/AppIcon.icns` | Dock icon |

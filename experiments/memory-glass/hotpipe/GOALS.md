@@ -1,7 +1,8 @@
 # Memory Glass · Goals & next hurdles
 
 **Last updated:** 2026-07-17  
-**Status:** H0 done · **H1–H6 implemented (hard push)** · H7–H9 scaffolded · soak may still be accruing
+**Status:** H0 done · **H1–H6 hard push** · **R1 research-v1 scaffold** · H7–H9 scaffold · Mini bring-up ready  
+**Next product push:** R1 Research Mini (see `MINI_BRINGUP.md`) — not further spatial FX
 
 ---
 

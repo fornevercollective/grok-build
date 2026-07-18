@@ -178,8 +178,11 @@ experiments/memory-glass/
   src/main.rs
   hotpipe/live.js          # VER live-v18-hurdles
   hotpipe/hurdles.js       # H1–H9 pack
+  hotpipe/research.js      # R1 research-v1 (⌥⌘R capture)
+  hotpipe/MINI_BRINGUP.md  # Mac Mini pull + test
   hotpipe/GOALS.md         # north-star + status
   hotpipe/agent-parallel.md
+  mg-mini-start.sh
   hotpipe/LINEAGE.md
   hotpipe/X_WRITEUP.md
   hotpipe/SESSION_HANDOFF.md  # this file
@@ -212,8 +215,8 @@ experiments/memory-glass/
 Continue Memory Glass (experiments/memory-glass).
 Read hotpipe/GOALS.md + SESSION_HANDOFF.md.
 North-star: native WKWebView droplet + hot-pipe + spatial mix without Electron bloat.
-H0–H6 hard-pushed (live-v18 + hurdles-v1). H7–H9 scaffold. Watch inspect strip for soak/H6 ms.
-Hot-pipe first (live.js + hurdles.js); rust rebuild for IPC/prefetch.
+H0–H6 hard-pushed (live-v18 + hurdles-v1). R1 research-v1 scaffold. H7–H9 scaffold.
+Hot-pipe: live.js + hurdles.js + research.js. Mini: hotpipe/MINI_BRINGUP.md · mg-mini-start.sh
 
 Still-pipe :9877, single continuous cam writer (capture-stream.sh — never snap-loop).
 Do not reintroduce body filter thrash or multi-ffmpeg on device 0.
