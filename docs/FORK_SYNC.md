@@ -74,4 +74,14 @@ Path-checkout brings the open-source harness into the **workspace** Lab and tool
 
 ## Last known good (update when you path-checkout)
 
-See root `SOURCE_REV` and `git log -1 --oneline` on `main`.
+| Pin | Value |
+|-----|--------|
+| Fork `main` tip (example) | check `git log -1 --oneline` |
+| `SOURCE_REV` | `124d85bc5dc6e7805560215fcc6d5413944920e1` |
+| Upstream product tree | matches `upstream/main` via path-checkout content (verify exit 0) |
+| Upstream remote | `https://github.com/xai-org/grok-build.git` |
+| Origin remote | `https://github.com/fornevercollective/grok-build.git` |
+| No merge-base with upstream | **expected** (unrelated histories) |
+
+Verified: `./scripts/verify-upstream-sync.sh` → product tree **OK** (crates / Cargo / SOURCE_REV / …).  
+Memory Glass + Lab live only under `experiments/` and `docs/` — never path-checkout those from upstream.
