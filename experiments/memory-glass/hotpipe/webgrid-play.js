@@ -832,13 +832,45 @@
     });
     await sleep(roundIdx === 0 ? 400 : 250);
 
+    /* cookie / privacy banner — must clear before canvas hits register */
+    async function dismissConsent() {
+      var tries = [
+        /^accept all$/i,
+        /accept all/i,
+        /^accept$/i,
+        /allow all/i,
+        /agree/i,
+        /^decline$/i,
+        /decline/i,
+        /essential only/i,
+        /reject all/i,
+      ];
+      for (var pass = 0; pass < 4; pass++) {
+        var hit = false;
+        for (var ti = 0; ti < tries.length; ti++) {
+          var b = findButton(tries[ti]);
+          if (b) {
+            clickEl(b);
+            hit = true;
+            log("consent click · " + ((b.innerText || "").slice(0, 40)));
+            await sleep(220);
+            break;
+          }
+        }
+        if (!hit) break;
+        await sleep(120);
+      }
+    }
+    await dismissConsent();
+
     /* lobby */
     var d = findButton(/^decline$/i) || findButton(/decline/i);
     if (d) {
       clickEl(d);
       await sleep(200);
     }
-    for (var t = 0; t < 10; t++) {
+    for (var t = 0; t < 14; t++) {
+      await dismissConsent();
       var s =
         findButton(/^start game$/i) ||
         findButton(/start game/i) ||
