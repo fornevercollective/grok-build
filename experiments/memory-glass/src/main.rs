@@ -1343,7 +1343,8 @@ fn inject_filmstrip_board(wv: &wry::WebView) {
     eprintln!("filmstrip: no board file found");
 }
 
-/// `lean=true` for WebGrid play: agent + board only (Intel/WK thrash guard).
+/// `lean=true` for WebGrid play: dual-space floats lab (skip heavy non-play modules).
+/// Always keeps contrail/maze/bloch/rubik/beats/keyboard/board LIVE for training.
 fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     inject_live_js_mode(targets, false)
 }
@@ -1353,21 +1354,79 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         eprintln!("hotpipe: live.js missing under {}", hotpipe_dir().display());
         return false;
     };
-    let lean = lean
-        || std::env::var("MG_HOTPIPE_LEAN")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("webgrid"))
-            .unwrap_or(false);
+    /* MG_HOTPIPE_LEAN=strict → old agent-only; default lean = dual-space play lab */
+    let env_lean = std::env::var("MG_HOTPIPE_LEAN")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("webgrid"))
+        .unwrap_or(false);
+    let strict = std::env::var("MG_HOTPIPE_LEAN")
+        .map(|v| v.eq_ignore_ascii_case("strict") || v.eq_ignore_ascii_case("agent-only"))
+        .unwrap_or(false);
+    let lean = lean || env_lean;
 
     let webgrid = read_hotpipe_file("webgrid-play.js").unwrap_or_default();
     let activity_board = read_hotpipe_file("activity-leaderboard.js").unwrap_or_default();
     let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
+    let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
+    let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
+    let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
+    let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
+    let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
+    let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
+    let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
+    let collab = read_hotpipe_file("collab.js").unwrap_or_default();
+    let collab_day = read_hotpipe_file("collab-day.js").unwrap_or_default();
+    let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
+    let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
+    let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
+    let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
 
     if lean {
-        // WebGrid play path: no maze/rubik/beats/filmstrip/contrail (Intel FPS buffer)
         for wv in targets {
             inject_js_blob(wv, &js);
             if !webgrid.is_empty() {
                 inject_js_blob(wv, &webgrid);
+            }
+            if !kbatch_dojo.is_empty() {
+                inject_js_blob(wv, &kbatch_dojo);
+            }
+            /* Dual-space floats — always on for WebGrid lab (unless strict) */
+            if !strict {
+                if !sx_rail.is_empty() {
+                    inject_js_blob(wv, &sx_rail);
+                }
+                if !quantum.is_empty() {
+                    inject_js_blob(wv, &quantum);
+                }
+                if !contrail.is_empty() {
+                    inject_js_blob(wv, &contrail);
+                }
+                if !glass_cap.is_empty() {
+                    inject_js_blob(wv, &glass_cap);
+                }
+                if !float_kb.is_empty() {
+                    inject_js_blob(wv, &float_kb);
+                }
+                if !bloch_bus.is_empty() {
+                    inject_js_blob(wv, &bloch_bus);
+                }
+                if !mem_maze.is_empty() {
+                    inject_js_blob(wv, &mem_maze);
+                }
+                if !kb_beats.is_empty() {
+                    inject_js_blob(wv, &kb_beats);
+                }
+                if !rubik_lang.is_empty() {
+                    inject_js_blob(wv, &rubik_lang);
+                }
+                if !collab.is_empty() {
+                    inject_js_blob(wv, &collab);
+                }
+                if !collab_day.is_empty() {
+                    inject_js_blob(wv, &collab_day);
+                }
+                if !live_hud.is_empty() {
+                    inject_js_blob(wv, &live_hud);
+                }
             }
             if !activity_board.is_empty() {
                 inject_js_blob(wv, &activity_board);
@@ -1378,7 +1437,8 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             inject_leaderboard_handoff(wv);
         }
         eprintln!(
-            "hotpipe: LEAN live+webgrid+board+rec → {} surface(s)",
+            "hotpipe: LEAN play-lab floats={} → {} surface(s)",
+            !strict,
             targets.len()
         );
         return true;

@@ -45,7 +45,9 @@
 | Bloch dual-solve orb + float | Deeper gate curriculum |
 | Rubik language float (face→channel) | Snake / live lab co-solve |
 | Memory maze gsplat + raindrop packs | Real WebGPU gsplat |
-| Keyboard beats (qbpm) + rainbow trail | Full piano-buddy catalog live |
+| Keyboard beats + **music staff notation** | Full piano-buddy catalog live |
+| **All floats LIVE during WebGrid play** | FLOATS capsule one-tap |
+| Sportsfield **live rank + BPS predictions** | Fleet publish (human-gated) |
 
 **APIs:** `__mgContrail` · `__mgBlochSolve` · `__mgRubikLang` · `__mgMemoryMaze` · `__mgKeyboardBeats`
 

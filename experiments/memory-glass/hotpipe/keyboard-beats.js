@@ -1,10 +1,11 @@
-/* Memory Glass · live keyboard solve / control / beats (qbpm · piano-buddy spirit)
- * Key path → beat attempts · metric strip · feeds Bloch + maze + learn bus.
- * VER: keyboard-beats-v1
+/* Memory Glass · live keyboard beats + music staff notation (qbpm · piano-buddy)
+ * Key path → beat attempts · staff roll · feeds Bloch + maze + learn bus.
+ * Stays open during WebGrid play.
+ * VER: keyboard-beats-v3-staff
  */
 (function () {
   "use strict";
-  var VER = "keyboard-beats-v2-float";
+  var VER = "keyboard-beats-v3-staff";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._kbBeatsVer === VER) return;
   HP._kbBeatsVer = VER;
@@ -18,44 +19,29 @@
     } catch (e) {}
   }
 
-  var keys = []; /* {ch,t,nx,ny} */
+  var keys = [];
   var beats = [];
   var bpm = 96;
   var lastBeatT = 0;
   var attempts = 0;
   var hits = 0;
   var strip = null;
-  var open = false; /* maze-style: off until BEATS */
+  var open = false;
   var audioCtx = null;
+  var staffCv = null;
 
   var NOTE_MAP = {
-    a: 60,
-    s: 62,
-    d: 64,
-    f: 65,
-    g: 67,
-    h: 69,
-    j: 71,
-    k: 72,
-    l: 74,
-    q: 72,
-    w: 74,
-    e: 76,
-    r: 77,
-    t: 79,
-    y: 81,
-    u: 83,
-    i: 84,
-    o: 86,
-    p: 88,
-    z: 48,
-    x: 50,
-    c: 52,
-    v: 53,
-    b: 55,
-    n: 57,
-    m: 59,
+    a: 60, s: 62, d: 64, f: 65, g: 67, h: 69, j: 71, k: 72, l: 74,
+    q: 72, w: 74, e: 76, r: 77, t: 79, y: 81, u: 83, i: 84, o: 86, p: 88,
+    z: 48, x: 50, c: 52, v: 53, b: 55, n: 57, m: 59,
   };
+
+  var NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  function midiName(m) {
+    m = Math.round(m);
+    return NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  }
 
   function ensureUi() {
     if (strip) return;
@@ -65,8 +51,8 @@
       st.textContent = [
         "#mg-kb-beats{position:fixed;left:50%;bottom:calc(12px + var(--mg-kb-h,0px));",
         "  transform:translateX(-50%);z-index:2147482998;",
-        "  min-width:min(420px,70vw);max-width:90vw;border-radius:12px;overflow:hidden;",
-        "  background:rgba(10,12,16,0.5);backdrop-filter:blur(22px) saturate(1.35);",
+        "  min-width:min(460px,78vw);max-width:94vw;border-radius:12px;overflow:hidden;",
+        "  background:rgba(10,12,16,0.52);backdrop-filter:blur(22px) saturate(1.35);",
         "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
         "  border:1px solid rgba(255,255,255,0.16);",
         "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
@@ -79,15 +65,18 @@
         "  font:650 9px/1.2 system-ui}",
         "#mg-kb-beats .hd button{appearance:none;background:transparent;border:0;color:inherit;",
         "  cursor:pointer;font:700 11px/1 system-ui}",
-        "#mg-kb-beats .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 10px}",
+        "#mg-kb-beats .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:6px 10px}",
         "#mg-kb-beats b{color:rgba(160,210,255,0.95)}",
         "#mg-kb-beats .bar{flex:1;min-width:80px;height:6px;border-radius:3px;",
         "  background:rgba(255,255,255,0.08);overflow:hidden}",
         "#mg-kb-beats .bar i{display:block;height:100%;background:linear-gradient(90deg,",
         "  #50e6a0,#a0c8ff,#ffb060,#f070d0,#70e0ff);width:0%;transition:width .12s}",
-        "#mg-kb-beats .spark{display:flex;gap:2px;padding:0 10px 8px;height:28px;align-items:flex-end}",
+        "#mg-kb-beats .spark{display:flex;gap:2px;padding:0 10px 4px;height:22px;align-items:flex-end}",
         "#mg-kb-beats .spark span{flex:1;min-width:3px;border-radius:2px 2px 0 0;",
         "  background:hsla(var(--h,180),80%,60%,0.85);height:30%}",
+        "#mg-kb-beats .staff-wrap{padding:0 8px 8px}",
+        "#mg-kb-beats canvas.staff{width:100%;height:72px;display:block;border-radius:8px;",
+        "  background:rgba(4,8,14,0.75);border:1px solid rgba(255,255,255,0.08)}",
       ].join("");
       (document.head || document.documentElement).appendChild(st);
     }
@@ -95,7 +84,7 @@
     strip.id = "mg-kb-beats";
     strip.className = open ? "" : "hidden";
     strip.innerHTML =
-      '<div class="hd"><span>Keyboard beats · qbpm</span>' +
+      '<div class="hd"><span>Beats · staff · qbpm</span>' +
       '<button type="button" id="mg-kb-beats-x">×</button></div>' +
       '<div class="row">' +
       "<span>BPM <b id=\"mg-kb-bpm\">96</b></span>" +
@@ -104,8 +93,10 @@
       '<span class="bar"><i id="mg-kb-fill"></i></span>' +
       "<span id=\"mg-kb-note\">—</span>" +
       "</div>" +
+      '<div class="staff-wrap"><canvas class="staff" id="mg-kb-staff"></canvas></div>' +
       '<div class="spark" id="mg-kb-spark"></div>';
     (document.body || document.documentElement).appendChild(strip);
+    staffCv = strip.querySelector("#mg-kb-staff");
     strip.querySelector("#mg-kb-beats-x").onclick = function () {
       open = false;
       strip.classList.add("hidden");
@@ -128,6 +119,97 @@
     } catch (e) {}
   }
 
+  /** Treble staff + noteheads for recent beats (piano-buddy / qbpm spirit) */
+  function drawStaff() {
+    if (!staffCv || !open) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var W = staffCv.clientWidth || 420;
+    var H = 72;
+    staffCv.width = Math.floor(W * dpr);
+    staffCv.height = Math.floor(H * dpr);
+    var ctx = staffCv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(4,8,14,0.9)";
+    ctx.fillRect(0, 0, W, H);
+
+    var top = 14;
+    var gap = 8;
+    /* 5 staff lines */
+    ctx.strokeStyle = "rgba(180,200,220,0.35)";
+    ctx.lineWidth = 1;
+    for (var L = 0; L < 5; L++) {
+      var y = top + L * gap;
+      ctx.beginPath();
+      ctx.moveTo(28, y);
+      ctx.lineTo(W - 8, y);
+      ctx.stroke();
+    }
+    /* treble G clef glyph (approx) */
+    ctx.fillStyle = "rgba(160,210,255,0.85)";
+    ctx.font = "700 28px Georgia,serif";
+    ctx.fillText("𝄞", 4, top + 4 * gap);
+
+    /* map MIDI 60(C4)≈below staff … 79(G5)≈top */
+    function midiY(midi) {
+      var base = 60; /* C4 */
+      var step = gap / 2; /* half-step per line/space */
+      var d = midi - base;
+      return top + 4 * gap - d * step + gap * 0.5;
+    }
+
+    var recent = beats.slice(-24);
+    var n = recent.length || 1;
+    recent.forEach(function (bb, i) {
+      var x = 36 + (i / Math.max(1, n - 1 || 1)) * (W - 56);
+      if (n === 1) x = 48;
+      var y = midiY(bb.midi || 60);
+      var hue = ((bb.midi || 60) * 7) % 360;
+      /* stem */
+      ctx.strokeStyle = bb.hit
+        ? "hsla(" + hue + ",85%,70%,0.95)"
+        : "hsla(" + hue + ",50%,55%,0.55)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x + 5, y);
+      ctx.lineTo(x + 5, y - 22);
+      ctx.stroke();
+      /* notehead */
+      ctx.fillStyle = bb.hit
+        ? "hsla(" + hue + ",90%,68%,0.95)"
+        : "hsla(" + hue + ",40%,50%,0.5)";
+      ctx.beginPath();
+      ctx.ellipse(x, y, 5.5, 4, -0.35, 0, Math.PI * 2);
+      ctx.fill();
+      /* ledger lines if needed */
+      if (y > top + 4 * gap + 2 || y < top - 2) {
+        ctx.strokeStyle = "rgba(180,200,220,0.4)";
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y);
+        ctx.lineTo(x + 8, y);
+        ctx.stroke();
+      }
+    });
+
+    /* beat grid */
+    ctx.strokeStyle = "rgba(100,140,180,0.12)";
+    for (var b = 0; b < 8; b++) {
+      var bx = 36 + (b / 7) * (W - 56);
+      ctx.beginPath();
+      ctx.moveTo(bx, top - 4);
+      ctx.lineTo(bx, top + 4 * gap + 4);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "rgba(140,180,200,0.65)";
+    ctx.font = "600 8px ui-monospace,Menlo,monospace";
+    ctx.fillText(
+      "staff · last " + recent.length + " · " + bpm + " bpm",
+      W - 140,
+      H - 6
+    );
+  }
+
   function onKey(ch, nx, ny) {
     ensureUi();
     var now = Date.now();
@@ -139,7 +221,6 @@
     var midi = NOTE_MAP[ch] || 60 + (ch.charCodeAt(0) % 12);
     blip(midi);
 
-    /* beat clock attempt — hit if near quarter */
     var interval = 60000 / bpm;
     var phase = (now - lastBeatT) % interval;
     var err = Math.min(phase, interval - phase);
@@ -147,7 +228,6 @@
     if (hit) hits++;
     if (now - lastBeatT > interval * 0.5) lastBeatT = now;
 
-    /* adapt bpm from key density */
     if (keys.length >= 4) {
       var dt = keys[keys.length - 1].t - keys[keys.length - 4].t;
       if (dt > 80) {
@@ -156,7 +236,15 @@
       }
     }
 
-    beats.push({ t: now, ch: ch, midi: midi, hit: hit, err: err, bpm: bpm });
+    beats.push({
+      t: now,
+      ch: ch,
+      midi: midi,
+      name: midiName(midi),
+      hit: hit,
+      err: err,
+      bpm: bpm,
+    });
     if (beats.length > 80) beats.shift();
 
     try {
@@ -174,6 +262,7 @@
         source: "mg-keyboard-beats",
         bpm: bpm,
         note: midi,
+        name: midiName(midi),
         ch: ch,
         hit: hit,
         attempts: attempts,
@@ -204,7 +293,7 @@
     if (elNote && beats.length) {
       var b = beats[beats.length - 1];
       elNote.textContent =
-        (b.hit ? "HIT" : "MISS") + " · m" + b.midi + " · " + (b.ch || "?");
+        (b.hit ? "HIT" : "MISS") + " · " + (b.name || "m" + b.midi) + " · " + (b.ch || "?");
     }
     var spark = document.getElementById("mg-kb-spark");
     if (spark) {
@@ -217,14 +306,13 @@
         spark.appendChild(s);
       });
     }
+    drawStaff();
   }
 
-  /* Hook float keyboard */
   function hookKb() {
     var K = window.__mgFloatKb;
     if (!K || K._beatsHooked) return;
     K._beatsHooked = true;
-    /* wrap via polling buffer changes is weak; patch press via event on keys */
     document.addEventListener(
       "click",
       function (ev) {
@@ -246,7 +334,7 @@
       },
       true
     );
-    log(VER + " · keyboard beats hooked");
+    log(VER + " · keyboard beats + staff hooked");
   }
 
   setTimeout(hookKb, 500);
@@ -295,10 +383,9 @@
         attempts +
         " hit=" +
         hits +
-        " acc=" +
-        (attempts ? (hits / attempts).toFixed(2) : "0")
+        (open ? " staff" : "")
       );
     },
   };
-  log(VER + " · qbpm/piano-buddy style attempts");
+  log(VER + " · staff notation float");
 })();

@@ -101,10 +101,11 @@ URL="${URL}&mg_pace=intel"
 export MG_WEBGRID_W="$W"
 export MG_WEBGRID_H="$H"
 
-# Lean hot-pipe on WebGrid (skip maze/rubik/beats/filmstrip — Intel thrash)
-export MG_HOTPIPE_LEAN=1
+# Play-lab lean: dual-space floats ON (contrail/maze/bloch/rubik/beats/board).
+# Strict agent-only: MG_HOTPIPE_LEAN=strict
+export MG_HOTPIPE_LEAN="${MG_HOTPIPE_LEAN:-webgrid}"
 
-echo "==> scale=$SCALE window ${W}x${H} rounds=$ROUNDS lean=1"
+echo "==> scale=$SCALE window ${W}x${H} rounds=$ROUNDS lean=${MG_HOTPIPE_LEAN} (floats live)"
 echo "==> url=$URL"
 echo "==> app=$APP"
 

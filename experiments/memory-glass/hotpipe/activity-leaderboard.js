@@ -2,11 +2,13 @@
  * Aggregates WebGrid / contrail / Bloch / beats / Rubik / kbatch into ranked runs.
  * X draft consumes this (human post only — no auto-X).
  * Clean window → leaderboard.html after playthrough to post.
- * VER: activity-board-v2-page
+ * Live ranking: chess/sportsfield style (mueee games spirit) + predictions.
+ * Stays open during WebGrid play.
+ * VER: activity-board-v3-sportsfield
  */
 (function () {
   "use strict";
-  var VER = "activity-board-v2-page";
+  var VER = "activity-board-v3-sportsfield";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._activityBoardVer === VER) return;
   HP._activityBoardVer = VER;
@@ -538,14 +540,51 @@
     return r.kind || "run";
   }
 
+  /** Sportsfield / live-chess style predictions (mueee games spirit) */
+  function predictNext() {
+    var board = boardRanked();
+    var live = collectMetrics();
+    var cur = live.score || 0;
+    var w = live.webgrid || {};
+    var liveBps =
+      w.sessionPeakBps || w.peakBps || w.bestBps || (typeof w.bps === "number" ? w.bps : null);
+    var top = board[0] ? board[0].score : cur;
+    var avg = 0;
+    board.slice(0, 5).forEach(function (r) {
+      avg += r.score || 0;
+    });
+    avg = board.length ? avg / Math.min(5, board.length) : cur;
+    /* ELO-ish expected: how likely to beat own top / field avg */
+    var field = Math.max(top, avg, 1);
+    var expTop = 1 / (1 + Math.pow(10, (top - cur) / 40));
+    var expField = 1 / (1 + Math.pow(10, (avg - cur) / 35));
+    var trend = 0;
+    if (board.length >= 2) {
+      trend = (board[0].score || 0) - (board[Math.min(2, board.length - 1)].score || 0);
+    }
+    var predBps = liveBps != null ? liveBps * (0.92 + expField * 0.2) : null;
+    if (trend > 0 && predBps != null) predBps *= 1.05;
+    return {
+      liveScore: cur,
+      liveBps: liveBps,
+      predBps: predBps != null ? Math.round(predBps * 100) / 100 : null,
+      winTopPct: Math.round(expTop * 100),
+      winFieldPct: Math.round(expField * 100),
+      rankNow: lastRun ? rankOf(lastRun.id) : board.length ? "—" : 1,
+      fieldN: board.length,
+      form: trend > 5 ? "▲ hot" : trend < -5 ? "▼ cool" : "● steady",
+      eloHint: Math.round(1000 + cur * 2 + (liveBps || 0) * 15),
+    };
+  }
+
   function ensureCss() {
     if (document.getElementById("mg-board-css")) return;
     var st = document.createElement("style");
     st.id = "mg-board-css";
     st.textContent = [
-      "#mg-activity-board{position:fixed;left:12px;top:calc(56px + 180px);z-index:2147482993;",
-      "  width:min(280px,34vw);border-radius:12px;overflow:hidden;",
-      "  background:rgba(10,12,16,0.52);backdrop-filter:blur(22px) saturate(1.35);",
+      "#mg-activity-board{position:fixed;left:12px;top:calc(56px + 168px);z-index:2147482993;",
+      "  width:min(300px,36vw);border-radius:12px;overflow:hidden;",
+      "  background:rgba(10,12,16,0.55);backdrop-filter:blur(22px) saturate(1.35);",
       "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
       "  border:1px solid rgba(255,255,255,0.16);",
       "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
@@ -556,12 +595,28 @@
       "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,210,120,0.95)}",
       "#mg-activity-board .hd button{appearance:none;background:transparent;border:0;color:inherit;",
       "  cursor:pointer;font:700 11px/1 system-ui;margin-left:4px}",
+      "#mg-activity-board .live{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:6px 8px;",
+      "  border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,40,20,0.25)}",
+      "#mg-activity-board .live .c{text-align:center}",
+      "#mg-activity-board .live .k{font:650 7px/1 system-ui;letter-spacing:0.08em;text-transform:uppercase;",
+      "  color:rgba(160,200,180,0.75)}",
+      "#mg-activity-board .live .v{font:700 13px/1.2 ui-monospace,Menlo,monospace;color:rgba(120,255,180,0.95);",
+      "  margin-top:3px}",
+      "#mg-activity-board .live .v.warn{color:rgba(255,200,120,0.95)}",
+      "#mg-activity-board .pred{padding:5px 8px;font:500 8px/1.3 ui-monospace,Menlo,monospace;",
+      "  color:rgba(180,220,255,0.9);border-bottom:1px solid rgba(255,255,255,0.08);",
+      "  background:linear-gradient(90deg,rgba(40,80,40,0.2),transparent)}",
       "#mg-activity-board .syn{padding:6px 8px;font:500 8px/1.3 ui-monospace,Menlo,monospace;",
       "  color:rgba(180,220,255,0.9);border-bottom:1px solid rgba(255,255,255,0.08)}",
-      "#mg-activity-board ol{margin:0;padding:6px 8px 8px 22px;max-height:200px;overflow:auto;",
-      "  font:500 8px/1.35 ui-monospace,Menlo,monospace;color:rgba(210,220,230,0.9)}",
-      "#mg-activity-board ol li{margin:3px 0}",
-      "#mg-activity-board ol li.me{color:rgba(255,220,140,0.98)}",
+      "#mg-activity-board .rank-table{margin:0;padding:4px 8px 8px;max-height:210px;overflow:auto}",
+      "#mg-activity-board .rank-row{display:grid;grid-template-columns:22px 1fr 48px 36px;gap:4px;",
+      "  align-items:center;padding:4px 2px;border-bottom:1px solid rgba(255,255,255,0.05);",
+      "  font:500 8px/1.25 ui-monospace,Menlo,monospace;color:rgba(210,220,230,0.9)}",
+      "#mg-activity-board .rank-row.me{background:rgba(255,180,60,0.1);border-radius:4px;",
+      "  color:rgba(255,220,140,0.98)}",
+      "#mg-activity-board .rank-row .rk{font-weight:700;color:rgba(120,230,160,0.95)}",
+      "#mg-activity-board .rank-row .sc{font-weight:700;text-align:right}",
+      "#mg-activity-board .rank-row .elo{text-align:right;opacity:0.7}",
       "#mg-activity-board .ft{padding:4px 8px 6px;display:flex;gap:4px;flex-wrap:wrap;",
       "  border-top:1px solid rgba(255,255,255,0.08)}",
       "#mg-activity-board .ft button{appearance:none;cursor:pointer;padding:4px 8px;border-radius:999px;",
@@ -580,11 +635,17 @@
     panel.id = "mg-activity-board";
     panel.className = open ? "" : "hidden";
     panel.innerHTML =
-      '<div class="hd"><span>Leaderboard · runs</span>' +
+      '<div class="hd"><span>Live rank · sportsfield</span>' +
       '<span><button type="button" id="mg-board-snap" title="snapshot">＋</button>' +
       '<button type="button" id="mg-board-x">×</button></span></div>' +
+      '<div class="live" id="mg-board-live">' +
+      '<div class="c"><div class="k">Live</div><div class="v" id="mg-board-live-sc">—</div></div>' +
+      '<div class="c"><div class="k">Pred BPS</div><div class="v warn" id="mg-board-pred">—</div></div>' +
+      '<div class="c"><div class="k">ELO≈</div><div class="v" id="mg-board-elo">—</div></div>' +
+      "</div>" +
+      '<div class="pred" id="mg-board-predline">chess/sportsfield predictions…</div>' +
       '<div class="syn" id="mg-board-syn">no run yet</div>' +
-      '<ol id="mg-board-ol"></ol>' +
+      '<div class="rank-table" id="mg-board-ol"></div>' +
       '<div class="ft">' +
       '<button type="button" id="mg-board-post" class="hot">POST ↗</button>' +
       '<button type="button" id="mg-board-xdraft">X DRAFT</button>' +
@@ -794,32 +855,74 @@
     var syn = document.getElementById("mg-board-syn");
     var ol = document.getElementById("mg-board-ol");
     var live = collectMetrics();
+    var pred = predictNext();
+    var elSc = document.getElementById("mg-board-live-sc");
+    var elPred = document.getElementById("mg-board-pred");
+    var elElo = document.getElementById("mg-board-elo");
+    var elPredLine = document.getElementById("mg-board-predline");
+    if (elSc) elSc.textContent = fmtNum(pred.liveScore);
+    if (elPred)
+      elPred.textContent = pred.predBps != null ? fmtNum(pred.predBps) : "—";
+    if (elElo) elElo.textContent = String(pred.eloHint);
+    if (elPredLine) {
+      elPredLine.textContent =
+        "P(top) " +
+        pred.winTopPct +
+        "% · P(field) " +
+        pred.winFieldPct +
+        "% · " +
+        pred.form +
+        " · n=" +
+        pred.fieldN +
+        (pred.liveBps != null ? " · live " + fmtNum(pred.liveBps) + " BPS" : "");
+    }
     if (syn)
       syn.textContent =
         (lastRun ? lastRun.synopsis : synopsis(live)).slice(0, 120) || "—";
     if (ol) {
       ol.innerHTML = "";
       if (!board.length) {
-        var li0 = document.createElement("li");
-        li0.textContent = "empty — SNAP or finish a run";
-        ol.appendChild(li0);
+        var empty = document.createElement("div");
+        empty.className = "rank-row";
+        empty.style.opacity = "0.55";
+        empty.textContent = "empty — SNAP or finish a playthrough";
+        ol.appendChild(empty);
       } else {
         board.slice(0, 12).forEach(function (r, i) {
-          var li = document.createElement("li");
-          if (lastRun && r.id === lastRun.id) li.className = "me";
-          li.textContent =
-            fmtNum(r.score) +
-            " · " +
+          var row = document.createElement("div");
+          row.className = "rank-row" + (lastRun && r.id === lastRun.id ? " me" : "");
+          var elo = Math.round(1000 + (r.score || 0) * 2);
+          var w = r.metrics && r.metrics.webgrid;
+          var bps = w
+            ? w.sessionPeakBps || w.peakBps || w.bestBps || w.bps
+            : null;
+          row.innerHTML =
+            '<span class="rk">#' +
+            (i + 1) +
+            "</span>" +
+            "<span title=\"" +
+            (r.synopsis || "").replace(/"/g, "") +
+            "\">" +
             gameLabel(r.game) +
             " · " +
             shortSyn(r) +
-            (r.kind ? " [" + r.kind + "]" : "");
-          li.title = r.synopsis || "";
-          ol.appendChild(li);
+            "</span>" +
+            '<span class="sc">' +
+            fmtNum(r.score) +
+            "</span>" +
+            '<span class="elo">' +
+            (bps != null ? fmtNum(bps) : elo) +
+            "</span>";
+          ol.appendChild(row);
         });
       }
     }
   }
+
+  /* Live refresh while open (sportsfield ticker) */
+  setInterval(function () {
+    if (open) paintPanel();
+  }, 900);
 
   function openPanel() {
     open = true;
@@ -917,6 +1020,7 @@
     submitRun: submitRun,
     synopsis: synopsis,
     board: boardRanked,
+    predict: predictNext,
     lastRun: function () {
       return lastRun;
     },
@@ -933,16 +1037,19 @@
     showPostPrompt: showPostPrompt,
     report: function () {
       var b = loadBoard();
+      var p = predictNext();
       return (
         VER +
         " n=" +
         b.length +
         " top=" +
         (b[0] ? b[0].score : "—") +
-        (lastRun ? " last=" + lastRun.score : "")
+        (lastRun ? " last=" + lastRun.score : "") +
+        " pred=" +
+        (p.predBps != null ? p.predBps : "—")
       );
     },
   };
 
-  log(VER + " · board + clean post window");
+  log(VER + " · sportsfield live rank + predictions");
 })();

@@ -22,8 +22,9 @@
  * ⌘0 = 100% / 30×30 desktop.
  * Local LLM pace: ?mg_local_llm=1 polls http://127.0.0.1:9880/pace (llama3.2:1b advisor).
  * P-001 score truth: NEVER use marketing body BPS/grid (10.39 / 40×40); sidebar+peak only.
- * P-002 Intel laptop: auto pace profile + play-perf mode (canvas buffer lag).
- * VER: webgrid-play-v22-lean-intel
+ * P-002 Intel laptop: auto pace profile + play-perf (throttle redraws, keep floats).
+ * P-003 All dual-space floats LIVE during WebGrid play (contrail/maze/bloch/rubik/beats/board/kb).
+ * VER: webgrid-play-v23-floats-live
  */
 (function () {
   "use strict";
@@ -32,7 +33,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v22-lean-intel";
+  var VER = "webgrid-play-v23-floats-live";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -121,24 +122,46 @@
       window.__mgWebgridPlayBusy = _playBusy;
       document.documentElement.classList.toggle("mg-webgrid-play-busy", _playBusy);
     } catch (e) {}
-    /* Lighten overlays during chase */
+    /* Keep ALL dual-space floats LIVE during WebGrid play (user lab surface).
+       Perf = throttle redraws only — never auto-close maze/bloch/rubik/beats/board/contrail. */
     try {
-      if (_playBusy) {
-        if (window.__mgMemoryMaze && window.__mgMemoryMaze.setMusic)
-          window.__mgMemoryMaze.setMusic(false);
-        if (window.__mgMemoryMaze && window.__mgMemoryMaze.close) window.__mgMemoryMaze.close();
-        if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.close)
-          window.__mgKeyboardBeats.close();
-        if (window.__mgActivityBoard && window.__mgActivityBoard.close)
-          window.__mgActivityBoard.close();
-        if (window.__mgBlochSolve && window.__mgBlochSolve.close) window.__mgBlochSolve.close();
-        if (window.__mgContrail && window.__mgContrail.setOverlay)
-          window.__mgContrail.setOverlay(false);
-      } else {
-        if (window.__mgContrail && window.__mgContrail.setOverlay)
-          window.__mgContrail.setOverlay(true);
-      }
+      if (_playBusy) openPlayFloats();
     } catch (e2) {}
+  }
+
+  function openPlayFloats() {
+    try {
+      if (window.__mgContrail) {
+        if (window.__mgContrail.setOverlay) window.__mgContrail.setOverlay(true);
+        /* flow optional — leave if user opened it */
+      }
+    } catch (e) {}
+    try {
+      if (window.__mgMemoryMaze && window.__mgMemoryMaze.open) window.__mgMemoryMaze.open();
+    } catch (e2) {}
+    try {
+      if (window.__mgBlochSolve) {
+        if (window.__mgBlochSolve.setEnabled) window.__mgBlochSolve.setEnabled(true);
+        if (window.__mgBlochSolve.open) window.__mgBlochSolve.open();
+      }
+    } catch (e3) {}
+    try {
+      if (window.__mgRubikLang && window.__mgRubikLang.open) window.__mgRubikLang.open();
+    } catch (e4) {}
+    try {
+      if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.open)
+        window.__mgKeyboardBeats.open();
+    } catch (e5) {}
+    try {
+      if (window.__mgActivityBoard && window.__mgActivityBoard.open)
+        window.__mgActivityBoard.open();
+    } catch (e6) {}
+    try {
+      if (window.__mgFloatKb && window.__mgFloatKb.open) {
+        /* keyboard optional — open only if previously used; leave user control */
+      }
+    } catch (e7) {}
+    log(VER + " · play floats live (contrail/maze/bloch/rubik/beats/board)");
   }
 
   function adaptPace(hitsGuess, missGuess) {

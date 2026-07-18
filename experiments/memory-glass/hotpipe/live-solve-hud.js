@@ -42,9 +42,7 @@
   }
 
   function tick() {
-    try {
-      if (window.__mgWebgridPlayBusy) return; /* skip body.innerText scrape during chase */
-    } catch (eBusy) {}
+    /* Stay live during play — just run slightly less often when busy */
     ensure();
     var parts = ["SOLVE"];
     try {

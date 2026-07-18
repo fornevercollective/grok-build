@@ -529,12 +529,18 @@
     try {
       busy = !!window.__mgWebgridPlayBusy;
     } catch (eB) {}
-    /* During WebGrid chase: skip rain + most frames (Intel CPU) */
+    /* During WebGrid chase: keep maze OPEN + rain optional; only throttle FPS */
     if (busy) {
-      if (musicOn) {
-        musicOn = false;
+      if (_tickN % 2 !== 0) return;
+      if (autoSpin) {
+        yaw += 0.004;
+        pitch = 0.22 + Math.sin(Date.now() / 4000) * 0.08;
       }
-      if (_tickN % 4 !== 0) return;
+      try {
+        if (window.__mgContrail && window.__mgContrail.path)
+          ingestContrailPath(window.__mgContrail.path);
+      } catch (eBusyIn) {}
+      if (musicOn && _tickN % 3 === 0) rainTick();
       if (open) draw();
       return;
     }

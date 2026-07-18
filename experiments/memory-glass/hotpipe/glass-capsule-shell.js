@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v6-collab";
+  var VER = "glass-capsule-v7-floats-live";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
@@ -100,6 +100,7 @@
           if (window.__mgContrail) {
             if (window.__mgContrail.toggle) window.__mgContrail.toggle();
             else window.__mgContrail.setFlow(true);
+            if (window.__mgContrail.setOverlay) window.__mgContrail.setOverlay(true);
             setStatus(window.__mgContrail.report());
           } else setStatus("contrail on WebGrid only");
         })
@@ -117,6 +118,29 @@
             else if (navigator.clipboard) navigator.clipboard.writeText(t);
             setStatus("story beats " + ((b.beats && b.beats.length) || 0));
           } else setStatus("beats missing");
+        })
+      );
+      row.appendChild(
+        act("FLOATS", "hot", function () {
+          /* Open all dual-space floats for WebGrid lab play */
+          try {
+            if (window.__mgContrail && window.__mgContrail.setOverlay)
+              window.__mgContrail.setOverlay(true);
+            if (window.__mgContrail && window.__mgContrail.setFlow)
+              window.__mgContrail.setFlow(true);
+            if (window.__mgMemoryMaze) window.__mgMemoryMaze.open();
+            if (window.__mgBlochSolve) {
+              window.__mgBlochSolve.setEnabled(true);
+              if (window.__mgBlochSolve.open) window.__mgBlochSolve.open();
+            }
+            if (window.__mgRubikLang) window.__mgRubikLang.open();
+            if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
+            if (window.__mgActivityBoard) window.__mgActivityBoard.open();
+            if (window.__mgFloatKb) window.__mgFloatKb.open();
+            setStatus("all floats live · play lab");
+          } catch (eF) {
+            setStatus("floats err " + eF);
+          }
         })
       );
       row.appendChild(
