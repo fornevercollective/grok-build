@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "research-v2";
+  var VER = "research-v3";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._researchVer === VER) return;
   HP._researchVer = VER;
@@ -235,6 +235,14 @@
   }
 
   function persist() {
+    /* merge latest ego events if present */
+    try {
+      if (window.__mgEgo && window.__mgEgo.events) {
+        var ev = window.__mgEgo.events();
+        if (ev && ev.length) state.pack.ego_events = ev.slice(-60);
+        if (window.__mgEgo.taxonomy) state.pack.ego_taxonomy = window.__mgEgo.taxonomy;
+      }
+    } catch (e0) {}
     var blob = {
       topic: state.topic,
       pack: state.pack,
@@ -244,6 +252,7 @@
     };
     try {
       localStorage.setItem("mg.research.v2", JSON.stringify(blob));
+      localStorage.setItem("mg.research.v3", JSON.stringify(blob));
     } catch (e) {}
     idbSet("state", blob);
     try {
@@ -384,14 +393,31 @@
       .forEach(function (q) {
         lines.push("- [ ] " + (q.url || q.item));
       });
+    if (p.ego_events && p.ego_events.length) {
+      lines.push("", "## Ego events (hands / atomic · last " + Math.min(12, p.ego_events.length) + ")");
+      p.ego_events.slice(-12).forEach(function (ev) {
+        if (ev.continuous) return;
+        lines.push(
+          "- " +
+            (ev.action || "?") +
+            " conf " +
+            (ev.conf != null ? Number(ev.conf).toFixed(2) : "?") +
+            (ev.index ? " @ " + Number(ev.index.x).toFixed(2) + "," + Number(ev.index.y).toFixed(2) : "")
+        );
+      });
+    }
+    if (p.ego_batch) {
+      lines.push("", "## Ego batch", "```json", JSON.stringify(p.ego_batch).slice(0, 800), "```");
+    }
     if (p.notes) lines.push("", "## Notes", p.notes);
     lines.push(
       "",
       "---",
-      "Grok feedback format (paste reply or call ingestGrokReply):",
+      "Grok: (1) summarize sources + ego events (2) answer open_questions (3) return ONLY:",
       "```json",
       '{"next_urls":["https://..."],"open_questions":["..."],"notes":"..."}',
-      "```"
+      "```",
+      "Then operator runs __mgResearch.ingestGrokReply(reply) or Inspect GROK←"
     );
     return lines.join("\n");
   }
@@ -520,6 +546,15 @@
     return q;
   }
 
+  /** Capture page + export + open next queue URL (unattended churn step) */
+  function churnOnce() {
+    if (isMain) captureAndPack();
+    exportPack();
+    var n = nextPending();
+    if (n) openNext();
+    return { pending: pendingCount(), next: n };
+  }
+
   window.__mgResearch = {
     ver: VER,
     state: state,
@@ -537,6 +572,8 @@
     openNext: openNext,
     nextPending: nextPending,
     pendingCount: pendingCount,
+    persist: persist,
+    churnOnce: churnOnce,
   };
 
   /* Boot: auto-load CV pack next_urls into queue (once per seed id) */
@@ -636,6 +673,13 @@
           paintChip();
         }
       });
+      btn("CHURN", function () {
+        /* export + signal; main does capture via ⌥⌘R / next */
+        exportPack();
+        openNext();
+        paintChip();
+        ok("churn step · pending " + pendingCount());
+      });
       btn("CLEAR", function () {
         if (!confirm("Clear pack + queue?")) return;
         state.pack = emptyPack(state.topic);
@@ -648,6 +692,6 @@
       var stage = document.getElementById("stage");
       if (stage) stage.insertBefore(row, stage.firstChild);
     }
-    ok("R1 research-v2 · inspect · SEED/NEXT/EXPORT/GROK←");
+    ok("R1 research-v3 · SEED/NEXT/EXPORT/GROK←/CHURN · ego merge");
   }
 })();

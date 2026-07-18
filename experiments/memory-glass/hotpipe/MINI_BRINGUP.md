@@ -34,20 +34,26 @@ MG_STILL_BIND=0.0.0.0 python3 ~/.panda/vision/still-server.py &
 
 Research uses **PAGE** default; leave cam off if Spool is noisy.
 
-## 4. Research smoke test
+## 4. Research + ego smoke test
 
-On **main** browser tab (any page):
+```bash
+# install enhanced still-server (upload + /ego/*)
+bash scripts/mg-install-still-server.sh
+pkill -f still-server.py 2>/dev/null || true
+MG_STILL_BIND=0.0.0.0 python3 ~/.panda/vision/still-server.py &
+```
 
-- Set topic from inspect: **TOPIC** button, or  
-  `window.__mgResearch.setTopic("your topic")` in Web Inspector
-- Browse a source page
-- **⌥⌘R** — capture page + export pack (→ Grok / clipboard / submit_inspect)
-- Inspect chip: `R1 · topic · src N`
+On **main** (any page):
+
+- Inspect **TOPIC** / auto-seed CV URLs on boot (`research-v3`)
+- **⌥⌘R** — capture + export · **⌥⌘N** — next queue URL
+- `window.__mgResearch.ingestGrokReply(paste)` after Grok
 
 On **inspect**:
 
-- **TOPIC** · **EXPORT** · **CLEAR PACK**
-- Strip shows H1–H9 + R1 chip
+- **SEED** · **NEXT** · **EXPORT** · **GROK←** · **CHURN**
+- **EGO REC** / **EGO STOP** / **EGO→PACK** — still-pipe batch + hand taxonomy → pack
+- Optional API: `localStorage.setItem('mg.perceptron.key', '…')`
 
 ## 5. Queue file (unattended scaffold)
 

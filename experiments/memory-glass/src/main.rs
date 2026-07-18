@@ -901,9 +901,10 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         eprintln!("hotpipe: live.js missing under {}", hotpipe_dir().display());
         return false;
     };
-    // After live: H1–H9 hurdles, then R1 research
+    // After live: hurdles → research → ego (Perceptron-shaped hands + batch)
     let hurdles = read_hotpipe_file("hurdles.js").unwrap_or_default();
     let research = read_hotpipe_file("research.js").unwrap_or_default();
+    let ego = read_hotpipe_file("ego.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         if !hurdles.is_empty() {
@@ -911,6 +912,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         }
         if !research.is_empty() {
             inject_js_blob(wv, &research);
+        }
+        if !ego.is_empty() {
+            inject_js_blob(wv, &ego);
         }
     }
     // Quiet inject — avoid inspect log storms (mitigation feedback)
@@ -920,6 +924,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !research.is_empty() {
         tag.push_str("+research");
+    }
+    if !ego.is_empty() {
+        tag.push_str("+ego");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true
@@ -6937,6 +6944,7 @@ fn main() -> Result<()> {
     let mut hurdles_mtime: Option<std::time::SystemTime> = mtime_of(&hotpipe_dir().join("hurdles.js"));
     let mut research_mtime: Option<std::time::SystemTime> =
         mtime_of(&hotpipe_dir().join("research.js"));
+    let mut ego_mtime: Option<std::time::SystemTime> = mtime_of(&hotpipe_dir().join("ego.js"));
     let mut mitigate_cooldown: Option<std::time::Instant> = None;
     let mut mitigated_stems: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut agent_push_at: Option<std::time::Instant> = None;
@@ -6997,6 +7005,7 @@ fn main() -> Result<()> {
             let p = hotpipe_dir().join("live.js");
             let h = hotpipe_dir().join("hurdles.js");
             let r = hotpipe_dir().join("research.js");
+            let e = hotpipe_dir().join("ego.js");
             let mut changed = false;
             if let Some(mt) = mtime_of(&p) {
                 match live_mtime {
@@ -7028,6 +7037,16 @@ fn main() -> Result<()> {
                     _ => {}
                 }
             }
+            if let Some(mt) = mtime_of(&e) {
+                match ego_mtime {
+                    None => ego_mtime = Some(mt),
+                    Some(prev) if mt > prev => {
+                        ego_mtime = Some(mt);
+                        changed = true;
+                    }
+                    _ => {}
+                }
+            }
             if changed {
                 let mut t: Vec<&wry::WebView> = Vec::new();
                 if let Some(wv) = webview.as_ref() {
@@ -7037,7 +7056,7 @@ fn main() -> Result<()> {
                     t.push(wv);
                 }
                 if inject_live_js(&t) {
-                    eprintln!("hotpipe: live+hurdles+research reloaded");
+                    eprintln!("hotpipe: live+hurdles+research+ego reloaded");
                 }
             }
         }
