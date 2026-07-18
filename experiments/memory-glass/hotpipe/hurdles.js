@@ -263,20 +263,18 @@
 
   /* ── H1 soak + status HUD strip ── */
   function ensureStatusStrip() {
-    var stage = document.getElementById("stage");
-    if (!stage || document.getElementById("mg-hurdles-strip")) return;
-    var d = document.createElement("div");
-    d.id = "mg-hurdles-strip";
-    d.style.cssText =
-      "order:0;font:600 8px/1.35 ui-monospace,Menlo,monospace;letter-spacing:0.04em;" +
-      "color:rgba(160,190,220,0.85);padding:4px 6px;border:1px solid rgba(120,160,200,0.2);" +
-      "border-radius:3px;background:rgba(6,10,16,0.75);margin:0 0 4px;white-space:pre-wrap";
-    stage.insertBefore(d, stage.firstChild);
+    /* declutter: strip hidden — metrics live in #mg-dock-status */
+    var el = document.getElementById("mg-hurdles-strip");
+    if (el) {
+      el.style.display = "none";
+      return;
+    }
   }
   function paintStrip() {
     ensureStatusStrip();
     var el = document.getElementById("mg-hurdles-strip");
     if (!el) return;
+    el.style.display = "none";
     var h1m = (state.h1.greenMs / 60000).toFixed(1);
     var soakOk = state.h1.greenMs >= 5 * 60 * 1000;
     el.textContent =

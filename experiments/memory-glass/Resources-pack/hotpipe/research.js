@@ -1,10 +1,10 @@
-/* Memory Glass · R1 Research Mini · research-v2
- * Robust capture (no layout break) · queue · boot seed next_urls · pack→Grok
- * Inject after live.js + hurdles.js. PAGE-calm; no cam thrash.
+/* Memory Glass · R1 Research · research-v4
+ * Capture · queue · CORP boot seed · pack→Grok
+ * UI lives in inspect-dock.js (no extra button rows).
  */
 (function () {
   "use strict";
-  var VER = "research-v3";
+  var VER = "research-v4";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._researchVer === VER) return;
   HP._researchVer = VER;
@@ -25,25 +25,28 @@
   var isInspect = !!document.getElementById("pip-wrap");
 
   /* ── Default seed from research-packs/cv-2026 (boot queue) ── */
+  /* Default boot = company vision train stack (CORP); PERCEPT via dock */
   var BOOT_SEED = {
-    id: "cv-2026-gencaption-supermap-tennis-ego",
-    topic: "cv-2026-gencaption-supermap-tennis-ego-tokufxag",
+    id: "xai-tesla-spacex-vision",
+    topic: "xAI · Grok · Tesla robot · SpaceX vision training pipeline",
     open_questions: [
-      "Exact arXiv title for GenCaption + GNM head?",
-      "SuperMap RSS 2026 paper PDF / code?",
-      "Shah Faisal Tracknetics public repo?",
-      "Perceptron Egocentric rate limits / arm64 edge?",
-      "tokufxag pinned repos?",
+      "Tesla FSD/Optimus vision flywheel ↔ still-pipe + ego batches?",
+      "Grok/Grok Build roles for pack → next-URL curriculum?",
+      "xAI public world-model / VLA / robot-data signals?",
+      "SpaceX cool-test visual ops patterns for PAGE droplet?",
+      "Train loop: capture → ego label → pack → Grok → retrain prompts?",
+      "Perceptron Egocentric as optional heavy path (not only stack)?",
     ],
     next_urls: [
+      "https://x.ai",
+      "https://x.ai/blog",
+      "https://www.tesla.com/AI",
+      "https://www.tesla.com/optimus",
+      "https://www.spacex.com",
+      "https://www.spacex.com/vehicles/starship",
       "https://www.perceptron.inc/blog/introducing-perceptron-egocentric-api",
       "https://github.com/perceptron-ai-inc/perceptron",
-      "https://docs.perceptron.inc",
-      "https://eccv.ecva.net/",
-      "https://x.com/tokufxag",
-      "https://roboticsconference.org/",
-      "https://github.com/search?q=TrackNet+tennis",
-      "https://github.com/search?q=3D+human+pose+estimation+python",
+      "https://arxiv.org/search/?query=vision+language+action+robot&searchtype=all",
     ],
   };
 
