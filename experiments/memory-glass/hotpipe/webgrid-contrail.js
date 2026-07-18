@@ -9,11 +9,17 @@
 (function () {
   "use strict";
   try {
-    if (!/neuralink\.com$/i.test(location.hostname) || !/webgrid/i.test(location.pathname)) return;
+    var host = location.hostname || "";
+    var path = location.pathname || "";
+    var ok =
+      (/neuralink\.com$/i.test(host) && /webgrid/i.test(path)) ||
+      /kbatch\.ugrad\.ai$/i.test(host) ||
+      /mueee\.qbitos\.ai$/i.test(host);
+    if (!ok) return;
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v4-playclear";
+  var VER = "webgrid-contrail-v5-bloch";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -330,6 +336,11 @@
         " hops=" +
         hops
     );
+    try {
+      if (window.__mgBlochSolve && window.__mgBlochSolve.onStroke) {
+        window.__mgBlochSolve.onStroke(stroke);
+      }
+    } catch (eBl) {}
     /* kbatch dojo: world shadows / words / steno glyph / SO / quantum gutter */
     try {
       if (window.__mgKbatchDojo && window.__mgKbatchDojo.runPhrase) {

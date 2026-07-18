@@ -118,6 +118,10 @@
       buf += ch;
     }
     if (bufEl) bufEl.textContent = buf || "…";
+    try {
+      if (window.__mgBlochSolve && window.__mgBlochSolve.onKeyHop && ch.length === 1)
+        window.__mgBlochSolve.onKeyHop(ch);
+    } catch (eB) {}
     /* path for kbatch-style geometry */
     if (keyEl) {
       var r = keyEl.getBoundingClientRect();

@@ -1365,6 +1365,8 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
     let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
     let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
+    let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
+    let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         // full-body IK after live so hooks + calib ui exist
@@ -1431,6 +1433,14 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !float_kb.is_empty() {
             inject_js_blob(wv, &float_kb);
         }
+        // P0 dual Bloch←contrail (after quantum + contrail APIs)
+        if !bloch_bus.is_empty() {
+            inject_js_blob(wv, &bloch_bus);
+        }
+        // P2 session recorder + P4 X draft (no auto-post)
+        if !session_rec.is_empty() {
+            inject_js_blob(wv, &session_rec);
+        }
         // Auto-hydrate MKT filmstrip from ~/.panda board (or hotpipe sample)
         inject_filmstrip_board(wv);
     }
@@ -1494,6 +1504,12 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !float_kb.is_empty() {
         tag.push_str("+fkb");
+    }
+    if !bloch_bus.is_empty() {
+        tag.push_str("+bloch");
+    }
+    if !session_rec.is_empty() {
+        tag.push_str("+rec");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true

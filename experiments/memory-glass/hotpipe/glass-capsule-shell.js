@@ -208,6 +208,44 @@
           else window.open(u, "_blank");
         })
       );
+      row.appendChild(
+        act("NOTEPAD", "", function () {
+          var u = "https://mueee.qbitos.ai/quantum-notepad.html";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
+        act("R0", "ok", function () {
+          var u = "https://mueee.qbitos.ai/ugrad-r0.html";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
+        act("BLACKWELL", "", function () {
+          var u = "https://mueee.qbitos.ai/blackwell.html";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
+        act("BLOCH", "hot", function () {
+          if (window.__mgBlochSolve) {
+            window.__mgBlochSolve.setEnabled(true);
+            setStatus(window.__mgBlochSolve.report());
+          } else setStatus("bloch-solve-bus missing");
+        })
+      );
+      row.appendChild(
+        act("REC", "primary", function () {
+          if (window.__mgSessionRec) {
+            if (window.__mgSessionRec.isRecording()) window.__mgSessionRec.stop();
+            else window.__mgSessionRec.start();
+            setStatus(window.__mgSessionRec.report());
+          } else setStatus("session-rec missing");
+        })
+      );
     } else if (mode === "qbit") {
       hint.textContent = "Quantum WebGrid · Bloch gates · school capsules (glass host).";
       row.appendChild(
