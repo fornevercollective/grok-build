@@ -8,13 +8,13 @@ Canonical ladder: `hotpipe/GOALS.md` · packs: `~/.panda/packs/mg-*`.
 
 ---
 
-## Single post — Perceptron-first R1 churn (X / Grok)
+## Single post — Perceptron top win + churn (X / Grok · primary)
 
-**Perceptron Egocentric** stands out as highest-priority thread for immediate **R1** value: **21-kpt hands** + atomic events / action taxonomy directly boosts **H1/H2** (in-air pointer, pen tip) and still-pipe ego batching **without PAGE thrash** — start with the July 2026 blog/SDK for Mini arm64 integration.
+**Perceptron Egocentric** is the top immediate win for **R1:** integrate **21-kpt hands** + atomic events taxonomy into still-pipe and `research.js` for ego batch capture, directly strengthening **H1** in-air pointer and **H2** pen tip while staying **WKWebView-light** on Mini arm64.
 
-**Mini research churn sequence:** `git pull` → open `cv-2026` pack → **TOPIC** each cluster (tennis/TrackNet, 3D HPE, SuperMap SLAM, GenCaption/GNM) → browse sources → **⌥⌘R** packs; harvest **@tokufxag** X links next for FX vision, then pin exact repos/PDFs (Shah Faisal / Tracknetics, Bharath Kumar) to close gaps.
+**Churn execution:** follow `git pull` → **TOPIC** clusters → browse → **⌥⌘R** on the `cv-2026` pack; next harvest **@tokufxag** links and pin Shah Faisal / TrackNet, Bharath 3D HPE, SuperMap / GenCaption repos/PDFs to fill extraction gaps.
 
-**Honest next hurdles:** confirm GenCaption / GNM / SuperMap paper titles/PDFs for accurate extraction; parallelize **pack → Grok** summarization + next-URLs enqueue; treat spatial upgrades (**H1 soak**, 3D HPE lift) as non-blocking side research while keeping focus on **unattended queue loop throughput**.
+**Hurdle focus:** prioritize **pack → Grok** parallel summarization + next-URLs enqueue for unattended throughput; confirm paper titles for accurate `research.js` capture; keep **H1 soak** and spatial 3D lifts **non-blocking** to maintain research queue momentum.
 
 #MemoryGlass #Perceptron #Egocentric #R1 #MacMini #GrokBuild #xAI
 
