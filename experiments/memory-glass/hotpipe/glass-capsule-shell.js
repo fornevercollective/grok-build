@@ -131,6 +131,56 @@
           else window.open(u, "_blank");
         })
       );
+      row.appendChild(
+        act("PHRASE→DOJO", "hot", function () {
+          var phrase =
+            (window.__mgContrail && window.__mgContrail.stats && window.__mgContrail.stats.lastPhrase) ||
+            (window.__mgFloatKb && window.__mgFloatKb.buffer()) ||
+            "path";
+          if (!window.__mgKbatchDojo) {
+            setStatus("kbatch bridge missing");
+            return;
+          }
+          setStatus("dojo run «" + String(phrase).slice(0, 16) + "»…");
+          window.__mgKbatchDojo.runPhrase(phrase, {
+            canvas: document.getElementById("mg-contrail-ov"),
+            seed: window.__mgFloatKb && window.__mgFloatKb.buffer()
+              ? window.__mgFloatKb.buffer().trim()
+              : null,
+          }).then(function (rep) {
+            if (!rep) {
+              setStatus("dojo empty");
+              return;
+            }
+            var so = Object.keys(rep.phrasingOrders || {}).join("/") || "—";
+            var ww = (rep.worldWords || []).slice(0, 3).join(",");
+            setStatus(
+              "strain " +
+                rep.strain +
+                " · SO " +
+                so +
+                " · " +
+                ww +
+                " · steno " +
+                (rep.steno && rep.steno.canCarryImage ? "imgOK" : "img?")
+            );
+          });
+        })
+      );
+      row.appendChild(
+        act("GUTTER", "", function () {
+          var u = "https://mueee.qbitos.ai/quantum-gutter.html";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
+      row.appendChild(
+        act("RUBIK", "", function () {
+          var u = "https://mueee.qbitos.ai/rubiks-ugrad.html";
+          if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+          else window.open(u, "_blank");
+        })
+      );
     } else if (mode === "qbit") {
       hint.textContent = "Quantum WebGrid · Bloch gates · school capsules (glass host).";
       row.appendChild(

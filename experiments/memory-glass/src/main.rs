@@ -1361,6 +1361,7 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
     let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
+    let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
     let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
     let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
     let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
@@ -1400,6 +1401,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         // Neuralink WebGrid auto-play ONLY inside our WKWebView (never Chromium)
         if !webgrid.is_empty() {
             inject_js_blob(wv, &webgrid);
+        }
+        if !kbatch_dojo.is_empty() {
+            inject_js_blob(wv, &kbatch_dojo);
         }
         if !contrail.is_empty() {
             inject_js_blob(wv, &contrail);
@@ -1478,6 +1482,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !sx_rail.is_empty() {
         tag.push_str("+sx");
+    }
+    if !kbatch_dojo.is_empty() {
+        tag.push_str("+kbatch");
     }
     if !contrail.is_empty() {
         tag.push_str("+contrail");

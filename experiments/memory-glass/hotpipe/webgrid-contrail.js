@@ -13,7 +13,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v2";
+  var VER = "webgrid-contrail-v3-strain";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -22,6 +22,8 @@
     } catch (eTd) {}
   }
   window.__mgContrailVer = VER;
+  var lastStrain = null;
+  var lastDojo = null;
 
   var PATH_MAX = 320;
   var PATH_MIN = 0.0015;
@@ -123,21 +125,33 @@
     return "cruise";
   }
 
-  function trajColor(kind, alpha) {
+  function trajColor(kind, alpha, strain) {
     var a = alpha == null ? 0.85 : alpha;
+    /* Prefer kbatch strain assessment when available (contrails-viz thresholds) */
+    if (strain != null && isFinite(strain) && window.__mgKbatchDojo) {
+      return window.__mgKbatchDojo.strainColor(strain, a);
+    }
+    if (lastStrain != null && isFinite(lastStrain) && window.__mgKbatchDojo) {
+      /* blend local kind with global strain band */
+      var base = window.__mgKbatchDojo.strainColor(lastStrain, a);
+      if (kind === "stress") return window.__mgKbatchDojo.strainColor(Math.max(lastStrain, 75), a);
+      if (kind === "success") return window.__mgKbatchDojo.strainColor(Math.min(lastStrain, 20), a);
+      if (kind === "slow" || kind === "dwell") return "rgba(140,120,255," + a + ")";
+      return base;
+    }
     switch (kind) {
       case "success":
-        return "rgba(80,230,160," + a + ")"; /* hit / smooth */
+        return "rgba(63,185,80," + a + ")";
       case "stress":
-        return "rgba(255,110,90," + a + ")"; /* thrash / miss */
+        return "rgba(248,81,73," + a + ")";
       case "slow":
-        return "rgba(140,120,255," + a + ")"; /* intentional slowdown */
+        return "rgba(140,120,255," + a + ")";
       case "dwell":
-        return "rgba(100,160,220," + a + ")"; /* pause */
+        return "rgba(100,160,220," + a + ")";
       case "accel":
-        return "rgba(255,210,100," + a + ")"; /* speed-up */
+        return "rgba(210,160,23," + a + ")";
       default:
-        return "rgba(160,210,255," + a + ")"; /* cruise ice */
+        return "rgba(160,210,255," + a + ")";
     }
   }
 
@@ -311,6 +325,31 @@
         " hops=" +
         hops
     );
+    /* kbatch dojo: world shadows / words / steno glyph / SO / quantum gutter */
+    try {
+      if (window.__mgKbatchDojo && window.__mgKbatchDojo.runPhrase) {
+        window.__mgKbatchDojo
+          .runPhrase(phraseStr, {
+            canvas: overlay,
+            seed: window.__mgFloatKb && window.__mgFloatKb.buffer()
+              ? window.__mgFloatKb.buffer().trim()
+              : null,
+          })
+          .then(function (rep) {
+            if (!rep) return;
+            lastDojo = rep;
+            lastStrain = rep.strain;
+            stroke.strain = rep.strain;
+            stroke.worldWords = rep.worldWords;
+            stroke.so = rep.so;
+            stroke.steno = rep.steno;
+            stroke.quantumGutter = rep.quantumGutter;
+            stroke.shadows = (rep.latinWordHits || []).slice(0, 8);
+            paintFlow();
+            draw();
+          });
+      }
+    } catch (eDo) {}
   }
 
   /** Map path phrase → living-book beat (Ants / kids creator) */
@@ -388,12 +427,12 @@
       '<canvas id="mg-ct-composer" title="vertical phrase composer"></canvas>' +
       "</div>" +
       '<div class="leg">' +
-      '<span><i style="background:rgba(80,230,160,0.95)"></i>success</span>' +
-      '<span><i style="background:rgba(255,110,90,0.95)"></i>stress</span>' +
+      '<span><i style="background:#3fb950"></i>low strain</span>' +
+      '<span><i style="background:#d4a017"></i>mid</span>' +
+      '<span><i style="background:#f85149"></i>high stress</span>' +
       '<span><i style="background:rgba(140,120,255,0.95)"></i>slow</span>' +
       '<span><i style="background:rgba(100,160,220,0.95)"></i>dwell</span>' +
-      '<span><i style="background:rgba(255,210,100,0.95)"></i>accel</span>' +
-      '<span><i style="background:rgba(160,210,255,0.95)"></i>cruise</span>' +
+      '<span>kbatch SO·steno·gutter</span>' +
       "</div>" +
       '<div class="beat" id="mg-ct-beat">—</div>';
     (document.body || document.documentElement).appendChild(flowPanel);
@@ -470,19 +509,23 @@
   function paintComposer(ctx, W, H) {
     ctx.fillStyle = "rgba(150,170,190,0.55)";
     ctx.font = "600 8px ui-monospace,Menlo,monospace";
-    ctx.fillText("COMPOSER · phrase", 4, 11);
-    var recent = strokes.slice(-12);
+    ctx.fillText("COMPOSER · dojo world", 4, 11);
+    var recent = strokes.slice(-8);
     if (!recent.length && stats.lastPhrase) {
       recent = [{ phrase: stats.lastPhrase, dominant: "cruise" }];
     }
-    var rowH = Math.max(8, (H - 16) / Math.max(1, recent.length));
+    var rowH = Math.max(9, (H - 16) / Math.max(1, recent.length));
     recent.forEach(function (s, i) {
       var y = 14 + i * rowH;
-      ctx.fillStyle = trajColor(s.dominant || "cruise", 0.35);
+      ctx.fillStyle = trajColor(s.dominant || "cruise", 0.4, s.strain != null ? s.strain : lastStrain);
       ctx.fillRect(4, y, W - 8, rowH - 1);
-      ctx.fillStyle = "rgba(220,235,250,0.9)";
+      ctx.fillStyle = "rgba(220,235,250,0.92)";
       ctx.font = "600 8px ui-monospace,Menlo,monospace";
-      ctx.fillText((s.phrase || "·").slice(0, 28), 6, y + rowH * 0.72);
+      var line = (s.phrase || "·").slice(0, 18);
+      if (s.worldWords && s.worldWords[0]) line += " → " + s.worldWords[0];
+      else if (s.shadows && s.shadows[0]) line += " → " + (s.shadows[0].shadow || "");
+      if (s.strain != null) line += " s" + Math.round(s.strain);
+      ctx.fillText(line.slice(0, 36), 6, y + rowH * 0.72);
     });
   }
 
@@ -496,7 +539,27 @@
     var beat = flowPanel.querySelector("#mg-ct-beat");
     if (beat) {
       var last = strokes[strokes.length - 1];
-      if (last && last.storyBeat) {
+      if (lastDojo) {
+        var soh = lastDojo.phrasingOrders || {};
+        var soStr = Object.keys(soh)
+          .map(function (k) {
+            return k + "×" + soh[k];
+          })
+          .join(" ") || "—";
+        var ww = (lastDojo.worldWords || []).slice(0, 4).join(", ");
+        var st = lastDojo.steno || {};
+        beat.textContent =
+          "DOJO · strain " +
+          lastDojo.strain +
+          " · SO " +
+          soStr +
+          " · words " +
+          (ww || "—") +
+          " · steno img " +
+          (st.canCarryImage ? "OK" : "?") +
+          " · " +
+          ((last && last.storyBeat && last.storyBeat.hint) || "");
+      } else if (last && last.storyBeat) {
         beat.textContent =
           "BEAT · " +
           last.storyBeat.mood +
@@ -539,7 +602,7 @@
         a1 = path[i];
       var age = i / path.length;
       var alpha = 0.14 + age * 0.78;
-      ctx.strokeStyle = trajColor(a1.traj || a0.traj || "cruise", alpha);
+      ctx.strokeStyle = trajColor(a1.traj || a0.traj || "cruise", alpha, a1.strain != null ? a1.strain : lastStrain);
       ctx.lineWidth = 1.5 + age * 1.4;
       ctx.lineCap = "round";
       ctx.beginPath();
@@ -548,7 +611,7 @@
       ctx.stroke();
     }
     var tip = path[path.length - 1];
-    ctx.fillStyle = trajColor(tip.traj || "cruise", 0.95);
+    ctx.fillStyle = trajColor(tip.traj || "cruise", 0.95, tip.strain != null ? tip.strain : lastStrain);
     ctx.beginPath();
     ctx.arc(tip.nx * w, tip.ny * h, 3.8, 0, Math.PI * 2);
     ctx.fill();
@@ -699,6 +762,12 @@
     pushPoint: pushPoint,
     summary: summary,
     exportStoryBeats: exportStoryBeats,
+    lastDojo: function () {
+      return lastDojo;
+    },
+    lastStrain: function () {
+      return lastStrain;
+    },
     setOverlay: function (on) {
       showOverlay = !!on;
       if (!showOverlay && overlay) {
@@ -731,5 +800,5 @@
     },
   };
   paintFlow();
-  log(VER + " · success/stress/slow colors · unwind+flat+composer");
+  log(VER + " · kbatch strain colors · dojo composer · steno/glyph/SO");
 })();
