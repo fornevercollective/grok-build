@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # Memory Glass · overnight sandboxed soak
 # Usage: bash scripts/overnight-soak.sh [--hours 8] [--url URL]
+#
+# Offline LLM morning brief (optional):
+#   MG_LOCAL_LLM=1 bash scripts/overnight-soak.sh --hours 8
+# Models (Ollama): MG_OLLAMA_MODEL=qwen3:8b  MG_OLLAMA_REASON_MODEL=deepseek-r1:7b
 set -u
 HOURS="${MG_SOAK_HOURS:-8}"
 URL="${MG_SOAK_URL:-https://www.spacex.com/}"
 SOAK_ROOT="${MG_SOAK_DIR:-$HOME/.panda/mg-soak}"
 STILL="${MG_STILL_URL:-http://127.0.0.1:9877}"
 APP="${MG_APP:-$HOME/Applications/Memory Glass.app}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOTPIPE="${MG_HOTPIPE:-}"
 if [[ -z "$HOTPIPE" ]]; then
   if [[ -d "$APP/Contents/Resources/hotpipe" ]]; then
     HOTPIPE="$APP/Contents/Resources/hotpipe"
   else
-    HOTPIPE="$(cd "$(dirname "$0")/.." && pwd)/hotpipe"
+    HOTPIPE="$(cd "$SCRIPT_DIR/.." && pwd)/hotpipe"
   fi
 fi
 
@@ -21,6 +26,7 @@ while [[ $# -gt 0 ]]; do
     --hours) HOURS="${2:-8}"; shift 2 ;;
     --url) URL="${2:-}"; shift 2 ;;
     --dir) SOAK_ROOT="${2:-}"; shift 2 ;;
+    --local-llm) export MG_LOCAL_LLM=1; shift ;;
     *) shift ;;
   esac
 done
@@ -178,3 +184,24 @@ EOF
 log end "crashes=$CRASHES health_pct=$HEALTH_PCT rss_max=$RSS_MAX"
 echo "Soak complete → $SUMMARY"
 cat "$SUMMARY"
+
+# Offline Ollama morning brief (no cloud)
+if [[ "${MG_LOCAL_LLM:-}" == "1" || "${MG_LOCAL_LLM:-}" == "true" ]]; then
+  BRIEF_PY="$SCRIPT_DIR/soak-morning-brief.py"
+  if [[ -f "$BRIEF_PY" ]]; then
+    log brief "running local LLM morning brief"
+    if python3 "$BRIEF_PY" "$RUN" --force >>"$RUN/brief.log" 2>&1; then
+      log brief "ok → $RUN/morning-brief.md"
+      echo ""
+      echo "── Local LLM morning brief ──"
+      cat "$RUN/morning-brief.md" 2>/dev/null || true
+    else
+      log brief "FAIL see $RUN/brief.log"
+      echo "Morning brief failed — see $RUN/brief.log"
+    fi
+  else
+    log brief "soak-morning-brief.py missing"
+  fi
+else
+  echo "(Set MG_LOCAL_LLM=1 for offline Ollama morning brief)"
+fi

@@ -10,7 +10,7 @@
  *   - no isTrusted check → synthetic pointerup works if coords match
  *
  * Autoplay off unless ?mg_autoplay=1 | localStorage play_once | AgentPlayOnce
- * VER: webgrid-play-v18-small-window
+ * VER: webgrid-play-v19-local-llm
  *
  * Safari reference (user screenshots):
  *   ⌘− zoom OUT → dense 30×30 (many small cells)
@@ -20,6 +20,7 @@
  * so we Safari-emulate effective CSS viewport = base / zoom, then fire resize.
  * Canvas keeps real layout px → 12 cells look big, 30 look dense (matches Safari shots).
  * ⌘0 = 100% / 30×30 desktop.
+ * Local LLM pace: ?mg_local_llm=1 polls http://127.0.0.1:9880/pace (llama3.2:1b advisor).
  */
 (function () {
   "use strict";
@@ -28,7 +29,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v18-small-window";
+  var VER = "webgrid-play-v19-local-llm";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -53,6 +54,47 @@
     TARGET_B = 255;
   var ROUND_S = 70;
   var _fillTimer = null;
+  /* Offline pace (webgrid-pace-advisor.py → collector /pace) */
+  var PACE_URL = "http://127.0.0.1:9880/pace";
+  var _pace = { sleep_ms: 4, wait_loops: 18, mode: "steady", source: "default" };
+  var _paceTimer = null;
+
+  function wantsLocalLlm() {
+    try {
+      if (/[?&]mg_local_llm=1\b/i.test(location.search)) return true;
+      if (localStorage.getItem("mg.local_llm") === "1") return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function pullPace() {
+    if (!wantsLocalLlm()) return;
+    try {
+      fetch(PACE_URL, { method: "GET", cache: "no-store" })
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
+        .then(function (j) {
+          if (!j || typeof j !== "object") return;
+          var s = parseInt(j.sleep_ms, 10);
+          var w = parseInt(j.wait_loops, 10);
+          if (isFinite(s) && s >= 2 && s <= 40) _pace.sleep_ms = s;
+          if (isFinite(w) && w >= 4 && w <= 30) _pace.wait_loops = w;
+          if (j.mode) _pace.mode = String(j.mode);
+          if (j.source) _pace.source = String(j.source);
+          if (j.note) _pace.note = String(j.note).slice(0, 80);
+        })
+        .catch(function () {});
+    } catch (eP) {}
+  }
+
+  function startPaceLoop() {
+    if (!wantsLocalLlm()) return;
+    pullPace();
+    if (_paceTimer) return;
+    _paceTimer = setInterval(pullPace, 4000);
+    log(VER + " · local LLM pace poll → " + PACE_URL);
+  }
   var _origInnerW = null;
   var _origInnerH = null;
   var _origClientW = null;
@@ -810,9 +852,24 @@
     var livePeakBps = 0,
       livePeakNtpm = 0;
 
-    log("chase start N=" + N + " bps/ntpm factor≈" + bpsFromNtpm(1, N).toFixed(4));
+    startPaceLoop();
+    log(
+      "chase start N=" +
+        N +
+        " bps/ntpm factor≈" +
+        bpsFromNtpm(1, N).toFixed(4) +
+        " pace=" +
+        _pace.sleep_ms +
+        "ms/" +
+        _pace.wait_loops +
+        " (" +
+        (_pace.source || "?") +
+        ")"
+    );
 
     while (Date.now() < tEnd) {
+      var stepMs = _pace.sleep_ms || 4;
+      var waitMax = _pace.wait_loops || 18;
       var sc = scrapeScore();
       if (sc.peak && clicks > 3) {
         log("peak screen " + sc.peak.bps + " BPS / " + sc.peak.ntpm + " NTPM");
@@ -828,6 +885,7 @@
           bestBps: Math.max(bestBps, livePeakBps),
           bestNtpm: Math.max(bestNtpm, livePeakNtpm),
           round: roundIdx + 1,
+          pace: { sleep_ms: stepMs, wait_loops: waitMax, mode: _pace.mode, source: _pace.source },
         });
         break;
       }
@@ -845,7 +903,7 @@
       if (tgt) {
         /* skip re-click same cell until canvas shows a new blue */
         if (tgt.index === lastIndex) {
-          await sleep(4);
+          await sleep(stepMs);
           continue;
         }
         /* ONE pointerup only — page has no isTrusted check */
@@ -869,6 +927,7 @@
             timer: sc.timer,
             N: N,
             round: roundIdx + 1,
+            pace: stepMs + "/" + waitMax,
           });
           log(
             "shot cell=" +
@@ -880,13 +939,17 @@
               " ntpm=" +
               sc.ntpm +
               " t=" +
-              sc.timer
+              sc.timer +
+              " pace=" +
+              stepMs +
+              "/" +
+              waitMax
           );
         }
-        /* wait until blue moves (hit) or timeout — tight loop to beat 483 */
+        /* wait until blue moves (hit) or timeout — pace from local LLM advisor */
         var moved = false;
-        for (var wait = 0; wait < 18; wait++) {
-          await sleep(4);
+        for (var wait = 0; wait < waitMax; wait++) {
+          await sleep(stepMs);
           var t2 = findTargetFromCanvas(N);
           if (!t2 || t2.index !== lastIndex) {
             moved = true;
@@ -1109,6 +1172,10 @@
       if (_fillTimer) clearInterval(_fillTimer);
       _fillTimer = null;
     } catch (e2) {}
+    try {
+      if (_paceTimer) clearInterval(_paceTimer);
+      _paceTimer = null;
+    } catch (e3) {}
   };
   var zoomResizeT = 0;
   window.addEventListener("resize", function () {

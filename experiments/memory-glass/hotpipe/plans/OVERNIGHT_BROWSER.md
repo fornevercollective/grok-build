@@ -12,19 +12,44 @@
 - Glass reassert debounced; camera defer on webgrid
 - Body pose / hotpipe / ugrad webgrid tensor / soak scripts
 
+## Offline local LLM (wired)
+
+| Env | Default | Role |
+|-----|---------|------|
+| `MG_LOCAL_LLM=1` | off | enable Ollama helpers |
+| `MG_OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama |
+| `MG_OLLAMA_MODEL` | `qwen3:8b` | morning brief |
+| `MG_OLLAMA_REASON_MODEL` | `deepseek-r1:7b` | deep postmortem (`--reason`) |
+| `MG_OLLAMA_PACE_MODEL` | `llama3.2:1b` | live WebGrid pace |
+| `MG_OLLAMA_EMBED_MODEL` | `nomic-embed-text` | future RAG |
+
+```bash
+# Smoke
+python3 scripts/mg_local_llm.py ping
+
+# Morning brief for latest (or path) run
+MG_LOCAL_LLM=1 python3 scripts/soak-morning-brief.py
+
+# Live pace advisor + collector (WebGrid)
+python3 scripts/webgrid-collector.py &
+MG_LOCAL_LLM=1 python3 scripts/webgrid-pace-advisor.py &
+# play with: ?mg_autoplay=1&mg_local_llm=1&mg_scale=small
+```
+
+Soak end writes `morning-brief.md` when `MG_LOCAL_LLM=1`.
+
 ## What to run overnight (pick one stack)
 
-### A. Stability soak (safe default)
+### A. Stability soak + morning brief (recommended)
 
 ```bash
 cd experiments/memory-glass
-bash scripts/overnight-soak.sh --hours 8 --url 'https://neuralink.com/webgrid/?mg_scale=small'
-# parallel large-grid soak optional:
-# MG_APP="$HOME/Applications/Memory Glass.app" bash scripts/overnight-soak.sh --hours 8 \
-#   --url 'https://neuralink.com/webgrid/?mg_autoplay=0'
+# ensure ollama serve is up
+MG_LOCAL_LLM=1 bash scripts/overnight-soak.sh --hours 8 \
+  --url 'https://neuralink.com/webgrid/?mg_scale=small'
+# → ~/.panda/mg-soak/run-*/summary.md
+# → ~/.panda/mg-soak/run-*/morning-brief.md   (qwen3:8b)
 ```
-
-**Collects:** RSS, crash/relaunch, still-pipe health, launch.log tails → `~/.panda/mg-soak/run-*/summary.md`
 
 ### B. Agent WebGrid ladder (skill / BPS)
 
