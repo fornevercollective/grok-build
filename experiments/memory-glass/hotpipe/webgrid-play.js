@@ -157,11 +157,15 @@
         window.__mgActivityBoard.open();
     } catch (e6) {}
     try {
+      if (window.__mgSportsField && window.__mgSportsField.open)
+        window.__mgSportsField.open();
+    } catch (e6b) {}
+    try {
       if (window.__mgFloatKb && window.__mgFloatKb.open) {
         /* keyboard optional — open only if previously used; leave user control */
       }
     } catch (e7) {}
-    log(VER + " · play floats live (contrail/maze/bloch/rubik/beats/board)");
+    log(VER + " · play floats live (contrail/maze/bloch/rubik/beats/board/field)");
   }
 
   function adaptPace(hitsGuess, missGuess) {

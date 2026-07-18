@@ -118,15 +118,28 @@ live → body-pose → lens → hurdles → research → ego → dock
 
 ---
 
+## Sites (public)
+
+| Site | Serves |
+|------|--------|
+| https://fornevercollective.github.io/grok-build/ | **Grok Build Lab** (`docs/architecture-lab`) — includes Memory Glass page **32** |
+| *(no dedicated MG github.io app)* | Native app only under `experiments/memory-glass` |
+| https://mueee.qbitos.ai/sports-field-ugrad.html | Sports field pitch / telemetry lab |
+| https://github.com/fornevercollective/train | Stocks + sports hexbin + wind/eind-style prediction topology |
+| https://github.com/xai-org/grok-build | Upstream product — path-checkout only |
+
 ## Paths for agents
 
 | Need | Path |
 |------|------|
 | This growth brief | `experiments/memory-glass/docs/MEMORY-GLASS-GROWTH.md` |
+| Lab + monorepo safety | `docs/architecture-lab/content/32-memory-glass-browser.md` |
+| Fork sync | `docs/FORK_SYNC.md` · `docs/fornever-ledger/UPSTREAM_CHERRY.md` |
 | Session restart | `hotpipe/SESSION_HANDOFF.md` |
 | Goals / hurdles | `hotpipe/GOALS.md` |
 | KBatch pairing | `docs/KBATCH-HANDOFF.md` + live kbatch handoff URL |
 | Collab day prompt | `hotpipe/prompt-collab-day.md` |
+| Sportsfield bridge | `hotpipe/sportsfield-bridge.js` → `__mgSportsField` |
 | LEAP surfaces | `docs/fornever-ledger/LEAP_MAP.md` |
 | Laptop bench | `hotpipe/data/webgrid-bench-macbookpro16-1.md` |
 | Ledger root | `docs/fornever-ledger/MEMORY-GLASS-HANDOFF.md` |

@@ -136,10 +136,24 @@
             if (window.__mgRubikLang) window.__mgRubikLang.open();
             if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
             if (window.__mgActivityBoard) window.__mgActivityBoard.open();
+            if (window.__mgSportsField) window.__mgSportsField.open();
             if (window.__mgFloatKb) window.__mgFloatKb.open();
             setStatus("all floats live · play lab");
           } catch (eF) {
             setStatus("floats err " + eF);
+          }
+        })
+      );
+      row.appendChild(
+        act("FIELD", "ok", function () {
+          if (window.__mgSportsField) {
+            window.__mgSportsField.toggle();
+            setStatus(window.__mgSportsField.report());
+          } else {
+            var u = "https://mueee.qbitos.ai/sports-field-ugrad.html";
+            if (window.ipc) window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
+            else window.open(u, "_blank");
+            setStatus("sports-field site");
           }
         })
       );

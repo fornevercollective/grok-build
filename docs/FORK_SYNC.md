@@ -55,9 +55,22 @@ Path-checkout brings the open-source harness into the **workspace** Lab and tool
 
 ## Preserved on every sync
 
-- `docs/architecture-lab/` (Lab)
+- `docs/architecture-lab/` (Lab → GitHub Pages)
 - `experiments/` (including Memory Glass)
+- `docs/fornever-ledger/`
 - `scripts/` (including this sync tooling)
+
+## Do not get “flagged” / clobbered
+
+| Risk | Mitigation |
+|------|------------|
+| Merge upstream into `main` | **Never** — unrelated histories |
+| Product tree drift | Path-checkout + `verify-upstream-sync.sh` only |
+| Experiments wiped | Keep MG only under `experiments/memory-glass` (not `crates/`) |
+| Pages vs monorepo | Pages = Lab only (`docs/architecture-lab`); not a second product tree |
+| grokkybara “Synced from monorepo” | Expected on product commits; our tip can still carry `experiments/` |
+
+**Memory Glass public surface:** Lab page **32** on https://fornevercollective.github.io/grok-build/ — not a separate monorepo site that fights xai-org.
 
 ## Last known good (update when you path-checkout)
 
