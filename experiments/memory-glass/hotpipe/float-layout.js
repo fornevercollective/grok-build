@@ -1,11 +1,12 @@
 /* Memory Glass · float layout (play-safe, no force-open)
  * Only positions panels that are ALREADY open. Never un-hides closed floats.
  * Does not auto-open the lab on launch.
- * VER: float-layout-v11-play-stack
+ * Respects html.mg-drawer-mode (TOOLS drawer owns chrome — no forced CTRL pill).
+ * VER: float-layout-v14-drawer-chrome
  */
 (function () {
   "use strict";
-  var VER = "float-layout-v11-play-stack";
+  var VER = "float-layout-v14-drawer-chrome";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._floatLayoutVer === VER) return;
   HP._floatLayoutVer = VER;
@@ -96,7 +97,7 @@
       tile = Math.max(140, tile);
       if (fieldOpen) fieldH = tile + 24; /* field gets a bit more for canvas */
       if (beatsOpen) beatsH = tile;
-      if (kbOpen) kbH = Math.min(tile + 40, 260); /* keyboard needs keys */
+      if (kbOpen) kbH = Math.min(tile + 80, 320); /* keyboard needs key rows */
       var sum2 = (fieldOpen ? fieldH : 0) + (beatsOpen ? beatsH : 0) + (kbOpen ? kbH : 0);
       if (sum2 > rightBudget && sum2 > 0) {
         var sc2 = rightBudget / sum2;
@@ -109,35 +110,56 @@
     var beatsBottom = kbBottom + (kbOpen ? kbH + gap : 0);
     var fieldBottom = beatsBottom + (beatsOpen ? beatsH + gap : 0);
 
-    /* orbs: vertical stack ABOVE CTRL (not on GEO) */
-    var orbBase = bottom + 52; /* above REC */
-    var capExtra = 52; /* space for CTRL pill */
-    var orbBlochBottom = orbBase + capExtra + 8;
+    /* CTRL is top-left — measure so floats sit BELOW it, never under the panel */
+    var belowCtrl = top;
+    var ctrlW = 0;
+    try {
+      var capEl0 = document.getElementById("mg-glass-cap");
+      if (capEl0) {
+        var cr = capEl0.getBoundingClientRect();
+        if (cr.height > 0) {
+          belowCtrl = Math.max(top, Math.round(cr.bottom) + gap + 4);
+          ctrlW = Math.round(cr.width) || 0;
+        }
+      }
+    } catch (eC) {}
+    var blochOpen = isVisible(document.getElementById("mg-bloch-float"));
+    var rubikOpen = isVisible(document.getElementById("mg-rubik-float"));
+    var blochW = Math.min(280, Math.max(leftRail + 8, Math.floor(w * 0.2)));
+    var blochH = Math.min(
+      blochOpen ? 300 : 240,
+      Math.max(180, Math.floor(h - belowCtrl - bottom - 80))
+    );
+    var rubikTop = belowCtrl + (blochOpen ? blochH + gap : 0);
+    /* orbs: bottom-left stack (above REC), clear of expanded CTRL */
+    var orbBase = bottom + 52;
+    var orbBlochBottom = orbBase + 8;
     var orbRubikBottom = orbBlochBottom + 58;
 
     return {
       maze: {
         left: m,
-        top: top,
+        top: Math.max(top, belowCtrl + (blochOpen || rubikOpen ? 0 : 0)),
         width: leftRail,
-        maxHeight: Math.min(280, Math.floor(h * 0.3)),
+        maxHeight: Math.min(280, Math.floor(h * 0.28)),
         minHeight: 140,
       },
       geo: {
         left: m,
-        top: top + Math.min(300, Math.floor(h * 0.32)),
+        top: Math.max(
+          belowCtrl + (blochOpen ? blochH + gap : 0) + (rubikOpen ? 200 : 0),
+          top + Math.min(300, Math.floor(h * 0.32))
+        ),
         width: leftRail + 10,
         maxHeight: Math.min(220, Math.floor(h * 0.24)),
         minHeight: 120,
       },
       board: boardCollapsed
         ? {
-            right: m,
-            top: 10,
-            width: Math.min(300, Math.floor(w * 0.32)),
-            maxHeight: 48,
-            height: 48,
-            pill: true,
+            /* shell top word — left of INSPECT/PAGE, no glass pill pin */
+            right: null,
+            top: null,
+            skipPin: true,
           }
         : {
             right: m,
@@ -147,10 +169,11 @@
             minHeight: 140,
           },
       rubik: {
-        left: m + leftRail + gap,
-        top: top + Math.floor(h * 0.2),
-        width: Math.min(320, Math.floor(w * 0.26)),
-        maxHeight: Math.min(320, Math.floor(h * 0.34)),
+        left: m,
+        top: rubikTop,
+        width: Math.min(320, Math.max(blochW, Math.floor(w * 0.22))),
+        maxHeight: Math.min(340, Math.floor(h - rubikTop - bottom - 24)),
+        minHeight: 200,
       },
       field: {
         right: m,
@@ -176,21 +199,24 @@
         minHeight: Math.min(120, kbH),
         height: kbH,
       },
-      /* Bloch panel: mid-left, RIGHT of maze/geo rail — not on GEO */
+      /* Bloch: directly under measured CTRL (top-left), not buried mid-rail */
       bloch: {
-        left: m + leftRail + gap,
-        top: top + 8,
-        width: 240,
-        maxHeight: 260,
-        minHeight: 180,
+        left: m,
+        top: belowCtrl,
+        width: blochW,
+        maxHeight: blochH,
+        minHeight: 200,
+        height: blochOpen ? blochH : undefined,
       },
-      /* Orbs above CTRL pill — hide on very narrow */
+      /* Orbs bottom-left — clear of top CTRL */
       blochOrb: hideOrbs
         ? { left: -999, bottom: -999, width: 52, height: 52, hide: true }
         : { left: m, bottom: orbBlochBottom, width: 52, height: 52 },
       rubikOrb: hideOrbs
         ? { left: -999, bottom: -999, width: 52, height: 52, hide: true }
         : { left: m, bottom: orbRubikBottom, width: 52, height: 52 },
+      belowCtrl: belowCtrl,
+      ctrlW: ctrlW,
       raider: {
         left: Math.max(m + leftRail + gap, Math.floor(w * 0.22)),
         top: top,
@@ -204,12 +230,13 @@
         width: Math.min(280, Math.floor(w * 0.22)),
       },
       rec: { left: m, bottom: m },
-      /* Control Center dropdown — above REC, left-aligned */
+      /* Control Center — top-left pill / panel (not bottom; search owns bottom) */
       capsule: {
         left: m,
-        bottom: bottom + 4,
+        top: Math.max(10, 8),
         width: Math.min(340, Math.floor(w * 0.32)),
         maxHeight: Math.min(620, Math.floor(h * 0.72)),
+        pill: true,
       },
       narrow: narrow,
       hideOrbs: hideOrbs,
@@ -219,6 +246,7 @@
   function pin(el, slot, opts) {
     if (!el || !slot || !isVisible(el)) return false;
     opts = opts || {};
+    if (slot.skipPin) return false;
     if (slot.hide) {
       el.style.visibility = "hidden";
       el.style.pointerEvents = "none";
@@ -270,7 +298,9 @@
     try {
       if (window.__mgMemoryMaze && window.__mgMemoryMaze.close) window.__mgMemoryMaze.close();
       if (window.__mgGeoPattern && window.__mgGeoPattern.close) window.__mgGeoPattern.close();
-      if (window.__mgRubikLang && window.__mgRubikLang.close) window.__mgRubikLang.close();
+      /* keep Rubik closed only when clearing lab — caller may re-open */
+      if (window.__mgRubikLang && window.__mgRubikLang.close && !opts.keepRubik)
+        window.__mgRubikLang.close();
       if (window.__mgBlochSolve && window.__mgBlochSolve.close) window.__mgBlochSolve.close();
       if (window.__mgRaider && window.__mgRaider.close) window.__mgRaider.close();
       if (window.__mgCollabDay && window.__mgCollabDay.close) window.__mgCollabDay.close();
@@ -287,13 +317,16 @@
       }
       if (opts.ctrlPill && window.__mgGlassCap && window.__mgGlassCap.close)
         window.__mgGlassCap.close();
-      /* ensure CTRL pill remains findable after collapse */
+      /* ensure CTRL pill remains findable after collapse — unless drawer owns chrome */
       var capEl = document.getElementById("mg-glass-cap");
-      if (capEl) {
+      if (capEl && !drawerMode()) {
         capEl.style.display = "flex";
         capEl.style.visibility = "visible";
         capEl.style.opacity = "1";
         capEl.style.pointerEvents = "auto";
+        capEl.classList.add("collapsed");
+      } else if (capEl && drawerMode()) {
+        capEl.style.setProperty("display", "none", "important");
         capEl.classList.add("collapsed");
       }
     } catch (e) {}
@@ -302,15 +335,57 @@
     } catch (eA) {}
   }
 
+  function drawerMode() {
+    try {
+      return document.documentElement.classList.contains("mg-drawer-mode");
+    } catch (e) {
+      return false;
+    }
+  }
+
   function apply() {
     var s = slots();
     var n = 0;
+    /* 1) CTRL first so Bloch/Rubik can sit under its real bottom edge.
+     * Drawer mode: TOOLS drawer owns chrome — never force-show the CTRL pill. */
+    var cap = document.getElementById("mg-glass-cap");
+    if (cap && drawerMode()) {
+      cap.style.setProperty("display", "none", "important");
+      cap.style.setProperty("pointer-events", "none", "important");
+      cap.style.visibility = "hidden";
+    } else if (cap) {
+      var capSlot = {
+        left: s.capsule.left,
+        top: s.capsule.top,
+        width: cap.classList.contains("collapsed") ? null : s.capsule.width,
+        maxHeight: cap.classList.contains("collapsed")
+          ? 44
+          : s.capsule.maxHeight,
+        pill: cap.classList.contains("collapsed"),
+      };
+      cap.style.display = "flex";
+      cap.style.visibility = "visible";
+      cap.style.opacity = "1";
+      cap.style.pointerEvents = "auto";
+      cap.style.bottom = "auto";
+      pin(cap, capSlot, { z: 2147483004 });
+      cap.style.transform = "none";
+      if (cap.classList.contains("collapsed")) {
+        cap.style.minHeight = "40px";
+        cap.style.height = "auto";
+        cap.style.width = "auto";
+        cap.style.minWidth = "88px";
+      }
+      n++;
+    }
+    /* 2) recompute slots after CTRL is placed (belowCtrl uses getBoundingClientRect) */
+    s = slots();
     if (pin(document.getElementById("mg-mem-maze"), s.maze, { z: 2147482995 })) n++;
     if (pin(document.getElementById("mg-geo-float"), s.geo, { z: 2147482994 })) n++;
     if (pin(document.getElementById("mg-activity-board"), s.board, { z: 2147482993 })) n++;
-    if (pin(document.getElementById("mg-rubik-float"), s.rubik, { z: 2147482996 })) n++;
-    if (pin(document.getElementById("mg-bloch-float"), s.bloch, { z: 2147482991 })) n++;
-    /* orbs below open panels (z lower) so they don't cover GEO/CTRL content */
+    /* Bloch / Rubik stack under CTRL top-left */
+    if (pin(document.getElementById("mg-bloch-float"), s.bloch, { z: 2147482998 })) n++;
+    if (pin(document.getElementById("mg-rubik-float"), s.rubik, { z: 2147482997 })) n++;
     if (pin(document.getElementById("mg-bloch-orb"), s.blochOrb, { z: 2147482985 })) n++;
     if (pin(document.getElementById("mg-rubik-orb"), s.rubikOrb, { z: 2147482985 })) n++;
     if (pin(document.getElementById("mg-raider-stage"), s.raider, { z: 2147482988 })) n++;
@@ -323,10 +398,22 @@
     if (post && isVisible(post)) pin(post, s.post, { z: 2147483010 });
     var rec = document.getElementById("mg-rec-chip");
     if (rec && isVisible(rec)) pin(rec, s.rec, { z: 2147483006 });
-    var cap = document.getElementById("mg-glass-cap");
-    if (cap && isVisible(cap)) {
-      pin(cap, s.capsule, { z: 2147483004 });
-      cap.style.transform = "none";
+    /* Search dock: bottom-center only — peek dots, bar closed until user */
+    var dock = document.getElementById("mg-search-dock");
+    if (dock) {
+      dock.style.position = "fixed";
+      dock.style.left = "50%";
+      dock.style.right = "auto";
+      dock.style.top = "auto";
+      dock.style.bottom =
+        "calc(max(12px, env(safe-area-inset-bottom,0px)) + var(--mg-kb-h, 0px))";
+      dock.style.transform = "translateX(-50%)";
+      dock.style.zIndex = "2147483608";
+      /* closed unless user explicitly opened search this session */
+      if (!window.__mgUserSearchOpen) {
+        dock.classList.remove("is-open");
+        dock.classList.remove("chat-open");
+      }
     }
     var chip = document.getElementById("mg-board-chip");
     if (chip) {

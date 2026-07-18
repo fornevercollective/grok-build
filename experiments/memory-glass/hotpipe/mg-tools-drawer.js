@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "mg-tools-drawer-v2-grok";
+  var VER = "mg-tools-drawer-v2-chrome-clean";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._toolsDrawerVer === VER) return;
   HP._toolsDrawerVer = VER;
@@ -130,10 +130,15 @@
       "#mg-tools-scrim.on{opacity:1;pointer-events:auto}",
       /* drawer mode: hide permanent floating chrome (use drawer instead) */
       "html.mg-drawer-mode #mg-glass-cap{",
-      "  display:none!important;pointer-events:none!important}",
+      "  display:none!important;visibility:hidden!important;pointer-events:none!important;",
+      "  opacity:0!important;width:0!important;height:0!important;overflow:hidden!important}",
       "html.mg-drawer-mode #mg-bloch-orb,html.mg-drawer-mode #mg-rubik-orb,",
       "html.mg-drawer-mode #mg-sx-rail{",
       "  display:none!important;pointer-events:none!important}",
+      /* kill legacy mega solve strip if any residual class */
+      "html.mg-drawer-mode #mg-solve-hud{",
+      "  background:transparent!important;border:none!important;box-shadow:none!important;",
+      "  max-width:none!important;transform:none!important;border-radius:0!important}",
       /* temporary floats inset from edges so grips stay free */
       "html.mg-drawer-mode #mg-float-kb,",
       "html.mg-drawer-mode #mg-sports-field,",
