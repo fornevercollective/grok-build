@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Install: cp to ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.fornever.memoryglass.research.tick.plist -->
+<!-- Edit ProgramArguments[1] to absolute path of mg-research-queue-tick.sh on Mini -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fornever.memoryglass.research.tick</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>REPLACE_WITH_ABS_PATH/experiments/memory-glass/scripts/mg-research-queue-tick.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/mg-research-tick.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/mg-research-tick.err</string>
+</dict>
+</plist>

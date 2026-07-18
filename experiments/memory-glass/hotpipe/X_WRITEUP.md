@@ -8,6 +8,20 @@ Canonical ladder: `hotpipe/GOALS.md` · packs: `~/.panda/packs/mg-*`.
 
 ---
 
+## Single post — R1 core loop polish (X / Grok · immediate)
+
+**R1 core loop polish (immediate):** harden `research.js` capture (full page text + selection + meta **without layout break**), reliable `queue.jsonl` / live queue scheduler (launchd or Grok Build task), and **pack → Grok → next-URLs** feedback (`ingestGrokReply`) — biggest unlock for unattended Mini churn while keeping WKWebView lightweight.
+
+**Mini ops stability:** prioritize **grokpool/SSH** (network + Remote Login) for laptop push; launchd health / restart for always-on. Defer cam/spatial HUD unless presence needed — RAM/CPU for **tabs + agent packs**.
+
+**H5–H6 parallel:** adaptive frame EMA + prefetch meta for smoother nav; **H4** IndexedDB for packs/queue. Keep **H7–H9** scaffolds minimal; spatial soak can run background on laptop without blocking R1 Mini.
+
+**Boot seed:** `research-v2` auto-loads CV pack `next_urls` into live queue (`seedBootPack` / inspect **SEED**).
+
+#MemoryGlass #WKWebView #GrokBuild #MacMini #R1 #xAI
+
+---
+
 ## Single post — R1 Research Mini (X / Grok · next big push)
 
 **R1 Research Mini** is the recommended big push over further spatial H1–H9: always-on **WKWebView** on Mac Mini with a research queue (**topic → tabs → extract packs → Grok**), hot-pipe `research.js`, page capture, IndexedDB storage, and unattended scheduler — using existing **H5 hooks**, tabs IPC, and `agent-parallel` **without** needing full H1 soak or Metal.
