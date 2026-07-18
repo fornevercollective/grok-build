@@ -2,65 +2,67 @@
 name: memory-glass
 description: >
   Native macOS droplet browser (tao+wry WKWebView) with ofx/daito face track,
-  inspect float, hot-pipe live.js, still-pipe phone cam, voice mute bridge.
-  Use when user wants Memory Glass, face HUD, inspect meters, or cam-less Mini.
+  inspect float, hot-pipe live.js, still-pipe phone cam, voice mute bridge,
+  WebGrid agent, offline Ollama soak brief. Use for Memory Glass, glass HUD,
+  WebGrid, codesign launch fails, or Mini cam-less bringup.
 ---
 
 # Memory Glass · Grok Build plugin pack
 
-## Ground running (agent)
+## Absolute rules
+
+1. **Never delete** user repos, model trees, or soak history.
+2. After any `.app` binary or `Resources/` edit → `bash scripts/resign-app.sh`.
+3. Prefer **hotpipe JS** for UX; **Rust** for window/IPC/native only.
+4. Log breakage into `docs/fornever-ledger/BUG_BOUNTY_LEDGER.md` (append notes JSONL).
+5. WebGrid BPS from **agent ≠ BCI implant** — label honestly.
+
+## Ground running
 
 ```bash
-cd experiments/memory-glass   # or path to this pack
+cd experiments/memory-glass
 bash build-mac-app.sh
-open -n "$HOME/Applications/Memory Glass.app"
+open -n "$HOME/Applications/Memory Glass.app" --args "https://neuralink.com/webgrid/"
 
-# still-pipe (required for inspect face + main LabViewRay bridge)
+# still-pipe
 python3 "$HOME/.panda/vision/still-server.py" &
-# or: python3 Resources/vision/still-server.py
 
-# optional voice (keep muted while typing)
-bash "$HOME/.panda/voice/mute.sh" on
+# offline morning brief after soak
+MG_LOCAL_LLM=1 bash scripts/overnight-soak.sh --hours 8
+
+# WebGrid small (12×12) + local pace
+python3 scripts/webgrid-collector.py &
+MG_LOCAL_LLM=1 python3 scripts/webgrid-pace-advisor.py &
+open -n "$HOME/Applications/Memory Glass.app" --args \
+  "https://neuralink.com/webgrid/?mg_scale=small&mg_autoplay=1&mg_local_llm=1"
 ```
 
-## What Grok should know
+## Surfaces
 
 | Surface | Role |
 |---------|------|
-| Main window | Browser + LabViewRay page lean driven by **still-pipe track_pose** |
-| Inspect float | Face ofx mesh · gsplat · depth · **RAM/GPU/Spool/FPS** meters |
-| Hot-pipe | Edit `hotpipe/live.js` → auto inject (no rebuild) |
-| Rust rebuild | Windows, menus, new IPC only |
+| Main | WKWebView browser + LabViewRay lean |
+| Inspect | Face mesh · meters RAM/GPU/Spool/FPS |
+| Hotpipe | `hotpipe/*.js` mtime inject (~1s) |
+| WebGrid | `webgrid-play.js` v19 · 12/30 scale · agent |
+| Ledger | `docs/fornever-ledger/*` |
 
-## Mac Mini / no camera
+## Known ship-blockers (see ledger)
 
-```bash
-MG_STILL_BIND=0.0.0.0 python3 ~/.panda/vision/still-server.py
-# From phone (same LAN):
-curl -F "file=@frame.jpg" http://MINI_IP:9877/upload
-```
+| ID | Issue |
+|----|--------|
+| MG-001 | Codesign SIGKILL without resign |
+| MG-002 | Glass reassert storm (debounced) |
+| MG-004 | Multi camera writers |
+| MG-006 | Score scrape marketing pollution |
 
-GrokYtalkY phone can push frames the same way (HTTP POST JPEG).
+## Canonical docs
 
-## Issue grab
+- `hotpipe/GOALS.md` · `SESSION_HANDOFF.md` · `ARCHITECTURE.md`
+- `hotpipe/plans/OVERNIGHT_BROWSER.md` · `COMPETITIVE_HARD_TRUTH.md`
+- `../../docs/fornever-ledger/ECOSYSTEM_MAP.md`
+- `../../docs/fornever-ledger/BUG_BOUNTY_LEDGER.md`
 
-Inspect bottom bars: **RAM · GPU · Spool · FPS** + signal text (`SPOOL_STALL`, `RAM_CRIT`, …).
+## Year context
 
-## Goal + hurdles
-
-| | |
-|--|--|
-| **North-star** | Native WKWebView droplet + hot-pipe (~1s) + spatial mix + live Grok — no Electron bloat; stretch **sub-16ms** HUD frames |
-| **H0–H6** | Hard-pushed (`live-v18-hurdles` + `hurdles-v1`) |
-| **H7–H9** | Scaffold only |
-| **Rule** | Inspect owns track/hands; PAGE calm; single `capture-stream.sh` |
-
-Canonical: `hotpipe/GOALS.md`.
-## Docs
-
-- `hotpipe/GOALS.md` — north-star, next hurdle, ladder, anti-goals
-- `ARCHITECTURE.md` — paint vs rusty
-- `hotpipe/LINEAGE.md` — daito/ofx/SAM map
-- `hotpipe/SESSION_HANDOFF.md` — restart + known issues
-- `hotpipe/X_WRITEUP.md` — public speed language
-- `Resources-pack/MANIFEST.md` — what's in the .app
+This app sits in a year-long fornevercollective stack: ugrad, qbitos-*, Mu, charm, blank, freya, GrokYtalkY, grok-build fork of xai-org. Agents should **learn and extend**, not replace or delete that history.
