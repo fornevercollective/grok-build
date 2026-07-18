@@ -25,6 +25,7 @@ wry = { version = "0.48", features = ["transparent"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
+block = "0.1"
 
 [profile.release]
 lto = "thin"

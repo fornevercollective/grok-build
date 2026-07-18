@@ -8,7 +8,7 @@ Droplet-glass concept browser for the SpaceX cool-test surface: transparent shel
 |-------|--------|
 | Window | **tao** 0.31 |
 | Web | **wry** 0.48 → macOS **WKWebView** (`transparent`) |
-| Icon | Rust-oxide shield + cyan glass portal (Dock + window) |
+| Icon | Graphite shield + white singularity portal (xAI-lean aesthetic; Dock + window) |
 | Bundle | `build-mac-app.sh` → `Memory Glass.app` |
 
 ## Icon
@@ -54,6 +54,28 @@ open "Memory Glass.app"
 | `.....` | Search peek |
 
 Default tabs: **spacex · starship · launches**.
+
+## Hot-pipe (live work · no full relaunch)
+
+Edit JS while Memory Glass is running — no cargo rebuild for HUD patches:
+
+| Path | Role |
+|------|------|
+| `hotpipe/live.js` | Auto-injected when file mtime changes (~1s) |
+| `hotpipe/mitigations/*.js` | Auto-applied on matching inspect errors |
+| `hotpipe/agent.html` | Local agent / prompt loop page |
+| `hotpipe/prompt.md` | Live intent for Grok |
+| `hotpipe/out/` | Inspect packs for Grok Build |
+
+**Inspect float** (⌘⌥I): **Copy** · **→ Grok** (pack + clipboard) · **Hot** · **Mitigate** · **Agent**
+
+```bash
+# while app is open:
+$EDITOR experiments/memory-glass/hotpipe/live.js
+# watch Inspect for: hotpipe live.js injected
+```
+
+Packs also land at `~/.panda/packs/mg-inspect.json` for Lab chain / handoff.
 
 ## Grok-build placement
 

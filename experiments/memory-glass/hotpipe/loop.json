@@ -1,0 +1,20 @@
+{
+  "name": "memory-glass-hotpipe",
+  "iteration": 3,
+  "status": "hot_refresh",
+  "last_build_epoch": 1784324780,
+  "run_epoch": 1784325873,
+  "last_pack": null,
+  "last_mitigation": "camera_denied once-per-stem; no prefs spam",
+  "last_live_js": "quad 2x2 safe one-shot",
+  "agent_url": "agent.html",
+  "continue_via": "hotpipe/SESSION_HANDOFF.md",
+  "hotpipe": "/Users/qbit/Projects/grok-build/experiments/memory-glass/hotpipe",
+  "user_launch": [
+    "open -n \"$HOME/Applications/Memory Glass.app\"",
+    "MG_HOTPIPE_OFF=1 open -n \"$HOME/Applications/Memory Glass.app\""
+  ],
+  "notes": "Live steer session: browse in MG, report here or Inspect \u2192 Grok; agent watches packs + hotpipe.",
+  "last_voice": "can you zoom back a little / less skewed",
+  "last_hot_refresh": 1784327486
+}

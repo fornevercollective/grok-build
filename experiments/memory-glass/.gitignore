@@ -2,3 +2,12 @@
 **/*.app
 .DS_Store
 *.log
+
+# build / app bundle (not source)
+/target/
+/*.app/
+/Memory Glass.app/
+BUILD_STAMP
+hotpipe/out/
+hotpipe/patches/
+icons/app-icon-xai-alt.jpg

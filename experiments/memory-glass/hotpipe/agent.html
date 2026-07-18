@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memory Glass · Agent Hot-Pipe</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --glass: rgba(255,255,255,0.06);
+      --line: rgba(255,255,255,0.12);
+      --text: rgba(255,255,255,0.9);
+      --muted: rgba(255,255,255,0.45);
+      --accent: rgba(140,200,255,0.9);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      background: radial-gradient(ellipse at 50% 0%, #141820 0%, var(--bg) 55%);
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--line);
+      letter-spacing: 0.16em; text-transform: uppercase; font-size: 11px; font-weight: 650;
+    }
+    header .dot { opacity: 0.45; margin-right: 6px; }
+    #mg-build-stamp {
+      font: 650 10px/1.2 ui-monospace, Menlo, monospace;
+      letter-spacing: 0.04em; text-transform: none;
+      color: rgba(160, 210, 255, 0.85);
+      margin-top: 6px;
+    }
+    main {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      padding: 14px; max-width: 1100px; margin: 0 auto;
+    }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--glass); border: 1px solid var(--line); border-radius: 10px;
+      backdrop-filter: blur(16px); padding: 14px 16px; min-height: 180px;
+    }
+    .card h2 {
+      margin: 0 0 10px; font-size: 11px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--muted); font-weight: 650;
+    }
+    pre, textarea {
+      width: 100%; min-height: 160px; resize: vertical;
+      background: rgba(0,0,0,0.28); color: var(--text);
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px; font: 12px/1.4 ui-monospace, Menlo, monospace;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    button {
+      appearance: none; cursor: pointer; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.08); color: var(--text);
+      font: 650 10px/1 system-ui; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 9px 12px; border-radius: 8px;
+    }
+    button:hover { background: rgba(255,255,255,0.14); }
+    button.primary { border-color: rgba(140,200,255,0.45); color: var(--accent); }
+    .status { margin-top: 10px; font-size: 12px; color: var(--muted); }
+    footer {
+      padding: 12px 18px 20px; text-align: center; font-size: 11px;
+      color: var(--muted); letter-spacing: 0.08em;
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div><span class="dot">.</span>Memory Glass · agent hot-pipe</div>
+      <div id="mg-build-stamp">version pending…</div>
+    </div>
+    <span id="ver">loop</span>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Prompt</h2>
+      <textarea id="prompt" spellcheck="false" placeholder="Loading prompt.md…"></textarea>
+      <div class="row">
+        <button type="button" id="btn-reload-prompt">Reload prompt</button>
+        <button type="button" id="btn-copy-prompt">Copy prompt</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Loop · spit</h2>
+      <pre id="loop">Loading loop.json…</pre>
+      <div class="row">
+        <button type="button" class="primary" id="btn-hot">Hot reload live.js</button>
+        <button type="button" id="btn-mitigate">Run mitigations</button>
+        <button type="button" id="btn-submit">Submit inspect → Grok</button>
+        <button type="button" id="btn-copy-spit">Copy spit</button>
+      </div>
+      <div class="status" id="status">Hot-pipe ready when opened inside Memory Glass.</div>
+    </section>
+  </main>
+  <footer>
+    Edit <code>hotpipe/live.js</code> while the app runs · packs land in <code>hotpipe/out/</code>
+    · expand hands HUD · version stamp top-left
+  </footer>
+  <script>
+    (function () {
+      function setStatus(t) {
+        var s = document.getElementById("status");
+        if (s) s.textContent = t;
+      }
+      function post(op, extra) {
+        try {
+          if (window.ipc && window.ipc.postMessage) {
+            var o = Object.assign({ op: op }, extra || {});
+            window.ipc.postMessage(JSON.stringify(o));
+            setStatus("ipc · " + op);
+            return true;
+          }
+        } catch (e) {}
+        setStatus("Not in Memory Glass IPC — open this page via Inspect › Agent");
+        return false;
+      }
+      function copy(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(function () {
+            setStatus("Copied to clipboard");
+          }).catch(function () { setStatus("Clipboard blocked"); });
+        }
+        setStatus("No clipboard API");
+      }
+      document.getElementById("btn-hot").onclick = function () {
+        if (window.__mgHotPipe && window.__mgHotPipe.reload) window.__mgHotPipe.reload();
+        else post("hot_reload");
+      };
+      document.getElementById("btn-mitigate").onclick = function () {
+        if (window.__mgHotPipe && window.__mgHotPipe.mitigate) window.__mgHotPipe.mitigate();
+        else post("hot_mitigate");
+      };
+      document.getElementById("btn-submit").onclick = function () {
+        if (window.__mgHotPipe && window.__mgHotPipe.submit) window.__mgHotPipe.submit();
+        else {
+          var dump = typeof window.__mgDevDump === "function" ? window.__mgDevDump() : "";
+          post("submit_inspect", { dump: dump });
+        }
+      };
+      document.getElementById("btn-copy-spit").onclick = function () {
+        var dump = typeof window.__mgDevDump === "function" ? window.__mgDevDump() : document.getElementById("loop").textContent;
+        copy(dump || "");
+      };
+      document.getElementById("btn-copy-prompt").onclick = function () {
+        copy(document.getElementById("prompt").value || "");
+      };
+      document.getElementById("btn-reload-prompt").onclick = function () {
+        post("hot_load_prompt");
+      };
+      /* Native will push prompt/loop via evaluate_script when available */
+      window.__mgAgentSetPrompt = function (t) {
+        document.getElementById("prompt").value = t || "";
+      };
+      window.__mgAgentSetLoop = function (t) {
+        document.getElementById("loop").textContent = t || "";
+      };
+      if (window.__mgHotPipe && window.__mgHotPipe.version) {
+        document.getElementById("ver").textContent = "hotpipe v" + window.__mgHotPipe.version;
+      }
+      window.__mgSetVersion = function (full, short) {
+        var el = document.getElementById("mg-build-stamp");
+        if (el) {
+          el.textContent = short || full || "";
+          el.title = full || short || "";
+        }
+        try { document.title = "MG Agent · " + (short || full || ""); } catch (e) {}
+      };
+      post("hot_load_prompt");
+      post("hot_load_loop");
+    })();
+  </script>
+</body>
+</html>
