@@ -1,0 +1,53 @@
+{
+  "schema": "mg-x-promo-packet-v1",
+  "title": "Memory Glass · X promo media packet",
+  "auto_post": false,
+  "generated": "2026-07-18",
+  "images": [
+    {
+      "file": "images/00-hero-bells-whistles.jpg",
+      "role": "hero",
+      "aspect": "16:9"
+    },
+    {
+      "file": "images/01-hero-webgrid-full-lab.jpg",
+      "role": "hero-primary",
+      "aspect": "16:9"
+    },
+    {
+      "file": "images/02-mini-leaderboard-closeup.jpg",
+      "role": "mini-board",
+      "aspect": "16:9"
+    },
+    {
+      "file": "images/03-dual-space-maze-contrail-staff.jpg",
+      "role": "dual-space",
+      "aspect": "16:9"
+    },
+    {
+      "file": "images/04-search-bar-chat-mesh.jpg",
+      "role": "comms-bar",
+      "aspect": "16:9"
+    },
+    {
+      "file": "images/05-square-thumb.jpg",
+      "role": "square",
+      "aspect": "1:1"
+    }
+  ],
+  "copy": [
+    "copy/01-single-post.txt",
+    "copy/02-thread.txt",
+    "copy/03-alt-text.txt",
+    "copy/04-hashtags.txt",
+    "copy/05-reply-bank.txt"
+  ],
+  "links": {
+    "open_lab": "https://fornevercollective.github.io/grok-build/",
+    "repo": "https://github.com/fornevercollective/grok-build/tree/main/experiments/memory-glass",
+    "webgrid": "https://neuralink.com/webgrid/",
+    "growth": "experiments/memory-glass/docs/MEMORY-GLASS-GROWTH.md",
+    "mini_board": "experiments/memory-glass/docs/MINI-WEBGRID-LEADERBOARD.md"
+  },
+  "notes": "Promo composites for narrative; live capture optional from Memory Glass.app. Human post only."
+}

@@ -1,0 +1,14 @@
+Q: Is this official Neuralink / xAI?
+A: No — Memory Glass is a fornevercollective experiment. WebGrid is the public training game at neuralink.com/webgrid. We measure; we don’t claim implant products.
+
+Q: Where do I try without installing?
+A: Open lab browser → fornevercollective.github.io/grok-build (browser.html). Full dual-space is the native Memory Glass.app from experiments/memory-glass.
+
+Q: Does it auto-post to X?
+A: Never. Drafts only — you post.
+
+Q: Mini leaderboard?
+A: Top-right MINI BOARD chip on 12×12 WebGrid, or capsule MINI LB, or type “mini lb” in the bottom bar.
+
+Q: What’s dual-space?
+A: Path/contrail geometry ↔ Bloch/Rubik educational maps ↔ maze/beats/geo — same session, glass floats, not a chat sidebar AI.

@@ -1,0 +1,36 @@
+1/4
+Memory Glass is a native dual-pane training lab — not another AI browser.
+
+WebGrid in the center. Glass floats around it: maze, Bloch, Rubik, beats staff, GEO scavenger, live rank.
+
+[attach 01-hero]
+
+2/4
+MINI WebGrid (12×12) leaderboard is impossible to miss:
+
+• top-right MINI BOARD chip
+• auto-open on WebGrid
+• lanes ALL · MINI · FULL 30×30
+• click BOARD in the SOLVE HUD
+
+[attach 02-mini-leaderboard]
+
+3/4
+Dual-space stack:
+
+• contrail / pattern flow (path geometry)
+• memory maze + rain packs
+• keyboard beats → music staff
+• USGS geo mag×t flow · Portland Maps–style hunts
+
+[attach 03-dual-space]
+
+4/4
+Bottom bar = navigate + talk:
+
+GO · CHAT · MESH · hunt · claim · day · grok brief · X draft (you post)
+
+Open: fornevercollective.github.io/grok-build
+Repo: fornevercollective/grok-build · experiments/memory-glass
+
+[attach 04-search-bar]
