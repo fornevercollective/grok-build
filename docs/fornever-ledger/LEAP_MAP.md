@@ -1,7 +1,8 @@
 # Memory Glass · LEAP MAP (P-010 rounded)
 
-**Differentiator (explicit):** not more generic tabs, not auto-trading.  
-**Product = agent + vision + train bus + filterable whole-market filmstrip + Lark control + video under-hood + quantum/school cells — one glass surface.**
+**Differentiator (explicit):** not more generic tabs, not auto-trading, **not Dia/Comet**.  
+**Product = agent + vision + train bus + dual-space solve + collab-day mesh + filterable market filmstrip + Lark/GT + video under-hood + quantum/school cells — one glass surface.**  
+**Growth brief:** `experiments/memory-glass/docs/MEMORY-GLASS-GROWTH.md`
 
 ## Surfaces (collapsible rails + inspect dock tabs)
 

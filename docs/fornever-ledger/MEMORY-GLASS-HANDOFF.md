@@ -1,5 +1,8 @@
 # Memory Glass × KBatch handoff (ledger pointer)
 
+**What MG is growing into (Grok-findable):**  
+`experiments/memory-glass/docs/MEMORY-GLASS-GROWTH.md`
+
 **Live paste for DOJO / Grok terminal:**  
 https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md
 
@@ -9,9 +12,12 @@ https://kbatch.ugrad.ai/handoff/MEMORY-GLASS-KBATCH.md
 **MG local pointer:**  
 `experiments/memory-glass/docs/KBATCH-HANDOFF.md`
 
+**Collab communication day:**  
+`experiments/memory-glass/hotpipe/prompt-collab-day.md` · API `__mgCollabDay`
+
 ## Mission
 KBatch = geometry / strain / world-language brain.  
-Memory Glass = glass WebGrid body — clear playfield, main-only chrome, strain-true contrails, dojo↔composer↔steno↔story.
+Memory Glass = glass **training + dual-space lab** body — WebGrid instrument, clear playfield, strain-true contrails, Bloch/Rubik/maze, evidence board, collab mesh — **not** a generic AI browser.
 
 ## KBatch 2026-07-18 snapshot (for MG agents)
 - **FN honor-seed:** 15 Indigenous educational packs on disk; green–amber chips; community-gated; not empty yellow placeholders.

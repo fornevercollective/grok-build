@@ -2,19 +2,27 @@
 
 Live work loop for Grok + Memory Glass **without full app rebuild/relaunch**.
 
+**Growth north star (read first):** [`../docs/MEMORY-GLASS-GROWTH.md`](../docs/MEMORY-GLASS-GROWTH.md)  
+**Collab day:** `prompt-collab-day.md` · `collab-day.js` · capsule **DAY / GROK↦ / MESH+**
+
 ## Layout
 
 | Path | Role |
 |------|------|
 | `live.js` | Injected into the main WKWebView when mtime changes (~1s poll) |
-| `GOALS.md` | North-star goal, **next hurdle (H1 hands/air)**, ladder H0–H9 |
+| `GOALS.md` | North-star · hurdles · ironline · ugrad · collab |
 | `SESSION_HANDOFF.md` | Restart ops + known issues |
+| `MEMORY-GLASS-GROWTH.md` | *(parent docs/)* what MG is growing into |
+| `prompt-collab-day.md` | Communication collab day for Grok / multi-seat |
+| `collab-day.js` | Mesh share score/run · Grok brief · X draft (human) |
+| `webgrid-play.js` | Agent chase · **Intel pace** · play-perf mode |
+| `activity-leaderboard.js` | Local board + open clean `leaderboard.html` |
 | `X_WRITEUP.md` | Public speed / goal language for X–Grok |
 | `prompt.md` | Current agent prompt / intent Grok should extend |
 | `loop.json` | Lightweight loop state (iteration, last pack, last mitigation) |
 | `agent.html` | In-browser agent / prompt surface (navigate via Inspect **Agent**) |
 | `mitigations/*.js` | Auto-applied when inspect errors match a pattern |
-| `patches/*.js` | Optional named patches applied on demand |
+| `data/` | Bench JSON · music packs · filmstrip sample |
 | `out/` | Inspect packs written for Grok Build submit |
 ## Workflow
 

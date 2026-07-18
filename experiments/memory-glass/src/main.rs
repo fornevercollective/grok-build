@@ -1376,6 +1376,7 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
     let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
     let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
+    let collab_day = read_hotpipe_file("collab-day.js").unwrap_or_default();
     let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
@@ -1464,6 +1465,10 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         if !rubik_lang.is_empty() {
             inject_js_blob(wv, &rubik_lang);
         }
+        // Collab communication day (mesh share + Grok brief + X draft human)
+        if !collab_day.is_empty() {
+            inject_js_blob(wv, &collab_day);
+        }
         if !live_hud.is_empty() {
             inject_js_blob(wv, &live_hud);
         }
@@ -1550,6 +1555,9 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !rubik_lang.is_empty() {
         tag.push_str("+rubik");
+    }
+    if !collab_day.is_empty() {
+        tag.push_str("+day");
     }
     if !live_hud.is_empty() {
         tag.push_str("+hud");

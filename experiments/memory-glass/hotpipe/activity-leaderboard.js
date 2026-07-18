@@ -368,6 +368,19 @@
     ) {
       showPostPrompt(run);
     }
+    /* Mesh share for collab day (other seats merge board) */
+    try {
+      if (window.__mgMesh && window.__mgMesh.shareRun) {
+        window.__mgMesh.shareRun({
+          id: run.id,
+          score: run.score,
+          synopsis: run.synopsis,
+          game: run.game,
+          kind: run.kind,
+          metrics: run.metrics,
+        });
+      }
+    } catch (eMesh) {}
     return run;
   }
 

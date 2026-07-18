@@ -1,9 +1,10 @@
 # Memory Glass · Goals, hurdles, ironline, ugrad, competitive plan
 
 **Last updated:** 2026-07-18  
-**Status:** H0–H6 hard · **H7–H9 scaffolds finished** · **R1 research live** · **Iron Line I0–I7** · **μgrad U0–U6** · **Collab mesh** · competitive C-track  
-**Speed first:** WKWebView floor · hot-pipe ≤1s · HUD budget path ≤16ms · ironline L0 ingest μs-class budgets  
-**Not:** Electron embed · multi-ffmpeg · PAGE body thrash · claiming Metal/XR product before hardware
+**Status:** H0–H9 · dual-space stack · activity board · collab-day · Intel play-perf · competitive C-track  
+**Speed first:** WKWebView floor · hot-pipe ≤1s · HUD ≤16ms · **Intel pace** on laptop (sleep_ms≈14)  
+**Growth brief (Grok-findable):** [`docs/MEMORY-GLASS-GROWTH.md`](../docs/MEMORY-GLASS-GROWTH.md)  
+**Not:** Electron embed · Dia clone · auto-X · multi-ffmpeg thrash · implant claims
 
 ---
 
@@ -15,10 +16,11 @@ Ship a **native, low-overhead droplet browser** (tao + wry → WKWebView) that:
 2. **Iterates in ~1s** via hot-pipe (HUD, mesh, contrails, inspect, ironline, ugrad hooks) without full Rust rebuilds.
 3. **Carries spatial + cognitive mix** — face instrument, hands/pen, ironline cortical loop budgets, qbit codec, μgrad training curves.
 4. **Hits sub-16ms spatial HUD frames** as the performance bar (H6 path + I0 speed lane).
-5. **Scales collaboration** — multi-agent mesh, inspect packs, Lab subagents, shared training (WebGrid BPS, games).
-6. **Competes at Rust-browser scale** — architectural posture vs Safari/Chrome/Ladybird/Servo/Firefox (not feature-parity claims).
+5. **Scales collaboration** — multi-agent mesh, collab-day briefs, shared board/runs, Grok packs (human X post).
+6. **Is a training + dual-space lab** — WebGrid BPS · contrail/Bloch/Rubik/maze · KBatch body — not a generic AI browser.
+7. **Competes at Rust-browser scale** — posture vs Safari/Chrome/Ladybird/Servo (not feature-parity claims).
 
-**One-liner:** *Native WKWebView speed floor + hot-pipe + ironline/μgrad learning loops → collaborative droplet browser without Electron bloat.*
+**One-liner:** *Native WKWebView speed floor + hot-pipe + dual-space train + collab mesh → collaborative lab droplet without Electron bloat.*
 
 ---
 

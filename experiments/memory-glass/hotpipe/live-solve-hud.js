@@ -90,6 +90,13 @@
       }
     } catch (e4c) {}
     try {
+      if (window.__mgCollabDay && window.__mgCollabDay.day && window.__mgCollabDay.day()) {
+        parts.push("<b>DAY</b> on");
+      } else if (window.__mgMesh) {
+        parts.push("<b>MESH</b> " + (window.__mgMesh.peerCount ? window.__mgMesh.peerCount() : 0));
+      }
+    } catch (e4d) {}
+    try {
       var dj = window.__mgContrail && window.__mgContrail.lastDojo && window.__mgContrail.lastDojo();
       if (dj && dj.strain != null) parts.push("<b>S</b> " + Math.round(dj.strain));
     } catch (e5) {}

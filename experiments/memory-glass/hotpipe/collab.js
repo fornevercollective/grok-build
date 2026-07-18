@@ -1,9 +1,11 @@
-/* Memory Glass · collab mesh (M0–M3 scaffolds) — large-scale collaboration ready
- * BroadcastChannel mg-mesh + optional ugrad-live bridge. Speed: presence only, no DOM thrash.
+/* Memory Glass · collab mesh (M0–M3+) — large-scale collaboration ready
+ * BroadcastChannel mg-mesh + ugrad-live bridge.
+ * Presence + score/run/chat mirrors for collab-day.
+ * VER: collab-v2-day
  */
 (function () {
   "use strict";
-  var VER = "collab-v1";
+  var VER = "collab-v2-day";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._collabVer === VER) return;
   HP._collabVer = VER;
@@ -24,9 +26,15 @@
   var state = {
     ver: VER,
     seatId: seatId,
-    role: document.getElementById("pip-wrap") ? "inspect" : document.getElementById("mg-root") ? "shell" : "page",
+    role: document.getElementById("pip-wrap")
+      ? "inspect"
+      : document.getElementById("mg-root")
+        ? "shell"
+        : "page",
     peers: {},
     lastRx: 0,
+    lastScore: null,
+    lastRun: null,
   };
 
   var ch = null;
@@ -44,7 +52,7 @@
 
   function broadcast(type, payload) {
     var msg = {
-      v: 1,
+      v: 2,
       t: type || "presence",
       id: seatId,
       role: state.role,
@@ -54,10 +62,16 @@
     try {
       if (ch) ch.postMessage(msg);
     } catch (e) {}
-    /* mirror light presence to ugrad-live for lab companions */
-    if (type === "presence" && ugrad) {
+    if ((type === "presence" || type === "day-score") && ugrad) {
       try {
-        ugrad.postMessage({ type: "presence", source: "memory-glass", id: seatId, role: state.role, ts: msg.ts });
+        ugrad.postMessage({
+          type: type === "presence" ? "presence" : "mg-score",
+          source: "memory-glass",
+          id: seatId,
+          role: state.role,
+          payload: payload || {},
+          ts: msg.ts,
+        });
       } catch (e2) {}
     }
     return msg;
@@ -73,18 +87,20 @@
       ts: data.ts,
       payload: data.payload,
     };
-    /* prune stale > 60s */
+    if (data.t === "day-score" || data.t === "score") state.lastScore = data.payload;
+    if (data.t === "day-run" || data.t === "run") state.lastRun = data.payload;
     var now = Date.now();
     Object.keys(state.peers).forEach(function (k) {
-      if (now - (state.peers[k].ts || 0) > 60000) delete state.peers[k];
+      if (now - (state.peers[k].ts || 0) > 90000) delete state.peers[k];
     });
   }
 
-  if (ch) ch.onmessage = function (ev) {
-    try {
-      onMsg(ev.data);
-    } catch (e) {}
-  };
+  if (ch)
+    ch.onmessage = function (ev) {
+      try {
+        onMsg(ev.data);
+      } catch (e) {}
+    };
   if (ugrad) {
     ugrad.onmessage = function (ev) {
       try {
@@ -102,11 +118,21 @@
   }
 
   function heartbeat() {
-    broadcast("presence", {
+    var payload = {
       iron: window.__mgIronline ? window.__mgIronline.report() : null,
       ugrad: window.__mgUgrad ? window.__mgUgrad.report() : null,
       isolate: window.__mgIsolate || null,
-    });
+      busy: !!window.__mgWebgridPlayBusy,
+    };
+    try {
+      if (window.__mgActivityBoard && window.__mgActivityBoard.report)
+        payload.board = window.__mgActivityBoard.report();
+    } catch (e) {}
+    try {
+      if (window.__mgCollabDay && window.__mgCollabDay.report)
+        payload.day = window.__mgCollabDay.report();
+    } catch (e2) {}
+    broadcast("presence", payload);
     setTimeout(heartbeat, 4000);
   }
   heartbeat();
@@ -115,8 +141,27 @@
     return Object.keys(state.peers).length;
   }
 
+  function shareScore(snap) {
+    state.lastScore = snap || {};
+    return broadcast("day-score", snap || {});
+  }
+
+  function shareRun(run) {
+    state.lastRun = run || {};
+    return broadcast("day-run", run || {});
+  }
+
   function report() {
-    return "mesh " + seatId.slice(0, 6) + " · peers " + peerCount() + " · " + state.role;
+    return (
+      "mesh " +
+      seatId.slice(0, 6) +
+      " · peers " +
+      peerCount() +
+      " · " +
+      state.role +
+      " · " +
+      VER
+    );
   }
 
   window.__mgMesh = {
@@ -126,9 +171,13 @@
     peerCount: peerCount,
     report: report,
     seatId: seatId,
+    shareScore: shareScore,
+    shareRun: shareRun,
+    peers: function () {
+      return state.peers;
+    },
   };
 
-  /* Finish H7: expose isolate map for collab */
   window.__mgIsolate = window.__mgIsolate || {
     track: "inspect",
     agent: "optional",
@@ -138,6 +187,7 @@
   };
   window.__mgIsolate.mesh = "mg-mesh";
   window.__mgIsolate.seat = seatId;
+  window.__mgIsolate.day = "collab-day";
 
-  log("ok", "collab-v1 · mg-mesh · " + state.role + " · " + seatId);
+  log("ok", VER + " · mg-mesh · " + state.role + " · " + seatId);
 })();

@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v5-board";
+  var VER = "glass-capsule-v6-collab";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
@@ -321,8 +321,37 @@
         })
       );
       row.appendChild(
+        act("DAY", "primary", function () {
+          if (window.__mgCollabDay) {
+            if (!window.__mgCollabDay.day()) window.__mgCollabDay.start({});
+            window.__mgCollabDay.toggle();
+            setStatus(window.__mgCollabDay.report());
+          } else setStatus("collab-day missing");
+        })
+      );
+      row.appendChild(
+        act("GROK↦", "ok", function () {
+          if (window.__mgCollabDay && window.__mgCollabDay.exportGrokBrief) {
+            window.__mgCollabDay.exportGrokBrief();
+            setStatus("Grok brief · clipboard + download");
+          } else setStatus("start DAY first");
+        })
+      );
+      row.appendChild(
+        act("MESH+", "ok", function () {
+          if (window.__mgCollabDay) {
+            window.__mgCollabDay.shareScore();
+            setStatus("score shared on mg-mesh");
+          } else if (window.__mgMesh) setStatus(window.__mgMesh.report());
+          else setStatus("mesh missing");
+        })
+      );
+      row.appendChild(
         act("X DRAFT", "hot", function () {
-          if (window.__mgSessionRec && window.__mgSessionRec.exportXDraft) {
+          if (window.__mgCollabDay && window.__mgCollabDay.day && window.__mgCollabDay.day()) {
+            window.__mgCollabDay.exportXDraft();
+            setStatus("collab X draft · you post");
+          } else if (window.__mgSessionRec && window.__mgSessionRec.exportXDraft) {
             window.__mgSessionRec.exportXDraft();
             setStatus("X draft · metrics+board · clipboard");
           } else if (window.__mgActivityBoard && window.__mgActivityBoard.formatXDraft) {
