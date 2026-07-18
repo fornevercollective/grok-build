@@ -8,6 +8,18 @@ Canonical ladder: `hotpipe/GOALS.md` · packs: `~/.panda/packs/mg-*`.
 
 ---
 
+## Single post — R1 Research Mini (X / Grok · next big push)
+
+**R1 Research Mini** is the recommended big push over further spatial H1–H9: always-on **WKWebView** on Mac Mini with a research queue (**topic → tabs → extract packs → Grok**), hot-pipe `research.js`, page capture, IndexedDB storage, and unattended scheduler — using existing **H5 hooks**, tabs IPC, and `agent-parallel` **without** needing full H1 soak or Metal.
+
+**Mini ground-running (0.5–1 day):** launchd start script for `Memory Glass.app` (**PAGE** default, research tabs), optional still-pipe, health monitoring; fix current blocker by powering on Mini, enabling SSH/Remote Login, updating `machines.json` (`192.168.0.44` or USB-C link-local), and `grokpool setup-ssh` for handoff.
+
+**Research loop + unattended (2–4 days):** implement `research.js` (capture / extract / pack schema), `queue.jsonl` scheduler, prompt templates for Grok iteration on next URLs/notes; build on laptop first, then push via grokpool once Mini SSH works — spatial HUD remains optional side-channel.
+
+#MemoryGlass #WKWebView #GrokBuild #MacMini #xAI
+
+---
+
 ## Single post — latest push status (X / Grok · ship note)
 
 Latest push **`5d8aec2`** advances **H1** (MediaPipe Hands + heuristic fallback · air pointer · soak strip · `track_hand` IPC · PAGE thrash-safe) with **partial soak**; **H2–H9** layers include pen tip · dense GSPLAT/WebGPU · IndexedDB · prefetch stats (~350ms) · frame EMA · inspect isolation · CSS rim · face-z touch proxy.
