@@ -2157,16 +2157,20 @@ fn hud_init_script() -> &'static str {
     + "  transform-origin:50% 46%;"
     + "  perspective:none;"
     + "}"
-    + "html.mg-axis-on:not(.mg-yt-theater):not(.mg-yt-fs) body{"
+    + "html.mg-axis-on:not(.mg-yt-theater):not(.mg-yt-fs):not(.mg-scrolling) body{"
     + "  transform:perspective(var(--mg-fov,1600px))"
     + "    rotateX(var(--mg-rx,0deg)) rotateY(var(--mg-ry,0deg))"
-    + "    translate3d(var(--mg-px,0px),var(--mg-py,0px),var(--mg-pz,0px))"
+    /* No translateY — vertical hop fights native scroll; only slight X/Z + rotate */
+    + "    translate3d(var(--mg-px,0px),0px,var(--mg-pz,0px))"
     + "    scale(var(--mg-sc,1))!important;"
     + "  transform-style:preserve-3d;"
+    + "  will-change:transform;"
     + "}"
-    /* Theater / fullscreen: keep page flat so YT player chrome stays clickable */
+    /* While scrolling: freeze body flat so wheel/trackpad isn't fighting CSS transform */
+    + "html.mg-axis-on.mg-scrolling body,"
     + "html.mg-yt-theater body,html.mg-yt-fs body{"
     + "  transform:none!important;"
+    + "  will-change:auto;"
     + "}";
   (document.documentElement || document.head).appendChild(drop);
 
@@ -5449,6 +5453,23 @@ fn hud_init_script() -> &'static str {
       });
     }, { passive: true });
 
+    /* Depth page-axis: freeze body transform while scrolling (kills vertical hop) */
+    window.__mgScrolling = false;
+    var __mgScrollTimer = 0;
+    function __mgMarkScrolling() {
+      window.__mgScrolling = true;
+      try { rootEl.classList.add("mg-scrolling"); } catch (eS) {}
+      if (__mgScrollTimer) clearTimeout(__mgScrollTimer);
+      __mgScrollTimer = setTimeout(function () {
+        window.__mgScrolling = false;
+        try { rootEl.classList.remove("mg-scrolling"); } catch (eS2) {}
+      }, 220);
+    }
+    window.addEventListener("wheel", __mgMarkScrolling, { passive: true, capture: true });
+    window.addEventListener("scroll", __mgMarkScrolling, { passive: true, capture: true });
+    window.addEventListener("touchmove", __mgMarkScrolling, { passive: true, capture: true });
+    document.addEventListener("scroll", __mgMarkScrolling, { passive: true, capture: true });
+
     var planes = [
       { el: document.getElementById("mg-lf-near"), z: 140 },
       { el: document.getElementById("mg-lf-mid"), z: 420 },
@@ -5585,19 +5606,22 @@ fn hud_init_script() -> &'static str {
 
       if (ctrl.anaOn) paintAnaEyes(vx, vy, focusZ, lf, ipd);
 
-      var axisLive = ctrl.pageAxis && !ytState.theater && !ytState.fs;
+      var axisLive = ctrl.pageAxis && !ytState.theater && !ytState.fs && !window.__mgScrolling;
       if (axisLive) {
         /* Decouple from weak LF — min 0.78 so track actually moves the page */
-        var axisPow = Math.max(0.78, lf) * (locked ? 1.35 : 1);
+        var axisPow = Math.max(0.78, lf) * (locked ? 1.2 : 1);
         var tiltN = Math.max(0.35, ctrl.tilt);
         var leanN = Math.max(0.4, ctrl.lean);
-        rootEl.style.setProperty("--mg-rx", (-vy * 18 * tiltN * axisPow + tr * 6).toFixed(3) + "deg");
-        rootEl.style.setProperty("--mg-ry", (vx * 24 * leanN * axisPow).toFixed(3) + "deg");
-        rootEl.style.setProperty("--mg-px", (-vx * 42 * axisPow).toFixed(2) + "px");
-        rootEl.style.setProperty("--mg-py", (-vy * 28 * axisPow).toFixed(2) + "px");
-        rootEl.style.setProperty("--mg-pz", (-Math.abs(vx) * 16 * axisPow + vz * 36).toFixed(2) + "px");
-        rootEl.style.setProperty("--mg-sc", (1 + (Math.abs(vx) + Math.abs(vy)) * 0.014 * axisPow + Math.max(0, vz) * 0.03).toFixed(4));
-      } else {
+        /* Pitch rotation damped — vertical hop was from py + strong rx during scroll */
+        rootEl.style.setProperty("--mg-rx", (-vy * 7 * tiltN * axisPow + tr * 3).toFixed(3) + "deg");
+        rootEl.style.setProperty("--mg-ry", (vx * 18 * leanN * axisPow).toFixed(3) + "deg");
+        rootEl.style.setProperty("--mg-px", (-vx * 28 * axisPow).toFixed(2) + "px");
+        /* Always 0 — body translateY fights scrollTop and causes live vertical hop */
+        rootEl.style.setProperty("--mg-py", "0px");
+        rootEl.style.setProperty("--mg-pz", (-Math.abs(vx) * 10 * axisPow + vz * 22).toFixed(2) + "px");
+        /* Scale only from depth / horizontal lean — not vy (avoids scroll pulse) */
+        rootEl.style.setProperty("--mg-sc", (1 + Math.abs(vx) * 0.01 * axisPow + Math.max(0, vz) * 0.025).toFixed(4));
+      } else if (!window.__mgScrolling) {
         rootEl.style.setProperty("--mg-rx", "0deg");
         rootEl.style.setProperty("--mg-ry", "0deg");
         rootEl.style.setProperty("--mg-px", "0px");
@@ -5605,6 +5629,7 @@ fn hud_init_script() -> &'static str {
         rootEl.style.setProperty("--mg-pz", "0px");
         rootEl.style.setProperty("--mg-sc", "1");
       }
+      /* while __mgScrolling: leave last CSS vars; CSS forces transform:none */
       rootEl.style.setProperty("--mg-lx", (vx * 4.2).toFixed(2) + "px");
       rootEl.style.setProperty("--mg-ly", (vy * 3.2).toFixed(2) + "px");
       rootEl.style.setProperty("--mg-hx", (vx * -7).toFixed(2) + "px");

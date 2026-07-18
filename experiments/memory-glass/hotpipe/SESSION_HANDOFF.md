@@ -1,83 +1,181 @@
-# Memory Glass · session handoff (continue here)
+# Memory Glass · session handoff
 
-Paste this into a **new Grok Build session** (`/new`) to continue live work.
+**Saved:** 2026-07-18T00:48:22Z  
+**Purpose:** restart agent / human session without re-deriving state.
 
 ---
 
-## Kickoff prompt (copy below)
+## Quick restart
 
-```
-Continue Memory Glass live iteration (experiments/memory-glass).
+```bash
+# still-pipe (inspect face feed)
+python3 ~/.panda/vision/still-server.py &
+# ONE capture writer only (avoid multi-ffmpeg cam thrash)
+bash ~/.panda/vision/capture-gentle.sh &
 
-## Product
-- Native macOS browser: tao + wry → WKWebView (not Chrome/Electron)
-- App: ~/Applications/Memory Glass.app  (also experiments/memory-glass/Memory Glass.app)
-- Bundle ID: dev.fornevercollective.memory-glass
-- Stamp on every window: v{PKG} · b{BUILD_EPOCH} · r{RUN_EPOCH}
-  - b = compile-time Unix epoch (build.rs)
-  - r = process start epoch
-  - User must match stamp to know relaunch is live
-
-## Launch
+# app
 open -n "$HOME/Applications/Memory Glass.app"
-# safe (hot-pipe off):
-MG_HOTPIPE_OFF=1 open -n "$HOME/Applications/Memory Glass.app"
+# or rebuild first:
+cd /Users/qbit/Projects/grok-build/experiments/memory-glass && bash build-mac-app.sh
 
-## Hot-pipe (prefer for JS/HUD fixes — no full relaunch)
-Path: experiments/memory-glass/hotpipe/
-- live.js          → auto soft-inject on mtime (~1.5s poll)
-- mitigations/     → once-per-stem auto apply on real err only
-- agent.html       → Inspect › Agent
-- prompt.md        → live intent
-- out/             → inspect packs
-- SESSION_HANDOFF.md → this file
+# voice (optional; mute while typing)
+bash ~/.panda/voice/mute.sh on
+```
 
-Inspect float (⌘⌥I): Copy · → Grok · Hot · Mitigate · Agent
-Packs: hotpipe/out/inspect-pack-*.md + ~/.panda/packs/mg-inspect.json
+**Hot-pipe (no rebuild):** edit `experiments/memory-glass/hotpipe/live.js` → app auto-injects from  
+`~/Applications/Memory Glass.app/Contents/Resources/hotpipe/` **or** source tree when not in `.app`.  
+When running the `.app`, prefer **bundled** Resources; copy live.js into the app after edits:
 
-## UI layout (current)
-- Top-left: version stamp (plain text, no circle) near grab dots
-- Top-right: . inspect  then  . depth ▾  (page | cinema | depth)
-- Coverflow + camera PIP live inside inspect float (not bottom of main page)
-- Coverflow credit ONLY in source comments (not public UI)
-- CTRL: Eye presets then Glasses Rx under Eye; Modes; Lens; Stereo; Track
-
-## Three site modes
-- page   — normal site, pointer only, no cam/cinema
-- cinema — theater dim, more see-through, mouse tracking
-- depth  — full face+hands+lidar+axis+no-glasses stack (default)
-
-## Eye presets
-human eagle cat owl dog horse spider gecko fly(Compound) calibrate(No-glasses)
-
-## Known fixed recently
-- Hot-pipe mitigate feedback storm (IPC loop) → once-per-stem + skip noise srcs
-- Camera request no longer blocks main thread 20s
-- Clipboard via native pbcopy (navigator.clipboard often missing in WKWebView)
-- Inspect PIP: hide mirrored play chrome; coverflow clipped under PIP
-- Glasses Rx moved under Eye
-
-## Known open / fragile
-- Camera TCC: status can flip notDetermined on fresh process; System Settings › Camera must allow Memory Glass
-- Dock icon cache: killall Dock if logo looks stale (stamp is truth)
-- Live gsplat/lidar/page-prism parallelism still ~proxy (2.5D HUD), not real multi-view 3DGS
-- Multi-webview live page textures for true prism stack not built
-
-## How user reports issues
-"I clicked X, expected Y, saw Z · stamp b… r…"
-or paste Inspect → Copy dump
-
-## How agent fixes
-1. Prefer hotpipe/live.js or mitigations/*.js (soft inject)
-2. cargo build + build-mac-app.sh only for Rust/window/IPC
-3. Always tell user the new b{epoch} after rebuild
-4. Never re-enable spam mitigations or blocking camera wait
-
-Continue: wait for user report or inspect dump; fix via hot-pipe first.
+```bash
+cp experiments/memory-glass/hotpipe/live.js \
+  "$HOME/Applications/Memory Glass.app/Contents/Resources/hotpipe/live.js"
 ```
 
 ---
 
-## One-liner for user after `/new`
+## Git
 
-Open Memory Glass, confirm stamp top-left, try **page / cinema / depth**, then either paste Inspect **Copy** here or say: *I clicked X, saw Y*.
+| Item | Value |
+|------|--------|
+| Repo | `/Users/qbit/Projects/grok-build` |
+| Remote | `origin/main` (fornevercollective/grok-build) |
+| **Pushed commit** | `a678887` — *Add Memory Glass native browser experiment with inspect face track.* |
+| Branch | `main` matches origin after push |
+
+### Uncommitted at handoff time
+
+```
+M experiments/memory-glass/src/main.rs   # DEPTH scroll-hop fix (mg-scrolling, --mg-py=0)
+M docs/architecture-lab/browser.html     # unrelated lab
+?? docs/architecture-lab/assets/lab-page-metrics.js
+```
+
+**Do next session:** commit + push the `main.rs` scroll fix if still only local.
+
+---
+
+## Binary / stamp last known good
+
+| | |
+|--|--|
+| App | `~/Applications/Memory Glass.app` |
+| Last build stamp | **v0.2.0 · b1784335396 · r1784335412** |
+| Bundle epoch | ~1784335410 |
+| Hot-pipe VER | **live-v16-path** (mesh + path contrails + spatial lock) |
+| live.js size | ~61KB |
+
+---
+
+## Architecture (do not unlearn)
+
+| Layer | Path | Owns |
+|-------|------|------|
+| **Rust shell** | `experiments/memory-glass/src/main.rs` | Windows, menus, IPC (`track_pose`, `track_people`), inspect HTML, PAGE/CINEMA/DEPTH, cam auth |
+| **Hot-pipe** | `hotpipe/live.js` | Face mesh, matte, paths, spatial calib, multi-subject zones |
+| **Still-pipe** | `~/.panda/vision/` + still-server :9877 | `live.jpg` / `glass.jpg`; phone `POST /upload` |
+| **Voice** | `~/.panda/voice/` (+ Resources-pack/voice) | mute, whisper bridge, TTS, dial-in |
+| **Plugin pack** | `plugin/SKILL.md`, `ARCHITECTURE.md`, `Resources-pack/MANIFEST.md` | Grok Build ground-running |
+
+**Rules that matter**
+
+1. **Hot-pipe first** for track/HUD; rust rebuild only for window/IPC/native.  
+2. **PAGE default** — DEPTH is opt-in (cam/axis thrash history).  
+3. **Inspect owns heavy track**; main stays calm (no body filter thrash).  
+4. **Single camera writer** for `live.jpg` — multi-ffmpeg = LED thrash / empty feed.  
+5. Mesh/matte defaults **low** so face stays visible (MESH α ~0.28, MATTE α ~0.14).
+
+---
+
+## Features shipped (current)
+
+### Browser
+- Native tao+wry WKWebView droplet shell  
+- PAGE / CINEMA / DEPTH modes  
+- CTRL menus · tabs · search · ⌘R / menus (Navigate · View · Edit · Window)  
+- Tile browser + inspect on-screen  
+- Inspect: Cam/Mic, hot, mitigate, agent, meters (RAM/GPU/Spool/FPS)
+
+### Track (inspect + still-pipe)
+- 468 mesh (MediaPipe when CDN works · lattice fallback)  
+- Soft person matte (light α)  
+- ofx features + 6DOF  
+- **Path contrails** (Daito/fencing tip: nose/gaze/brow, velocity color)  
+- Spatial HEAD LOCK · rest · look extent · MOCAP/HDRI/GSPLAT ref  
+- Multi-face · click assign subject · HOME/NEAR/PUBLIC/PRIVATE zones  
+- IPC `track_people` / `track_pose` (main stores CSS vars; page axis optional in DEPTH)
+
+### DEPTH scroll fix (in working tree if not committed)
+- `--mg-py` always 0  
+- `html.mg-scrolling` freezes body transform during wheel/scroll  
+- Damped pitch; no scale-from-vy  
+
+### Voice (optional)
+- `mute.sh` · bridge dial-in v2 · large whisper via `env.sh`  
+- speak.sh xAI TTS fallback · clone-voice · STS scaffold  
+- Session export: `~/.panda/voice/sessions/`
+
+---
+
+## Known issues / next builds
+
+| Issue | Notes |
+|-------|--------|
+| Camera multi-grab | Only one capture-gentle + still-server |
+| Auth flap | AV status 0 at boot then prompt; System Settings › Camera › Memory Glass |
+| MediaPipe CDN | Often blocked; lattice 468 still works |
+| Hands / in-air touch | Disabled on main (thrash); re-enable carefully |
+| Pen/object track | Not built — needs tip detector + stable video |
+| Git | Scroll fix in main.rs may be uncommitted |
+
+**Roadmap distance (approx.)**  
+- Face instrument + paths: **shipped**  
+- Hands + air pointer: **days**  
+- Pen tip + depth touch: **1–2+ weeks**  
+- XR product: **months / other stack**
+
+---
+
+## Key paths
+
+```
+experiments/memory-glass/
+  src/main.rs
+  hotpipe/live.js          # VER live-v16-path
+  hotpipe/LINEAGE.md
+  hotpipe/SESSION_HANDOFF.md  # this file
+  build-mac-app.sh
+  ARCHITECTURE.md
+  plugin/SKILL.md
+  Resources-pack/
+
+~/Applications/Memory Glass.app
+~/Library/Logs/MemoryGlass/launch.log
+~/.panda/vision/{live.jpg,still-server.py,capture-gentle.sh}
+~/.panda/voice/{mute.sh,voice-bridge.sh,speak.sh,sessions/}
+```
+
+---
+
+## Product rules (from live sessions)
+
+- Stamp `v{pkg} · b{epoch} · r{epoch}`  
+- No mitigate storms / no blocking camera wait on launch  
+- TTS mute + spoken.log echo filter when voice on  
+- Prefer inspect for mesh; don’t obscure face (low α)  
+- DEPTH: scroll must not hop (see main.rs mg-scrolling)
+
+---
+
+## Agent prompt seed (paste next session)
+
+```
+Continue Memory Glass (experiments/memory-glass). Read hotpipe/SESSION_HANDOFF.md.
+Hot-pipe first (live.js); rust rebuild only for native/IPC.
+Latest: live-v16-path, PAGE default, depth scroll fix may be uncommitted in main.rs.
+Still-pipe :9877, single cam writer. Git: a678887 pushed; commit scroll fix if pending.
+Do not reintroduce body filter thrash or multi-ffmpeg on device 0.
+```
+
+---
+
+*End of handoff. Background monitors should be stopped when this file is written.*
