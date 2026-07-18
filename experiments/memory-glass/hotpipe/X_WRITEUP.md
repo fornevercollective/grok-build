@@ -8,7 +8,19 @@ Canonical ladder: `hotpipe/GOALS.md` · packs: `~/.panda/packs/mg-*`.
 
 ---
 
-## Single post — public accuracy (X / Grok · primary · transparent)
+## Single post — latest push status (X / Grok · ship note)
+
+Latest push **`5d8aec2`** advances **H1** (MediaPipe Hands + heuristic fallback · air pointer · soak strip · `track_hand` IPC · PAGE thrash-safe) with **partial soak**; **H2–H9** layers include pen tip · dense GSPLAT/WebGPU · IndexedDB · prefetch stats (~350ms) · frame EMA · inspect isolation · CSS rim · face-z touch proxy.
+
+**`live-v18-hurdles`** (`hotpipe/live.js`) + **`hurdles-v1`** (`hotpipe/hurdles.js`) inject dynamically; `bash build-mac-app.sh` pulls Rust prefetch + boot hurdles; still-pipe vision servers run separately for cam input.
+
+Inspect strip tracks hurdle status (**H1 soak … H9 z…**). Honest limits: canvas densify ≠ full Metal · no service worker · heuristics ≠ learned detectors. **H1 full ≥5‑min hands soak** pending before green-check (**SOAK✓**).
+
+#MemoryGlass #WKWebView #Rust #GrokBuild #xAI
+
+---
+
+## Single post — public accuracy (X / Grok · goal ladder · transparent)
 
 North-star for **Memory Glass:** a native **WKWebView** droplet browser with ~1s **hot-pipe** JS iteration, spatial mix (**GSPLAT**, HUD, paths), and live Grok integration — avoiding Electron bloat while targeting **sub-16ms** spatial HUD frames.
 
