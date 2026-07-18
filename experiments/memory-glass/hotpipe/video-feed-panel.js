@@ -131,15 +131,15 @@
     var st = document.createElement("style");
     st.id = "mg-vid-css";
     st.textContent = [
-      "#mg-vid-rail{position:fixed;top:48px;left:0;z-index:119;display:flex;flex-direction:row;",
+      "#mg-vid-rail{position:fixed;top:auto;bottom:48px;left:0;z-index:119;max-height:46%;display:flex;flex-direction:row;",
       "  font:600 9px/1.25 ui-monospace,Menlo,monospace;pointer-events:none}",
       "#mg-vid-tab{pointer-events:auto;writing-mode:vertical-rl;",
-      "  appearance:none;cursor:pointer;border:1px solid rgba(140,180,255,0.4);",
-      "  background:rgba(8,10,18,0.94);color:rgba(180,210,255,0.92);padding:10px 6px;",
+      "  appearance:none;cursor:pointer;border:1px solid rgba(160,180,200,0.28);",
+      "  background:rgba(10,12,16,0.94);color:rgba(160,210,255,0.95);padding:10px 6px;",
       "  border-radius:0 4px 4px 0;letter-spacing:0.12em;text-transform:uppercase}",
       "#mg-vid-panel{pointer-events:auto;width:0;overflow:hidden;transition:width .18s ease;",
-      "  background:rgba(6,8,14,0.96);border-right:1px solid rgba(120,150,220,0.28);",
-      "  color:rgba(210,220,240,0.92);display:flex;flex-direction:column;max-height:calc(100vh - 56px)}",
+      "  background:rgba(8,10,14,0.97);border-right:1px solid rgba(160,180,200,0.28);",
+      "  color:rgba(210,225,240,0.92);display:flex;flex-direction:column;max-height:calc(100vh - 56px)}",
       "#mg-vid-rail.open #mg-vid-panel{width:min(380px,90vw)}",
       "#mg-vid-head{display:flex;justify-content:space-between;padding:8px 10px;",
       "  border-bottom:1px solid rgba(120,150,220,0.22);letter-spacing:0.1em;text-transform:uppercase}",

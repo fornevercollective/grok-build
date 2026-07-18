@@ -53,6 +53,48 @@ def webgrid_trials(path: Path, limit: int = 20000) -> list[dict[str, Any]]:
         except Exception:
             continue
         kind = o.get("kind")
+        # Contrail path phrasing (kbatch-style movement tokens) → predictive features
+        if kind in ("contrail_stroke", "contrail_summary"):
+            feats = o.get("features") or []
+            if not isinstance(feats, list) or len(feats) < 3:
+                st = o.get("stats") or {}
+                feats = [
+                    float(st.get("samples") or o.get("n") or 0),
+                    float(st.get("strokes") or o.get("turns") or 0),
+                    float(st.get("totalLen") or o.get("len") or 0),
+                    float(st.get("meanV") or o.get("meanV") or 0),
+                    float(st.get("maxV") or o.get("maxV") or 0),
+                    float(st.get("turnRate") or o.get("turnRate") or 0),
+                ]
+            while len(feats) < 6:
+                feats.append(0.0)
+            out.append(
+                {
+                    "domain": "webgrid_contrail",
+                    "t": o.get("t") or time.time(),
+                    "kind": kind,
+                    "features": {
+                        "signal_strength": _clamp01(float(feats[3]) / 3.0),
+                        "event_rate": _clamp01(float(feats[5])),
+                        "resolution": _clamp01(float(feats[0]) / 200.0),
+                        "accuracy": _clamp01(1.0 - min(1.0, float(feats[5]))),
+                        "exposure": _clamp01(float(feats[1]) / 40.0),
+                        "rsi_proxy": _clamp01(float(feats[2]) * 2.0),
+                        "macd_hist_proxy": _clamp01(float(feats[4]) / 4.0),
+                        "bb_width_proxy": _clamp01(float(o.get("hops") or 0) / 20.0),
+                    },
+                    "label": int(o.get("label") if o.get("label") is not None else 1),
+                    "meta": {
+                        "phrase": (o.get("phrase") or (o.get("stats") or {}).get("lastPhrase") or "")[
+                            :64
+                        ],
+                        "turns": o.get("turns"),
+                        "hops": o.get("hops"),
+                        "kbatch_style": True,
+                    },
+                }
+            )
+            continue
         if kind not in ("agent_tick", "agent_end", "agent_round_result", "sample"):
             continue
         # Truth filter (P-001)

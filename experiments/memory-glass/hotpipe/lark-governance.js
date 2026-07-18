@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "lark-governance-v1";
+  var VER = "lark-governance-v2-sx";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._larkGovVer === VER) return;
   HP._larkGovVer = VER;
@@ -143,37 +143,19 @@
   }
 
   function ensureStyles() {
+    try {
+      if (window.__mgSxRail) window.__mgSxRail.ensure();
+    } catch (e) {}
     if (document.getElementById("mg-lark-css")) return;
     var st = document.createElement("style");
     st.id = "mg-lark-css";
+    /* LARK uses shared .mg-sx-* ; only id anchors + pol layout */
     st.textContent = [
-      "#mg-lark-rail{position:fixed;bottom:12px;right:48px;z-index:118;display:flex;flex-direction:column;",
-      "  align-items:flex-end;font:600 9px/1.25 ui-monospace,Menlo,monospace;pointer-events:none}",
-      "#mg-lark-tab{pointer-events:auto;appearance:none;cursor:pointer;",
-      "  border:1px solid rgba(200,160,255,0.4);background:rgba(14,10,20,0.94);",
-      "  color:rgba(220,190,255,0.92);padding:6px 10px;border-radius:4px;",
-      "  letter-spacing:0.12em;text-transform:uppercase}",
-      "#mg-lark-panel{pointer-events:auto;width:0;max-height:0;overflow:hidden;transition:all .18s ease;",
-      "  background:rgba(10,8,16,0.97);border:1px solid rgba(180,140,255,0.28);",
-      "  color:rgba(230,220,250,0.92);margin-bottom:6px;border-radius:4px}",
-      "#mg-lark-rail.open #mg-lark-panel{width:min(400px,92vw);max-height:min(70vh,520px);",
-      "  display:flex;flex-direction:column}",
-      "#mg-lark-head{padding:8px 10px;border-bottom:1px solid rgba(160,120,220,0.22);",
-      "  display:flex;justify-content:space-between;letter-spacing:0.1em;text-transform:uppercase}",
-      "#mg-lark-meta{padding:6px 10px;opacity:0.9;font-weight:500;",
-      "  border-bottom:1px solid rgba(160,120,220,0.12)}",
-      "#mg-lark-tree{flex:1;overflow:auto;padding:6px 8px}",
-      "#mg-lark-tree .layer{padding:5px 6px;margin-bottom:3px;border:1px solid rgba(140,100,200,0.2);",
-      "  border-radius:3px;cursor:pointer}",
-      "#mg-lark-tree .layer.on{border-color:rgba(200,160,255,0.55);background:rgba(40,24,60,0.45)}",
-      "#mg-lark-tree .tools{opacity:0.75;font-weight:500;margin-top:2px}",
-      "#mg-lark-pol{padding:6px 10px;border-top:1px solid rgba(160,120,220,0.2);display:flex;flex-wrap:wrap;gap:6px}",
-      "#mg-lark-pol label{display:flex;align-items:center;gap:3px;opacity:0.9}",
-      "#mg-lark-acts{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px 8px}",
-      "#mg-lark-acts button{appearance:none;cursor:pointer;border:1px solid rgba(180,140,255,0.35);",
-      "  background:rgba(16,12,24,0.95);color:inherit;padding:5px 7px;border-radius:3px;",
-      "  text-transform:uppercase;letter-spacing:0.06em}",
-      "#mg-lark-status{padding:0 8px 8px;opacity:0.8;font-weight:500}",
+      "#mg-lark-rail.mg-sx-rail{z-index:121}",
+      "#mg-lark-pol{padding:8px 12px;border-top:1px solid rgba(160,180,200,0.18);",
+      "  display:flex;flex-wrap:wrap;gap:8px;color:rgba(150,170,190,0.85)}",
+      "#mg-lark-pol label{display:flex;align-items:center;gap:4px;letter-spacing:0.04em}",
+      "#mg-lark-tree{flex:1;overflow:auto;padding:8px 10px}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }
@@ -202,14 +184,14 @@
     treeEl.innerHTML = "";
     LAYERS.forEach(function (L) {
       var d = document.createElement("div");
-      d.className = "layer" + (state.focusLayer === L.id ? " on" : "");
+      d.className = "mg-sx-card" + (state.focusLayer === L.id ? " on" : "");
       d.innerHTML =
         "<div>" +
         L.label +
         ' <span style="opacity:0.55">h' +
         L.hops +
         "</span></div>" +
-        '<div class="tools">' +
+        '<div class="sub">' +
         (L.tools || []).join(" · ") +
         "</div>";
       d.onclick = function () {
@@ -278,11 +260,13 @@
     if (document.getElementById("mg-lark-rail")) return;
     rail = document.createElement("div");
     rail.id = "mg-lark-rail";
+    rail.className = "mg-sx-rail right stack-full";
     rail.innerHTML =
-      '<div id="mg-lark-panel">' +
-      '  <div id="mg-lark-head"><span>Lark · Governance</span>' +
-      '  <button type="button" id="mg-lark-x" style="appearance:none;background:transparent;border:0;color:inherit;cursor:pointer">×</button></div>' +
-      '  <div id="mg-lark-meta"></div>' +
+      '<button type="button" id="mg-lark-tab" class="mg-sx-tab" title="Lark governance">LARK</button>' +
+      '<div id="mg-lark-panel" class="mg-sx-panel">' +
+      '  <div class="mg-sx-head"><span>Lark · Governance</span>' +
+      '  <button type="button" id="mg-lark-x" aria-label="close">×</button></div>' +
+      '  <div id="mg-lark-meta" class="mg-sx-meta"></div>' +
       '  <div id="mg-lark-tree"></div>' +
       '  <div id="mg-lark-pol">' +
       '    <label><input type="checkbox" id="mg-lark-notrade" checked /> no auto-trade</label>' +
@@ -290,14 +274,13 @@
       '    <label><input type="checkbox" id="mg-lark-resign" checked /> resign after edit</label>' +
       '    <label><input type="checkbox" id="mg-lark-stable" checked /> stable mkt window</label>' +
       "  </div>" +
-      '  <div id="mg-lark-acts">' +
-      '    <button type="button" id="mg-lark-tick">TICK</button>' +
-      '    <button type="button" id="mg-lark-exp">EXPORT</button>' +
-      '    <button type="button" id="mg-lark-fleet">FLEET</button>' +
+      '  <div class="mg-sx-row" id="mg-lark-acts">' +
+      '    <button type="button" class="mg-sx-btn ok" id="mg-lark-tick">TICK</button>' +
+      '    <button type="button" class="mg-sx-btn" id="mg-lark-exp">EXPORT</button>' +
+      '    <button type="button" class="mg-sx-btn hot" id="mg-lark-fleet">FLEET</button>' +
       "  </div>" +
-      '  <div id="mg-lark-status"></div>' +
-      "</div>" +
-      '<button type="button" id="mg-lark-tab" title="Lark governance">LARK</button>';
+      '  <div id="mg-lark-status" class="mg-sx-status"></div>' +
+      "</div>";
     (document.body || document.documentElement).appendChild(rail);
     metaEl = rail.querySelector("#mg-lark-meta");
     treeEl = rail.querySelector("#mg-lark-tree");
@@ -351,7 +334,7 @@
     paintTree();
     paintStatus();
     setInterval(tickEpoch, 5000);
-    log("ok", VER + " · LARK control surface");
+    log("ok", VER + " · SpaceX right rail");
   }
 
   window.__mgLark = {

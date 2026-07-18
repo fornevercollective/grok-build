@@ -1360,6 +1360,8 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     let video = read_hotpipe_file("video-feed-panel.js").unwrap_or_default();
     let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
+    let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
+    let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
     for wv in targets {
         inject_js_blob(wv, &js);
         // full-body IK after live so hooks + calib ui exist
@@ -1396,6 +1398,13 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
         // Neuralink WebGrid auto-play ONLY inside our WKWebView (never Chromium)
         if !webgrid.is_empty() {
             inject_js_blob(wv, &webgrid);
+        }
+        if !contrail.is_empty() {
+            inject_js_blob(wv, &contrail);
+        }
+        // SpaceX rail chrome before side panels
+        if !sx_rail.is_empty() {
+            inject_js_blob(wv, &sx_rail);
         }
         if !market.is_empty() {
             inject_js_blob(wv, &market);
@@ -1457,6 +1466,12 @@ fn inject_live_js(targets: &[&wry::WebView]) -> bool {
     }
     if !quantum.is_empty() {
         tag.push_str("+qwg");
+    }
+    if !sx_rail.is_empty() {
+        tag.push_str("+sx");
+    }
+    if !contrail.is_empty() {
+        tag.push_str("+contrail");
     }
     eprintln!("hotpipe: {tag} injected → {} surface(s)", targets.len());
     true

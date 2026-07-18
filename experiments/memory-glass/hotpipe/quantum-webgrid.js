@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  var VER = "quantum-webgrid-v1";
+  var VER = "quantum-webgrid-v2-sx";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._quantumWgVer === VER) return;
   HP._quantumWgVer = VER;
@@ -160,38 +160,22 @@
   }
 
   function ensureStyles() {
+    try {
+      if (window.__mgSxRail) window.__mgSxRail.ensure();
+    } catch (e) {}
     if (document.getElementById("mg-qwg-css")) return;
     var st = document.createElement("style");
     st.id = "mg-qwg-css";
     st.textContent = [
-      "#mg-qwg-rail{position:fixed;bottom:12px;left:48px;z-index:117;display:flex;flex-direction:column;",
-      "  font:600 9px/1.25 ui-monospace,Menlo,monospace;pointer-events:none}",
-      "#mg-qwg-tab{pointer-events:auto;appearance:none;cursor:pointer;",
-      "  border:1px solid rgba(100,220,255,0.4);background:rgba(6,14,18,0.94);",
-      "  color:rgba(160,230,255,0.92);padding:6px 10px;border-radius:4px;",
-      "  letter-spacing:0.12em;text-transform:uppercase;align-self:flex-start}",
-      "#mg-qwg-panel{pointer-events:auto;width:0;max-height:0;overflow:hidden;transition:all .18s ease;",
-      "  background:rgba(4,12,16,0.97);border:1px solid rgba(80,180,220,0.28);",
-      "  color:rgba(200,230,245,0.92);margin-bottom:6px;border-radius:4px}",
-      "#mg-qwg-rail.open #mg-qwg-panel{width:min(420px,94vw);max-height:min(75vh,560px);",
-      "  display:flex;flex-direction:column}",
-      "#mg-qwg-head{padding:8px 10px;border-bottom:1px solid rgba(80,180,220,0.22);",
-      "  display:flex;justify-content:space-between;letter-spacing:0.1em;text-transform:uppercase}",
-      "#mg-qwg-canvas-wrap{height:160px;margin:6px 8px;border:1px solid rgba(80,180,220,0.2);",
-      "  border-radius:3px;background:rgba(0,0,0,0.35)}",
-      "#mg-qwg-canvas-wrap canvas{width:100%;height:100%;display:block}",
-      "#mg-qwg-gates{display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px}",
-      "#mg-qwg-gates button,#mg-qwg-acts button{appearance:none;cursor:pointer;",
-      "  border:1px solid rgba(100,190,230,0.35);background:rgba(8,18,24,0.95);",
-      "  color:inherit;padding:5px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.06em}",
-      "#mg-qwg-acts button.hot{border-color:rgba(255,180,100,0.5);color:rgba(255,220,180,0.95)}",
-      "#mg-qwg-acts{display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px}",
-      "#mg-qwg-table{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:6px 8px;",
-      "  max-height:140px;overflow:auto}",
-      "#mg-qwg-table .cell{border:1px solid rgba(80,160,200,0.25);border-radius:2px;padding:4px;",
-      "  text-align:center;cursor:pointer;background:rgba(0,20,30,0.5)}",
-      "#mg-qwg-table .cell:hover{border-color:rgba(140,220,255,0.55)}",
-      "#mg-qwg-status{padding:4px 8px 8px;opacity:0.85;font-weight:500}",
+      "#mg-qwg-rail.mg-sx-rail{z-index:120}",
+      "#mg-qwg-gates{display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px}",
+      "#mg-qwg-table{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:6px 10px;",
+      "  max-height:160px;overflow:auto}",
+      "#mg-qwg-table .cell{border:1px solid rgba(160,180,200,0.22);border-radius:2px;padding:5px;",
+      "  text-align:center;cursor:pointer;background:rgba(10,12,16,0.55);",
+      "  letter-spacing:0.06em;text-transform:uppercase}",
+      "#mg-qwg-table .cell:hover{border-color:rgba(120,200,255,0.55);",
+      "  box-shadow:0 0 8px rgba(100,190,255,0.12);color:#fff}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }
@@ -284,22 +268,23 @@
     if (document.getElementById("mg-qwg-rail")) return;
     rail = document.createElement("div");
     rail.id = "mg-qwg-rail";
+    rail.className = "mg-sx-rail left stack-full";
     rail.innerHTML =
-      '<div id="mg-qwg-panel">' +
-      '  <div id="mg-qwg-head"><span>Quantum · WebGrid</span>' +
-      '  <button type="button" id="mg-qwg-x" style="appearance:none;background:transparent;border:0;color:inherit;cursor:pointer">×</button></div>' +
-      '  <div id="mg-qwg-canvas-wrap"><canvas id="mg-qwg-cv"></canvas></div>' +
+      '<button type="button" id="mg-qwg-tab" class="mg-sx-tab" title="Quantum WebGrid">QBIT</button>' +
+      '<div id="mg-qwg-panel" class="mg-sx-panel">' +
+      '  <div class="mg-sx-head"><span>Quantum · WebGrid</span>' +
+      '  <button type="button" id="mg-qwg-x" aria-label="close">×</button></div>' +
+      '  <div class="mg-sx-canvas-wrap"><canvas id="mg-qwg-cv"></canvas></div>' +
       '  <div id="mg-qwg-gates"></div>' +
-      '  <div id="mg-qwg-acts">' +
-      '    <button type="button" id="mg-qwg-score" class="hot">SCORE HIT</button>' +
-      '    <button type="button" id="mg-qwg-reset">|0⟩</button>' +
-      '    <button type="button" id="mg-qwg-composer">COMPOSER</button>' +
-      '    <button type="button" id="mg-qwg-uvq">UVQBIT</button>' +
+      '  <div class="mg-sx-row" id="mg-qwg-acts">' +
+      '    <button type="button" class="mg-sx-btn hot" id="mg-qwg-score">SCORE HIT</button>' +
+      '    <button type="button" class="mg-sx-btn" id="mg-qwg-reset">|0⟩</button>' +
+      '    <button type="button" class="mg-sx-btn ok" id="mg-qwg-composer">COMPOSER</button>' +
+      '    <button type="button" class="mg-sx-btn" id="mg-qwg-uvq">UVQBIT</button>' +
       "  </div>" +
       '  <div id="mg-qwg-table"></div>' +
-      '  <div id="mg-qwg-status"></div>' +
-      "</div>" +
-      '<button type="button" id="mg-qwg-tab" title="Quantum WebGrid">QBIT</button>';
+      '  <div id="mg-qwg-status" class="mg-sx-status"></div>' +
+      "</div>";
     (document.body || document.documentElement).appendChild(rail);
     cv = rail.querySelector("#mg-qwg-cv");
     statusEl = rail.querySelector("#mg-qwg-status");
@@ -308,6 +293,7 @@
     GATES.forEach(function (g) {
       var b = document.createElement("button");
       b.type = "button";
+      b.className = "mg-sx-btn";
       b.textContent = g.id;
       b.title = g.name;
       b.onclick = function () {
@@ -368,7 +354,7 @@
     };
 
     paint();
-    log("ok", VER + " · Bloch + periodic capsules");
+    log("ok", VER + " · SpaceX left rail · Bloch");
   }
 
   window.__mgQuantum = {

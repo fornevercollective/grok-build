@@ -944,6 +944,11 @@
             window.__mgUgradWebgrid.observeCell(tgt.index, N);
           }
         } catch (eOb) {}
+        try {
+          if (window.__mgContrail && window.__mgContrail.observeAgent) {
+            window.__mgContrail.observeAgent(tgt.clientX, tgt.clientY, tgt.index, tgt.conf);
+          }
+        } catch (eCt) {}
         if (clicks % 40 === 0) {
           report("agent_tick", {
             clicks: clicks,
