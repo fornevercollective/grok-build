@@ -8,6 +8,18 @@ Canonical ladder: `hotpipe/GOALS.md` · packs: `~/.panda/packs/mg-*`.
 
 ---
 
+## Single post — Perceptron-first R1 churn (X / Grok)
+
+**Perceptron Egocentric** stands out as highest-priority thread for immediate **R1** value: **21-kpt hands** + atomic events / action taxonomy directly boosts **H1/H2** (in-air pointer, pen tip) and still-pipe ego batching **without PAGE thrash** — start with the July 2026 blog/SDK for Mini arm64 integration.
+
+**Mini research churn sequence:** `git pull` → open `cv-2026` pack → **TOPIC** each cluster (tennis/TrackNet, 3D HPE, SuperMap SLAM, GenCaption/GNM) → browse sources → **⌥⌘R** packs; harvest **@tokufxag** X links next for FX vision, then pin exact repos/PDFs (Shah Faisal / Tracknetics, Bharath Kumar) to close gaps.
+
+**Honest next hurdles:** confirm GenCaption / GNM / SuperMap paper titles/PDFs for accurate extraction; parallelize **pack → Grok** summarization + next-URLs enqueue; treat spatial upgrades (**H1 soak**, 3D HPE lift) as non-blocking side research while keeping focus on **unattended queue loop throughput**.
+
+#MemoryGlass #Perceptron #Egocentric #R1 #MacMini #GrokBuild #xAI
+
+---
+
 ## Single post — R1 core loop polish (X / Grok · immediate)
 
 **R1 core loop polish (immediate):** harden `research.js` capture (full page text + selection + meta **without layout break**), reliable `queue.jsonl` / live queue scheduler (launchd or Grok Build task), and **pack → Grok → next-URLs** feedback (`ingestGrokReply`) — biggest unlock for unattended Mini churn while keeping WKWebView lightweight.
