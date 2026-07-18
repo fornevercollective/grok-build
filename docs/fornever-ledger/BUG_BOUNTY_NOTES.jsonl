@@ -2,3 +2,6 @@
 {"t":"2026-07-18T08:30:00Z","id":"MG-002","event":"catalogued","note":"Glass reassert storm crash; debounced"}
 {"t":"2026-07-18T08:30:00Z","id":"MG-006","event":"open","note":"Score scrape picks marketing 10.39 and 40x40; fix sidebar-only parse"}
 {"t":"2026-07-18T08:30:00Z","id":"ledger","event":"created","note":"Year ecosystem map + bounty ledger; enumerate-only policy; no repo deletes"}
+{"t":"2026-07-18T08:16:04Z","id":"panda-loop","event":"handoff","from":"plan","to":"build","summary":"P-001 WebGrid score scrape truth"}
+{"t":"2026-07-18T08:16:21Z","id":"panda-loop","event":"handoff","from":"plan","to":"build","summary":"P-001 WebGrid score scrape truth"}
+{"t":"2026-07-18T08:16:21Z","id":"panda-loop","event":"handoff","from":"build","to":"verify","summary":"P-001 built \u2192 verify"}

@@ -49,6 +49,9 @@ design · execute-plan · docx · pptx · game-* · pr-babysit · resume-* · re
 | Path | Skill |
 |------|--------|
 | `experiments/memory-glass/plugin/SKILL.md` | **Memory Glass** ground rules |
+| `docs/fornever-ledger/skills/panda-loop/SKILL.md` | **Panda loop** α→β→γ fleet |
+| `docs/fornever-ledger/skills/bug-bounty-ledger/SKILL.md` | Breakage append-only ledger |
+| `docs/fornever-ledger/plans/P-*.md` | Executable plan catalog via panda-loop |
 | `docs/architecture-lab/plugin/lab-ship/skills/*` | lab-ship-orb · plan-loop · lab-review · triple-handoff · ship-checklist |
 | `crates/codegen/xai-grok-shell/skills/*` | best-of-n · check-work · code-review · create-skill · help · imagine |
 
