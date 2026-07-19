@@ -1,0 +1,46 @@
+{
+  "schema": "mg.pynote-manifest/v1",
+  "ver": "harvest-v1",
+  "generated": "2026-07-19T08:15Z",
+  "source": "pyNote (Figma Make)",
+  "mg_landing": "Agent Desk notes + later agent notebook plane (NOT full port)",
+  "components": [
+    "MarkdownEditor",
+    "NotebookEnvironment",
+    "NotebookToolbar",
+    "AIAssistant",
+    "AIPipelineManager",
+    "AgentSwarms",
+    "AgentNetworkEconomy",
+    "GenerativeAI",
+    "NodeEditor",
+    "InfiniteCanvas",
+    "CanvasTerminal",
+    "TerminalMonitor",
+    "ProcessingLogs",
+    "DeepZoomViewer",
+    "NeuralRenderLab",
+    "BCIVLMInterface",
+    "VLMDiTCells",
+    "AISpecializedCells",
+    "OpenSearchService",
+    "TextSelectionService",
+    "SelectionPopup",
+    "FloatingFooter"
+  ],
+  "priority_for_mg": [
+    "MarkdownEditor → desk note log",
+    "NotebookToolbar → αβγδ command strip affinity",
+    "AgentSwarms / AgentNetworkEconomy → truss multi-seat metaphor",
+    "CanvasTerminal → L1 term plane client (later)",
+    "ProcessingLogs → soak/status board"
+  ],
+  "do_not_port": [
+    "Full infinite canvas + node graph SPA",
+    "VLM/DiT cell stack",
+    "BCI interface claims"
+  ],
+  "status": "manifest-only · ~1w for thin notebook later",
+  "next": "Desk free-text already classifies on L3 — notebook cells = deferred",
+  "symbols": "frozen"
+}

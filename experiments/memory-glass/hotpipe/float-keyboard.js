@@ -1,11 +1,11 @@
 /* Memory Glass · Language + Jam Keyboard Plane
  * Multi-layout · cross-language · Braille · DDR · pattern flow · contrail/beats bridge
  * Standalone API for patients / makers · Neuralink hit-target geometry · kbatch R4
- * VER: float-kb-v6-collapsible
+ * VER: float-kb-v10-harvest-matrix
  */
 (function () {
   "use strict";
-  var VER = "float-kb-v9-pattern-flow";
+  var VER = "float-kb-v10-harvest-matrix";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._floatKbVer === VER) return;
   HP._floatKbVer = VER;
@@ -354,6 +354,15 @@
       "#mg-float-kb .kb-key.wide{min-width:56px}",
       "#mg-float-kb .kb-key.space{flex:1;min-width:120px}",
       "#mg-float-kb .kb-key.tool{font-size:11px;opacity:0.9}",
+      "#mg-float-kb .kb-key.has-menu{box-shadow:inset 0 -2px 0 rgba(10,132,255,0.55)}",
+      "#mg-kb-popout{position:fixed;z-index:2147483000;min-width:148px;max-width:220px;",
+      "background:rgba(22,24,28,0.96);border:1px solid rgba(255,255,255,0.14);",
+      "border-radius:10px;padding:6px;box-shadow:0 12px 40px rgba(0,0,0,0.45);",
+      "font:12px/1.3 -apple-system,system-ui,sans-serif;color:#eee}",
+      "#mg-kb-popout button{display:block;width:100%;text-align:left;border:0;",
+      "background:transparent;color:#eee;padding:8px 10px;border-radius:6px;cursor:pointer}",
+      "#mg-kb-popout button:hover{background:rgba(255,255,255,0.1)}",
+      "#mg-kb-popout .pop-h{font-size:10px;opacity:0.5;padding:4px 8px 6px;text-transform:uppercase}",
       /* Pattern flow under keys — multi-panel (not a compressed contrail stroke) */
       "#mg-float-kb .kb-flow{flex-shrink:0;padding:0 8px 8px;display:flex;flex-direction:column;gap:4px;",
       "  border-top:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.12)}",
@@ -758,8 +767,124 @@
     if (el) el.classList.toggle("rtl", !!(layout().rtl));
   }
 
+  function hideKeyPopout() {
+    var p = document.getElementById("mg-kb-popout");
+    if (p && p.parentNode) p.parentNode.removeChild(p);
+  }
+
+  function popoutMenus() {
+    try {
+      return (
+        (window.__mgKeyPopoutMenus && window.__mgKeyPopoutMenus.seedMenus) ||
+        null
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function showKeyPopout(anchor, keyId, items) {
+    hideKeyPopout();
+    if (!items || !items.length) return;
+    var pop = document.createElement("div");
+    pop.id = "mg-kb-popout";
+    var h = document.createElement("div");
+    h.className = "pop-h";
+    h.textContent = String(keyId || "key");
+    pop.appendChild(h);
+    items.forEach(function (label) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.onclick = function (ev) {
+        if (ev) ev.stopPropagation();
+        hideKeyPopout();
+        try {
+          if (window.__mgQbitBus)
+            window.__mgQbitBus.publish({
+              src: "keys",
+              kind: "key-menu",
+              lane: "L3",
+              prefix: "+0:",
+              withGlyph: true,
+              payload: { key: keyId, action: label },
+            });
+        } catch (eP) {}
+        /* navigation peeks */
+        try {
+          if (/jump/i.test(label) && window.__mgJumpStack)
+            window.__mgJumpStack.open && window.__mgJumpStack.open();
+          if (/page|scroll/i.test(label) && window.__mgToolsDrawer)
+            window.__mgToolsDrawer.open && window.__mgToolsDrawer.open();
+        } catch (eA) {}
+        log("key-menu " + keyId + " · " + label);
+      };
+      pop.appendChild(b);
+    });
+    document.body.appendChild(pop);
+    var r = anchor.getBoundingClientRect();
+    var left = Math.max(8, Math.min(window.innerWidth - 180, r.left));
+    var top = Math.min(window.innerHeight - 120, r.bottom + 6);
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+    setTimeout(function () {
+      document.addEventListener(
+        "pointerdown",
+        function once(ev) {
+          if (pop.contains(ev.target)) return;
+          hideKeyPopout();
+          document.removeEventListener("pointerdown", once, true);
+        },
+        true
+      );
+    }, 0);
+  }
+
+  function bindKeyMenu(k, ch) {
+    var menus = popoutMenus();
+    if (!menus) return;
+    var id =
+      ch === "CLR"
+        ? "clear"
+        : ch === "fn"
+          ? "fn"
+          : ch === "home"
+            ? "home"
+            : ch === "end"
+              ? "end"
+              : null;
+    /* matrix layout switcher on long-press of first letter key in row0 */
+    if (!id && ch && String(ch).toLowerCase() === "q") id = "fn";
+    if (!id || !menus[id]) return;
+    k.className += " has-menu";
+    k.title = (k.title ? k.title + " · " : "") + "long-press menu";
+    var hold = 0;
+    var armed = false;
+    k.addEventListener("pointerdown", function (ev) {
+      armed = false;
+      hold = setTimeout(function () {
+        armed = true;
+        showKeyPopout(k, id, menus[id]);
+      }, 420);
+    });
+    k.addEventListener("pointerup", function () {
+      clearTimeout(hold);
+    });
+    k.addEventListener("pointerleave", function () {
+      clearTimeout(hold);
+    });
+    k.addEventListener("click", function (ev) {
+      if (armed) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        armed = false;
+      }
+    });
+  }
+
   function rebuildKeys() {
     if (!rowsEl) return;
+    hideKeyPopout();
     rowsEl.innerHTML = "";
     var L = layout();
     var rows = L.rows || LAYOUTS.qwerty.rows;
@@ -786,6 +911,7 @@
         k.onclick = function () {
           pressKey(ch, k);
         };
+        bindKeyMenu(k, ch);
         rowEl.appendChild(k);
       });
       if (!L.braille && ri === 2) {
@@ -815,6 +941,7 @@
         k.onclick = function () {
           pressKey(pair[0], k);
         };
+        bindKeyMenu(k, pair[0]);
         bot.appendChild(k);
       });
       rowsEl.appendChild(bot);
@@ -1667,6 +1794,26 @@
     setTargetLang: setTargetLang,
     layouts: function () {
       return Object.keys(LAYOUTS);
+    },
+    report: function () {
+      var n = Object.keys(LAYOUTS).length;
+      var mx = 0;
+      Object.keys(LAYOUTS).forEach(function (id) {
+        if (id.indexOf("mx_") === 0) mx++;
+      });
+      return (
+        VER +
+        " open=" +
+        (open ? "1" : "0") +
+        " layouts=" +
+        n +
+        " matrix=" +
+        mx +
+        " layout=" +
+        layoutId +
+        " popout=" +
+        (popoutMenus() ? "1" : "0")
+      );
     },
     modes: function () {
       return MODES.map(function (m) {

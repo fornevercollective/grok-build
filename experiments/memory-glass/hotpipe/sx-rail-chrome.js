@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "sx-rail-v8-ctrl-center";
+  var VER = "sx-rail-v9-inspect-board";
   if (window.__mgSxRail && window.__mgSxRail.ver === VER) return;
 
   var CSS_ID = "mg-sx-rail-css";
@@ -38,10 +38,22 @@
       "  width:min(280px,32vw)!important;max-height:min(42vh,360px)!important;",
       "  z-index:120!important;overflow:auto!important}",
       "#mg-contrail-flow .row{grid-template-columns:1fr!important}",
-      /* ── LIVE RANK pill (collapsed) ── */
-      "#mg-activity-board.collapsed{",
-      "  max-height:44px!important;border-radius:999px!important;",
-      "  width:min(300px,72vw)!important}",
+      /* ── LIVE RANK collapsed = shell top word on MAIN only (never pin over inspect PIP) ── */
+      "html:not(.mg-inspect-host) #mg-activity-board.collapsed{",
+      "  max-height:none!important;min-height:28px!important;",
+      "  width:auto!important;max-width:min(52vw,420px)!important;",
+      "  border-radius:0!important;background:transparent!important;",
+      "  border:none!important;box-shadow:none!important;",
+      "  top:var(--mg-shell-top,2px)!important;",
+      "  right:max(12px, calc(12px + var(--mg-top-right-w,168px)))!important}",
+      "html.mg-product:not(.mg-inspect-host) #mg-activity-board.collapsed{",
+      "  top:var(--mg-shell-top,2px)!important;right:max(12px, calc(12px + var(--mg-top-right-w,168px)))!important}",
+      /* Inspect: force flow under hdr — sx-rail must not fight board pin */
+      "html.mg-inspect-host #mg-activity-board,html.mg-inspect-host #mg-activity-board.collapsed{",
+      "  position:relative!important;left:auto!important;right:auto!important;",
+      "  top:auto!important;bottom:auto!important;transform:none!important;",
+      "  width:auto!important;max-width:none!important;margin:0 10px 6px!important;",
+      "  inset:auto!important;float:none!important;z-index:5!important}",
       /* ── BLOCH / RUBIK orbs: stack above CTRL, low z (layout pins) ── */
       "#mg-bloch-orb{",
       "  left:12px!important;right:auto!important;",
@@ -54,10 +66,10 @@
       "@media (max-width:700px){",
       "  #mg-bloch-orb,#mg-rubik-orb{visibility:hidden!important;pointer-events:none!important}",
       "}",
-      /* ── CTRL · Control Center dropdown (macOS-style) ── */
+      /* ── CTRL · top-left Control Center (never sinks under search) ── */
       "#mg-glass-cap{",
       "  position:fixed;left:12px;right:auto;",
-      "  bottom:calc(56px + var(--mg-kb-h,0px));",
+      "  top:max(10px, env(safe-area-inset-top,0px));bottom:auto;",
       "  transform:none;z-index:2147483004;",
       "  width:min(340px,88vw);max-height:min(72vh,620px);",
       "  display:flex;flex-direction:column;pointer-events:auto;",
@@ -74,8 +86,10 @@
       "    border-radius .22s ease,background .2s ease,box-shadow .2s ease}",
       /* Collapsed = compact Control Center trigger pill */
       "#mg-glass-cap.collapsed{",
-      "  max-height:40px;width:auto;min-width:0;border-radius:999px;",
-      "  background:rgba(36,36,40,0.62);overflow:hidden;",
+      "  max-height:44px!important;min-height:40px!important;height:auto!important;",
+      "  width:auto!important;min-width:88px!important;max-width:none!important;",
+      "  border-radius:999px;",
+      "  background:rgba(36,36,40,0.72);overflow:hidden;",
       "  box-shadow:0 6px 20px rgba(0,0,0,0.28),inset 0 1px 0 rgba(255,255,255,0.12)}",
       "#mg-glass-cap.collapsed #mg-glass-cap-body,",
       "#mg-glass-cap.collapsed #mg-glass-cap-status,",

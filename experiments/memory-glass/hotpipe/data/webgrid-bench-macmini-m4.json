@@ -1,0 +1,102 @@
+{
+  "t": 1784396460596,
+  "iso": "2026-07-18T18:00:00Z",
+  "machine": {
+    "model": "Mac16,10",
+    "arch": "arm64",
+    "ram_gb": 16,
+    "host": "tadericsonsMini",
+    "class": "mac-mini-m4",
+    "label": "Mac mini M4",
+    "chip": "Apple M4",
+    "display": "2560x1440 DELL U2715H",
+    "gpus": ["Apple M4"]
+  },
+  "source": "play.jsonl agent_end + live-summary + human ANALYSIS on this host",
+  "runs": [
+    {
+      "id": "fleet-mini-agent-30-peak",
+      "kind": "agent_end",
+      "game": "webgrid",
+      "player": "agent",
+      "grid": "30x30",
+      "peakBps": 483.58,
+      "peakNtpm": 2957,
+      "clicks": 3377,
+      "hitsGuess": 3377,
+      "note": "page peak score on Mac mini (agent) · soak agent-30x30"
+    },
+    {
+      "id": "fleet-mini-agent-12-peak",
+      "kind": "agent_end",
+      "game": "webgrid-mini",
+      "player": "agent",
+      "grid": "12x12",
+      "peakBps": 402.03,
+      "peakNtpm": 3369,
+      "clicks": 3900,
+      "hitsGuess": 3900,
+      "note": "MINI 12×12 agent peak · play.jsonl"
+    },
+    {
+      "id": "fleet-mini-agent-30-live98",
+      "kind": "agent_end",
+      "game": "webgrid",
+      "player": "agent",
+      "grid": "30x30",
+      "peakBps": 98.12,
+      "peakNtpm": 600,
+      "clicks": 619,
+      "hitsGuess": 619,
+      "note": "verified mid-session capture 20-end.png / result.json"
+    },
+    {
+      "id": "fleet-mini-agent-3rounds",
+      "kind": "agent_session",
+      "game": "webgrid",
+      "player": "agent",
+      "grid": "30x30",
+      "peakBps": 90.76,
+      "peakNtpm": 555,
+      "clicks": 625,
+      "hitsGuess": 625,
+      "note": "agent-3rounds-results sessionBest"
+    },
+    {
+      "id": "fleet-mini-agent-30-steady70",
+      "kind": "agent_end",
+      "game": "webgrid",
+      "player": "agent",
+      "grid": "30x30",
+      "peakBps": 72.61,
+      "peakNtpm": 444,
+      "clicks": 516,
+      "hitsGuess": 516,
+      "note": "recent agent_end N=30"
+    },
+    {
+      "id": "fleet-mini-human-30",
+      "kind": "human",
+      "game": "webgrid",
+      "player": "human",
+      "grid": "30x30",
+      "peakBps": 6.38,
+      "peakNtpm": 39,
+      "finalBps": 6.05,
+      "finalNtpm": 37,
+      "note": "human calibration ANALYSIS.json / LEARNINGS.md on Mac mini"
+    }
+  ],
+  "compare": {
+    "laptop_intel_MacBookPro16_1": {
+      "peakBps": 3.76,
+      "peakNtpm": 23,
+      "grid": "30x30",
+      "file": "webgrid-bench-macbookpro16-1.json"
+    },
+    "neuralink_marketing_n1": {
+      "bps": 10.39,
+      "note": "N1 implant clinical participant — not agent"
+    }
+  }
+}

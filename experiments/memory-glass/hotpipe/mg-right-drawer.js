@@ -2,11 +2,11 @@
  * Viewport-fixed on <html> (not body — page-axis transform).
  * Localizes monitor/readout surfaces: Live · Mkt · Inspect · Chat · Grok
  * Pairs with left TOOLS control drawer. Tab docks to right wall and rides open.
- * VER: mg-right-drawer-v1
+ * VER: mg-right-drawer-v9-chrome-stable
  */
 (function () {
   "use strict";
-  var VER = "mg-right-drawer-v4-spacxai-glass";
+  var VER = "mg-right-drawer-v9-chrome-stable";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._rightDrawerVer === VER) return;
   HP._rightDrawerVer = VER;
@@ -41,8 +41,17 @@
     } catch (e) {}
   }
 
+  var _raiseLast = 0;
   function raiseEdges() {
     try {
+      if (
+        window.__mgWebgridPlayBusy ||
+        document.documentElement.classList.contains("mg-webgrid-playing")
+      )
+        return;
+      var now = Date.now();
+      if (now - _raiseLast < 800) return;
+      _raiseLast = now;
       var nodes = document.querySelectorAll(".mg-edge");
       for (var i = 0; i < nodes.length; i++) {
         nodes[i].style.setProperty("z-index", "2147483647", "important");
@@ -79,20 +88,34 @@
       "  color:rgba(255,255,255,0.92);box-sizing:border-box;overflow:visible;",
       "  margin:0!important;max-height:100vh!important;max-height:100dvh!important}",
       "#mg-right-drawer.open{transform:translate3d(0,0,0)!important}",
-      "#mg-right-tab{",
-      "  position:absolute;right:100%;left:auto;top:50%;",
-      "  z-index:2;pointer-events:auto;cursor:pointer;",
-      "  writing-mode:vertical-rl;transform:translateY(-50%);",
-      "  padding:16px 7px;margin:0;border:0;border-radius:10px 0 0 10px;",
-      "  background:rgba(36,36,40,0.88);",
+      /* Mkt needs filmstrip + charts — widen drawer */
+      "#mg-right-drawer.mkt-mode{--mg-right-w:min(440px,94vw)}",
+      "#mg-drawer-mkt-host{display:flex;flex-direction:column;min-height:min(70vh,640px);flex:1 1 auto;gap:6px}",
+      "#mg-drawer-mkt-host .drw-hint,#mg-right-drawer .drw-hint{",
+      "  font:500 11px/1.35 system-ui;color:rgba(255,255,255,0.45);padding:8px 4px}",
+      /* Viewport-fixed DATA tab (sibling of drawer — not inside transform) */
+      "html > #mg-right-tab,html.mg-webgrid-play > #mg-right-tab{",
+      "  position:fixed!important;right:0!important;left:auto!important;top:50%!important;",
+      "  z-index:2147483647!important;pointer-events:auto!important;cursor:pointer;",
+      "  writing-mode:vertical-rl;text-orientation:mixed;transform:translateY(-50%)!important;",
+      "  padding:16px 8px;margin:0;border:0;border-radius:10px 0 0 10px;",
+      "  min-width:28px!important;min-height:72px!important;width:28px;",
+      "  background:rgba(36,36,40,0.92)!important;",
       "  backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);",
       "  border:1px solid rgba(255,255,255,0.12);border-right:0;",
-      "  color:rgba(255,255,255,0.9);",
-      "  font:600 10px/1 -apple-system,system-ui;letter-spacing:0.08em;text-transform:uppercase;",
-      "  box-shadow:-4px 0 18px rgba(0,0,0,0.28);white-space:nowrap}",
-      "#mg-right-tab:hover{background:rgba(48,48,54,0.95);color:#fff}",
-      "#mg-right-drawer.open #mg-right-tab,#mg-right-tab.on{",
-      "  background:rgba(50,52,60,0.96);color:#fff}",
+      "  color:rgba(255,255,255,0.9)!important;",
+      "  font:600 10px/1 -apple-system,system-ui;letter-spacing:0.1em;text-transform:uppercase;",
+      "  box-shadow:-4px 0 18px rgba(0,0,0,0.28);white-space:nowrap;",
+      "  visibility:visible!important;opacity:1!important;display:block!important;",
+      "  transition:right .22s cubic-bezier(.2,.9,.2,1)}",
+      "html.mg-right-open > #mg-right-tab{",
+      "  right:var(--mg-right-w,min(360px,90vw))!important}",
+      "#mg-right-tab:hover{background:rgba(48,48,54,0.95)!important;color:#fff!important}",
+      "#mg-right-tab.on,html.mg-right-open > #mg-right-tab{",
+      "  background:rgba(50,52,60,0.96)!important;color:#fff!important}",
+      "html.mg-webgrid-play > #mg-right-drawer,html.mg-webgrid-play > #mg-right-scrim,",
+      "html > #mg-right-drawer,html > #mg-right-scrim{",
+      "  z-index:2147483634!important;pointer-events:auto!important;visibility:visible!important}",
       "#mg-right-drawer .drw-hd{",
       "  display:flex;align-items:center;justify-content:space-between;gap:8px;",
       "  padding:12px 12px 8px;flex-shrink:0;border-bottom:0}",
@@ -233,7 +256,7 @@
       "  padding:0 16px;font:600 12px/1 -apple-system,system-ui;color:#fff;",
       "  background:rgba(10,132,255,0.9);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.2)}",
       "#mg-right-drawer .chat-in button:hover{background:rgba(10,132,255,1)}",
-      "#mg-drawer-mkt-host{display:flex;flex-direction:column;min-height:0;flex:1}",
+
       "html.mg-right-open #mg-activity-board.collapsed{",
       "  right:max(12px, calc(12px + var(--mg-right-w, 0px) * 0))!important}",
     ].join("");
@@ -527,47 +550,95 @@
   }
 
   function paintMkt() {
-    body.appendChild(
-      collapsible("mkt-film", "Mkt · filmstrip", true, function (box) {
-        var h = document.createElement("p");
-        h.className = "hint";
-        h.textContent = "Market filmstrip · list + strip + squeeze charts";
-        box.appendChild(h);
-        var host = document.createElement("div");
-        host.id = "mg-drawer-mkt-host";
-        box.appendChild(host);
-        var ok = false;
-        try {
-          if (window.__mgMarket && window.__mgMarket.embedInto)
-            ok = !!window.__mgMarket.embedInto(host);
-        } catch (e) {}
-        if (!ok) {
-          actRow(box, [
-            {
-              label: "Open MKT",
-              hot: true,
-              fn: function () {
-                if (window.__mgMarket) window.__mgMarket.open();
-              },
-            },
-            {
-              label: "Load filmstrip",
-              fn: function () {
-                try {
-                  if (window.ipc)
-                    window.ipc.postMessage(JSON.stringify({ op: "load_filmstrip" }));
-                } catch (e2) {}
-              },
-            },
-          ]);
-          setStatus("MKT missing — hot reload?");
-        } else {
-          setStatus(
-            window.__mgMarket.report ? window.__mgMarket.report() : "MKT embed"
-          );
+    /* Always-open filmstrip host — Collapse all used to hide the only content. */
+    secState["mkt-film"] = true;
+    var head = document.createElement("p");
+    head.className = "hint";
+    head.textContent =
+      "Market filmstrip · industry sections · strip · squeeze charts";
+    body.appendChild(head);
+
+    var host = document.createElement("div");
+    host.id = "mg-drawer-mkt-host";
+
+    function tryEmbedMkt(h) {
+      if (!h) return false;
+      var ok = false;
+      try {
+        if (window.__mgMarket && window.__mgMarket.embedInto)
+          ok = !!window.__mgMarket.embedInto(h);
+      } catch (e) {}
+      if (!ok) {
+        h.innerHTML =
+          '<p class="drw-hint">MKT missing — inject market-filmstrip · try LOAD / hot reload</p>';
+        setStatus("MKT missing — hot reload?");
+        return false;
+      }
+      try {
+        if (
+          window.__mgMarket &&
+          window.__mgMarket.loadBoardHard &&
+          !(
+            window.__mgMarket.state &&
+            window.__mgMarket.state.rows &&
+            window.__mgMarket.state.rows.length
+          )
+        ) {
+          window.__mgMarket.loadBoardHard(function () {
+            setStatus(
+              window.__mgMarket.report
+                ? window.__mgMarket.report()
+                : "MKT board"
+            );
+          });
         }
-      })
-    );
+      } catch (eB) {}
+      setStatus(
+        window.__mgMarket.report ? window.__mgMarket.report() : "MKT embed"
+      );
+      return true;
+    }
+
+    actRow(body, [
+      {
+        label: "LOAD board",
+        hot: true,
+        fn: function () {
+          try {
+            if (window.__mgMarket && window.__mgMarket.loadBoardHard)
+              window.__mgMarket.loadBoardHard(function () {
+                setStatus(
+                  window.__mgMarket.report
+                    ? window.__mgMarket.report()
+                    : "board loaded"
+                );
+              });
+            else if (window.ipc)
+              window.ipc.postMessage(JSON.stringify({ op: "load_filmstrip" }));
+          } catch (eL) {}
+        },
+      },
+      {
+        label: "Re-embed",
+        fn: function () {
+          tryEmbedMkt(document.getElementById("mg-drawer-mkt-host"));
+        },
+      },
+    ]);
+
+    body.appendChild(host);
+
+    if (!tryEmbedMkt(host)) {
+      /* inject race — market-filmstrip may mount a beat later */
+      setTimeout(function () {
+        var h2 = document.getElementById("mg-drawer-mkt-host");
+        if (h2) tryEmbedMkt(h2);
+      }, 320);
+      setTimeout(function () {
+        var h3 = document.getElementById("mg-drawer-mkt-host");
+        if (h3 && !h3.querySelector("#mg-mkt-panel")) tryEmbedMkt(h3);
+      }, 900);
+    }
   }
 
   function paintInspect() {
@@ -829,14 +900,35 @@
     if (!body) return;
     unembedAll();
     body.innerHTML = "";
+    if (el) el.classList.toggle("mkt-mode", mode === "mkt");
     var tabsHost = el && el.querySelector(".drw-tabs-host");
     if (tabsHost) paintTabs(tabsHost);
-    paintMasterBar(body);
+    /* Master bar (expand/collapse) is noise on Mkt — filmstrip is the body */
+    if (mode !== "mkt") paintMasterBar(body);
     if (mode === "live") paintLive();
     else if (mode === "mkt") paintMkt();
     else if (mode === "inspect") paintInspect();
     else if (mode === "chat") paintChat();
     else if (mode === "grok") paintGrok();
+    positionTab();
+  }
+
+  function positionTab() {
+    if (!tab) return;
+    try {
+      if (!open) {
+        tab.style.right = "0";
+        return;
+      }
+      var w = 360;
+      if (el) {
+        var pw = parseFloat(getComputedStyle(el).width);
+        if (isFinite(pw) && pw > 80) w = pw;
+      }
+      tab.style.right = Math.round(w) + "px";
+    } catch (e) {
+      tab.style.right = open ? "min(360px,90vw)" : "0";
+    }
   }
 
   function setOpen(on) {
@@ -847,6 +939,16 @@
     if (scrim) scrim.classList.toggle("on", open);
     try {
       document.documentElement.classList.toggle("mg-right-open", open);
+      /* freeze page-axis while DATA open (phone cam head-track) */
+      if (window.__mgToolsDrawer && window.__mgToolsDrawer.syncChromeStable)
+        window.__mgToolsDrawer.syncChromeStable();
+      else {
+        var de = document.documentElement;
+        de.classList.toggle(
+          "mg-drawer-open",
+          open || de.classList.contains("mg-left-open")
+        );
+      }
     } catch (e) {}
     if (open) {
       paint();
@@ -855,6 +957,7 @@
     } else {
       unembedAll();
     }
+    positionTab();
     raiseEdges();
     log(VER + " · " + (open ? "open " + mode : "closed"));
   }
@@ -895,24 +998,43 @@
     };
   }
 
+  function forceRemountNodes() {
+    ["mg-right-drawer", "mg-right-tab", "mg-right-scrim"].forEach(function (id) {
+      var n = document.getElementById(id);
+      if (n && n.parentNode) n.parentNode.removeChild(n);
+    });
+    el = null;
+    tab = null;
+    body = null;
+    statusEl = null;
+  }
+
   function mount() {
     ensureCss();
     hookDevLog();
     if (document.getElementById("mg-right-drawer")) {
       try {
-        if (window.__mgRightDrawer && window.__mgRightDrawer.ver !== VER) {
-          ["mg-right-drawer", "mg-right-tab", "mg-right-scrim"].forEach(function (
-            id
-          ) {
-            var n = document.getElementById(id);
-            if (n && n.parentNode) n.parentNode.removeChild(n);
-          });
+        var needRemount =
+          !window.__mgRightDrawer || window.__mgRightDrawer.ver !== VER;
+        if (!needRemount) {
+          var t0 = document.getElementById("mg-right-tab");
+          if (!t0) needRemount = true;
+          else {
+            var tr = t0.getBoundingClientRect();
+            if (tr.width < 4 || tr.height < 20) needRemount = true;
+          }
+        }
+        if (needRemount) {
+          forceRemountNodes();
         } else {
+          ensureCss();
           raiseEdges();
           return;
         }
       } catch (e) {
-        return;
+        try {
+          forceRemountNodes();
+        } catch (e2) {}
       }
     }
 
@@ -934,21 +1056,41 @@
       '<div class="drw-tabs-host"></div>' +
       '<div class="drw-body" id="mg-right-body"></div>' +
       '<div class="drw-status" id="mg-right-status">Right · Live · Mkt · Inspect · Chat · Grok</div>';
+    el.style.cssText =
+      "position:fixed!important;right:0!important;top:0!important;bottom:0!important;" +
+      "width:var(--mg-right-w,min(360px,90vw))!important;z-index:2147483634!important;" +
+      "pointer-events:auto!important;display:flex!important;flex-direction:column!important;" +
+      "visibility:visible!important;box-sizing:border-box!important;";
     root.appendChild(el);
 
+    /* Viewport-fixed sibling — always on right edge (not inside drawer transform) */
     tab = document.createElement("button");
     tab.type = "button";
     tab.id = "mg-right-tab";
+    tab.className = "mg-edge";
     tab.textContent = "DATA";
     tab.title = "Open data drawer (Live · Mkt · Inspect · Chat · Grok)";
+    tab.style.cssText =
+      "position:fixed!important;right:0!important;top:50%!important;" +
+      "transform:translateY(-50%)!important;z-index:2147483647!important;" +
+      "writing-mode:vertical-rl;padding:16px 8px;margin:0;" +
+      "min-width:28px!important;min-height:72px!important;width:28px;" +
+      "pointer-events:auto!important;visibility:visible!important;opacity:1!important;" +
+      "display:block!important;cursor:pointer;" +
+      "border:1px solid rgba(255,255,255,0.12);border-right:0;" +
+      "border-radius:10px 0 0 10px;" +
+      "background:rgba(36,36,40,0.94);color:rgba(255,255,255,0.9);" +
+      "font:600 10px/1 -apple-system,system-ui;letter-spacing:0.1em;" +
+      "text-transform:uppercase;white-space:nowrap;";
     tab.onclick = function (ev) {
       if (ev) {
         ev.preventDefault();
         ev.stopPropagation();
       }
+      window.__mgUserChromeTouch = true;
       toggle();
     };
-    el.appendChild(tab);
+    root.appendChild(tab);
 
     body = el.querySelector("#mg-right-body");
     statusEl = el.querySelector("#mg-right-status");
@@ -976,6 +1118,7 @@
 
     paint();
     setOpen(false);
+    positionTab();
     raiseEdges();
     var rehomeLast = 0;
     function rehome(force) {
@@ -983,7 +1126,9 @@
       if (!force && now - rehomeLast < 400) return;
       rehomeLast = now;
       var r = chromeRoot();
-      ["mg-right-drawer", "mg-right-scrim"].forEach(function (id) {
+      ["mg-right-drawer", "mg-right-scrim", "mg-right-tab"].forEach(function (
+        id
+      ) {
         var n = document.getElementById(id);
         if (n && n.parentNode !== r) r.appendChild(n);
       });
@@ -995,6 +1140,13 @@
         rehome(false);
       },
       { passive: true, capture: true }
+    );
+    window.addEventListener(
+      "resize",
+      function () {
+        positionTab();
+      },
+      { passive: true }
     );
     log(VER + " · right data drawer ready");
   }

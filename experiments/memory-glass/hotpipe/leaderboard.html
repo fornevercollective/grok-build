@@ -196,10 +196,18 @@
 
   function shortSyn(r) {
     if (!r) return "—";
+    var bits = [];
+    var mac = r.metrics && r.metrics.machine;
+    if (mac && (mac.label || mac.model)) bits.push(mac.label || mac.model);
+    if (r.metrics && r.metrics.player) bits.push(r.metrics.player);
     var w = (r.metrics && r.metrics.webgrid) || {};
     var p = w.sessionPeakBps || w.peakBps || w.bestBps || w.bps;
-    if (p != null) return fmt(p) + " BPS";
-    if (r.synopsis) return String(r.synopsis).slice(0, 48);
+    var n = w.sessionPeakNtpm || w.peakNtpm || w.bestNtpm || w.ntpm;
+    if (p != null) bits.push(fmt(p) + " BPS");
+    if (n != null) bits.push(fmt(n) + " NTPM");
+    if (w.grid) bits.push(String(w.grid));
+    if (bits.length) return bits.join(" · ");
+    if (r.synopsis) return String(r.synopsis).slice(0, 72);
     return r.kind || "run";
   }
 
@@ -259,8 +267,12 @@
     var cells = [
       { k: "Score", v: fmt(run.score), hot: true },
       { k: "Game", v: gameLabel(run.game || m.game) },
+      { k: "Machine", v: (m.machine && (m.machine.label || m.machine.model)) || "—" },
+      { k: "Player", v: m.player || "—" },
       { k: "BPS", v: fmt(w.sessionPeakBps || w.peakBps || w.bestBps || w.bps) },
       { k: "NTPM", v: fmt(w.sessionPeakNtpm || w.peakNtpm || w.bestNtpm || w.ntpm) },
+      { k: "Grid", v: w.grid || (w.N ? w.N + "x" + w.N : "—") },
+      { k: "Clicks", v: w.clicks != null ? String(w.clicks) : "—" },
     ];
     if (m.contrail) {
       cells.push({ k: "Path samp", v: String(m.contrail.samples || 0) });

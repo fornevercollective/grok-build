@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>qbitos · quantum data handling · fleet</title>
+  <style>
+    body {
+      margin: 0; font: 500 15px/1.5 -apple-system, system-ui, sans-serif;
+      background: #07090d; color: rgba(236,242,250,0.94);
+    }
+    .hero {
+      max-width: 880px; margin: 0 auto; padding: 48px 20px 32px;
+    }
+    h1 { font: 700 28px/1.15 system-ui; letter-spacing: -0.03em; margin: 0 0 12px; }
+    .tag {
+      display: inline-block; font: 600 10px/1 system-ui; letter-spacing: 0.12em;
+      text-transform: uppercase; color: rgba(160,210,255,0.9);
+      border: 1px solid rgba(120,180,255,0.35); border-radius: 999px;
+      padding: 6px 10px; margin-bottom: 16px;
+    }
+    p { color: rgba(190,205,220,0.85); max-width: 640px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 28px; }
+    .card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 16px;
+    }
+    .card h3 { margin: 0 0 8px; font: 650 13px/1.2 system-ui; }
+    .card p { margin: 0; font-size: 12px; }
+    a { color: #8ec8ff; }
+    code { font: 500 12px ui-monospace, Menlo, monospace; color: #a8e6c0; }
+    .fleet {
+      margin-top: 28px; padding: 16px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(20,40,80,0.45), rgba(10,20,30,0.6));
+      border: 1px solid rgba(100,160,255,0.25);
+    }
+    pre.api {
+      margin: 16px 0 0; padding: 14px 16px; border-radius: 12px;
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.08);
+      font: 500 11px/1.45 ui-monospace, Menlo, monospace; color: #b8d4c0;
+      overflow-x: auto; white-space: pre-wrap;
+    }
+    .rights {
+      margin-top: 20px; font-size: 12px; color: rgba(160,175,190,0.75);
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="tag">qbitos.ai · quantum data spine · overnight cook</div>
+    <h1>Quantum data handling for the fleet</h1>
+    <p>
+      Canonical site concept for <b>prefix-encoded</b> lines, <b>steno glyph blanks</b>,
+      IronLine budgets, and Memory Glass as the spatial operator console.
+      Spine is live: bus · loop · dac · router · adapters. One alphabet only.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <h3>Prefixes (11)</h3>
+        <p><code>n: +1: -n: +0: 0: -1: +n: +2: -0: +3: 1:</code> → gates SWAP…CNOT</p>
+      </div>
+      <div class="card">
+        <h3>Glyph holders</h3>
+        <p>Every blank can carry a 5-field steno record — more data than empty space.</p>
+      </div>
+      <div class="card">
+        <h3>Fleet</h3>
+        <p>Mac mini · laptop · inspect float · agents share one alphabet via <code>__mgQbitBus</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Memory Glass</h3>
+        <p>Adapters: Qbit stack · Staff/beats · WebGrid tensor · Maze traj → bus.</p>
+      </div>
+      <div class="card">
+        <h3>DAC</h3>
+        <p><code>__mgQbitDac</code> — 8 soft channels (drop/maze/staff/webgrid/hud/…) levels 0–1.</p>
+      </div>
+      <div class="card">
+        <h3>Router</h3>
+        <p><code>__mgQbitRouter.on(src, kind, fn)</code> + IronLine budget gate before heavy work.</p>
+      </div>
+    </div>
+
+    <div class="fleet">
+      <h3 style="margin:0 0 8px;font:650 14px system-ui">Fleet concept</h3>
+      <p style="margin:0">
+        <b>qbitos</b> = quantum data contract + codec + loop.<br />
+        <b>Memory Glass</b> = multi-plane browser that <em>runs</em> the contract (encode lines, hold glyphs, train tensor, mirror LIVE RANK).<br />
+        <b>kbatch / mueee</b> = language &amp; gutter labs on the same prefix language.<br />
+        Multiagent rule: <b>only one agent edits QbitCodec.SYMBOLS</b>.
+      </p>
+      <pre class="api">__mgQbitBus.publish({ src, kind, prefix, withGlyph: true, payload, fleet })
+__mgQbitBus.makeGlyphHolder({ prefix: "+1:", depth, layer })
+__mgQbitLoop.selfTest()          // PASS
+__mgQbitDac.set("staff", 0.7)    // pulse / snapshot
+__mgQbitRouter.on("webgrid", "cell", env =&gt; { … })
+__mgQbitAdapters.report()        // hooks=[stack,beats,tensor,…]
+QbitCodec.encode / decode / encodeRecord / decodeRecord</pre>
+      <p style="margin:12px 0 0">
+        Lab: <a href="../qbit-steno-lab.html">qbit-steno-lab.html</a> ·
+        Handoff: <a href="../plans/QBIT_BUS_HANDOFF.md">QBIT_BUS_HANDOFF.md</a> ·
+        Smoke: <code>node scripts/qbit-smoke.mjs</code> ·
+        Codec: <a href="../qbit-codec.js">qbit-codec.js</a>
+      </p>
+      <p class="rights">
+        Rights: steno + agent payloads stay inspect-visible; no silent stego in user content without a flag.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

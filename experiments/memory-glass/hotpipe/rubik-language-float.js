@@ -2,11 +2,17 @@
  * Interactive 3×3 cube · each face takes input from a different lettering system
  * (written / spoken / movement / digital / analog / thought) via lang-codec.
  * Drag to orbit · click stickers · type into active face · scramble / solve.
- * VER: rubik-lang-v5-glass-letter
+ *
+ * v6 — 3D Grid Trails (Framer marketplace aesthetic + cube-Neural harvest):
+ *   perspective floor grid under cube · motion trails on orbit/stamp ·
+ *   optional contrail path bleed · bus kind:trail src:cube.
+ * VER: rubik-lang-v6-grid-trails
+ * refs: https://www.framer.com/community/marketplace/components/3d-grid-trails/
+ *       https://gridtrails.framer.website
  */
 (function () {
   "use strict";
-  var VER = "rubik-lang-v5-glass-letter";
+  var VER = "rubik-lang-v6-grid-trails";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._rubikLangVer === VER) return;
   HP._rubikLangVer = VER;
@@ -128,6 +134,16 @@
   var inputEl = null;
   var letterBar = null;
   var raf = 0;
+
+  /* ── Grid Trails (Framer 3D Grid Trails aesthetic) ── */
+  var showTrails = true;
+  var GRID_HALF = 5; /* floor spans -GRID_HALF..+GRID_HALF in cube units */
+  var GRID_STEP = 0.5;
+  var trailPts = []; /* {x,y,z,t,hue,a} world-space trail ribbon */
+  var TRAIL_MAX = 96;
+  var trailPulse = 0; /* 0..1 shimmer phase */
+  var lastTrailBusT = 0;
+  var trailStats = { emitted: 0, bus: 0, fromContrail: 0 };
 
   function nav(url) {
     try {
@@ -256,13 +272,18 @@
       "#mg-rubik-float .hint{",
       "  font:500 11px/1.35 system-ui;color:rgba(200,210,225,0.72);margin:0 0 8px}",
       "#mg-rubik-float canvas.cube{",
-      "  width:100%;height:min(260px,36vh);display:block;margin:4px 0 10px;",
+      "  width:100%;height:min(280px,38vh);display:block;margin:4px 0 10px;",
       "  border-radius:16px;cursor:grab;",
-      "  background:radial-gradient(ellipse at 40% 30%,rgba(80,100,140,0.22),rgba(8,10,16,0.55));",
+      "  background:radial-gradient(ellipse at 50% 42%,rgba(28,36,58,0.55) 0%,rgba(2,3,8,0.96) 72%);",
       "  border:1px solid rgba(255,255,255,0.1);",
-      "  box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 8px 24px rgba(0,0,0,0.2);",
+      "  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),0 8px 28px rgba(0,0,0,0.35),",
+      "    0 0 40px rgba(80,140,255,0.06);",
       "  touch-action:none}",
       "#mg-rubik-float canvas.cube.drag{cursor:grabbing}",
+      "#mg-rubik-float canvas.cube.trails-off{",
+      "  background:radial-gradient(ellipse at 40% 30%,rgba(80,100,140,0.22),rgba(8,10,16,0.55))}",
+      "#mg-rubik-float .hd button.pill.on{",
+      "  background:rgba(80,160,255,0.35);border:1px solid rgba(120,190,255,0.45)}",
       "#mg-rubik-float .faces{",
       "  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}",
       "#mg-rubik-float button.face{",
@@ -397,6 +418,240 @@
     return inside;
   }
 
+  /* World point → screen via same transform/project as cube */
+  function projectWorld(p, cx, cy, s) {
+    return project(transform(p), cx, cy, s);
+  }
+
+  function faceHue(faceId) {
+    var F = FACE_BY[faceId];
+    return F ? F.hue : 200;
+  }
+
+  function pushTrail(x, y, z, hue, a) {
+    if (!showTrails) return;
+    trailPts.push({
+      x: x,
+      y: y,
+      z: z,
+      t: Date.now(),
+      hue: hue == null ? faceHue(lastFace) : hue,
+      a: a == null ? 0.85 : a,
+    });
+    while (trailPts.length > TRAIL_MAX) trailPts.shift();
+    trailStats.emitted++;
+    maybeBusTrail();
+  }
+
+  function emitOrbitTrail() {
+    /* ribbon just above floor, circling with yaw */
+    var r = 1.35 + 0.15 * Math.sin(yaw * 3);
+    var ang = yaw * 2.2;
+    pushTrail(
+      Math.cos(ang) * r,
+      1.05,
+      Math.sin(ang) * r,
+      faceHue(lastFace),
+      0.7
+    );
+  }
+
+  function emitStampTrail(faceId, idx) {
+    var f = null;
+    faceDefs().forEach(function (d) {
+      if (d.id === faceId) f = d;
+    });
+    if (!f) return;
+    var i = Math.floor(idx / 3);
+    var j = idx % 3;
+    var cx =
+      f.o[0] +
+      f.u[0] * ((j + 0.5) / 3) +
+      f.v[0] * ((i + 0.5) / 3);
+    var cy =
+      f.o[1] +
+      f.u[1] * ((j + 0.5) / 3) +
+      f.v[1] * ((i + 0.5) / 3);
+    var cz =
+      f.o[2] +
+      f.u[2] * ((j + 0.5) / 3) +
+      f.v[2] * ((i + 0.5) / 3);
+    /* outward puff + drop toward floor */
+    var n = f.n;
+    for (var k = 0; k < 5; k++) {
+      var t = k / 4;
+      pushTrail(
+        cx + n[0] * 0.15 * t,
+        cy + n[1] * 0.15 * t + t * 0.35,
+        cz + n[2] * 0.15 * t,
+        faceHue(faceId),
+        0.95 - t * 0.5
+      );
+    }
+  }
+
+  function ingestContrailToTrails() {
+    try {
+      var C = window.__mgContrail;
+      if (!C) return;
+      var path =
+        (C.path && C.path()) ||
+        (C.recentPath && C.recentPath()) ||
+        null;
+      if (!path || !path.length) {
+        /* try report samples */
+        var rep = C.report && C.report();
+        if (rep && rep.path) path = rep.path;
+      }
+      if (!path || path.length < 2) return;
+      var slice = path.slice(-12);
+      slice.forEach(function (p, i) {
+        var nx = p.nx != null ? p.nx : p.x != null ? p.x : 0.5;
+        var ny = p.ny != null ? p.ny : p.y != null ? p.y : 0.5;
+        /* map 0..1 screen path → floor plane */
+        var wx = (nx - 0.5) * GRID_HALF * 1.6;
+        var wz = (ny - 0.5) * GRID_HALF * 1.6;
+        pushTrail(wx, 1.02, wz, 190 + (i % 4) * 12, 0.45);
+        trailStats.fromContrail++;
+      });
+    } catch (e) {}
+  }
+
+  function maybeBusTrail() {
+    try {
+      if (!window.__mgQbitBus || !window.__mgQbitBus.publish) return;
+      var now = Date.now();
+      if (now - lastTrailBusT < 180) return;
+      var last = trailPts[trailPts.length - 1];
+      if (!last) return;
+      lastTrailBusT = now;
+      window.__mgQbitBus.publish({
+        src: "cube",
+        kind: "trail",
+        face: lastFace,
+        sticker: selSticker,
+        n: trailPts.length,
+        hue: last.hue,
+        x: Math.round(last.x * 1000) / 1000,
+        z: Math.round(last.z * 1000) / 1000,
+      });
+      trailStats.bus++;
+    } catch (e) {}
+  }
+
+  /**
+   * Framer-style perspective grid floor under the cube.
+   * Lines fade toward horizon · soft cyan/white · pulse shimmer.
+   */
+  function paintGridFloor(ctx, cx, cy, s) {
+    if (!showTrails) return;
+    var yFloor = 1.15; /* below cube (y+ is down in our sticker space) */
+    var half = GRID_HALF;
+    var step = GRID_STEP;
+    var pulse = 0.55 + 0.45 * Math.sin(trailPulse * Math.PI * 2);
+    var i, a, p0, p1, sc0, sc1, dist, alpha;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    /* horizon glow */
+    var hg = ctx.createRadialGradient(cx, cy + s * 0.55, 4, cx, cy + s * 0.55, s * 1.4);
+    hg.addColorStop(0, "rgba(60,120,255," + (0.08 * pulse) + ")");
+    hg.addColorStop(0.45, "rgba(40,80,180,0.04)");
+    hg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hg;
+    ctx.fillRect(0, 0, cx * 2 + s * 2, cy * 2 + s * 2);
+
+    function strokeSeg(ax, az, bx, bz, baseA, lw) {
+      p0 = projectWorld([ax, yFloor, az], cx, cy, s);
+      p1 = projectWorld([bx, yFloor, bz], cx, cy, s);
+      dist = (p0[2] + p1[2]) * 0.5;
+      alpha = baseA * Math.max(0.08, Math.min(1, 5.2 / dist)) * pulse;
+      if (alpha < 0.02) return;
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.strokeStyle = "rgba(180,210,255," + alpha + ")";
+      ctx.lineWidth = lw || 0.9;
+      ctx.stroke();
+    }
+
+    /* major axes brighter */
+    for (i = -half; i <= half + 1e-9; i += step) {
+      a = Math.abs(i) < 1e-6 ? 0.42 : 0.14 + 0.06 * (1 - Math.abs(i) / half);
+      strokeSeg(-half, i, half, i, a, Math.abs(i) < 1e-6 ? 1.4 : 0.7);
+      strokeSeg(i, -half, i, half, a, Math.abs(i) < 1e-6 ? 1.4 : 0.7);
+    }
+
+    /* vanishing-edge accent arcs (Grid Trails flair) */
+    ctx.globalCompositeOperation = "lighter";
+    for (i = 0; i < 3; i++) {
+      var rr = 1.8 + i * 0.55;
+      var segs = 24;
+      ctx.beginPath();
+      for (var k = 0; k <= segs; k++) {
+        var th = (k / segs) * Math.PI * 2 + trailPulse * Math.PI * 0.5;
+        sc0 = projectWorld(
+          [Math.cos(th) * rr, yFloor - 0.02, Math.sin(th) * rr],
+          cx,
+          cy,
+          s
+        );
+        if (k === 0) ctx.moveTo(sc0[0], sc0[1]);
+        else ctx.lineTo(sc0[0], sc0[1]);
+      }
+      ctx.strokeStyle =
+        "rgba(120,180,255," + (0.06 + 0.04 * pulse - i * 0.015) + ")";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.restore();
+  }
+
+  /** Motion trail ribbon — orbit + stamp + contrail bleed */
+  function paintTrailRibbon(ctx, cx, cy, s) {
+    if (!showTrails || trailPts.length < 2) return;
+    var now = Date.now();
+    var life = 2200;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.globalCompositeOperation = "lighter";
+
+    for (var i = 1; i < trailPts.length; i++) {
+      var a = trailPts[i - 1];
+      var b = trailPts[i];
+      var age = now - b.t;
+      if (age > life) continue;
+      var fade = 1 - age / life;
+      var p0 = projectWorld([a.x, a.y, a.z], cx, cy, s);
+      var p1 = projectWorld([b.x, b.y, b.z], cx, cy, s);
+      var alpha = fade * (b.a != null ? b.a : 0.8) * 0.85;
+      if (alpha < 0.03) continue;
+      var hue = b.hue != null ? b.hue : 200;
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.strokeStyle = "hsla(" + hue + ",85%,70%," + alpha + ")";
+      ctx.lineWidth = 1.2 + fade * 2.4;
+      ctx.stroke();
+      /* head glow */
+      if (i === trailPts.length - 1) {
+        ctx.beginPath();
+        ctx.arc(p1[0], p1[1], 2.2 + fade * 2, 0, Math.PI * 2);
+        ctx.fillStyle = "hsla(" + hue + ",90%,80%," + (alpha * 0.9) + ")";
+        ctx.fill();
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.restore();
+
+    /* prune dead */
+    while (trailPts.length && now - trailPts[0].t > life) trailPts.shift();
+  }
+
   function paintGlassSticker(ctx, corners, fill, label, hot, depth) {
     ctx.beginPath();
     corners.forEach(function (p, i) {
@@ -444,11 +699,21 @@
 
   function paintCube(ctx, W, H, mini) {
     hitFaces = [];
-    var cx = W * (mini ? 0.5 : 0.42);
-    var cy = H * 0.5;
-    var s = Math.min(W, H) * (mini ? 0.42 : 0.38);
+    var cx = W * (mini ? 0.5 : 0.5);
+    var cy = H * (mini ? 0.5 : 0.42);
+    var s = Math.min(W, H) * (mini ? 0.38 : 0.34);
     var defs = faceDefs();
     var layers = [];
+
+    /* Grid Trails floor + ribbons under cube (main panel only for density) */
+    if (!mini && showTrails) {
+      trailPulse = (trailPulse + 0.006) % 1;
+      paintGridFloor(ctx, cx, cy, s);
+      paintTrailRibbon(ctx, cx, cy, s);
+    } else if (mini && showTrails) {
+      /* tiny floor cross under orb cube */
+      paintGridFloor(ctx, cx, cy, s * 0.9);
+    }
 
     defs.forEach(function (f) {
       var n = transform(f.n);
@@ -620,6 +885,7 @@
     if (!stickers[lastFace]) return;
     stickers[lastFace][selSticker] = String(ch || "·").charAt(0) || "·";
     /* center keeps face id for orientation unless user overrides */
+    emitStampTrail(lastFace, selSticker);
     refreshFacesUI();
     paintMain();
     try {
@@ -669,7 +935,18 @@
         else stickers[F.id][i] = a.charAt(Math.floor(Math.random() * a.length)) || "·";
       }
     });
-    setStatus("scrambled · all faces · lettering chaos");
+    /* chaos burst on grid floor */
+    for (var k = 0; k < 18; k++) {
+      var ang = (k / 18) * Math.PI * 2 + yaw;
+      pushTrail(
+        Math.cos(ang) * (1.1 + (k % 3) * 0.25),
+        1.05,
+        Math.sin(ang) * (1.1 + (k % 3) * 0.25),
+        40 + k * 14,
+        0.9
+      );
+    }
+    setStatus("scrambled · all faces · lettering chaos · trail burst");
     paintMain();
     paintLetterBar();
   }
@@ -683,7 +960,9 @@
     });
     lastFace = "U";
     selSticker = 4;
-    setStatus("solved home · face lettering restored");
+    trailPts = [];
+    emitOrbitTrail();
+    setStatus("solved home · face lettering restored · trails reset");
     refreshFacesUI();
     paintMain();
   }
@@ -732,6 +1011,7 @@
         pitch = Math.max(-1.1, Math.min(1.1, pitch + dy * 0.012));
         lastPx = e.clientX;
         lastPy = e.clientY;
+        if (showTrails && Math.abs(dx) + Math.abs(dy) > 2) emitOrbitTrail();
         paintMain();
       }
     });
@@ -745,6 +1025,7 @@
         if (hit) {
           lastFace = hit.face;
           selSticker = hit.idx;
+          emitStampTrail(hit.face, hit.idx);
           refreshFacesUI();
           paintMain();
         }
@@ -773,8 +1054,9 @@
     panel.className = open ? "" : "hidden";
     panel.innerHTML =
       '<div class="hd">' +
-      '  <div class="ttl"><span class="dot"></span>Rubik · language</div>' +
+      '  <div class="ttl"><span class="dot"></span>Rubik · grid trails</div>' +
       '  <div class="acts">' +
+      '    <button type="button" class="pill on" id="mg-rubik-trails" title="3D Grid Trails (Framer)">TRAILS</button>' +
       '    <button type="button" class="pill" id="mg-rubik-spin" title="Toggle spin">SPIN</button>' +
       '    <button type="button" class="pill" id="mg-rubik-scram" title="Scramble">SCR</button>' +
       '    <button type="button" class="pill" id="mg-rubik-solve" title="Solve home">SOL</button>' +
@@ -782,8 +1064,8 @@
       "  </div>" +
       "</div>" +
       '<div class="body">' +
-      '  <p class="hint">Glass cube · drag to orbit · click a sticker · stamp lettering from that face\'s alphabet (written / spoken / motion / hex / steno / glyph).</p>' +
-      '  <canvas class="cube" id="mg-rubik-cube" title="Drag orbit · click sticker"></canvas>' +
+      '  <p class="hint">Glass cube on a 3D grid floor · drag leaves trails · click/stamp puffs lettering · TRAILS toggle · Framer Grid Trails aesthetic · contrail bleed when live.</p>' +
+      '  <canvas class="cube" id="mg-rubik-cube" title="Drag orbit · click sticker · grid trails"></canvas>' +
       '  <div class="faces" id="mg-rubik-faces"></div>' +
       '  <div class="letter-bar" id="mg-rubik-letters"></div>' +
       '  <div class="input-row">' +
@@ -804,6 +1086,25 @@
         ev.stopPropagation();
       }
       close();
+    };
+    panel.querySelector("#mg-rubik-trails").onclick = function (ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      showTrails = !showTrails;
+      var tb = panel.querySelector("#mg-rubik-trails");
+      if (tb) tb.classList.toggle("on", showTrails);
+      var cv = panel.querySelector("#mg-rubik-cube");
+      if (cv) cv.classList.toggle("trails-off", !showTrails);
+      if (showTrails) {
+        emitOrbitTrail();
+        ingestContrailToTrails();
+      } else {
+        trailPts = [];
+      }
+      setStatus(showTrails ? "grid trails on · Framer floor + ribbon" : "grid trails off");
+      paintMain();
     };
     panel.querySelector("#mg-rubik-spin").onclick = function (ev) {
       if (ev) {
@@ -890,6 +1191,22 @@
       { label: "GUTTER", url: LINKS.gutter },
       { label: "KBATCH", cls: "ok", url: LINKS.kbatch },
       {
+        label: "CONTRAIL",
+        cls: "ok",
+        fn: function () {
+          ingestContrailToTrails();
+          if (window.__mgContrail) {
+            if (window.__mgContrail.setShowFlow)
+              window.__mgContrail.setShowFlow(true);
+            else if (window.__mgContrail.open) window.__mgContrail.open();
+          }
+          setStatus(
+            "contrail → cube trails · n=" + trailPts.length + " · " + trailStats.fromContrail
+          );
+          paintMain();
+        },
+      },
+      {
         label: "CODEC",
         cls: "hot",
         fn: function () {
@@ -936,6 +1253,10 @@
       raf = 0;
       return;
     }
+    if (autoSpin && !dragging && showTrails) {
+      /* soft idle trail so floor never feels static */
+      if ((trailStats.emitted & 7) === 0) emitOrbitTrail();
+    }
     paintMain();
     raf = requestAnimationFrame(loop);
   }
@@ -958,13 +1279,17 @@
         });
     } catch (e) {}
     refreshFacesUI();
+    if (showTrails) {
+      emitOrbitTrail();
+      ingestContrailToTrails();
+    }
     paintMain();
     if (!raf) raf = requestAnimationFrame(loop);
     try {
       if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
         window.__mgFloatLayout.apply();
     } catch (eA) {}
-    log(VER + " · open · face " + lastFace);
+    log(VER + " · open · face " + lastFace + " · trails " + showTrails);
   }
 
   function close() {
@@ -1006,6 +1331,7 @@
     setFace: function (id) {
       if (FACE_BY[id]) {
         lastFace = id;
+        emitStampTrail(id, selSticker);
         refreshFacesUI();
         paintMain();
       }
@@ -1016,6 +1342,32 @@
     stickers: function () {
       return JSON.parse(JSON.stringify(stickers));
     },
+    trails: function (on) {
+      if (typeof on === "boolean") {
+        showTrails = on;
+        if (!showTrails) trailPts = [];
+        else emitOrbitTrail();
+        if (panel) {
+          var tb = panel.querySelector("#mg-rubik-trails");
+          if (tb) tb.classList.toggle("on", showTrails);
+          var cv = panel.querySelector("#mg-rubik-cube");
+          if (cv) cv.classList.toggle("trails-off", !showTrails);
+        }
+        paintMain();
+      }
+      return showTrails;
+    },
+    pushTrail: pushTrail,
+    ingestContrail: ingestContrailToTrails,
+    trailStats: function () {
+      return {
+        n: trailPts.length,
+        emitted: trailStats.emitted,
+        bus: trailStats.bus,
+        fromContrail: trailStats.fromContrail,
+        on: showTrails,
+      };
+    },
     links: LINKS,
     report: function () {
       return (
@@ -1024,10 +1376,14 @@
         lastFace +
         " lettering=" +
         (FACE_BY[lastFace] ? FACE_BY[lastFace].lettering : "?") +
+        " trails=" +
+        (showTrails ? "on" : "off") +
+        " ribbon=" +
+        trailPts.length +
         " open=" +
         open
       );
     },
   };
-  log(VER + " · glass lettering cube ready");
+  log(VER + " · glass lettering cube + 3D grid trails ready");
 })();

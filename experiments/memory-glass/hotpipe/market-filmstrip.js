@@ -2,15 +2,16 @@
  * Collapsible side rail (same chrome family as video / Lark).
  * Data: window.__mgFilmstripBoard | localStorage mg.filmstrip.board | paste JSON
  * No auto-trading — research / paper / agent train only.
- * VER: market-filmstrip-v7-industry-sections
+ * VER: market-filmstrip-v8-drawer-open
  * Bottom charts: BB · RSI · MACD + TF set (Yahoo / train)
  * Live trade interactions trail on GRAPH (contrail / pattern-flow twin)
  * Industry: collapsed sections — Markets · Clearing · Exchanges · Metals ·
  * Electric · RH sectors · A–Z — full ticker lists with Yahoo + train frames
+ * Dual-drawer: open() routes into right DATA · Mkt (rail is display:none)
  */
 (function () {
   "use strict";
-  var VER = "market-filmstrip-v7-industry-sections";
+  var VER = "market-filmstrip-v8-drawer-open";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._marketFilmstripVer === VER) return;
   HP._marketFilmstripVer = VER;
@@ -1082,11 +1083,13 @@
       "#mg-mkt-list .src{color:rgba(255,255,255,0.35);font:500 9px/1 system-ui;text-align:right}",
       "#mg-mkt-list .bull{color:rgba(120,220,160,0.9)}",
       "#mg-mkt-list .bear{color:rgba(240,140,120,0.9)}",
-      "#mg-mkt-group{display:flex;flex-wrap:wrap;gap:3px;padding:0 8px 6px}",
+      "#mg-mkt-group{display:flex;flex-wrap:wrap;gap:2px;padding:0 8px 6px}",
       "#mg-mkt-group button{appearance:none;cursor:pointer;border:0;",
-      "  background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.55);",
-      "  font:600 9px/1 system-ui;padding:5px 8px;border-radius:8px}",
-      "#mg-mkt-group button.on{background:rgba(10,132,255,0.28);color:#fff}",
+      "  background:transparent;color:rgba(255,255,255,0.42);",
+      "  font:600 9px/1 -apple-system,system-ui;letter-spacing:0.06em;text-transform:uppercase;",
+      "  padding:5px 7px;border-radius:0;border-bottom:1px solid transparent}",
+      "#mg-mkt-group button:hover{color:rgba(255,255,255,0.85)}",
+      "#mg-mkt-group button.on{color:#fff;border-bottom-color:rgba(255,255,255,0.45)}",
       "#mg-mkt-condor{padding:6px 8px;border-top:1px solid rgba(100,160,140,0.2);font-weight:500}",
       "#mg-mkt-status{padding:4px 8px 8px;opacity:0.8;font-weight:500}",
       /* squeeze charts · agentic BB price + RSI + MACD */
@@ -2360,7 +2363,17 @@
   }
 
   function setOpen(on) {
-    state.open = !!on;
+    on = !!on;
+    /* Dual-drawer mode hides the free-floating MKT rail — route into DATA · Mkt */
+    if (on && document.documentElement.classList.contains("mg-dual-drawer")) {
+      try {
+        if (window.__mgRightDrawer && window.__mgRightDrawer.open) {
+          window.__mgRightDrawer.open("mkt");
+          return;
+        }
+      } catch (eR) {}
+    }
+    state.open = on;
     if (rail) rail.classList.toggle("open", state.open);
     saveUi();
     if (state.open) paint();

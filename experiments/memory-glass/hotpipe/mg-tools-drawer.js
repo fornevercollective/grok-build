@@ -1,11 +1,14 @@
 /* Memory Glass · LEFT TOOLS DRAWER
  * CTRL Control Center parity: mode tabs + collapsible sections + act tiles.
  * Tab docks to drawer wall and rides open/close.
- * VER: mg-tools-drawer-v4-ctrl-sections
+ * VER: mg-tools-drawer-v26-bloch-live
+ * Keys = keyboard + maze/gsplat/contrail. Staff = beats + catalogue lab.
+ * Solve embeds live dual-solve Bloch in drawer host.
+ * Phone cam page-axis must NOT lean chrome — freeze body transform when open.
  */
 (function () {
   "use strict";
-  var VER = "mg-tools-drawer-v16-edge-peeks";
+  var VER = "mg-tools-drawer-v26-bloch-live";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._toolsDrawerVer === VER) return;
   HP._toolsDrawerVer = VER;
@@ -27,18 +30,17 @@
   var statusEl = null;
   var mode = "tools";
   var secState = {}; /* section id → open bool */
-  /* Left = control / launch + Keys stack. Data → right drawer
-   * Edge peeks like mueee search: reader / history / notepad side drawers —
-   * always on the left screen edge, one tap opens that pane. */
+  /* Left control · same quiet vertical tab language as DATA (no emoji / neon).
+   * Stack of writing-mode:vertical-rl labels on the left edge. */
   var MODES = [
-    { id: "tools", label: "Tools", short: "Tools", ico: "◆", accent: "#58a6ff" },
-    { id: "keys", label: "Keys", short: "Keys", ico: "⌨", accent: "#c9a84c" },
-    { id: "staff", label: "Staff", short: "Staff", ico: "♪", accent: "#a78bfa" },
-    { id: "qbit", label: "Qbit", short: "Qbit", ico: "⚛", accent: "#22d3ee" },
-    { id: "gt", label: "GT", short: "GT", ico: "🌳", accent: "#34d399" },
-    { id: "vid", label: "Vid", short: "Vid", ico: "▶", accent: "#f0883e" },
-    { id: "books", label: "Books", short: "Books", ico: "▤", accent: "#e040fb" },
-    { id: "shell", label: "Shell", short: "Shell", ico: "⌘", accent: "#94a3b8" },
+    { id: "tools", label: "Tools", short: "Tools" },
+    { id: "keys", label: "Keys", short: "Keys" },
+    { id: "staff", label: "Staff", short: "Staff" },
+    { id: "qbit", label: "Qbit", short: "Qbit" },
+    { id: "gt", label: "GT", short: "GT" },
+    { id: "vid", label: "Vid", short: "Vid" },
+    { id: "books", label: "Books", short: "Books" },
+    { id: "shell", label: "Shell", short: "Shell" },
   ];
   var staffKind = "scale";
   var staffQuery = "";
@@ -49,8 +51,18 @@
     } catch (e) {}
   }
 
+  var _raiseLast = 0;
   function raiseEdges() {
     try {
+      /* freeze during WebGrid play — z-index storms caused shake */
+      if (
+        window.__mgWebgridPlayBusy ||
+        document.documentElement.classList.contains("mg-webgrid-playing")
+      )
+        return;
+      var now = Date.now();
+      if (now - _raiseLast < 800) return;
+      _raiseLast = now;
       var nodes = document.querySelectorAll(".mg-edge");
       for (var i = 0; i < nodes.length; i++) {
         var n = nodes[i];
@@ -83,6 +95,17 @@
       /* Viewport-fixed chrome — direct child of <html>, not <body> (page-axis transform) */
       "html > #mg-tools-drawer,html > #mg-tools-scrim{",
       "  position:fixed!important;backface-visibility:hidden}",
+      /*
+       * Phone / face track enables page-axis lean on <body>. Chrome mounts on <html>
+       * but body lean makes menus feel like they swim. Freeze body while drawers open
+       * or while camera drives viewRay (unless __mgPageAxisWanted).
+       */
+      "html.mg-left-open body,html.mg-right-open body,html.mg-drawer-open body,",
+      "html.mg-chrome-stable body{",
+      "  transform:none!important;will-change:auto!important}",
+      "html > #mg-tools-drawer,html > #mg-tools-scrim,html > #mg-tools-mode-rail,",
+      "html > #mg-right-drawer,html > #mg-right-scrim,html > #mg-right-tab{",
+      "  filter:none!important;perspective:none!important}",
       /* Drop-style see-through glass (page shows through like shell Drop) */
       "#mg-tools-drawer{",
       "  --mg-tools-tab-w:32px;",
@@ -115,74 +138,87 @@
       "#mg-tools-drawer.open::after{",
       "  content:'';position:absolute;top:0;bottom:0;right:-28px;width:28px;pointer-events:none;",
       "  background:linear-gradient(90deg,rgba(14,16,22,calc(var(--mg-drop-a)*0.55)),transparent)}",
-      "#mg-drawer-kb-host,#mg-drawer-beats-host{",
+      "#mg-drawer-kb-host,#mg-drawer-beats-host,#mg-drawer-maze-host,",
+      "#mg-drawer-bloch-host{",
       "  display:flex;flex-direction:column;flex:0 0 auto;",
       "  width:100%;min-height:0;margin:0 0 12px;",
       "  border-radius:16px;overflow:visible}",
-      "#mg-drawer-kb-host{min-height:340px}",
-      "#mg-drawer-beats-host{min-height:220px}",
+      "#mg-drawer-kb-host{min-height:300px}",
+      "#mg-drawer-beats-host,#mg-staff-beats-host{min-height:220px}",
+      "#mg-drawer-maze-host{min-height:240px}",
+      "#mg-drawer-bloch-host{min-height:200px}",
+      /* Keys stack is the main body — never hide behind collapsible chrome */
+      "#mg-tools-drawer .mg-keys-stack{padding:0 0 72px}",
+      "#mg-tools-drawer .mg-keys-stack .mg-drawer-stack-label{",
+      "  font:600 11px/1 -apple-system,system-ui;letter-spacing:0.02em;text-transform:none;",
+      "  color:rgba(255,255,255,0.42);margin:10px 2px 8px}",
       "#mg-drawer-stack-label,.mg-drawer-stack-label{",
       "  font:600 11px/1 -apple-system,system-ui;letter-spacing:0.02em;text-transform:none;",
       "  color:rgba(255,255,255,0.42);margin:10px 2px 8px}",
       ".mg-drawer-stack-label:first-of-type{margin-top:6px}",
       "#mg-tools-drawer.keys-mode .mg-cap-row{margin-bottom:6px}",
+      "#mg-tools-drawer.keys-mode .drw-body{padding-bottom:80px!important}",
       "#mg-tools-drawer .staff-list{",
       "  display:flex;flex-direction:column;gap:0;max-height:min(52vh,480px);",
       "  overflow-y:auto;padding-bottom:8px}",
       "#mg-tools-drawer .staff-lab{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}",
-      /* ── Edge mode peeks (mueee: reader / history / notepad side drawers) ──
-       * Viewport-fixed sibling of the sliding panel — NOT inside transform —
-       * so peeks never clip and stay one-tap reachable on the left edge.
-       * Closed → left:0. Open → rides drawer wall (left = drawer width). */
-      "html > #mg-tools-mode-rail{",
+      /* ── Quiet vertical mode tabs (same language as DATA tab) ──
+       * writing-mode vertical-rl · monochrome glass · type only · no icons/neon.
+       * Closed → left edge. Open → rides drawer wall. */
+      "html > #mg-tools-mode-rail,html.mg-webgrid-play > #mg-tools-mode-rail{",
       "  position:fixed!important;top:50%;right:auto;bottom:auto;",
-      "  left:0;z-index:2147483640!important;pointer-events:auto!important;",
-      "  transform:translateY(-50%);",
-      "  display:flex;flex-direction:column;gap:4px;",
-      "  padding:8px 0;margin:0;",
+      "  left:0!important;z-index:2147483647!important;pointer-events:auto!important;",
+      "  transform:translateY(-50%)!important;",
+      "  display:flex!important;flex-direction:column;gap:0;",
+      "  padding:0;margin:0;visibility:visible!important;opacity:1!important;",
+      "  width:auto!important;min-width:28px!important;",
       "  max-height:min(92vh,740px);overflow-y:auto;overflow-x:visible;",
       "  -webkit-overflow-scrolling:touch;",
       "  transition:left .22s cubic-bezier(.2,.9,.2,1);",
       "  backface-visibility:hidden}",
       "html.mg-left-open > #mg-tools-mode-rail{",
-      "  left:var(--mg-tools-w,min(340px,88vw))}",
+      "  left:var(--mg-tools-w,min(340px,88vw))!important}",
       "html.mg-left-open.mg-left-keys > #mg-tools-mode-rail{",
-      "  left:var(--mg-tools-w,min(480px,94vw))}",
-      "#mg-tools-mode-rail button{",
-      "  appearance:none;cursor:pointer;pointer-events:auto;",
-      "  display:flex;flex-direction:column;align-items:center;justify-content:center;",
-      "  gap:4px;min-width:48px;min-height:52px;padding:9px 10px 8px;",
-      "  margin:0;border:1px solid rgba(255,255,255,0.14);border-left:0;",
-      "  border-radius:0 14px 14px 0;",
-      "  border-left:3px solid var(--peek-accent,rgba(255,255,255,0.28));",
-      "  background:rgba(28,28,32,0.92);",
-      "  backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5);",
-      "  box-shadow:6px 2px 20px rgba(0,0,0,0.34),inset 0 0.5px 0 rgba(255,255,255,0.12);",
-      "  color:rgba(255,255,255,0.78);",
-      "  font:600 9px/1 -apple-system,BlinkMacSystemFont,system-ui;",
-      "  letter-spacing:0.02em;text-transform:none;",
-      "  transition:background .12s,color .12s,transform .12s,box-shadow .12s,min-width .12s}",
-      "#mg-tools-mode-rail button .ico{",
-      "  font-size:15px;line-height:1;opacity:0.95;",
-      "  font-family:-apple-system,system-ui,sans-serif}",
+      "  left:var(--mg-tools-w,min(480px,94vw))!important}",
+      "#mg-tools-mode-rail button,html.mg-webgrid-play #mg-tools-mode-rail button{",
+      "  appearance:none;cursor:pointer;pointer-events:auto!important;",
+      "  display:block!important;box-sizing:border-box;visibility:visible!important;",
+      "  writing-mode:vertical-rl;text-orientation:mixed;",
+      "  padding:16px 8px;margin:0;",
+      /* WKWebView: never allow vertical-rl tabs to collapse to 0×0 */
+      "  min-width:28px!important;min-height:52px!important;width:28px;",
+      "  border:1px solid rgba(255,255,255,0.12);border-left:0;",
+      "  border-radius:0;",
+      "  background:rgba(36,36,40,0.92)!important;",
+      "  backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);",
+      "  box-shadow:4px 0 16px rgba(0,0,0,0.28);",
+      "  color:rgba(255,255,255,0.88)!important;",
+      "  font:600 10px/1 -apple-system,BlinkMacSystemFont,system-ui;",
+      "  letter-spacing:0.1em;text-transform:uppercase;",
+      "  white-space:nowrap;",
+      "  transition:background .12s,color .12s}",
+      "#mg-tools-mode-rail button:first-child{border-radius:0 10px 0 0}",
+      "#mg-tools-mode-rail button:last-child{border-radius:0 0 10px 0}",
+      "#mg-tools-mode-rail button + button{border-top:0}",
+      "#mg-tools-mode-rail button .ico{display:none!important}",
       "#mg-tools-mode-rail button .lbl{",
-      "  font:600 9px/1 -apple-system,system-ui;letter-spacing:0.01em;",
-      "  white-space:nowrap}",
+      "  font:inherit;letter-spacing:inherit;text-transform:inherit;",
+      "  color:inherit;white-space:nowrap;display:inline-block}",
       "#mg-tools-mode-rail button:hover{",
-      "  background:rgba(48,48,54,0.96);color:#fff;transform:translateX(3px);",
-      "  box-shadow:8px 2px 22px rgba(0,0,0,0.4),inset 0 0.5px 0 rgba(255,255,255,0.16)}",
-      "#mg-tools-mode-rail button:active{transform:translateX(1px) scale(0.98)}",
+      "  background:rgba(48,48,54,0.96)!important;color:#fff!important}",
+      "#mg-tools-mode-rail button:active{background:rgba(50,52,60,0.96)!important}",
       "#mg-tools-mode-rail button.on{",
-      "  background:rgba(255,255,255,0.14);color:#fff;",
-      "  min-width:54px;",
-      "  border-left-color:var(--peek-accent,#0a84ff);",
-      "  box-shadow:6px 2px 22px rgba(0,0,0,0.38),inset 0 0.5px 0 rgba(255,255,255,0.18),",
-      "    0 0 12px color-mix(in srgb,var(--peek-accent,#0a84ff) 40%,transparent)}",
+      "  background:rgba(50,52,60,0.98)!important;color:#fff!important;",
+      "  box-shadow:4px 0 18px rgba(0,0,0,0.32),inset 0 0 0 1px rgba(255,255,255,0.08)}",
       "html.mg-left-open #mg-tools-mode-rail button.on{",
-      "  background:rgba(10,132,255,0.22)}",
+      "  background:rgba(50,52,60,0.98)!important;color:#fff!important}",
+      /* drawer + scrim always above webgrid canvas */
+      "html.mg-webgrid-play > #mg-tools-drawer,html.mg-webgrid-play > #mg-tools-scrim,",
+      "html > #mg-tools-drawer,html > #mg-tools-scrim{",
+      "  z-index:2147483635!important;pointer-events:auto!important;visibility:visible!important}",
       /* hide legacy single TOOLS tab if present */
       "#mg-tools-tab{display:none!important}",
-      /* header chips retired — edge peeks are primary (mueee-style) */
+      /* header chips retired — vertical mode tabs are primary */
       "#mg-tools-drawer .drw-tabs-host{display:none!important}",
       "#mg-tools-drawer .drw-hd{",
       "  display:flex;align-items:center;justify-content:space-between;gap:8px;",
@@ -441,11 +477,15 @@
       "system",
       "shell",
       "keys-actions",
-      "keys-stack",
+      /* keys-stack is always-visible (not collapsible) */
       "staff-quick",
+      "staff-lab",
       "staff-browse",
       "qbit-ops",
+      "qbit-stack",
       "gt-ops",
+      "gt-flow",
+      "gt-tree",
       "vid-ops",
       "books-ops",
     ].forEach(function (k) {
@@ -501,7 +541,7 @@
     return MODES[0];
   }
 
-  /** Vertical edge peeks — always reachable (closed or open), like mueee side drawers */
+  /** Quiet vertical tabs — same spine as DATA, one label per mode */
   function paintModeRail() {
     if (!modeRail) return;
     modeRail.innerHTML = "";
@@ -512,17 +552,20 @@
       b.setAttribute("aria-label", M.label);
       b.setAttribute("aria-pressed", open && mode === M.id ? "true" : "false");
       b.className = mode === M.id ? "on" : "";
-      if (M.accent) b.style.setProperty("--peek-accent", M.accent);
       b.title =
         M.label +
-        (open && mode === M.id ? " · tap again to close" : " · open " + M.label);
+        (open && mode === M.id ? " · again to close" : " · open");
+      /* type only — no icons / color chips */
       b.innerHTML =
-        '<span class="ico" aria-hidden="true">' +
-        (M.ico || "●") +
-        "</span>" +
-        '<span class="lbl">' +
-        (M.short || M.label) +
-        "</span>";
+        '<span class="lbl">' + (M.short || M.label).toUpperCase() + "</span>";
+      b.style.cssText =
+        "appearance:none;cursor:pointer;pointer-events:auto;" +
+        "writing-mode:vertical-rl;padding:16px 8px;margin:0;" +
+        "min-width:28px;min-height:52px;width:28px;box-sizing:border-box;" +
+        "border:1px solid rgba(255,255,255,0.12);border-left:0;" +
+        "background:rgba(36,36,40,0.94);color:rgba(255,255,255,0.9);" +
+        "font:600 10px/1 -apple-system,system-ui;letter-spacing:0.1em;" +
+        "text-transform:uppercase;white-space:nowrap;";
       b.onclick = function (ev) {
         if (ev) {
           ev.preventDefault();
@@ -530,7 +573,6 @@
         }
         window.__mgUserChromeTouch = true;
         if (open && mode === M.id) {
-          /* second tap on active peek closes (mueee reader/history/notepad) */
           setOpen(false);
           return;
         }
@@ -813,6 +855,35 @@
 
     into.appendChild(
       collapsible("solve", "Solve", true, function (box) {
+        /* Live dual-solve Bloch sphere (path→gate) — always visible in side menu */
+        var blochHost = document.createElement("div");
+        blochHost.id = "mg-drawer-bloch-host";
+        box.appendChild(blochHost);
+        function tryEmbedBloch() {
+          try {
+            if (window.__mgBlochSolve && window.__mgBlochSolve.embedInto) {
+              window.__mgBlochSolve.setEnabled(true);
+              return !!window.__mgBlochSolve.embedInto(blochHost);
+            }
+          } catch (eB) {}
+          return false;
+        }
+        if (!tryEmbedBloch()) {
+          blochHost.innerHTML =
+            '<p class="drw-hint">Live Bloch loading… · path→gate dual-solve</p>';
+          var tries = 0;
+          var bootB = setInterval(function () {
+            tries++;
+            if (tryEmbedBloch() || tries > 40) {
+              clearInterval(bootB);
+              if (!window.__mgBlochSolve || !window.__mgBlochSolve.isEmbedded || !window.__mgBlochSolve.isEmbedded()) {
+                blochHost.innerHTML =
+                  '<p class="drw-hint">Bloch missing — inject bloch-solve-bus.js · ⌘⇧R</p>';
+              }
+            }
+          }, 120);
+        }
+
         var r = row();
         r.appendChild(
           act(
@@ -821,6 +892,10 @@
             function () {
               if (window.__mgBlochSolve) {
                 window.__mgBlochSolve.setEnabled(true);
+                /* prefer re-embed in drawer if host empty; also open float for pop-out */
+                var host = document.getElementById("mg-drawer-bloch-host");
+                if (host && window.__mgBlochSolve.embedInto)
+                  window.__mgBlochSolve.embedInto(host);
                 if (window.__mgBlochSolve.toggle) window.__mgBlochSolve.toggle();
                 else if (window.__mgBlochSolve.open) window.__mgBlochSolve.open();
                 setStatus(
@@ -830,7 +905,7 @@
                 );
               } else setStatus("Bloch missing");
             },
-            { ico: "◉", sub: "Dual solve", keepStatus: true }
+            { ico: "◉", sub: "Live · float pop-out", keepStatus: true }
           )
         );
         r.appendChild(
@@ -1096,77 +1171,183 @@
   }
 
   function paintQbit(into) {
+    /* Quick actions always first for one-tap ugrad-r0 / live */
     into.appendChild(
-      collapsible("qbit-ops", "Qbit · gates", true, function (box) {
+      collapsible("qbit-ops", "Qbit · run", true, function (box) {
         var h = document.createElement("p");
         h.className = "drw-hint";
-        h.textContent = "Quantum · gates · mini Bloch";
+        h.textContent =
+          "Bloch + data viz above · tensor IN/OUT · ugrad-r0";
         box.appendChild(h);
         var r = row();
-        r.className = "mg-cap-row row3";
         r.appendChild(
           act(
-            "Open",
-            "ok",
-            function () {
-              if (window.__mgQuantum) {
-                var rail = document.getElementById("mg-qwg-rail");
-                if (rail) {
-                  rail.style.display = "flex";
-                  window.__mgQuantum.open();
-                }
-                setStatus(window.__mgQuantum.report());
-              } else setStatus("Quantum not loaded");
-            },
-            { ico: "⚛", sub: "Full rail", keepStatus: true }
-          )
-        );
-        ["H", "X", "Y", "Z", "S", "T"].forEach(function (g) {
-          r.appendChild(
-            act(
-              g,
-              "primary",
-              function () {
-                if (window.__mgQuantum)
-                  window.__mgQuantum.applyGate({ id: g, name: g });
-                setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "?");
-              },
-              { ico: g, sub: "Gate", keepStatus: true }
-            )
-          );
-        });
-        r.appendChild(
-          act(
-            "Score",
-            "hot",
-            function () {
-              if (window.__mgQuantum) window.__mgQuantum.scoreHit();
-              setStatus(window.__mgQuantum ? window.__mgQuantum.report() : "?");
-            },
-            { ico: "★", sub: "Hit", keepStatus: true }
-          )
-        );
-        r.appendChild(
-          act(
-            "|0⟩",
-            "muted",
-            function () {
-              if (window.__mgQuantum) window.__mgQuantum.reset();
-            },
-            { ico: "↺", sub: "Reset" }
-          )
-        );
-        r.appendChild(
-          act(
-            "Composer",
+            "DESK",
             "primary",
             function () {
-              nav("https://quantum.cloud.ibm.com/composer");
+              if (window.__mgAgentDesk && window.__mgAgentDesk.open) {
+                window.__mgAgentDesk.open();
+                setStatus(window.__mgAgentDesk.report());
+              } else setStatus("Agent Desk missing — ⌘⇧R");
             },
-            { ico: "IBM", sub: "Cloud" }
+            { ico: "α", sub: "αβγδ multi-tier", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "SITREP",
+            "ok",
+            function () {
+              if (window.__mgQbitRace && window.__mgQbitRace.publish) {
+                var s = window.__mgQbitRace.publish({});
+                setStatus(s.line || window.__mgQbitRace.report());
+              } else setStatus("race sitrep missing — ⌘⇧R");
+            },
+            { ico: "◉", sub: "core-race meters", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "LIVE",
+            "hot",
+            function () {
+              if (window.__mgQbitStack && window.__mgQbitStack.runLive) {
+                window.__mgQbitStack.runLive(true);
+                setStatus(window.__mgQbitStack.report());
+              } else setStatus("qbit stack missing — ⌘⇧R");
+            },
+            { ico: "▶", sub: "Tensor trajectory", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "STEP",
+            "ok",
+            function () {
+              if (window.__mgQbitStack && window.__mgQbitStack.stepIO) {
+                window.__mgQbitStack.stepIO({});
+                setStatus(window.__mgQbitStack.report());
+              } else setStatus("qbit stack missing");
+            },
+            { ico: "↦", sub: "One hop I/O", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "ugrad-r0",
+            "primary",
+            function () {
+              if (window.__mgQbitStack && window.__mgQbitStack.openUgradR0)
+                window.__mgQbitStack.openUgradR0();
+              else if (window.__mgUgrad && window.__mgUgrad.openR0)
+                window.__mgUgrad.openR0();
+              else nav("https://mueee.qbitos.ai/ugrad-r0.html");
+              setStatus("ugrad-r0");
+            },
+            { ico: "μ", sub: "Full R0 model", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Tensor",
+            "hot",
+            function () {
+              if (window.__mgQbitStack && window.__mgQbitStack.openUgradTensor)
+                window.__mgQbitStack.openUgradTensor();
+              else nav("https://mueee.qbitos.ai/ugrad-r0.html#tensor");
+              setStatus("ugrad-r0#tensor");
+            },
+            { ico: "▣", sub: "microtorch", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "PAUSE",
+            "muted",
+            function () {
+              if (window.__mgQbitStack && window.__mgQbitStack.runLive)
+                window.__mgQbitStack.runLive(false);
+              setStatus("trajectory paused");
+            },
+            { ico: "⏸", sub: "Stop live", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "EXPORT",
+            "ok",
+            function () {
+              if (window.__mgQbitStack && window.__mgQbitStack.exportSnap)
+                window.__mgQbitStack.exportSnap();
+              setStatus("qbit trajectory export");
+            },
+            { ico: "↗", sub: "JSON stack", keepStatus: true }
           )
         );
         box.appendChild(r);
+      })
+    );
+
+    /* Always-visible Bloch + data visualizer + gates (above/around Qbit) */
+    into.appendChild(
+      collapsible("qbit-stack", "Qbit · Bloch · data · gates", true, function (box) {
+        var host = document.createElement("div");
+        host.id = "mg-drawer-qbit-stack-host";
+        box.appendChild(host);
+        function tryEmbed() {
+          try {
+            if (window.__mgQbitStack && window.__mgQbitStack.embedInto)
+              return !!window.__mgQbitStack.embedInto(host);
+          } catch (e) {}
+          return false;
+        }
+        if (!tryEmbed()) {
+          host.innerHTML =
+            '<p class="drw-hint">Loading Qbit stack (Bloch + tensor viz)…</p>';
+          function boot(cb) {
+            if (window.__mgQbitStack) {
+              if (cb) cb(true);
+              return;
+            }
+            var urls = [
+              "hotpipe/qbit-stack-plane.js",
+              "./qbit-stack-plane.js",
+            ];
+            var i = 0;
+            function next() {
+              if (i >= urls.length) {
+                if (cb) cb(false);
+                return;
+              }
+              var s = document.createElement("script");
+              s.src = urls[i++] + "?v=" + Date.now();
+              s.onload = function () {
+                if (cb) cb(!!window.__mgQbitStack);
+              };
+              s.onerror = next;
+              (document.head || document.documentElement).appendChild(s);
+            }
+            next();
+          }
+          boot(function (ok) {
+            if (!ok || !tryEmbed()) {
+              host.innerHTML =
+                '<p class="drw-hint">Qbit stack missing — inject qbit-stack-plane.js · ⌘⇧R</p>';
+            } else {
+              setStatus(
+                window.__mgQbitStack.report
+                  ? window.__mgQbitStack.report()
+                  : "Qbit stack on"
+              );
+            }
+          });
+        } else {
+          setStatus(
+            window.__mgQbitStack.report
+              ? window.__mgQbitStack.report()
+              : "Qbit · Bloch + data"
+          );
+        }
       })
     );
   }
@@ -1176,18 +1357,73 @@
       collapsible("gt-ops", "GT · actions", true, function (box) {
         var h = document.createElement("p");
         h.className = "drw-hint";
-        h.textContent = "Lark governance tree · IANA · CDN · MG fleet";
+        h.textContent =
+          "Governance · hop speed · color flow · IP bring-up · popup guard";
         box.appendChild(h);
         var r = row();
         r.appendChild(
           act(
-            "TICK",
+            "SPEED",
+            "hot",
+            function () {
+              if (window.__mgGtFlow && window.__mgGtFlow.runSpeedTest) {
+                setStatus("GT · speed test…");
+                window.__mgGtFlow.runSpeedTest({}, function (res) {
+                  setStatus(
+                    res && res.ok
+                      ? window.__mgGtFlow.report()
+                      : "GT · speed busy/fail"
+                  );
+                });
+              } else setStatus("GT flow missing — hot reload");
+            },
+            { ico: "⚡", sub: "All hops / edges", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "IP tools",
             "ok",
+            function () {
+              if (window.__mgGtFlow && window.__mgGtFlow.collectIpTools) {
+                window.__mgGtFlow.collectIpTools();
+                if (window.__mgGtFlow.paint) window.__mgGtFlow.paint();
+                setStatus("GT · IP / connection");
+              } else setStatus("GT flow missing");
+            },
+            { ico: "⌘", sub: "LAN · net · storage", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Popup ON",
+            "warn",
+            function () {
+              if (window.__mgGtFlow && window.__mgGtFlow.setPopupEnabled) {
+                var on = true;
+                try {
+                  on = !(
+                    window.__mgGtFlow.state &&
+                    window.__mgGtFlow.state.popup &&
+                    window.__mgGtFlow.state.popup.enabled
+                  );
+                } catch (eP) {}
+                window.__mgGtFlow.setPopupEnabled(on);
+                setStatus("popup mitigation " + (on ? "ON" : "OFF"));
+              } else setStatus("popup guard missing");
+            },
+            { ico: "🛡", sub: "open / flood / _blank", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "TICK",
+            "muted",
             function () {
               if (window.__mgLark) window.__mgLark.tick();
               setStatus(window.__mgLark ? window.__mgLark.report() : "gt");
             },
-            { ico: "⏱", sub: "Epoch / hops", keepStatus: true }
+            { ico: "⏱", sub: "Epoch", keepStatus: true }
           )
         );
         r.appendChild(
@@ -1203,30 +1439,72 @@
         );
         r.appendChild(
           act(
-            "Expand",
-            "muted",
-            function () {
-              if (window.__mgLark && window.__mgLark.expandAll)
-                window.__mgLark.expandAll(true);
-              setStatus("tree expand all");
-            },
-            { ico: "▾", sub: "All nodes", keepStatus: true }
-          )
-        );
-        r.appendChild(
-          act(
             "EXPORT",
             "hot",
             function () {
+              if (window.__mgGtFlow && window.__mgGtFlow.exportFlow)
+                window.__mgGtFlow.exportFlow();
               if (window.__mgLark) window.__mgLark.exportSnapshot();
-              setStatus("gt snapshot");
+              setStatus("gt flow + tree snapshot");
             },
-            { ico: "↗", sub: "JSON snapshot", keepStatus: true }
+            { ico: "↗", sub: "Flow + governance", keepStatus: true }
           )
         );
         box.appendChild(r);
       })
     );
+
+    /* Flow plane always visible — speed graph + hop table + IP + popup */
+    into.appendChild(
+      collapsible("gt-flow", "GT · flow · speed · hops", true, function (box) {
+        var host = document.createElement("div");
+        host.id = "mg-drawer-gt-flow-host";
+        box.appendChild(host);
+        function tryEmbed() {
+          var ok = false;
+          try {
+            if (window.__mgGtFlow && window.__mgGtFlow.embedInto)
+              ok = !!window.__mgGtFlow.embedInto(host);
+          } catch (eF) {}
+          if (ok) {
+            setStatus(
+              window.__mgGtFlow.report
+                ? window.__mgGtFlow.report()
+                : "GT · flow on"
+            );
+            return true;
+          }
+          return false;
+        }
+        if (!tryEmbed()) {
+          host.innerHTML =
+            '<p class="drw-hint">Loading GT flow plane…</p>';
+          function boot(cb) {
+            if (window.__mgLarkEnsureGtFlow) {
+              window.__mgLarkEnsureGtFlow(cb);
+              return;
+            }
+            /* direct script bootstrap */
+            var s = document.createElement("script");
+            s.src = "hotpipe/gt-flow-plane.js?v=" + Date.now();
+            s.onload = function () {
+              if (cb) cb(!!window.__mgGtFlow);
+            };
+            s.onerror = function () {
+              if (cb) cb(false);
+            };
+            (document.head || document.documentElement).appendChild(s);
+          }
+          boot(function (ok) {
+            if (!ok || !tryEmbed()) {
+              host.innerHTML =
+                '<p class="drw-hint">GT flow missing — inject gt-flow-plane.js · ⌘⇧R / rebuild</p>';
+            }
+          });
+        }
+      })
+    );
+
     into.appendChild(
       collapsible("gt-tree", "GT · governance tree", true, function (box) {
         var host = document.createElement("div");
@@ -1246,7 +1524,10 @@
           setStatus("GT · tree missing");
         } else {
           setStatus(
-            window.__mgLark.report ? window.__mgLark.report() : "GT · tree on"
+            (window.__mgGtFlow && window.__mgGtFlow.report
+              ? window.__mgGtFlow.report() + " · "
+              : "") +
+              (window.__mgLark.report ? window.__mgLark.report() : "GT · tree on")
           );
         }
       })
@@ -1427,6 +1708,10 @@
   }
 
   function unembedLeftStack() {
+    /* Only park left-owned embeds. NEVER touch __mgMarket — it lives in the
+     * right DATA drawer; unembedding it empties Mkt while the rail is hidden
+     * under html.mg-dual-drawer (display:none).
+     * Beats now live under Staff; maze under Keys. */
     try {
       if (window.__mgFloatKb && window.__mgFloatKb.unembed)
         window.__mgFloatKb.unembed();
@@ -1436,12 +1721,30 @@
         window.__mgKeyboardBeats.unembed();
     } catch (e2) {}
     try {
-      if (window.__mgMarket && window.__mgMarket.unembed)
-        window.__mgMarket.unembed();
+      if (window.__mgMemoryMaze && window.__mgMemoryMaze.unembed)
+        window.__mgMemoryMaze.unembed();
     } catch (e3) {}
+    try {
+      if (window.__mgStaffLab && window.__mgStaffLab.unembedBeats)
+        window.__mgStaffLab.unembedBeats();
+    } catch (e4) {}
+    try {
+      if (window.__mgBlochSolve && window.__mgBlochSolve.unembed)
+        window.__mgBlochSolve.unembed();
+    } catch (e5) {}
   }
 
   function loadStaffEntry(id, label) {
+    /* Prefer full staff lab (chromatic · transpose · research · playalong) */
+    if (window.__mgStaffLab && window.__mgStaffLab.loadEntry) {
+      window.__mgStaffLab.loadEntry(id, { play: true });
+      setStatus(
+        window.__mgStaffLab.report
+          ? window.__mgStaffLab.report()
+          : "staff · " + (label || id)
+      );
+      return;
+    }
     var B = window.__mgKeyboardBeats;
     if (!B || !B.loadCatalogueId) {
       setStatus("Beats missing · hot reload?");
@@ -1465,38 +1768,171 @@
 
   function paintStaff(into) {
     into.appendChild(
-      collapsible("staff-quick", "Staff · quick picks", true, function (box) {
+      collapsible("staff-quick", "Staff · lab run", true, function (box) {
         var meta = document.createElement("p");
         meta.className = "staff-meta";
         meta.innerHTML =
-          "KBatch <b>music staff catalogue</b> — scales · motifs · PD seeds.";
+          "KBatch <b>music-staff</b> twin · <b>note wheel L1–L5</b> (pitch pipe · Co5 · degree · phrase) · transpose · playalong.";
         box.appendChild(meta);
-        var quick = document.createElement("div");
-        quick.className = "staff-quick";
-        function qAct(title, cls, id, sub, ico) {
-          quick.appendChild(
-            act(
-              title,
-              cls,
-              function () {
-                loadStaffEntry(id, title);
-              },
-              { ico: ico || "♪", sub: sub, keepStatus: true }
-            )
+        var r = row();
+        r.appendChild(
+          act(
+            "Pipe L1",
+            "hot",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.setWheelLevel)
+                window.__mgStaffLab.setWheelLevel(1);
+              else setStatus("staff lab missing — ⌘⇧R");
+            },
+            { ico: "○", sub: "Pitch pipe", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Co5 L3",
+            "ok",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.setWheelLevel)
+                window.__mgStaffLab.setWheelLevel(3);
+              else setStatus("staff lab missing — ⌘⇧R");
+            },
+            { ico: "↻", sub: "Transpose keys", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Phrase L5",
+            "primary",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.setWheelLevel)
+                window.__mgStaffLab.setWheelLevel(5);
+              else setStatus("staff lab missing — ⌘⇧R");
+            },
+            { ico: "♫", sub: "Build phrase", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Playalong",
+            "hot",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.startPlayalong)
+                window.__mgStaffLab.startPlayalong();
+              else setStatus("staff lab missing — ⌘⇧R");
+            },
+            { ico: "▶", sub: "Scholarly assist", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Chromatic",
+            "ok",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.loadEntry)
+                window.__mgStaffLab.loadEntry("scale-c-chromatic", {
+                  play: true,
+                });
+              else loadStaffEntry("scale-c-chromatic", "Chromatic");
+            },
+            { ico: "♯", sub: "12-TET chart", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "T+0",
+            "primary",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.setTranspose)
+                window.__mgStaffLab.setTranspose(0);
+              setStatus("transpose reset");
+            },
+            { ico: "T", sub: "Reset transpose", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Lab ↗",
+            "muted",
+            function () {
+              nav("https://kbatch.ugrad.ai/labs/music-staff");
+            },
+            { ico: "☰", sub: "kbatch staff", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "C Ionian",
+            "primary",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.loadEntry)
+                window.__mgStaffLab.loadEntry("scale-c-ionian", { play: true });
+              else loadStaffEntry("scale-c-ionian", "C Ionian");
+            },
+            { ico: "𝄞", sub: "Major", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Ode Joy",
+            "ok",
+            function () {
+              if (window.__mgStaffLab && window.__mgStaffLab.loadEntry)
+                window.__mgStaffLab.loadEntry("motif-ode-joy", { play: true });
+              else loadStaffEntry("motif-ode-joy", "Ode to Joy");
+            },
+            { ico: "♫", sub: "PD motif", keepStatus: true }
+          )
+        );
+        box.appendChild(r);
+      })
+    );
+
+    /* Full lab: chromatic · transpose · research · playalong · beats */
+    into.appendChild(
+      collapsible("staff-lab", "Staff · beats · chromatic · research", true, function (box) {
+        var host = document.createElement("div");
+        host.id = "mg-drawer-staff-lab-host";
+        box.appendChild(host);
+        function tryEmbed() {
+          try {
+            if (window.__mgStaffLab && window.__mgStaffLab.embedInto)
+              return !!window.__mgStaffLab.embedInto(host);
+          } catch (e) {}
+          return false;
+        }
+        if (!tryEmbed()) {
+          host.innerHTML =
+            '<p class="drw-hint">Loading staff lab…</p>';
+          var s = document.createElement("script");
+          s.src = "hotpipe/staff-lab-plane.js?v=" + Date.now();
+          s.onload = function () {
+            if (!tryEmbed())
+              host.innerHTML =
+                '<p class="drw-hint">Staff lab missing — inject staff-lab-plane.js · ⌘⇧R</p>';
+            else
+              setStatus(
+                window.__mgStaffLab.report
+                  ? window.__mgStaffLab.report()
+                  : "staff lab on"
+              );
+          };
+          s.onerror = function () {
+            host.innerHTML =
+              '<p class="drw-hint">Staff lab missing — ⌘⇧R / rebuild</p>';
+          };
+          (document.head || document.documentElement).appendChild(s);
+        } else {
+          setStatus(
+            window.__mgStaffLab.report
+              ? window.__mgStaffLab.report()
+              : "Staff lab"
           );
         }
-        qAct("C Ionian", "primary", "scale-c-ionian", "Major scale", "𝄞");
-        qAct("C Blues", "hot", "scale-c-blues", "Hexatonic", "♭");
-        qAct("Ode to Joy", "ok", "motif-ode-joy", "PD motif seed", "♫");
-        qAct("Twinkle", "ok", "motif-twinkle", "PD motif seed", "✦");
-        qAct("Sakura", "primary", "motif-sakura", "World motif", "❀");
-        qAct("Bach C", "hot", "motif-bach-c-prelude", "Arpeggio seed", "♭");
-        box.appendChild(quick);
       })
     );
 
     into.appendChild(
-      collapsible("staff-browse", "Staff · browse", true, function (box) {
+      collapsible("staff-browse", "Staff · browse catalogue", true, function (box) {
     var kindsHost = document.createElement("div");
     kindsHost.className = "staff-kinds";
     box.appendChild(kindsHost);
@@ -1680,136 +2116,198 @@
   }
 
   function paintKeys(into) {
+    /* Actions stay collapsible; main stack is always visible (Collapse all
+     * used to leave an empty Keys pane — felt broken). */
+    secState["keys-actions"] =
+      secState["keys-actions"] == null ? true : secState["keys-actions"];
     into.appendChild(
       collapsible("keys-actions", "Keys · actions", true, function (box) {
-    var acts = document.createElement("div");
-    acts.className = "mg-cap-row";
-    acts.appendChild(
-      act(
-        "Type",
-        "primary",
-        function () {
-          if (window.__mgFloatKb) {
-            if (window.__mgFloatKb.setMode) window.__mgFloatKb.setMode("type");
-            else if (window.__mgFloatKb.launch)
-              window.__mgFloatKb.launch({ mode: "type" });
-          }
-          setStatus("TYPE");
-        },
-        { ico: "⌨", sub: "QWERTY deck", keepStatus: true }
-      )
-    );
-    acts.appendChild(
-      act(
-        "Codec",
-        "hot",
-        function () {
-          if (window.__mgFloatKb) {
-            if (window.__mgFloatKb.setMode) window.__mgFloatKb.setMode("codec");
-            else if (window.__mgFloatKb.launch)
-              window.__mgFloatKb.launch({
-                mode: "codec",
-                codec: "hex",
-                text:
-                  (window.__mgFloatKb.buffer && window.__mgFloatKb.buffer()) ||
-                  "MG",
-              });
-          }
-          setStatus("CODEC");
-        },
-        { ico: "⌬", sub: "Live feeds", keepStatus: true }
-      )
-    );
-    acts.appendChild(
-      act(
-        "C major",
-        "ok",
-        function () {
-          loadStaffEntry("scale-c-ionian", "C Ionian");
-        },
-        { ico: "𝄞", sub: "Staff cat", keepStatus: true }
-      )
-    );
-    acts.appendChild(
-      act(
-        "Ode Joy",
-        "hot",
-        function () {
-          loadStaffEntry("motif-ode-joy", "Ode to Joy");
-        },
-        { ico: "♫", sub: "PD motif", keepStatus: true }
-      )
-    );
-    acts.appendChild(
-      act(
-        "Pop-out",
-        "muted",
-        function () {
-          if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.popOut) {
-            window.__mgKeyboardBeats.popOut();
-            setStatus("Beats · canvas pop-out");
-          } else setStatus("Beats pop-out missing");
-        },
-        { ico: "↗", sub: "Float beats", keepStatus: true }
-      )
-    );
-    box.appendChild(acts);
+        var acts = document.createElement("div");
+        acts.className = "mg-cap-row";
+        acts.appendChild(
+          act(
+            "Type",
+            "primary",
+            function () {
+              if (window.__mgFloatKb) {
+                if (window.__mgFloatKb.setMode)
+                  window.__mgFloatKb.setMode("type");
+                else if (window.__mgFloatKb.launch)
+                  window.__mgFloatKb.launch({ mode: "type" });
+              }
+              setStatus("TYPE");
+            },
+            { ico: "⌨", sub: "QWERTY deck", keepStatus: true }
+          )
+        );
+        acts.appendChild(
+          act(
+            "Codec",
+            "hot",
+            function () {
+              if (window.__mgFloatKb) {
+                if (window.__mgFloatKb.setMode)
+                  window.__mgFloatKb.setMode("codec");
+                else if (window.__mgFloatKb.launch)
+                  window.__mgFloatKb.launch({
+                    mode: "codec",
+                    codec: "hex",
+                    text:
+                      (window.__mgFloatKb.buffer &&
+                        window.__mgFloatKb.buffer()) ||
+                      "MG",
+                  });
+              }
+              setStatus("CODEC");
+            },
+            { ico: "⌬", sub: "Live feeds", keepStatus: true }
+          )
+        );
+        acts.appendChild(
+          act(
+            "Maze",
+            "ok",
+            function () {
+              if (window.__mgMemoryMaze) {
+                if (window.__mgMemoryMaze.open) window.__mgMemoryMaze.open();
+                setStatus(
+                  window.__mgMemoryMaze.report
+                    ? window.__mgMemoryMaze.report()
+                    : "maze"
+                );
+              } else setStatus("maze missing");
+            },
+            { ico: "⬡", sub: "Gsplat space", keepStatus: true }
+          )
+        );
+        acts.appendChild(
+          act(
+            "Contrail",
+            "hot",
+            function () {
+              if (window.__mgContrail) {
+                if (window.__mgContrail.setFlow)
+                  window.__mgContrail.setFlow(true);
+                if (window.__mgContrail.setOverlay)
+                  window.__mgContrail.setOverlay(true);
+                setStatus(
+                  window.__mgContrail.report
+                    ? window.__mgContrail.report()
+                    : "contrail on"
+                );
+              } else setStatus("contrail missing");
+            },
+            { ico: "〜", sub: "Path → maze", keepStatus: true }
+          )
+        );
+        acts.appendChild(
+          act(
+            "Staff →",
+            "primary",
+            function () {
+              mode = "staff";
+              paint();
+              setStatus("Staff · beats + catalogue");
+            },
+            { ico: "𝄞", sub: "Beats live here", keepStatus: true }
+          )
+        );
+        acts.appendChild(
+          act(
+            "Pack",
+            "muted",
+            function () {
+              if (window.__mgMemoryMaze && window.__mgMemoryMaze.cyclePack) {
+                var p = window.__mgMemoryMaze.cyclePack();
+                setStatus("maze pack · " + (p && p.id ? p.id : "?"));
+              }
+            },
+            { ico: "♫", sub: "Install rain", keepStatus: true }
+          )
+        );
+        acts.appendChild(
+          act(
+            "Mkt →",
+            "hot",
+            function () {
+              if (window.__mgRightDrawer)
+                window.__mgRightDrawer.open("mkt");
+              else if (window.__mgMarket && window.__mgMarket.open)
+                window.__mgMarket.open();
+              setStatus("DATA · Mkt");
+            },
+            { ico: "📈", sub: "Market filmstrip", keepStatus: true }
+          )
+        );
+        box.appendChild(acts);
       })
     );
 
-    into.appendChild(
-      collapsible("keys-stack", "Keys · keyboard · beats", true, function (box) {
+    /* Always-visible stack: Maze/gsplat/contrail (where beats used to be) + keyboard */
+    var stack = document.createElement("div");
+    stack.className = "mg-keys-stack";
+    stack.setAttribute("data-sec", "keys-stack");
+
+    var labM = document.createElement("div");
+    labM.className = "mg-drawer-stack-label";
+    labM.id = "mg-drawer-stack-label-maze";
+    labM.textContent = "Maze · gsplat · contrails";
+    stack.appendChild(labM);
+    var mazeHost = document.createElement("div");
+    mazeHost.id = "mg-drawer-maze-host";
+    stack.appendChild(mazeHost);
+
     var lab1 = document.createElement("div");
     lab1.className = "mg-drawer-stack-label";
     lab1.id = "mg-drawer-stack-label-kb";
     lab1.textContent = "Keyboard";
-    box.appendChild(lab1);
+    stack.appendChild(lab1);
     var kbHost = document.createElement("div");
     kbHost.id = "mg-drawer-kb-host";
-    box.appendChild(kbHost);
+    stack.appendChild(kbHost);
 
-    var lab2 = document.createElement("div");
-    lab2.className = "mg-drawer-stack-label";
-    lab2.id = "mg-drawer-stack-label-beats";
-    lab2.textContent = "Beats · staff · piano";
-    box.appendChild(lab2);
-    var beatsHost = document.createElement("div");
-    beatsHost.id = "mg-drawer-beats-host";
-    box.appendChild(beatsHost);
+    into.appendChild(stack);
 
-    var kbOk = false;
-    var beatsOk = false;
-    try {
-      if (window.__mgFloatKb && window.__mgFloatKb.embedInto)
-        kbOk = !!window.__mgFloatKb.embedInto(kbHost);
-    } catch (eK) {}
-    try {
-      if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.embedInto)
-        beatsOk = !!window.__mgKeyboardBeats.embedInto(beatsHost);
-    } catch (eB) {}
-    try {
-      if (kbOk && beatsOk && window.__mgKeyboardBeats) {
-        if (window.__mgKeyboardBeats.requestPaint)
-          window.__mgKeyboardBeats.requestPaint(true);
+    function doEmbed() {
+      var kbOk = false;
+      var mazeOk = false;
+      try {
+        if (window.__mgMemoryMaze && window.__mgMemoryMaze.embedInto)
+          mazeOk = !!window.__mgMemoryMaze.embedInto(mazeHost);
+        else if (window.__mgMemoryMaze && window.__mgMemoryMaze.open) {
+          window.__mgMemoryMaze.open();
+          mazeOk = true;
+          mazeHost.innerHTML =
+            '<p class="drw-hint">Maze float open · embed API pending hot reload</p>';
+        }
+      } catch (eM) {}
+      try {
+        if (window.__mgFloatKb && window.__mgFloatKb.embedInto)
+          kbOk = !!window.__mgFloatKb.embedInto(kbHost);
+      } catch (eK) {}
+      if (!mazeOk) {
+        mazeHost.innerHTML =
+          '<p class="drw-hint">Maze missing — inject memory-maze-gsplat · contrail feeds pts</p>';
       }
-    } catch (eS) {}
-    if (!kbOk) {
-      kbHost.innerHTML =
-        '<p class="drw-hint">Keyboard missing — hot reload?</p>';
+      if (!kbOk) {
+        kbHost.innerHTML =
+          '<p class="drw-hint">Keyboard missing — hot reload?</p>';
+      }
+      setStatus(
+        "Keys · " +
+          (mazeOk ? "maze/gsplat" : "—") +
+          " + " +
+          (kbOk ? "keyboard" : "—") +
+          " · beats→Staff"
+      );
+      return kbOk || mazeOk;
     }
-    if (!beatsOk) {
-      beatsHost.innerHTML =
-        '<p class="drw-hint">Beats missing — open after inject</p>';
+    if (!doEmbed()) {
+      setTimeout(function () {
+        if (!document.getElementById("mg-drawer-kb-host")) return;
+        doEmbed();
+      }, 280);
     }
-    setStatus(
-      "Keys · " +
-        (kbOk ? "keyboard" : "—") +
-        " + " +
-        (beatsOk ? "piano" : "—") +
-        " · synced"
-    );
-      })
-    );
   }
 
   function paint() {
@@ -1866,6 +2364,36 @@
     }
   }
 
+  function syncChromeStable() {
+    try {
+      var de = document.documentElement;
+      if (!de) return;
+      var left = de.classList.contains("mg-left-open");
+      var right = de.classList.contains("mg-right-open");
+      var any = left || right || de.classList.contains("mg-drawer-mode");
+      de.classList.toggle("mg-drawer-open", any);
+      /*
+       * Default: freeze page-axis while camera is driving viewRay, unless user
+       * explicitly opted into live page lean (__mgPageAxisWanted = true).
+       */
+      var ray = window.LabViewRay;
+      var cam =
+        ray &&
+        (ray.source === "camera" || de.classList.contains("mg-track-lock"));
+      var forceAxis = !!window.__mgPageAxisWanted;
+      de.classList.toggle("mg-chrome-stable", !!(cam && !forceAxis) || any);
+      /* Zero lean vars so residual CSS can't drift peeks */
+      if (de.classList.contains("mg-chrome-stable")) {
+        de.style.setProperty("--mg-px", "0px");
+        de.style.setProperty("--mg-py", "0px");
+        de.style.setProperty("--mg-pz", "0px");
+        de.style.setProperty("--mg-rx", "0deg");
+        de.style.setProperty("--mg-ry", "0deg");
+        de.style.setProperty("--mg-sc", "1");
+      }
+    } catch (eS) {}
+  }
+
   function setOpen(on) {
     open = !!on;
     if (el) el.classList.toggle("open", open);
@@ -1878,6 +2406,7 @@
         "mg-left-keys",
         open && mode === "keys"
       );
+      syncChromeStable();
     } catch (e) {}
     if (open) {
       /* sync drop alpha from shell Drop if live */
@@ -1912,26 +2441,52 @@
     setOpen(!open);
   }
 
+  function forceRemountNodes() {
+    [
+      "mg-tools-drawer",
+      "mg-tools-tab",
+      "mg-tools-scrim",
+      "mg-tools-mode-rail",
+    ].forEach(function (id) {
+      var n = document.getElementById(id);
+      if (n && n.parentNode) n.parentNode.removeChild(n);
+    });
+    el = null;
+    modeRail = null;
+    body = null;
+    statusEl = null;
+    tab = null;
+  }
+
   function mount() {
     ensureCss();
     if (document.getElementById("mg-tools-drawer")) {
       try {
-        if (window.__mgToolsDrawer && window.__mgToolsDrawer.ver !== VER) {
-          [
-            "mg-tools-drawer",
-            "mg-tools-tab",
-            "mg-tools-scrim",
-            "mg-tools-mode-rail",
-          ].forEach(function (id) {
-            var n = document.getElementById(id);
-            if (n && n.parentNode) n.parentNode.removeChild(n);
-          });
+        var needRemount =
+          !window.__mgToolsDrawer ||
+          window.__mgToolsDrawer.ver !== VER ||
+          !document.getElementById("mg-tools-mode-rail");
+        /* zero-box heal: mode rail exists but not paint-sized */
+        if (!needRemount) {
+          var rail0 = document.getElementById("mg-tools-mode-rail");
+          if (rail0) {
+            var rr = rail0.getBoundingClientRect();
+            if (rr.width < 4 || rr.height < 20) needRemount = true;
+          } else needRemount = true;
+        }
+        if (needRemount) {
+          forceRemountNodes();
         } else {
+          ensureCss();
+          paintModeRail();
+          positionModeRail();
           raiseEdges();
           return;
         }
       } catch (e) {
-        return;
+        try {
+          forceRemountNodes();
+        } catch (e2) {}
       }
     }
 
@@ -1953,16 +2508,27 @@
       "</div>" +
       '<div class="drw-tabs-host"></div>' +
       '<div class="drw-body" id="mg-tools-body"></div>' +
-      '<div class="drw-status" id="mg-tools-status">Edge peeks · Tools · Keys · Staff · …</div>';
+      '<div class="drw-status" id="mg-tools-status">Control Center</div>';
+    /* Critical geometry inline — WKWebView WebGrid CSS often starves drawers */
+    el.style.cssText =
+      "position:fixed!important;left:0!important;top:0!important;bottom:0!important;" +
+      "width:min(340px,88vw)!important;z-index:2147483635!important;" +
+      "pointer-events:auto!important;display:flex!important;flex-direction:column!important;" +
+      "visibility:visible!important;box-sizing:border-box!important;";
     root.appendChild(el);
 
-    /* Viewport-fixed sibling — outside drawer transform so peeks never clip
-     * (mueee history / notepad / reader side peeks stay on-screen always). */
+    /* Viewport-fixed sibling — outside drawer transform so peeks never clip */
     modeRail = document.createElement("div");
     modeRail.id = "mg-tools-mode-rail";
     modeRail.className = "mg-edge";
     modeRail.setAttribute("role", "tablist");
     modeRail.setAttribute("aria-label", "Control Center modes");
+    modeRail.style.cssText =
+      "position:fixed!important;left:0!important;top:50%!important;" +
+      "transform:translateY(-50%)!important;z-index:2147483647!important;" +
+      "display:flex!important;flex-direction:column!important;" +
+      "pointer-events:auto!important;visibility:visible!important;" +
+      "min-width:28px!important;opacity:1!important;";
     root.appendChild(modeRail);
     tab = null;
 
@@ -2038,6 +2604,21 @@
     log(VER + " · edge peeks ready (mueee-style)");
   }
 
+  /* Keep chrome stable while phone cam head-track is live */
+  if (!HP._chromeStableTick) {
+    HP._chromeStableTick = true;
+    setInterval(function () {
+      try {
+        if (typeof syncChromeStable === "function") syncChromeStable();
+      } catch (eT) {}
+    }, 250);
+  }
+  setTimeout(function () {
+    try {
+      syncChromeStable();
+    } catch (e0) {}
+  }, 300);
+
   window.__mgToolsDrawer = {
     ver: VER,
     open: function () {
@@ -2050,6 +2631,7 @@
     isOpen: function () {
       return open;
     },
+    syncChromeStable: syncChromeStable,
     /** Switch mode; opens drawer if closed */
     setMode: function (m) {
       openMode(m || "tools");

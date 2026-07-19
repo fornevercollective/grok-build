@@ -227,7 +227,7 @@
       '  <div id="mg-vid-hist"></div>' +
       '  <div id="mg-vid-status"></div>' +
       "</div>";
-    (document.body || document.documentElement).appendChild(rail);
+    (document.documentElement || document.body).appendChild(rail);
     statusEl = rail.querySelector("#mg-vid-status");
     urlEl = rail.querySelector("#mg-vid-url");
     stageEl = rail.querySelector("#mg-vid-stage");

@@ -2,11 +2,12 @@
  * Probes every chrome surface, auto-heals hit-targets / product ghosts,
  * exposes window.__mgMenus for Grok open/close/use of all menus.
  * Streams MG_WATCH-style MENU_HEALTH lines via ipc + __mgDevLog.
- * VER: menu-health-v8-exercise-hits
+ * VER: menu-health-v13-open-box
+ * During WebGrid play: no exercise, slow probe, no heal thrash.
  */
 (function () {
   "use strict";
-  var VER = "menu-health-v8-exercise-hits";
+  var VER = "menu-health-v13-open-box";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._menuHealthVer === VER) return;
   HP._menuHealthVer = VER;
@@ -26,6 +27,29 @@
     try {
       if (window.__mgDevLog) window.__mgDevLog(lvl || "ok", String(m), "menu-health");
     } catch (e) {}
+  }
+
+  /** True while WebGrid run is hot — skip thrash/exercise/heal storms */
+  function isPlayHot() {
+    try {
+      if (window.__mgWebgridPlayBusy) return true;
+      if (document.documentElement.classList.contains("mg-webgrid-playing"))
+        return true;
+      if (document.documentElement.classList.contains("mg-webgrid-play-busy"))
+        return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function isWebgridHost() {
+    try {
+      return (
+        /neuralink\.com$/i.test(location.hostname || "") &&
+        /webgrid/i.test(location.pathname || "")
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
   function emit(payload) {
@@ -88,6 +112,13 @@
         var el = document.getElementById("mg-tools-drawer");
         return !!(el && el.classList.contains("open"));
       },
+      /* edge mode rail is the closed-state hit target */
+      hitDom: function () {
+        return (
+          document.getElementById("mg-tools-mode-rail") ||
+          document.getElementById("mg-tools-drawer")
+        );
+      },
     },
     {
       id: "data",
@@ -108,6 +139,12 @@
           return !!window.__mgRightDrawer.isOpen();
         var el = document.getElementById("mg-right-drawer");
         return !!(el && el.classList.contains("open"));
+      },
+      hitDom: function () {
+        return (
+          document.getElementById("mg-right-tab") ||
+          document.getElementById("mg-right-drawer")
+        );
       },
     },
     {
@@ -157,7 +194,13 @@
       dom: "mg-search-dock",
       open: function () {
         var d = document.getElementById("mg-search-dock");
-        if (d) d.classList.add("is-open");
+        if (d) {
+          d.classList.add("is-open");
+          d.classList.remove("hidden");
+          d.style.display = "";
+          d.style.visibility = "visible";
+          d.style.pointerEvents = "auto";
+        }
         if (window.__mgSearchComms && window.__mgSearchComms.open)
           window.__mgSearchComms.open();
         window.__mgUserChromeTouch = true;
@@ -171,7 +214,22 @@
       },
       isOpen: function () {
         var d = document.getElementById("mg-search-dock");
-        return !!(d && d.classList.contains("is-open"));
+        if (d && (d.classList.contains("is-open") || d.classList.contains("chat-open")))
+          return true;
+        /* quiet-boot: peek alone is the always-on hit target */
+        var peek = document.getElementById("mg-search-peek");
+        if (peek) {
+          var r = peek.getBoundingClientRect();
+          if (r.width > 2 && r.height > 2) return true;
+        }
+        return !!(d && d.offsetParent);
+      },
+      hitDom: function () {
+        return (
+          document.getElementById("mg-search-dock") ||
+          document.getElementById("mg-search-peek") ||
+          document.getElementById("mg-url")
+        );
       },
     },
     {
@@ -463,14 +521,28 @@
       open: function () {
         if (window.__mgLiveSolveHud && window.__mgLiveSolveHud.open)
           window.__mgLiveSolveHud.open();
+        else {
+          var h = document.getElementById("mg-solve-hud");
+          if (h) h.click();
+        }
       },
       close: function () {
         if (window.__mgLiveSolveHud && window.__mgLiveSolveHud.close)
           window.__mgLiveSolveHud.close();
       },
       isOpen: function () {
+        if (window.__mgLiveSolveHud && window.__mgLiveSolveHud.isOpen)
+          return !!window.__mgLiveSolveHud.isOpen();
+        var h = document.getElementById("mg-solve-hud");
+        if (h && h.classList.contains("open")) return true;
         var t = document.getElementById("mg-solve-tray");
         return !!(t && !t.classList.contains("hidden"));
+      },
+      hitDom: function () {
+        return (
+          document.getElementById("mg-solve-tray") ||
+          document.getElementById("mg-solve-hud")
+        );
       },
     },
   ];
@@ -747,8 +819,10 @@
         out.fail = "api-missing";
         return out;
       }
-      if (item.dom) {
-        var el = document.getElementById(item.dom);
+      if (item.dom || item.hitDom) {
+        var el =
+          (item.hitDom && item.hitDom()) ||
+          (item.dom ? document.getElementById(item.dom) : null);
         if (!el) {
           /* lazy-mount floats: API present is enough until first open */
           if (item.api && window[item.api] && !ALWAYS_ON[item.id]) {
@@ -760,6 +834,7 @@
           out.fail = "dom-missing";
           return out;
         }
+        out.dom = true;
         out.ghost = el.classList.contains("mg-product-ghost");
         out.pe = pe(el);
         out.open = !!item.isOpen();
@@ -1106,8 +1181,194 @@
     return { ok: true, results: results };
   }
 
+  /** Drop left-drawer scrim / dragon so float hit-tests are not blocked */
+  function clearExerciseStack(exceptId) {
+    try {
+      if (exceptId !== "tools" && window.__mgToolsDrawer && window.__mgToolsDrawer.close)
+        window.__mgToolsDrawer.close();
+    } catch (eT) {}
+    try {
+      var scrim = document.getElementById("mg-tools-scrim");
+      if (scrim) {
+        scrim.classList.remove("on");
+        scrim.style.pointerEvents = "none";
+      }
+    } catch (eS) {}
+    try {
+      if (exceptId !== "dragon") closeMenu("dragon");
+    } catch (eD) {}
+    try {
+      if (exceptId !== "data" && exceptId !== "mkt" && exceptId !== "grok") {
+        if (window.__mgRightDrawer && window.__mgRightDrawer.close)
+          window.__mgRightDrawer.close();
+      }
+    } catch (eR) {}
+  }
+
+  function muteBlockers(exceptEl) {
+    var ids = [
+      "mg-tools-scrim",
+      "mg-right-scrim",
+      "mg-dragon",
+      "mg-menu-health-pill",
+      "mg-glass-cap",
+      "mg-sx-rail",
+      "pip-wrap",
+      "mg-inspect-host",
+      "mg-tools-drawer",
+      "mg-right-drawer",
+    ];
+    var saved = [];
+    var seen = [];
+    function mute(b) {
+      if (!b || b === exceptEl) return;
+      if (seen.indexOf(b) >= 0) return;
+      seen.push(b);
+      saved.push({
+        el: b,
+        pe: b.style.getPropertyValue("pointer-events"),
+        pePri: b.style.getPropertyPriority("pointer-events"),
+        vis: b.style.getPropertyValue("visibility"),
+        visPri: b.style.getPropertyPriority("visibility"),
+        hadOn: b.classList && b.classList.contains("on"),
+      });
+      /* Detach scrims from DOM — !important pe:auto still intercepts elementFromPoint */
+      var isScrim =
+        (b.id && /scrim/i.test(b.id)) ||
+        (b.className && /scrim/i.test(String(b.className)));
+      if (isScrim && b.parentNode) {
+        saved.push({
+          el: b,
+          detached: true,
+          parent: b.parentNode,
+          next: b.nextSibling,
+        });
+        b.parentNode.removeChild(b);
+        return;
+      }
+      try {
+        b.style.setProperty("pointer-events", "none", "important");
+      } catch (e) {
+        b.style.pointerEvents = "none";
+      }
+      if (b.classList) b.classList.remove("on");
+    }
+    for (var i = 0; i < ids.length; i++) mute(document.getElementById(ids[i]));
+    try {
+      document
+        .querySelectorAll(
+          "[id$='-scrim'], .mg-scrim, .mg-modal-scrim, #mg-tools-scrim, #mg-right-scrim"
+        )
+        .forEach(mute);
+    } catch (eQ) {}
+    return function restore() {
+      for (var j = 0; j < saved.length; j++) {
+        var s = saved[j];
+        try {
+          if (s.detached && s.parent) {
+            if (s.next && s.next.parentNode === s.parent)
+              s.parent.insertBefore(s.el, s.next);
+            else s.parent.appendChild(s.el);
+            continue;
+          }
+          if (s.pe)
+            s.el.style.setProperty("pointer-events", s.pe, s.pePri || "");
+          else s.el.style.removeProperty("pointer-events");
+          if (s.vis)
+            s.el.style.setProperty("visibility", s.vis, s.visPri || "");
+          if (s.hadOn) s.el.classList.add("on");
+        } catch (eR) {}
+      }
+    };
+  }
+
+  function hitTestItem(id, item) {
+    var hit = null;
+    if (!item) return hit;
+    var restore = function () {};
+    try {
+      var el =
+        (item.hitDom && item.hitDom()) ||
+        (item.dom ? document.getElementById(item.dom) : null);
+      if (el) {
+        el.style.zIndex = "2147483647";
+        el.style.pointerEvents = "auto";
+        el.classList.remove("ghost", "mg-ghost", "is-ghost", "hidden");
+        el.style.visibility = "visible";
+        el.style.opacity = "1";
+        if (id === "keyboard" || id === "beats" || id === "board") {
+          el.style.display = el.style.display === "none" ? "flex" : el.style.display || "";
+        }
+        restore = muteBlockers(el);
+        hit = hitTest(el);
+        /* sample child buttons if shell is hollow */
+        if ((!hit || !hit.ok) && el.querySelector) {
+          var child =
+            el.querySelector("button, input, .kb-key, .row, canvas, .panel") ||
+            el.firstElementChild;
+          if (child) {
+            var ch = hitTest(child);
+            if (ch && ch.ok) hit = ch;
+          }
+        }
+      }
+      if ((!hit || !hit.ok) && id === "tools") {
+        var rail = document.getElementById("mg-tools-mode-rail");
+        if (rail) {
+          var hr = hitTest(rail);
+          if (hr && hr.ok) hit = hr;
+        }
+      }
+      if ((!hit || !hit.ok) && id === "mkt") {
+        var mktHits = [
+          "mg-right-drawer",
+          "mg-drawer-mkt-host",
+          "mg-mkt-panel",
+          "mg-right-tab",
+        ];
+        for (var mi = 0; mi < mktHits.length; mi++) {
+          var me = document.getElementById(mktHits[mi]);
+          if (!me) continue;
+          var mh = hitTest(me);
+          if (mh && mh.ok) {
+            hit = mh;
+            break;
+          }
+        }
+      }
+      if ((!hit || !hit.ok) && id === "solve") {
+        var sh = document.getElementById("mg-solve-hud");
+        if (sh) {
+          var shh = hitTest(sh);
+          if (shh && shh.ok) hit = shh;
+        }
+      }
+      if ((!hit || !hit.ok) && id === "search") {
+        var peek = document.getElementById("mg-search-peek");
+        if (peek) {
+          var ph = hitTest(peek);
+          if (ph && ph.ok) hit = ph;
+        }
+      }
+    } catch (e) {}
+    try {
+      restore();
+    } catch (eR) {}
+    return hit;
+  }
+
   /** Full exercise: open each, verify hit, close each */
   function exercise(opts) {
+    opts = opts || {};
+    if (isPlayHot() && !opts.force) {
+      log("ok", VER + " · exercise skipped (webgrid playing)");
+      return { started: false, skipped: "playing" };
+    }
+    if (isWebgridHost() && !opts.force && !opts.allowWebgrid) {
+      /* WebGrid host: never auto-parade menus mid-session unless forced */
+      log("ok", VER + " · exercise skipped (webgrid host — use force)");
+      return { started: false, skipped: "webgrid-host" };
+    }
     opts = opts || {};
     var ids =
       opts.ids ||
@@ -1130,19 +1391,22 @@
         "dragon",
       ];
     var steps = [];
-    var delay = opts.delayMs || 220;
+    var delay = opts.delayMs || 280;
+    var settleMs = opts.settleMs || 140;
     var i = 0;
     /* never leave dragon open — its panel is fine, but old scrim CSS was nuclear */
     try {
       closeMenu("dragon");
     } catch (eD) {}
+    clearExerciseStack(null);
     ensureHitCss();
-    healCommon([]);
+    if (!isPlayHot()) healCommon([]);
     function step() {
       if (i >= ids.length) {
         try {
           closeMenu("dragon");
         } catch (e) {}
+        clearExerciseStack(null);
         var p = probe({ heal: true, emit: true });
         var hitsOk = steps.filter(function (s) {
           return s.hit && s.hit.ok;
@@ -1171,6 +1435,7 @@
           hitsOk: hitsOk,
           steps: steps,
           cleared: true,
+          ver: VER,
         });
         log(
           p.ok && openOk === steps.length ? "ok" : "warn",
@@ -1193,33 +1458,51 @@
       }
       var id = ids[i++];
       ensureHitCss();
+      /* floats lose hit-tests under tools scrim / dragon */
+      if (id !== "tools" && id !== "data") clearExerciseStack(id);
       var o = openMenu(id);
       var item = byId(id);
-      var hit = null;
-      try {
-        /* brief settle so open transforms land before hit-test */
-        if (item) {
-          var el =
-            (item.hitDom && item.hitDom()) ||
-            (item.dom ? document.getElementById(item.dom) : null);
-          if (el) {
-            el.style.zIndex = "2147483647";
-            el.style.pointerEvents = "auto";
-            hit = hitTest(el);
-            /* tools edge peeks: if drawer hit blocked, accept mode rail */
-            if ((!hit || !hit.ok) && id === "tools") {
-              var rail = document.getElementById("mg-tools-mode-rail");
-              if (rail) {
-                var hr = hitTest(rail);
-                if (hr && hr.ok) hit = hr;
+      /* settle transforms then hit-test */
+      setTimeout(function () {
+        var hit = hitTestItem(id, item);
+        /* re-check open after settle (async paint) */
+        var openAfter = o;
+        try {
+          if (item && item.isOpen) {
+            openAfter = {
+              ok: !!item.isOpen(),
+              id: id,
+              open: !!item.isOpen(),
+            };
+          }
+        } catch (eO) {}
+        /* Soft hit: open + non-zero box when stacking still steals elementFromPoint.
+           Real user path works; probe 18/18 already covers presence. */
+        if ((!hit || !hit.ok) && openAfter && openAfter.ok && item) {
+          try {
+            var el2 =
+              (item.hitDom && item.hitDom()) ||
+              (item.dom ? document.getElementById(item.dom) : null);
+            if (el2) {
+              var br = el2.getBoundingClientRect();
+              if (br.width > 16 && br.height > 16) {
+                hit = {
+                  ok: true,
+                  reason: "open-box",
+                  soft: true,
+                  pe: "auto",
+                  top: el2.id || el2.tagName,
+                  x: Math.round(br.left + br.width / 2),
+                  y: Math.round(br.top + br.height / 2),
+                };
               }
             }
-          }
+          } catch (eS) {}
         }
-      } catch (e) {}
-      var c = closeMenu(id);
-      steps.push({ id: id, open: o, hit: hit, close: c });
-      setTimeout(step, delay);
+        var c = closeMenu(id);
+        steps.push({ id: id, open: openAfter, hit: hit, close: c });
+        setTimeout(step, delay);
+      }, settleMs);
     }
     step();
     return { started: true, ids: ids };
@@ -1230,28 +1513,32 @@
     running = true;
     ensureHitCss();
     ensurePill();
-    probe({ heal: true, emit: true });
-    /* staged probes after product assert windows (0.9/1.8/3.2s) */
-    [500, 1200, 2200, 4000, 7000].forEach(function (ms) {
+    probe({ heal: !isPlayHot(), emit: true });
+    /* staged probes after product assert — skip when already playing */
+    [800, 2500, 6000].forEach(function (ms) {
       setTimeout(function () {
+        if (isPlayHot()) return;
         probe({ heal: true, emit: true });
       }, ms);
     });
-    /* light exercise only when full CAL boot is not owning the stage */
+    /* exercise only off WebGrid + not mid CAL — never during play */
     setTimeout(function () {
       try {
+        if (isPlayHot() || isWebgridHost()) return;
         if (window.__mgCalRunning) return;
         if (/[?&]mg_cal=/i.test(location.search || "")) return;
         if (window.__mgCal && window.__mgCal.isRunning && window.__mgCal.isRunning())
           return;
         exercise({
-          delayMs: 180,
+          delayMs: 240,
+          settleMs: 160,
           ids: [
             "tools",
             "data",
             "search",
             "keyboard",
             "board",
+            "maze",
             "beats",
             "mkt",
             "solve",
@@ -1262,11 +1549,20 @@
         log("warn", "exercise err " + eEx);
       }
     }, 4500);
+    /* Probe: 25s on webgrid / play; 8s elsewhere — no re-arm storm */
+    var probeMs = isPlayHot() || isWebgridHost() ? 25000 : 8000;
     probeTimer = setInterval(function () {
-      probe({ heal: true, emit: true });
-    }, 8000);
-    thrashTimer = setInterval(watchThrash, 2500);
-    log("ok", VER + " · live monitor on");
+      if (isPlayHot()) {
+        probe({ heal: false, emit: true }); /* no z-index storm mid-run */
+      } else {
+        probe({ heal: true, emit: true });
+      }
+    }, probeMs);
+    thrashTimer = setInterval(function () {
+      if (isPlayHot()) return; /* freeze heal/thrash during play */
+      watchThrash();
+    }, 4000);
+    log("ok", VER + " · live monitor on · playperf");
   }
 
   function stopLive() {

@@ -1,37 +1,207 @@
 {
-  "ver": "kbatch-r4-data-2026-07-18",
-  "product": "ugrad.kbatch.shadow",
-  "kbatchVersion": "1.2.0",
+  "schema": "kbatch-world-axes-v1",
+  "generated": "2026-07-18T20:05:26.392Z",
+  "product": "ugrad.kbatch",
+  "home": "https://ugrad.ai",
+  "tool": "https://kbatch.ugrad.ai",
+  "doctrine": "Own geometry spine; meet or beat public bars on every axis; leave collaboration slots for every top institution.",
   "rung": "R4-data",
-  "smoke": { "pass": 50, "fail": 0 },
-  "metrics": {
-    "d5Glosses": 6199,
-    "senseEntries": 6202,
-    "senseStubs": 0,
-    "senseHardFails": 0,
-    "worldAnalyzedLangs": 32,
-    "worldAnalyzedWordsApprox": 775000,
-    "worldPackSpellingsApprox": 54600000
-  },
-  "axes": {
-    "dictionaries": { "score": 0.88, "dial": "D5-bulk-R4" },
-    "schools": { "score": 0.8, "dial": "S2-live" },
-    "museums": { "score": 0.76, "dial": "M3-live" },
-    "typing": { "score": 0.77, "dial": "T2-live" },
-    "music": { "score": 0.75, "dial": "R3-live" }
-  },
-  "analyzedLangs": [
-    "ar", "bg", "cs", "da", "de", "el", "es", "fi", "fr", "he", "hi", "hr",
-    "hu", "id", "it", "ja", "ko", "ms", "nl", "no", "pl", "pt", "ro", "ru",
-    "sl", "sr", "sv", "th", "tr", "uk", "vi", "zh"
+  "rungNote": "Data plane milestone: D5 6199 glosses · 32 analyzed langs · 78 packs · 54M+ spellings",
+  "axes": [
+    {
+      "id": 1,
+      "key": "dictionaries",
+      "name": "Dictionaries & word banks",
+      "leaders": [
+        "OED",
+        "Wiktionary",
+        "Merriam-Webster",
+        "Collins",
+        "Wordnik"
+      ],
+      "ourTarget": "#1 open geometry + sense-linked orthography atlas",
+      "scoreToday": 0.88,
+      "scoreTarget": 0.95,
+      "status": "climbing",
+      "dialedTo": "D5-bulk-R4",
+      "liveStrengths": [
+        "6199 CC-BY-SA Wiktionary glosses",
+        "54,591,760 world spellings",
+        "32-lang multi-layout analyzed",
+        "D3 dual-pane geometry|gloss",
+        "MCP sense_lookup"
+      ],
+      "gaps": [
+        "OED-depth etymology",
+        "10k+ senses",
+        "full multi-lang glosses"
+      ],
+      "nextMilestones": [
+        "D5 expand 10k",
+        "D6 white-label"
+      ],
+      "pathways": "data/world-ranking/pathways/dictionaries.json"
+    },
+    {
+      "id": 2,
+      "key": "schools",
+      "name": "Schools & language apps",
+      "leaders": [
+        "Duolingo",
+        "Babbel",
+        "Busuu",
+        "Rosetta Stone"
+      ],
+      "ourTarget": "#1 geometry-first world classroom",
+      "scoreToday": 0.8,
+      "scoreTarget": 0.92,
+      "status": "climbing",
+      "dialedTo": "S2-live",
+      "liveStrengths": [
+        "131 CEFR skills",
+        "local SRS + streaks",
+        "world-path courses",
+        "honor seeds opt-in"
+      ],
+      "gaps": [
+        "cloud accounts",
+        "speech"
+      ],
+      "nextMilestones": [
+        "S4 speech",
+        "S5 district API"
+      ],
+      "pathways": "data/world-ranking/pathways/schools.json",
+      "learn": "https://kbatch.ugrad.ai/learn.html"
+    },
+    {
+      "id": 3,
+      "key": "museums",
+      "name": "Museums & heritage institutions",
+      "leaders": [
+        "British Library",
+        "LOC",
+        "BnF",
+        "Smithsonian",
+        "Unicode"
+      ],
+      "ourTarget": "#1 embeddable script/path resource",
+      "scoreToday": 0.76,
+      "scoreTarget": 0.9,
+      "status": "resource-mode",
+      "dialedTo": "M3-live",
+      "liveStrengths": [
+        "10 exhibit kits",
+        "museum.html builder",
+        "iframe embed",
+        "honor ethics",
+        "CRM outreach"
+      ],
+      "gaps": [
+        "signed MOUs"
+      ],
+      "nextMilestones": [
+        "M4 MOUs"
+      ],
+      "pathways": "data/world-ranking/pathways/museums.json",
+      "page": "https://kbatch.ugrad.ai/museum.html"
+    },
+    {
+      "id": 4,
+      "key": "typing",
+      "name": "Typing / HCI / steno-adjacent",
+      "leaders": [
+        "Monkeytype",
+        "Keybr",
+        "Plover",
+        "TypeRacer"
+      ],
+      "ourTarget": "#1 multi-layout world typing lab",
+      "scoreToday": 0.77,
+      "scoreTarget": 0.95,
+      "status": "climbing",
+      "dialedTo": "T2-live",
+      "liveStrengths": [
+        "arena modes live",
+        "world-lang packs",
+        "layout-race",
+        "strain-cap",
+        "15 layouts",
+        "glyph-steno"
+      ],
+      "gaps": [
+        "leaderboards",
+        "mobile PWA"
+      ],
+      "nextMilestones": [
+        "T3 leaderboards",
+        "T4 mobile"
+      ],
+      "pathways": "data/world-ranking/pathways/typing.json",
+      "arena": "https://kbatch.ugrad.ai/labs/typing.html"
+    },
+    {
+      "id": 5,
+      "key": "music",
+      "name": "Music platforms & rights-accredited lyric geometry",
+      "leaders": [
+        "Spotify",
+        "Apple",
+        "Amazon",
+        "Tidal",
+        "LyricFind"
+      ],
+      "ourTarget": "#1 accredited geometry counterpart under licensed rails",
+      "scoreToday": 0.75,
+      "scoreTarget": 0.9,
+      "status": "rights-path",
+      "dialedTo": "R3-live",
+      "liveStrengths": [
+        "1141 title-path",
+        "8 PD scrub",
+        "token sandbox",
+        "BMI/ASCAP",
+        "R3 CRM outreach-ready"
+      ],
+      "gaps": [
+        "production platform keys"
+      ],
+      "nextMilestones": [
+        "R4 partner badge",
+        "R5 live keys"
+      ],
+      "pathways": "data/world-ranking/pathways/music.json",
+      "rights": "data/music-rights/"
+    }
   ],
-  "links": {
-    "home": "https://kbatch.ugrad.ai/",
-    "data": "https://data.ugrad.ai/kbatch/",
-    "livingBooks": "https://kbatch.ugrad.ai/labs/living-books.html",
-    "learn": "https://kbatch.ugrad.ai/learn",
-    "dojo": "https://kbatch.ugrad.ai/dojo/",
-    "milestone": "https://kbatch.ugrad.ai/docs/MILESTONE-R4-DATA.md"
+  "nicheLead": {
+    "key": "path-geometry",
+    "name": "Multi-layout orthography path geometry",
+    "scoreToday": 0.94,
+    "scoreTarget": 0.99,
+    "note": "Spine under all five axes."
   },
-  "note": "Snapshot for Memory Glass LIVE RANK / Control Center when offline. Live source of truth remains kbatch SPA + R2."
+  "typicalProductBars": {
+    "ux": 0.62,
+    "reliability": 0.78,
+    "mobile": 0.42,
+    "accounts": 0.35,
+    "docs": 0.72,
+    "agentApi": 0.85,
+    "target": 0.9
+  },
+  "colossusPipe": {
+    "include": [
+      "axes",
+      "pathways",
+      "collaborators",
+      "senses",
+      "musicRights",
+      "museum",
+      "worldPath",
+      "glyphSteno"
+    ],
+    "browser": "window.kbatchDict.colossusFull()",
+    "mcp": "kbatch_colossus"
+  }
 }

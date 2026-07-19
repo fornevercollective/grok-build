@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "float-layout-v16-beats-popout";
+  var VER = "float-layout-v17-playperf";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._floatLayoutVer === VER) return;
   HP._floatLayoutVer = VER;
@@ -349,7 +349,18 @@
     }
   }
 
-  function apply() {
+  function isPlayHot() {
+    try {
+      if (window.__mgWebgridPlayBusy) return true;
+      if (document.documentElement.classList.contains("mg-webgrid-playing"))
+        return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function apply(force) {
+    /* Freeze geometry mid-WebGrid run — re-pinning was the shake */
+    if (isPlayHot() && !force) return 0;
     var s = slots();
     var n = 0;
     /* 1) CTRL first so Bloch/Rubik can sit under its real bottom edge.
@@ -401,7 +412,13 @@
     var post =
       document.getElementById("mg-board-toast") ||
       document.getElementById("mg-board-post-toast");
-    if (post && isVisible(post)) pin(post, s.post, { z: 2147483010 });
+    /* Toast manages its own top-right placement + max z — never re-pin (blocked DISMISS) */
+    if (post && isVisible(post) && post.id !== "mg-board-toast")
+      pin(post, s.post, { z: 2147483010 });
+    if (post && post.id === "mg-board-toast" && isVisible(post)) {
+      post.style.zIndex = "2147483647";
+      post.style.pointerEvents = "auto";
+    }
     var rec = document.getElementById("mg-rec-chip");
     if (rec && isVisible(rec)) pin(rec, s.rec, { z: 2147483006 });
     /* Search dock: bottom-center only — peek dots, bar closed until user */
@@ -603,11 +620,12 @@
 
   window.addEventListener("resize", function () {
     try {
+      if (isPlayHot()) return; /* freeze during play */
       apply();
     } catch (e) {}
   });
 
-  /* On load: reflow open panels; on WebGrid open requested lab kit */
+  /* On load: reflow open panels; lab kit only on explicit mg_lab_full */
   setTimeout(function () {
     try {
       apply();
@@ -616,13 +634,12 @@
 
   setTimeout(function () {
     try {
-      /* PRODUCT default: no auto lab kit (ghosts). Opt-in only. */
+      /* PRODUCT: no auto lab parade on WebGrid — causes shake/lag.
+         Only ?mg_lab_full=1 opens the kit. mg_lab_demo no longer auto-stacks. */
       if (/[?&]mg_lab_full=1\b/i.test(location.search || "")) {
         openLabKit();
-      } else if (/[?&]mg_lab_demo=1\b/i.test(location.search || "")) {
-        openSequentially({ delayMs: 480 });
       }
-      /* else: product-mode.js owns lean chrome */
+      /* else: product-mode + playperf own lean chrome */
     } catch (eD) {}
   }, 1100);
 

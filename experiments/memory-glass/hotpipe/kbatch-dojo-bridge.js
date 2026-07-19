@@ -246,7 +246,8 @@
   }
 
   /* ── quantum gutter from binary ── */
-  function binaryStreamToGutter(text, binary) {
+  function binaryStreamToGutter(text, binary, opts) {
+    opts = opts || {};
     var bits = [];
     if (binary) {
       bits = String(binary)
@@ -266,7 +267,7 @@
     });
     // Rubik-style face order from SO of text
     var so = soReport(text || "");
-    return {
+    var out = {
       bitCount: bits.length,
       ones: bits.filter(Boolean).length,
       gutterPreview: stream.slice(0, 24).join(" "),
@@ -275,6 +276,29 @@
       rubikFaces: ["U:written", "D:spoken", "F:movement", "B:digital", "L:analog", "R:thought"],
       phrasingOrders: so.orderHits,
     };
+    /* Optional direct publish (adapter or caller) */
+    if (opts.publish !== false) {
+      try {
+        if (window.__mgQbitBus && window.__mgQbitBus.publish) {
+          window.__mgQbitBus.publish({
+            src: "dojo",
+            kind: "gutter",
+            lane: "L3",
+            prefix: "-n:",
+            gate: "M",
+            withGlyph: true,
+            payload: {
+              bitCount: out.bitCount,
+              ones: out.ones,
+              gutterPreview: out.gutterPreview,
+              gutterUrl: out.gutterUrl,
+              text: String(text || "").slice(0, 64),
+            },
+          });
+        }
+      } catch (eP) {}
+    }
+    return out;
   }
 
   /* ── dir phrase → latin seed for analyze ── */
@@ -432,6 +456,29 @@
         try {
           localStorage.setItem("mg.kbatch.lastPhrase", JSON.stringify(report));
         } catch (e) {}
+        /* First-class gutter envelope on qbit bus */
+        try {
+          if (window.__mgQbitBus && window.__mgQbitBus.publish) {
+            window.__mgQbitBus.publish({
+              src: "dojo",
+              kind: "gutter",
+              lane: "L3",
+              prefix: "-n:",
+              gate: "M",
+              withGlyph: true,
+              payload: {
+                bitCount: gutter.bitCount,
+                ones: gutter.ones,
+                gutterPreview: gutter.gutterPreview,
+                gutterUrl: gutter.gutterUrl,
+                seed: seed,
+                phrase: phrase,
+                so: so && so.orderHits,
+                rubikFaces: gutter.rubikFaces,
+              },
+            });
+          }
+        } catch (eG) {}
         log(
           "phrase «" +
             String(phrase).slice(0, 16) +

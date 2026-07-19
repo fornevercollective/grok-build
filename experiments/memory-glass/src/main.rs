@@ -134,6 +134,16 @@ enum Cmd {
         pitch: f64,
         expand: f64,
     },
+    /// LIVE RANK / WebGrid metrics: main → inspect float (board rides with inspect)
+    BoardLive {
+        json: String,
+    },
+    /// Qbit bus envelope mirror main ↔ inspect (native μs stamp; sub-μ path later)
+    QbitEnv {
+        json: String,
+        /// "inspect" | "main" | "both"
+        to: String,
+    },
     /// Inspect coverflow card clicked → switch main tab
     SwitchTab {
         index: usize,
@@ -1355,7 +1365,8 @@ fn inject_js_blob(webview: &wry::WebView, js: &str) {
 
 /// Clear version guards + menu DOM so the next inject remounts menus without app restart.
 fn inject_hotpipe_force_reset(webview: &wry::WebView) {
-    let js = r#"
+    // r## so JS querySelectorAll("#id") does not terminate the raw string early
+    let js = r##"
 (function () {
   "use strict";
   try {
@@ -1422,8 +1433,12 @@ fn inject_hotpipe_force_reset(webview: &wry::WebView) {
   ];
   ids.forEach(function (id) {
     try {
-      var el = document.getElementById(id);
-      if (el && el.parentNode) el.parentNode.removeChild(el);
+      /* purge ALL matches — activity board used to stack clones on inspect */
+      document.querySelectorAll("#" + id).forEach(function (el) {
+        try {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        } catch (e1) {}
+      });
     } catch (eR) {}
   });
   try {
@@ -1438,7 +1453,7 @@ fn inject_hotpipe_force_reset(webview: &wry::WebView) {
     console.log("[mg-hotpipe] force-reset · remount menus");
   } catch (eC) {}
 })();
-"#;
+"##;
     let _ = webview.evaluate_script(js);
 }
 
@@ -1671,6 +1686,7 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
     let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
     let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
+    let staff_lab = read_hotpipe_file("staff-lab-plane.js").unwrap_or_default();
     let rubik_lang = read_hotpipe_file("rubik-language-float.js").unwrap_or_default();
     let collab = read_hotpipe_file("collab.js").unwrap_or_default();
     let collab_day = read_hotpipe_file("collab-day.js").unwrap_or_default();
@@ -1680,6 +1696,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let live_hud = read_hotpipe_file("live-solve-hud.js").unwrap_or_default();
     let kbatch_dojo = read_hotpipe_file("kbatch-dojo-bridge.js").unwrap_or_default();
     let quantum = read_hotpipe_file("quantum-webgrid.js").unwrap_or_default();
+    let qbit_stack = read_hotpipe_file("qbit-stack-plane.js").unwrap_or_default();
+    let ugrad_lean = read_hotpipe_file("ugrad-ladder.js").unwrap_or_default();
+    let ugrad_wg_lean = read_hotpipe_file("ugrad-webgrid-tensor.js").unwrap_or_default();
     let sx_rail = read_hotpipe_file("sx-rail-chrome.js").unwrap_or_default();
     let float_layout = read_hotpipe_file("float-layout.js").unwrap_or_default();
     let raider = read_hotpipe_file("brothernumsey-raider.js").unwrap_or_default();
@@ -1691,14 +1710,27 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let grok_term = read_hotpipe_file("mg-grok-terminal.js").unwrap_or_default();
     let market = read_hotpipe_file("market-filmstrip.js").unwrap_or_default();
     let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
+    let gt_flow = read_hotpipe_file("gt-flow-plane.js").unwrap_or_default();
     let chrome_tokens = read_hotpipe_file("mg-chrome-tokens.js").unwrap_or_default();
     let jump_stack = read_hotpipe_file("mg-jump-stack.js").unwrap_or_default();
     let kbatch_fleet = read_hotpipe_file("kbatch-fleet-bridge.js").unwrap_or_default();
     let qbit_codec = read_hotpipe_file("qbit-codec.js")
         .or_else(|| read_hotpipe_file("concepts/qbit-codec.js"))
         .unwrap_or_default();
+    let qbit_bus = read_hotpipe_file("qbit-bus.js").unwrap_or_default();
+    let qbit_loop = read_hotpipe_file("qbit-loop.js").unwrap_or_default();
+    let qbit_dac = read_hotpipe_file("qbit-dac.js").unwrap_or_default();
+    let qbit_router = read_hotpipe_file("qbit-router.js").unwrap_or_default();
+    let qbit_adapters = read_hotpipe_file("qbit-adapters.js").unwrap_or_default();
+    let qbit_native = read_hotpipe_file("qbit-native-bridge.js").unwrap_or_default();
+    let qbit_truss = read_hotpipe_file("qbit-truss.js").unwrap_or_default();
+    let qbit_term = read_hotpipe_file("qbit-term-plane.js").unwrap_or_default();
+    let agent_desk = read_hotpipe_file("mg-agent-desk.js").unwrap_or_default();
+    let qbit_race = read_hotpipe_file("qbit-race-sitrep.js").unwrap_or_default();
+    let qbit_l1 = read_hotpipe_file("qbit-l1-pilot.js").unwrap_or_default();
     let lang_codec = read_hotpipe_file("lang-codec-plane.js").unwrap_or_default();
     let kb_atlas = read_hotpipe_file("keyboard-atlas-seed.js").unwrap_or_default();
+    let site_atlas = read_hotpipe_file("site-atlas.js").unwrap_or_default();
 
     if lean {
         for wv in targets {
@@ -1721,6 +1753,17 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !quantum.is_empty() {
                     inject_js_blob(wv, &quantum);
                 }
+                /* μgrad ladder + WebGrid tensor before Qbit stack */
+                if !ugrad_lean.is_empty() {
+                    inject_js_blob(wv, &ugrad_lean);
+                }
+                if !ugrad_wg_lean.is_empty() {
+                    inject_js_blob(wv, &ugrad_wg_lean);
+                }
+                /* Qbit stack: Bloch + tensor data viz above gates */
+                if !qbit_stack.is_empty() {
+                    inject_js_blob(wv, &qbit_stack);
+                }
                 if !contrail.is_empty() {
                     inject_js_blob(wv, &contrail);
                 }
@@ -1728,12 +1771,47 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !lark.is_empty() {
                     inject_js_blob(wv, &lark);
                 }
+                /* GT flow plane: hop speed · giraph color · IP tools · popup guard */
+                if !gt_flow.is_empty() {
+                    inject_js_blob(wv, &gt_flow);
+                }
                 if !glass_cap.is_empty() {
                     inject_js_blob(wv, &glass_cap);
                 }
                 /* codecs + atlas before keyboard so CODEC/lang modes are live */
                 if !qbit_codec.is_empty() {
                     inject_js_blob(wv, &qbit_codec);
+                }
+                /* Qbit spine: bus → loop → dac → router (adapters after surfaces) */
+                if !qbit_bus.is_empty() {
+                    inject_js_blob(wv, &qbit_bus);
+                }
+                if !qbit_loop.is_empty() {
+                    inject_js_blob(wv, &qbit_loop);
+                }
+                if !qbit_dac.is_empty() {
+                    inject_js_blob(wv, &qbit_dac);
+                }
+                if !qbit_router.is_empty() {
+                    inject_js_blob(wv, &qbit_router);
+                }
+                if !qbit_native.is_empty() {
+                    inject_js_blob(wv, &qbit_native);
+                }
+                if !qbit_truss.is_empty() {
+                    inject_js_blob(wv, &qbit_truss);
+                }
+                if !qbit_term.is_empty() {
+                    inject_js_blob(wv, &qbit_term);
+                }
+                if !agent_desk.is_empty() {
+                    inject_js_blob(wv, &agent_desk);
+                }
+                if !qbit_race.is_empty() {
+                    inject_js_blob(wv, &qbit_race);
+                }
+                if !qbit_l1.is_empty() {
+                    inject_js_blob(wv, &qbit_l1);
                 }
                 if !lang_codec.is_empty() {
                     inject_js_blob(wv, &lang_codec);
@@ -1752,6 +1830,14 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 }
                 if !kb_beats.is_empty() {
                     inject_js_blob(wv, &kb_beats);
+                }
+                /* Staff lab: chromatic · transpose · research · playalong */
+                if !staff_lab.is_empty() {
+                    inject_js_blob(wv, &staff_lab);
+                }
+                /* Adapters after surfaces so first install hooks Keys/Staff/Maze/WebGrid */
+                if !qbit_adapters.is_empty() {
+                    inject_js_blob(wv, &qbit_adapters);
                 }
                 if !rubik_lang.is_empty() {
                     inject_js_blob(wv, &rubik_lang);
@@ -1773,6 +1859,10 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 }
                 if !search_comms.is_empty() {
                     inject_js_blob(wv, &search_comms);
+                }
+                /* Site Atlas: Figma-style inventory · score · path (main only) */
+                if !site_atlas.is_empty() {
+                    inject_js_blob(wv, &site_atlas);
                 }
                 if !live_hud.is_empty() {
                     inject_js_blob(wv, &live_hud);
@@ -1846,6 +1936,7 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let lens = read_hotpipe_file("lens.js").unwrap_or_default();
     let hurdles = read_hotpipe_file("hurdles.js").unwrap_or_default();
     let research = read_hotpipe_file("research.js").unwrap_or_default();
+    /* site_atlas already read above for lean+full */
     let ego = read_hotpipe_file("ego.js").unwrap_or_default();
     let dock = read_hotpipe_file("inspect-dock.js").unwrap_or_default();
     let ironline = read_hotpipe_file("ironline.js").unwrap_or_default();
@@ -1867,6 +1958,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         }
         if !research.is_empty() {
             inject_js_blob(wv, &research);
+        }
+        if !site_atlas.is_empty() {
+            inject_js_blob(wv, &site_atlas);
         }
         if !ego.is_empty() {
             inject_js_blob(wv, &ego);
@@ -1907,14 +2001,26 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         if !lark.is_empty() {
             inject_js_blob(wv, &lark);
         }
+        if !gt_flow.is_empty() {
+            inject_js_blob(wv, &gt_flow);
+        }
         if !quantum.is_empty() {
             inject_js_blob(wv, &quantum);
+        }
+        if !qbit_stack.is_empty() {
+            inject_js_blob(wv, &qbit_stack);
         }
         if !glass_cap.is_empty() {
             inject_js_blob(wv, &glass_cap);
         }
         if !qbit_codec.is_empty() {
             inject_js_blob(wv, &qbit_codec);
+        }
+        if !qbit_bus.is_empty() {
+            inject_js_blob(wv, &qbit_bus);
+        }
+        if !qbit_loop.is_empty() {
+            inject_js_blob(wv, &qbit_loop);
         }
         if !lang_codec.is_empty() {
             inject_js_blob(wv, &lang_codec);
@@ -1939,6 +2045,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         }
         if !kb_beats.is_empty() {
             inject_js_blob(wv, &kb_beats);
+        }
+        if !staff_lab.is_empty() {
+            inject_js_blob(wv, &staff_lab);
         }
         if !rubik_lang.is_empty() {
             inject_js_blob(wv, &rubik_lang);
@@ -2069,6 +2178,15 @@ fn mitigation_for_error(msg: &str) -> Option<&'static str> {
         || m.contains("prescriptionsection")
     {
         return Some("portal_wrap");
+    }
+    if m.contains("popup blocked")
+        || m.contains("window.open")
+        || m.contains("blocked opening")
+        || m.contains("popup_guard")
+        || m.contains("dialog-flood")
+        || m.contains("scripts may close only the windows")
+    {
+        return Some("popup_guard");
     }
     None
 }
@@ -8551,6 +8669,31 @@ fn main() -> Result<()> {
                     pitch: v.get("pitch").and_then(|x| x.as_f64()).unwrap_or(0.0),
                     expand: v.get("expand").and_then(|x| x.as_f64()).unwrap_or(1.0),
                 }),
+                "board_live" | "sync_board" => Some(Cmd::BoardLive {
+                    json: v
+                        .get("json")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("{}")
+                        .to_string(),
+                }),
+                /* Qbit bus envelope: piggyback still-pipe class IPC with native μs */
+                "qbit_env" | "qbit_bus" => {
+                    let json = v
+                        .get("json")
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string())
+                        .or_else(|| {
+                            v.get("env")
+                                .map(|e| e.to_string())
+                        })
+                        .unwrap_or_else(|| "{}".to_string());
+                    let to = v
+                        .get("to")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("both")
+                        .to_string();
+                    Some(Cmd::QbitEnv { json, to })
+                },
                 "clipboard_copy" => Some(Cmd::ClipboardCopy {
                     text: v
                         .get("text")
@@ -9269,6 +9412,72 @@ fn main() -> Result<()> {
                             "(function(){{try{{if(window.__mgInspectSetAxis)window.__mgInspectSetAxis({yaw},{pitch},{expand});}}catch(e){{}}}})();"
                         );
                         let _ = wv.evaluate_script(&js);
+                    }
+                }
+                Cmd::BoardLive { json } => {
+                    // Main WebGrid → inspect LIVE RANK (float rides with inspect pane).
+                    // json is either a JSON object string or already-escaped payload.
+                    if let Some(wv) = inspect_wv.as_ref() {
+                        let payload = if json.trim().starts_with('{') {
+                            json
+                        } else {
+                            format!(r#"{{"raw":{json:?}}}"#)
+                        };
+                        let js = format!(
+                            r#"(function(){{try{{
+  var d={payload};
+  if(window.__mgActivityBoard&&window.__mgActivityBoard.applyLive)
+    window.__mgActivityBoard.applyLive(d);
+  else if(window.__mgBoardLiveFromMain)
+    window.__mgBoardLiveFromMain(d);
+}}catch(e){{}}}})();"#
+                        );
+                        if let Err(e) = wv.evaluate_script(&js) {
+                            eprintln!("board_live inject: {e}");
+                        }
+                    }
+                }
+                Cmd::QbitEnv { json, to } => {
+                    // Native μs stamp + mirror bus envelope across panes.
+                    // JS path remains L3-class; this is the escape hatch toward true sub-μ later.
+                    let t_ns = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_nanos())
+                        .unwrap_or(0);
+                    let t_us = t_ns / 1000;
+                    let payload = if json.trim().starts_with('{') {
+                        json
+                    } else {
+                        format!(r#"{{"raw":{json:?}}}"#)
+                    };
+                    let js = format!(
+                        r#"(function(){{try{{
+  var env={payload};
+  if(typeof env==='string'){{try{{env=JSON.parse(env);}}catch(e){{env={{raw:env}};}}}}
+  env.nativeTμ={t_us};
+  env.native=true;
+  if(window.__mgQbitNative&&window.__mgQbitNative.applyRemote)
+    window.__mgQbitNative.applyRemote(env);
+  else if(window.__mgQbitBus&&window.__mgQbitBus.publish)
+    window.__mgQbitBus.publish(Object.assign({{src:env.src||'ipc',kind:env.kind||'event',lane:env.lane||'L0',payload:env.payload||env,_remote:true}},env));
+}}catch(e){{}}}})();"#
+                    );
+                    let to = to.to_lowercase();
+                    let send_insp = to == "inspect" || to == "both" || to.is_empty();
+                    let send_main = to == "main" || to == "both" || to.is_empty();
+                    if send_insp {
+                        if let Some(wv) = inspect_wv.as_ref() {
+                            if let Err(e) = wv.evaluate_script(&js) {
+                                eprintln!("qbit_env inspect inject: {e}");
+                            }
+                        }
+                    }
+                    if send_main {
+                        if let Some(wv) = webview.as_ref() {
+                            if let Err(e) = wv.evaluate_script(&js) {
+                                eprintln!("qbit_env main inject: {e}");
+                            }
+                        }
                     }
                 }
                 Cmd::SwitchTab { index } => {

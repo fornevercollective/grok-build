@@ -1,0 +1,70 @@
+{
+  "ver": "cube-grid-trails-v1",
+  "harvested": "2026-07-19",
+  "mg_landing": "hotpipe/rubik-language-float.js → __mgRubikLang v6",
+  "refs": {
+    "framer_marketplace": "https://www.framer.com/community/marketplace/components/3d-grid-trails/",
+    "demo": "https://gridtrails.framer.website",
+    "local_ref_png": "~/Downloads/3D Grid TrailsCUBE.png",
+    "downloads": [
+      "cube - Neural",
+      "side - Neural"
+    ]
+  },
+  "aesthetic": {
+    "name": "3D Grid Trails",
+    "source": "Framer Marketplace · Frame Craft",
+    "traits": [
+      "deep black void canvas",
+      "perspective floor grid vanishing to horizon",
+      "soft cyan/white line glow with pulse shimmer",
+      "motion trail ribbons with additive blend",
+      "head glow on trail tip",
+      "concentric accent rings under subject"
+    ]
+  },
+  "patterns_extracted": {
+    "from_cube_neural": [
+      "RubiksCube3D · 3×3 cubelets · face color map · orbit camera",
+      "TeamCubeGrid · multi-player cube state grid cards",
+      "Face2D · tiny 3×3 face previews",
+      "CubeBackupRenderer · canvas fallback when WebGL fails"
+    ],
+    "from_side_neural": [
+      "GridRenderer · rectangular/hex/circular/spatial-3d cell types",
+      "CollaborativeGrid · GameGrid · H3Grid · GeoHashGrid (layout families)",
+      "spatial-3d cell {x,y,z} mapping for note/frequency (not ported as audio)"
+    ],
+    "not_ported": [
+      "Full THREE.js RubiksCube3D tree",
+      "Figma Make React UI kit",
+      "Framer component source (closed marketplace)"
+    ]
+  },
+  "mg_implementation": {
+    "file": "hotpipe/rubik-language-float.js",
+    "ver": "rubik-lang-v6-grid-trails",
+    "api": "__mgRubikLang",
+    "features": [
+      "paintGridFloor — perspective unit grid under cube",
+      "paintTrailRibbon — orbit/stamp/scramble trails",
+      "TRAILS pill toggle",
+      "CONTRAIL link → ingestContrailToTrails",
+      "bus publish src:cube kind:trail (throttled ~180ms)",
+      "API: trails(on), pushTrail, ingestContrail, trailStats, report includes trails="
+    ],
+    "bus": {
+      "src": "cube",
+      "kind": "trail",
+      "fields": ["face", "sticker", "n", "hue", "x", "z"]
+    },
+    "symbols": "frozen — harvest does not edit QbitCodec.SYMBOLS"
+  },
+  "ops": {
+    "open": "__mgRubikLang.open()",
+    "toggle_trails": "__mgRubikLang.trails(true|false)",
+    "bleed_contrail": "__mgRubikLang.ingestContrail()",
+    "report": "__mgRubikLang.report()",
+    "sync": "bash scripts/mg-hotpipe-sync.sh · MG ⌘⇧R"
+  }
+}

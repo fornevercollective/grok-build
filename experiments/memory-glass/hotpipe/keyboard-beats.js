@@ -780,10 +780,10 @@
       strip.classList.add("mg-product-ghost");
       strip.classList.remove("mg-popout");
     }
-    /* prefer left drawer Keys if available */
+    /* Beats home is Staff (maze/gsplat took the old Keys slot) */
     try {
       if (window.__mgToolsDrawer) {
-        if (window.__mgToolsDrawer.setMode) window.__mgToolsDrawer.setMode("keys");
+        if (window.__mgToolsDrawer.setMode) window.__mgToolsDrawer.setMode("staff");
         if (window.__mgToolsDrawer.open) window.__mgToolsDrawer.open();
       }
     } catch (eD) {}
@@ -811,6 +811,27 @@
     var midis = [];
     for (var i = 0; i < deg.length; i++) midis.push(tonic + deg[i]);
     return midis;
+  }
+
+  /** Transpose a catalogue entry by semitones (scholarly / rehearsal tool). */
+  function transposeEntry(entry, semitones) {
+    if (!entry) return null;
+    var st = parseInt(semitones, 10) || 0;
+    var midis = entryMidis(entry).map(function (m) {
+      return Math.max(0, Math.min(127, Math.round(m) + st));
+    });
+    var out = {};
+    for (var k in entry) {
+      if (Object.prototype.hasOwnProperty.call(entry, k)) out[k] = entry[k];
+    }
+    out.midi = midis;
+    if (entry.tonicMidi != null) out.tonicMidi = entry.tonicMidi + st;
+    out._transpose = st;
+    out._origId = entry.id || null;
+    out.title =
+      (entry.title || entry.id || "entry") +
+      (st ? " · T" + (st > 0 ? "+" : "") + st : "");
+    return out;
   }
 
   /**
@@ -1169,6 +1190,8 @@
       return lastCatEntry;
     },
     stopCataloguePlay: clearCataloguePlay,
+    transposeEntry: transposeEntry,
+    entryMidis: entryMidis,
     /** Quick PD motif / scale helpers */
     playOdeJoy: function (cb) {
       return loadCatalogueId("motif-ode-joy", cb);

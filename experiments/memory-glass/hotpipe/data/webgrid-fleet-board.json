@@ -1,0 +1,222 @@
+{
+  "ver": "fleet-board-v1",
+  "note": "Seeded fleet runs · Mac mini M4 + MacBookPro16,1 · merge into mg.activity.leaderboard.v1 by id",
+  "runs": [
+    {
+      "id": "fleet-mini-agent-30-peak",
+      "kind": "agent_end",
+      "t": 1784358082459,
+      "iso": "2026-07-18T05:41:22Z",
+      "game": "webgrid",
+      "score": 6314.3,
+      "synopsis": "WebGrid 30 · Mac mini M4 agent · 483.58 BPS / 2957 NTPM · 30×30 · 3377 clicks · score 6314.3",
+      "metrics": {
+        "t": 1784358082459,
+        "iso": "2026-07-18T05:41:22Z",
+        "game": "webgrid",
+        "player": "agent",
+        "machine": {
+          "model": "Mac16,10",
+          "arch": "arm64",
+          "host": "tadericsonsMini",
+          "class": "mac-mini-m4",
+          "label": "Mac mini M4",
+          "display": "2560x1440"
+        },
+        "webgrid": {
+          "peakBps": 483.58,
+          "peakNtpm": 2957,
+          "bestBps": 483.58,
+          "bestNtpm": 2957,
+          "bps": 483.58,
+          "ntpm": 2957,
+          "grid": "30x30",
+          "N": 30,
+          "clicks": 3377,
+          "hitsGuess": 3377
+        },
+        "score": 6314.3
+      }
+    },
+    {
+      "id": "fleet-mini-agent-12-peak",
+      "kind": "agent_end",
+      "t": 1784360879163,
+      "iso": "2026-07-18T06:27:59Z",
+      "game": "webgrid-mini",
+      "score": 5705.8,
+      "synopsis": "WebGrid MINI 12 · Mac mini M4 agent · 402.03 BPS / 3369 NTPM · 12×12 · 3900 clicks · score 5705.8",
+      "metrics": {
+        "t": 1784360879163,
+        "iso": "2026-07-18T06:27:59Z",
+        "game": "webgrid-mini",
+        "player": "agent",
+        "machine": {
+          "model": "Mac16,10",
+          "arch": "arm64",
+          "host": "tadericsonsMini",
+          "class": "mac-mini-m4",
+          "label": "Mac mini M4",
+          "display": "2560x1440"
+        },
+        "webgrid": {
+          "peakBps": 402.03,
+          "peakNtpm": 3369,
+          "bestBps": 402.03,
+          "bestNtpm": 3369,
+          "bps": 402.03,
+          "ntpm": 3369,
+          "grid": "12x12",
+          "N": 12,
+          "clicks": 3900,
+          "hitsGuess": 3900
+        },
+        "score": 5705.8
+      }
+    },
+    {
+      "id": "fleet-mini-agent-30-live98",
+      "kind": "agent_end",
+      "t": 1784359000000,
+      "iso": "2026-07-18T05:56:47Z",
+      "game": "webgrid",
+      "score": 1281.2,
+      "synopsis": "WebGrid 30 · Mac mini M4 agent · 98.12 BPS / 600 NTPM · 30×30 · 619 clicks · live capture · score 1281.2",
+      "metrics": {
+        "t": 1784359000000,
+        "iso": "2026-07-18T05:56:47Z",
+        "game": "webgrid",
+        "player": "agent",
+        "machine": {
+          "model": "Mac16,10",
+          "arch": "arm64",
+          "host": "tadericsonsMini",
+          "class": "mac-mini-m4",
+          "label": "Mac mini M4",
+          "display": "2560x1440"
+        },
+        "webgrid": {
+          "peakBps": 98.12,
+          "peakNtpm": 600,
+          "bestBps": 98.12,
+          "bestNtpm": 600,
+          "bps": 98.12,
+          "ntpm": 600,
+          "grid": "30x30",
+          "N": 30,
+          "clicks": 619,
+          "hitsGuess": 619
+        },
+        "score": 1281.2
+      }
+    },
+    {
+      "id": "fleet-mini-agent-3rounds",
+      "kind": "agent_session",
+      "t": 1784360201087,
+      "iso": "2026-07-18T06:16:41Z",
+      "game": "webgrid",
+      "score": 1185.1,
+      "synopsis": "WebGrid 30 · Mac mini M4 agent · 90.76 BPS / 555 NTPM · 30×30 · 3 rounds · score 1185.1",
+      "metrics": {
+        "t": 1784360201087,
+        "iso": "2026-07-18T06:16:41Z",
+        "game": "webgrid",
+        "player": "agent",
+        "machine": {
+          "model": "Mac16,10",
+          "arch": "arm64",
+          "host": "tadericsonsMini",
+          "class": "mac-mini-m4",
+          "label": "Mac mini M4"
+        },
+        "webgrid": {
+          "peakBps": 90.76,
+          "peakNtpm": 555,
+          "bestBps": 90.76,
+          "bestNtpm": 555,
+          "bps": 90.76,
+          "ntpm": 555,
+          "grid": "30x30",
+          "N": 30,
+          "clicks": 625,
+          "hitsGuess": 625,
+          "rounds": 3
+        },
+        "score": 1185.1
+      }
+    },
+    {
+      "id": "fleet-mini-human-30",
+      "kind": "human",
+      "t": 1784356500000,
+      "iso": "2026-07-18T05:15:00Z",
+      "game": "webgrid",
+      "score": 83.3,
+      "synopsis": "WebGrid 30 · Mac mini M4 human · 6.38 BPS / 39 NTPM · 30×30 · peak · score 83.3",
+      "metrics": {
+        "t": 1784356500000,
+        "iso": "2026-07-18T05:15:00Z",
+        "game": "webgrid",
+        "player": "human",
+        "machine": {
+          "model": "Mac16,10",
+          "arch": "arm64",
+          "host": "tadericsonsMini",
+          "class": "mac-mini-m4",
+          "label": "Mac mini M4"
+        },
+        "webgrid": {
+          "peakBps": 6.38,
+          "peakNtpm": 39,
+          "bestBps": 6.38,
+          "bestNtpm": 39,
+          "bps": 6.05,
+          "ntpm": 37,
+          "grid": "30x30",
+          "N": 30
+        },
+        "score": 83.3
+      }
+    },
+    {
+      "id": "fleet-laptop-agent-30",
+      "kind": "agent_session",
+      "t": 1784397295451,
+      "iso": "2026-07-18T17:54:55Z",
+      "game": "webgrid",
+      "score": 49.1,
+      "synopsis": "WebGrid 30 · MacBookPro16,1 Intel laptop · 3.76 BPS / 23 NTPM · 30×30 · hit≈78.8% · score 49.1",
+      "metrics": {
+        "t": 1784397295451,
+        "iso": "2026-07-18T17:54:55Z",
+        "game": "webgrid",
+        "player": "agent",
+        "machine": {
+          "model": "MacBookPro16,1",
+          "arch": "x86_64",
+          "host": "qbits-MacBook-Pro.local",
+          "class": "older-intel-laptop",
+          "label": "MacBook Pro 16 Intel",
+          "display": "3072x1920 Retina",
+          "gpus": ["Intel UHD Graphics 630", "AMD Radeon Pro 5500M"]
+        },
+        "webgrid": {
+          "peakBps": 3.76,
+          "peakNtpm": 23,
+          "bestBps": 3.76,
+          "bestNtpm": 23,
+          "bps": 3.76,
+          "ntpm": 23,
+          "grid": "30x30",
+          "N": 30,
+          "clicks": 25,
+          "hitsGuess": 25,
+          "missGuess": 7,
+          "hitRatePct": 78.125
+        },
+        "score": 49.1
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "schema": "mg.audio-staff-map/v1",
+  "ver": "harvest-v1",
+  "generated": "2026-07-19T08:15Z",
+  "sources": [
+    "audio - Neural",
+    "tadmusic",
+    "Audio Equalizer Interface"
+  ],
+  "mg_landing": {
+    "primary": "staff-lab-plane.js (__mgStaffLab)",
+    "beats": "keyboard-beats.js (__mgKeyboardBeats)",
+    "packs": "data/music-packs.json",
+    "catalogue": "data/staff-catalogue-seed.json",
+    "bus": "src:staff kind:note|beat (via adapters beats hook)"
+  },
+  "component_map": [
+    {
+      "from": "ScoreService.Note/Measure/Staff/Score",
+      "to": "staff-lab catalogue entry + midiName/transposeMidis",
+      "pattern": "pitch+octave+duration+startTime → MIDI list",
+      "status": "map",
+      "do_not_port": "full ScoreService class tree"
+    },
+    {
+      "from": "BeatMappingPanel",
+      "to": "keyboard-beats hop grid + maze packs",
+      "pattern": {
+        "bpm_default": 120,
+        "steps_default": 16,
+        "instruments": ["bd", "sn", "hh", "oh"],
+        "grid": "instrument → boolean[steps]"
+      },
+      "status": "map",
+      "seed": "see beat_grid_seed below"
+    },
+    {
+      "from": "PopupPiano / PianoPanel",
+      "to": "staff-lab piano strip + beats keyboard",
+      "pattern": "note name → MIDI → play via beats.loadCatalogue",
+      "status": "partial-live in staff-lab"
+    },
+    {
+      "from": "SequencerPanel",
+      "to": "beats sequential play + catalogue sequential:true",
+      "status": "pattern-only"
+    },
+    {
+      "from": "SoundLibrary SamplePack",
+      "to": "music-packs + sample id tags",
+      "packs": ["core-piano", "electronic-drums", "bass-collection"],
+      "status": "map"
+    },
+    {
+      "from": "TidalEngine / tadmusic StrudelEnvironment",
+      "to": "optional live-code strip later · bus kind:note",
+      "patterns": ["basic-drums", "acid-bass"],
+      "status": "ranked-later",
+      "do_not_port": "full Strudel runtime"
+    },
+    {
+      "from": "SamplesPanel / SampleEditor / SongRepository",
+      "to": "staff catalogue browse (already kbatch bridge)",
+      "status": "defer"
+    }
+  ],
+  "beat_grid_seed": {
+    "bpm": 120,
+    "steps": 16,
+    "lanes": {
+      "bd": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      "sn": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      "hh": [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+      "oh": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]
+    },
+    "strudel_hint": "stack(sound(\"bd\").every(4), sound(\"hh*8\"), sound(\"~ sn ~ sn\"))"
+  },
+  "note_to_midi": {
+    "c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11,
+    "formula": "midi = map[note] + (octave+1)*12 ± accidental"
+  },
+  "ops": {
+    "open_staff": "TOOLS → Staff · __mgStaffLab if present",
+    "open_beats": "__mgKeyboardBeats / staff embeds",
+    "bus": "adapters hooks include beats · note events",
+    "next_code": "optional thin seed: load beat_grid_seed into keyboard-beats as preset"
+  },
+  "symbols": "frozen — no QbitCodec.SYMBOLS edits"
+}

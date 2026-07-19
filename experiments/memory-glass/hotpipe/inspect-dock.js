@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "dock-v3-leap";
+  var VER = "dock-v4-layers";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._dockVer === VER) return;
   HP._dockVer = VER;
@@ -122,13 +122,16 @@
   }
 
   function ensureStyles() {
-    if (document.getElementById("mg-dock-css")) return;
+    var old = document.getElementById("mg-dock-css");
+    if (old) old.remove();
     var st = document.createElement("style");
     st.id = "mg-dock-css";
     st.textContent = [
-      "#mg-dock{order:0;position:relative;z-index:60;pointer-events:auto;",
-      "  display:flex;flex-direction:column;gap:4px;margin:0 0 6px;",
-      "  font:600 8px/1.25 ui-monospace,Menlo,monospace;letter-spacing:0.04em}",
+      /* Dock first in #stage — solid, clickable, never under LIVE RANK fixed layers */
+      "#mg-dock{order:-1;position:relative;z-index:15;pointer-events:auto;",
+      "  display:flex;flex-direction:column;gap:4px;margin:0 0 8px;",
+      "  font:600 8px/1.25 ui-monospace,Menlo,monospace;letter-spacing:0.04em;",
+      "  flex-shrink:0}",
       "#mg-dock-tabs{display:flex;gap:3px;flex-wrap:wrap}",
       "#mg-dock-tabs button{appearance:none;cursor:pointer;pointer-events:auto;",
       "  border:1px solid rgba(160,180,200,0.28);background:rgba(10,12,16,0.92);",
@@ -137,7 +140,8 @@
       "#mg-dock-tabs button.on{border-color:rgba(120,200,255,0.55);color:#fff;",
       "  background:rgba(28,48,68,0.9)}",
       "#mg-dock-body{border:1px solid rgba(140,160,180,0.22);border-radius:3px;",
-      "  background:rgba(6,8,12,0.92);padding:6px;min-height:52px}",
+      "  background:rgba(6,8,12,0.92);padding:6px;min-height:52px;",
+      "  max-height:min(28vh,200px);overflow:auto}",
       "#mg-dock-body .row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}",
       "#mg-dock-body button.act{appearance:none;cursor:pointer;pointer-events:auto;",
       "  border:1px solid rgba(160,190,220,0.3);background:rgba(14,18,24,0.95);",
@@ -149,8 +153,13 @@
       "#mg-dock-hint{color:rgba(150,170,190,0.75);font-weight:500;margin-top:2px;",
       "  max-height:2.6em;overflow:hidden}",
       "#mg-dock-status{color:rgba(140,200,180,0.85);margin-top:3px}",
-      "#mg-pro.mg-pro-collapsed .status{opacity:0.7}",
-      "#mg-pro.mg-pro-collapsed{order:6!important;opacity:0.85}",
+      "#stage #pip-wrap{position:relative;z-index:2}",
+      "#stage #cf{position:relative;z-index:1}",
+      /* Collapse heavy pro chrome so it doesn't stack over camera */
+      "#mg-pro.mg-pro-collapsed{max-height:0!important;overflow:hidden!important;",
+      "  opacity:0!important;pointer-events:none!important;margin:0!important;",
+      "  padding:0!important;border:0!important}",
+      "#mg-tri{max-height:64px;overflow:hidden}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }

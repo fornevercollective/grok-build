@@ -1,11 +1,12 @@
 /* Memory Glass · Lark Governance tree
  * Full hierarchical tree from Downloads/lark-tree (IANA + CDN) + MG fleet stack.
  * Surfaces in LARK rail · TOOLS → GT embed · CTRL GT tab.
- * VER: lark-governance-v3-tree
+ * VER: lark-governance-v4-flow-hooks
+ * Pairs with gt-flow-plane (speed · giraph · IP · popup).
  */
 (function () {
   "use strict";
-  var VER = "lark-governance-v3-tree";
+  var VER = "lark-governance-v4-flow-hooks";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._larkGovVer === VER) return;
   HP._larkGovVer = VER;
@@ -91,6 +92,44 @@
             description: (L.tools || []).join(" · "),
           };
         }),
+      },
+      {
+        id: "flow-root",
+        name: "Data flow · hops · edges",
+        description:
+          "KeyCDN-style path · packet/proxy hops · speed color (see GT · flow)",
+        children: [
+          {
+            id: "flow-user-glass",
+            name: "User · Glass · WebKit",
+            description: "Input surface → WKWebView → JS network entry",
+          },
+          {
+            id: "flow-dns-tls",
+            name: "DNS · TCP · TLS",
+            description: "Resolver · connect · handshake · ALPN H2/H3",
+          },
+          {
+            id: "flow-proxy-sw",
+            name: "Proxy · VPN · ServiceWorker",
+            description: "Intercept / corporate hop / save-data path",
+          },
+          {
+            id: "flow-edge-pop",
+            name: "Edge PoP · CDN",
+            description: "Anycast cache layer · colo / region timing",
+          },
+          {
+            id: "flow-origin",
+            name: "Origin · app backend",
+            description: "Page host · TTFB · transfer · DOM",
+          },
+          {
+            id: "flow-popup-guard",
+            name: "Popup mitigation",
+            description: "window.open · dialog flood · _blank harden",
+          },
+        ],
       },
       {
         id: "1",
@@ -937,7 +976,23 @@
       paintMeta();
       paintEmbedMeta();
     },
+    setHops: function (n) {
+      state.hops = Math.max(0, parseInt(n, 10) || 0);
+      paintMeta();
+      paintEmbedMeta();
+    },
+    /** Delegate speed test to gt-flow-plane when present */
+    speedTest: function (cb) {
+      if (window.__mgGtFlow && window.__mgGtFlow.runSpeedTest)
+        return window.__mgGtFlow.runSpeedTest({}, cb);
+      if (cb) cb({ ok: false, reason: "gt-flow missing" });
+      return null;
+    },
     report: function () {
+      var flow =
+        window.__mgGtFlow && window.__mgGtFlow.report
+          ? " · " + window.__mgGtFlow.report()
+          : "";
       return (
         VER +
         " unix=" +
@@ -949,14 +1004,61 @@
         " sel=" +
         (selectedId || "—") +
         " roots=" +
-        ((treeRoots && treeRoots.length) || 0)
+        ((treeRoots && treeRoots.length) || 0) +
+        flow
       );
     },
   };
 
+  /** Load gt-flow-plane if not yet injected (hot-reload / pre-rebuild apps) */
+  function ensureGtFlow(cb) {
+    if (window.__mgGtFlow) {
+      if (cb) cb(true);
+      return;
+    }
+    if (window.__mgGtFlowLoading) {
+      setTimeout(function () {
+        ensureGtFlow(cb);
+      }, 120);
+      return;
+    }
+    window.__mgGtFlowLoading = true;
+    var urls = [
+      "hotpipe/gt-flow-plane.js",
+      "../hotpipe/gt-flow-plane.js",
+      "./gt-flow-plane.js",
+    ];
+    var i = 0;
+    function next() {
+      if (i >= urls.length) {
+        window.__mgGtFlowLoading = false;
+        if (cb) cb(false);
+        return;
+      }
+      var u = urls[i++];
+      var s = document.createElement("script");
+      s.src = u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=" + Date.now();
+      s.onload = function () {
+        window.__mgGtFlowLoading = false;
+        if (cb) cb(!!window.__mgGtFlow);
+      };
+      s.onerror = function () {
+        next();
+      };
+      (document.head || document.documentElement).appendChild(s);
+    }
+    next();
+  }
+
+  window.__mgLarkEnsureGtFlow = ensureGtFlow;
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mount);
+    document.addEventListener("DOMContentLoaded", function () {
+      mount();
+      ensureGtFlow();
+    });
   } else {
     mount();
+    ensureGtFlow();
   }
 })();

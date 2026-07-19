@@ -87,11 +87,58 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(n) if n else b"{}"
+        path = self.path.split("?", 1)[0]
         try:
             obj = json.loads(raw.decode("utf-8", "replace"))
         except Exception:
             obj = {"raw": raw.decode("utf-8", "replace")[:500]}
         obj["_recv"] = time.time()
+
+        # Lab SNAP composite → disk (promo live + soak record)
+        if path.startswith("/snap") or obj.get("kind") == "lab-snap":
+            try:
+                import base64
+                import re
+                from datetime import datetime, timezone
+
+                data_url = obj.get("dataUrl") or ""
+                m = re.match(r"data:image/(png|jpeg|jpg);base64,(.+)", data_url, re.I | re.S)
+                out_dir = OUT / "snaps"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                promo = Path(
+                    "/Volumes/qbitOS/00.dev/projects/grok-build/experiments/memory-glass/docs/x-promo-packet/images/live"
+                )
+                promo.mkdir(parents=True, exist_ok=True)
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+                bps = obj.get("peakBps")
+                bps_s = f"{bps}bps".replace(".", "p") if bps is not None else "na"
+                ext = "jpg"
+                raw_img = b""
+                if m:
+                    ext = "png" if m.group(1).lower() == "png" else "jpg"
+                    raw_img = base64.b64decode(m.group(2))
+                name = f"mg-lab-snap-{bps_s}-{stamp}.{ext}"
+                if raw_img:
+                    (out_dir / name).write_bytes(raw_img)
+                    (promo / name).write_bytes(raw_img)
+                    (promo / "latest-lab-snap.jpg").write_bytes(raw_img)
+                meta = {k: obj.get(k) for k in ("t", "reason", "href", "peakBps", "peakNtpm", "machine", "synopsis", "w", "h")}
+                meta["file"] = name
+                (out_dir / (name + ".json")).write_text(json.dumps(meta, indent=2))
+                print(f"MG_SNAP wrote {out_dir / name} bps={bps}", flush=True)
+                self.send_response(200)
+                self._cors()
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "file": name}).encode())
+                return
+            except Exception as e:
+                print(f"MG_SNAP err {e}", flush=True)
+                self.send_response(500)
+                self._cors()
+                self.end_headers()
+                return
+
         with JSONL.open("a") as f:
             f.write(json.dumps(obj, separators=(",", ":")) + "\n")
         try:

@@ -5,10 +5,24 @@
  */
 (function () {
   "use strict";
-  var VER = "sportsfield-bridge-v3-match-stack";
+  var VER = "sportsfield-bridge-v4-ugrad-palette";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._sportsFieldVer === VER) return;
   HP._sportsFieldVer = VER;
+
+  /* μgrad / mueee ugrad-go-board-theme.css (shared Go + Chess lab palette) */
+  var UGB = {
+    page: "#0a0d12",
+    panel: "rgba(0,0,0,0.22)",
+    line: "rgba(250,250,252,0.28)",
+    cellLight: "#2a3038",
+    cellDark: "#12161c",
+    hover: "rgba(56,139,253,0.28)",
+    hoverRing: "#58a6ff",
+    pieceW: "#f0f2f5",
+    pieceB: "#0d0d0d",
+    accent: "#58a6ff",
+  };
   try {
     if (document.getElementById("pip-wrap")) return;
   } catch (e0) {}
@@ -310,12 +324,16 @@
     var ox = (W - size) / 2;
     var oy = (H - size) / 2;
     var step = size / (GO_N - 1);
-    g.fillStyle = "#c4a35a";
+    /* ugrad-go-board-theme: cool dark field (not wood) */
+    g.fillStyle = UGB.page;
     g.fillRect(0, 0, W, H);
-    g.fillStyle = "rgba(180,140,60,0.95)";
-    roundRect(g, ox - 10, oy - 10, size + 20, size + 20, 6);
+    g.fillStyle = UGB.cellDark;
+    roundRect(g, ox - 12, oy - 12, size + 24, size + 24, 8);
     g.fill();
-    g.strokeStyle = "rgba(40,30,15,0.55)";
+    g.strokeStyle = UGB.line;
+    g.lineWidth = 1.25;
+    g.stroke();
+    g.strokeStyle = UGB.line;
     g.lineWidth = 1;
     var i, j;
     for (i = 0; i < GO_N; i++) {
@@ -330,11 +348,11 @@
     }
     /* hoshi */
     var stars = GO_N === 9 ? [2, 4, 6] : [3, 9, 15];
-    g.fillStyle = "rgba(40,30,15,0.7)";
+    g.fillStyle = "rgba(250,250,252,0.35)";
     for (i = 0; i < stars.length; i++) {
       for (j = 0; j < stars.length; j++) {
         g.beginPath();
-        g.arc(ox + stars[i] * step, oy + stars[j] * step, 2.2, 0, Math.PI * 2);
+        g.arc(ox + stars[i] * step, oy + stars[j] * step, 2.4, 0, Math.PI * 2);
         g.fill();
       }
     }
@@ -346,25 +364,25 @@
         var y = oy + i * step;
         var grd = g.createRadialGradient(x - 2, y - 2, 1, x, y, step * 0.42);
         if (v === 1) {
-          grd.addColorStop(0, "#555");
-          grd.addColorStop(1, "#0a0a0a");
+          grd.addColorStop(0, "#3a3a3a");
+          grd.addColorStop(1, UGB.pieceB);
         } else {
-          grd.addColorStop(0, "#fff");
-          grd.addColorStop(1, "#d0d0d0");
+          grd.addColorStop(0, "#ffffff");
+          grd.addColorStop(1, UGB.pieceW);
         }
         g.fillStyle = grd;
         g.beginPath();
         g.arc(x, y, step * 0.42, 0, Math.PI * 2);
         g.fill();
-        g.strokeStyle = "rgba(0,0,0,0.35)";
+        g.strokeStyle = v === 1 ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.35)";
         g.stroke();
       }
     }
     if (goLast) {
-      g.strokeStyle = "rgba(220,60,40,0.85)";
-      g.lineWidth = 2;
+      g.strokeStyle = UGB.hoverRing;
+      g.lineWidth = 2.2;
       g.beginPath();
-      g.arc(ox + goLast.c * step, oy + goLast.r * step, step * 0.18, 0, Math.PI * 2);
+      g.arc(ox + goLast.c * step, oy + goLast.r * step, step * 0.2, 0, Math.PI * 2);
       g.stroke();
     }
   }
@@ -538,26 +556,36 @@
     var cell = size / 8;
     var ox = (W - size) / 2;
     var oy = (H - size) / 2;
-    g.fillStyle = "rgba(12,14,18,0.95)";
+    /* ugrad chess-ugrad: --ugb-cell-light/dark cool greys (not wood/green) */
+    g.fillStyle = UGB.page;
     g.fillRect(0, 0, W, H);
     var r, c;
     for (r = 0; r < 8; r++) {
       for (c = 0; c < 8; c++) {
         var light = (r + c) % 2 === 0;
-        g.fillStyle = light ? "#e8d5a3" : "#769656";
-        g.fillRect(ox + c * cell, oy + r * cell, cell, cell);
+        g.fillStyle = light ? UGB.cellLight : UGB.cellDark;
+        g.fillRect(ox + c * cell, oy + r * cell, cell + 0.5, cell + 0.5);
       }
     }
+    g.strokeStyle = UGB.line;
+    g.lineWidth = 1;
+    g.strokeRect(ox + 0.5, oy + 0.5, size - 1, size - 1);
     chessLegal.forEach(function (m) {
-      g.fillStyle = "rgba(255,220,80,0.45)";
+      g.fillStyle = UGB.hover;
       g.beginPath();
-      g.arc(ox + m.c * cell + cell / 2, oy + m.r * cell + cell / 2, cell * 0.18, 0, Math.PI * 2);
+      g.arc(
+        ox + m.c * cell + cell / 2,
+        oy + m.r * cell + cell / 2,
+        cell * 0.2,
+        0,
+        Math.PI * 2
+      );
       g.fill();
     });
     if (chessSel) {
-      g.strokeStyle = "rgba(255,200,60,0.9)";
+      g.strokeStyle = UGB.hoverRing;
       g.lineWidth = 2.5;
-      g.strokeRect(ox + chessSel.c * cell + 1, oy + chessSel.r * cell + 1, cell - 2, cell - 2);
+      g.strokeRect(ox + chessSel.c * cell + 1.5, oy + chessSel.r * cell + 1.5, cell - 3, cell - 3);
     }
     g.font = "700 " + Math.floor(cell * 0.72) + "px serif";
     g.textAlign = "center";
@@ -566,14 +594,19 @@
       for (c = 0; c < 8; c++) {
         var p = chessBoard[r][c];
         if (!p) continue;
-        g.fillStyle = pieceColor(p) === "w" ? "#f8f4ea" : "#1a1a1a";
-        if (pieceColor(p) === "w") {
-          g.strokeStyle = "rgba(0,0,0,0.35)";
+        var isW = pieceColor(p) === "w";
+        g.fillStyle = isW ? UGB.pieceW : UGB.pieceB;
+        if (isW) {
+          g.strokeStyle = "rgba(0,0,0,0.45)";
+          g.lineWidth = 1.2;
+        } else {
+          g.strokeStyle = "rgba(255,255,255,0.12)";
           g.lineWidth = 1;
         }
         var gx = ox + c * cell + cell / 2;
         var gy = oy + r * cell + cell / 2 + 1;
         g.fillText(GLYPH[p] || p, gx, gy);
+        if (isW) g.strokeText(GLYPH[p] || p, gx, gy);
       }
     }
     g.textAlign = "left";

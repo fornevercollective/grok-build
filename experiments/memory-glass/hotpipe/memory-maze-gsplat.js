@@ -3,11 +3,12 @@
  * Rain music: Daito / Rhizomatiks installation spirit —
  * sparse spatial events, metallic partials, long room, soft continuum
  * (phase-forms / body-signal → sound lineage · not cute piano arps).
- * VER: memory-maze-v3b-daito-fill
+ * VER: memory-maze-v4-keys-embed
+ * Embeds into TOOLS → Keys (gsplat + contrail viz). Beats live under Staff.
  */
 (function () {
   "use strict";
-  var VER = "memory-maze-v3c-beats-feed";
+  var VER = "memory-maze-v4-keys-embed";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._memMazeVer === VER) return;
   HP._memMazeVer = VER;
@@ -227,6 +228,20 @@
         "  aspect-ratio:1/1;max-height:min(48vh,520px);}",
         "#mg-mem-maze.fill canvas{height:auto;min-height:min(42vw,520px);",
         "  max-height:min(70vh,720px);aspect-ratio:1/1;}",
+        /* Embedded in Keys drawer — gsplat + contrail feed, full width */
+        "#mg-mem-maze.mg-embedded,#mg-drawer-maze-host #mg-mem-maze{",
+        "  position:relative!important;left:auto!important;top:auto!important;",
+        "  right:auto!important;bottom:auto!important;",
+        "  width:100%!important;max-width:none!important;margin:0!important;",
+        "  z-index:1!important;display:flex!important;flex-direction:column;",
+        "  visibility:visible!important;opacity:1!important;",
+        "  border-radius:16px!important;",
+        "  background:rgba(255,255,255,0.06)!important}",
+        "#mg-mem-maze.mg-embedded canvas,#mg-drawer-maze-host #mg-mem-maze canvas{",
+        "  height:min(38vh,300px)!important;min-height:220px!important;",
+        "  max-height:min(42vh,340px)!important;aspect-ratio:1/1;",
+        "  width:100%!important}",
+        "#mg-mem-maze.mg-embedded.fill{width:100%!important;left:auto!important;top:auto!important}",
         "#mg-mem-maze .ft{padding:4px 8px 6px;font:500 8px/1.25 ui-monospace,Menlo,monospace;",
         "  color:rgba(160,200,180,0.85);letter-spacing:0.04em}",
       ].join("");
@@ -249,6 +264,12 @@
     (document.body || document.documentElement).appendChild(panel);
     cv = panel.querySelector("#mg-maze-cv");
     panel.querySelector("#mg-maze-x").onclick = function () {
+      if (panel.classList.contains("mg-embedded")) {
+        /* stay mounted in Keys drawer — just stop spin/busy paint? keep visible */
+        autoSpin = false;
+        log("maze embedded · spin off");
+        return;
+      }
       open = false;
       panel.classList.add("hidden");
     };
@@ -934,11 +955,15 @@
     open: function () {
       open = true;
       ensureUi();
-      panel.classList.remove("hidden");
+      if (panel) {
+        panel.classList.remove("hidden");
+        panel.classList.remove("mg-product-ghost");
+      }
     },
     close: function () {
       open = false;
-      if (panel) panel.classList.add("hidden");
+      if (panel && !panel.classList.contains("mg-embedded"))
+        panel.classList.add("hidden");
     },
     toggle: function () {
       if (open) this.close();
@@ -946,6 +971,45 @@
     },
     points: function () {
       return points;
+    },
+    /** Mount gsplat maze into Keys drawer host (contrail feed stays live). */
+    embedInto: function (host) {
+      if (!host) return false;
+      ensureUi();
+      if (!panel) return false;
+      host.appendChild(panel);
+      panel.classList.add("mg-embedded");
+      panel.classList.remove("hidden");
+      panel.classList.remove("mg-product-ghost");
+      /* drawer-friendly: not fixed FILL float */
+      fillMode = false;
+      panel.classList.remove("fill");
+      var bf = panel.querySelector("#mg-maze-fill");
+      if (bf) bf.classList.remove("on");
+      open = true;
+      try {
+        /* ensure contrail overlay path is flowing into maze */
+        if (window.__mgContrail) {
+          if (window.__mgContrail.setFlow) window.__mgContrail.setFlow(true);
+        }
+      } catch (eC) {}
+      draw();
+      paintFt();
+      log(VER + " · embedded in Keys · gsplat + contrail");
+      return true;
+    },
+    unembed: function () {
+      if (!panel || !panel.classList.contains("mg-embedded")) return;
+      panel.classList.remove("mg-embedded");
+      panel.style.position = "";
+      panel.style.width = "";
+      panel.style.left = "";
+      panel.style.top = "";
+      (document.body || document.documentElement).appendChild(panel);
+      if (!open) panel.classList.add("hidden");
+    },
+    isEmbedded: function () {
+      return !!(panel && panel.classList.contains("mg-embedded"));
     },
     report: function () {
       return (
@@ -957,7 +1021,8 @@
         " music=" +
         musicOn +
         " drops=" +
-        dropCount
+        dropCount +
+        (panel && panel.classList.contains("mg-embedded") ? " embed" : "")
       );
     },
   };

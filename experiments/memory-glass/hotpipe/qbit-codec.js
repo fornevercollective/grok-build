@@ -1023,6 +1023,10 @@
     decode: decode,
     strip: strip,
     isEncoded: isEncoded,
+    /** 5-space glyph holder (one blank → full record) */
+    encodeRecord: encodeRecord,
+    decodeRecord: decodeRecord,
+    SPACE_CHARS: SPACE_CHARS,
 
     // Header
     makeHeader: makeHeader,

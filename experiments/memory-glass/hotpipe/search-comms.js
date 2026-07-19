@@ -1,11 +1,11 @@
 /* Memory Glass · bottom search bar: GO · CHAT · MESH
  * Extends #mg-search-dock (shell chrome). Modes always visible when dock open.
  * Commands: URL/search · chat: · mesh: · day · hunt · geo · board · field · help
- * VER: search-comms-v3-keep-open
+ * VER: search-comms-v5-quiet-boot
  */
 (function () {
   "use strict";
-  var VER = "search-comms-v3-keep-open";
+  var VER = "search-comms-v5-quiet-boot";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._searchCommsVer === VER) return;
   HP._searchCommsVer = VER;
@@ -32,9 +32,11 @@
     var st = document.createElement("style");
     st.id = "mg-search-comms-css";
     st.textContent = [
-      /* Sit above REC / keyboard stack, stay centered */
+      /* Docked bottom-center — never mid-viewport float */
       "#mg-search-dock{",
-      "  --mg-search-bottom:max(12px, calc(52px + var(--mg-kb-h,0px)))!important;",
+      "  position:fixed!important;left:50%!important;right:auto!important;top:auto!important;",
+      "  transform:translateX(-50%)!important;",
+      "  --mg-search-bottom:max(12px, calc(10px + var(--mg-kb-h,0px)))!important;",
       "  bottom:calc(var(--mg-search-bottom) + env(safe-area-inset-bottom,0px))!important;",
       "  max-width:min(760px,96vw)!important;z-index:2147483608!important}",
       /* Open bar: room for modes + optional chat log (grow upward) */
@@ -365,12 +367,24 @@
     if (/^help\b/i.test(s) || s === "?") {
       pushLine(
         "sys",
-        "GO url · CHAT message · MESH status · day · hunt · claim · geo · board · field · maze · floats · help",
+        "GO url · CHAT · MESH · atlas · day · hunt · board · field · maze · floats · help",
         true
       );
       setMode("chat");
       keepDockOpen();
       return { ok: true, kind: "help" };
+    }
+    if (/^(atlas|sitemap|files|site.?map)\b/i.test(s)) {
+      try {
+        if (window.__mgSiteAtlas) {
+          window.__mgSiteAtlas.scan();
+          window.__mgSiteAtlas.open();
+          pushLine("sys", window.__mgSiteAtlas.report(), true);
+        } else pushLine("sys", "site-atlas not loaded · ⌘⇧R", true);
+      } catch (eA) {
+        pushLine("sys", "atlas fail", true);
+      }
+      return { ok: true, kind: "atlas" };
     }
 
     /* GO mode → navigate */
@@ -551,8 +565,7 @@
     } catch (eF) {}
 
     setMode("go");
-    if (!lines.length)
-      pushLine("sys", "GO · CHAT · MESH ready · help for commands", true);
+    /* No boot footer banner — keep the bar quiet until the user types. */
     paintMeshBadge();
     setInterval(paintMeshBadge, 4000);
     enhanced = true;

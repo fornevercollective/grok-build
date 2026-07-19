@@ -27,7 +27,8 @@
  * P-004 Canvas FILL: use full window (not cramped Neuralink max-height / min(96vw,96vh)).
  * P-005 Aggressive fill: ~88% of main view square; score column stays readable.
  * P-006 Keep Memory Glass chrome (dragon grabber, tools, tabs, stoplights) VISIBLE.
- * VER: webgrid-play-v28-scrim-dead
+ * VER: webgrid-play-v31-grid-freeze
+ * Play-safe: freeze canvas geometry mid-run (no resize storms → no grid shake).
  */
 (function () {
   "use strict";
@@ -36,7 +37,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v28-scrim-dead";
+  var VER = "webgrid-play-v31-grid-freeze";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -119,19 +120,99 @@
     return _pace;
   }
 
+  var _playFrozen = false; /* true once canvas size locked for this run */
+  var _frozenCanvasA = 0;
+
   function setPlayBusy(on) {
+    var was = _playBusy;
     _playBusy = !!on;
     try {
       window.__mgWebgridPlayBusy = _playBusy;
       document.documentElement.classList.toggle("mg-webgrid-play-busy", _playBusy);
+      document.documentElement.classList.toggle("mg-webgrid-playing", _playBusy);
     } catch (e) {}
-    /* Keep ALL dual-space floats LIVE during WebGrid play (user lab surface).
-       Perf = throttle redraws only — never auto-close maze/bloch/rubik/beats/board/contrail. */
+    /* Play-safe: never open lab parade mid-run — that was the shake/lag source.
+       Keep LIVE RANK pill only; contrail off unless user already opened flow. */
     try {
-      if (_playBusy) openPlayFloats();
+      if (_playBusy && !was) {
+        /* one quiet + lock canvas; do not re-fire every busy edge */
+        quietPlayChrome();
+        freezeGridGeometry();
+      }
+      if (!_playBusy) {
+        _playFrozen = false;
+        _frozenCanvasA = 0;
+      }
     } catch (e2) {}
   }
 
+  /** Snapshot canvas CSS size and stop all resize/FILL thrash until run ends */
+  function freezeGridGeometry() {
+    try {
+      var c =
+        document.querySelector("canvas._canvas_1wslk_27") ||
+        document.querySelector("canvas");
+      if (c) {
+        var w = c.getBoundingClientRect().width || parseFloat(c.style.width) || 0;
+        if (w > 40) {
+          _frozenCanvasA = Math.round(w);
+          c.style.width = _frozenCanvasA + "px";
+          c.style.height = _frozenCanvasA + "px";
+          c.style.maxWidth = _frozenCanvasA + "px";
+          c.style.maxHeight = _frozenCanvasA + "px";
+        }
+      }
+      _playFrozen = true;
+      log(VER + " · grid geometry frozen a=" + _frozenCanvasA);
+    } catch (e) {
+      _playFrozen = true;
+    }
+  }
+
+  /** Collapse thrash chrome for smooth 30×30 paint — no layout storms */
+  function quietPlayChrome() {
+    try {
+      if (window.__mgContrail && window.__mgContrail.setOverlay)
+        window.__mgContrail.setOverlay(false);
+      if (window.__mgContrail && window.__mgContrail.setFlow)
+        window.__mgContrail.setFlow(false);
+    } catch (e0) {}
+    try {
+      /* collapse rank only if open — avoid open() reflow when already pill */
+      if (window.__mgActivityBoard) {
+        if (
+          window.__mgActivityBoard.isOpen &&
+          window.__mgActivityBoard.isOpen() &&
+          window.__mgActivityBoard.collapse
+        )
+          window.__mgActivityBoard.collapse();
+        else if (
+          window.__mgActivityBoard.isOpen &&
+          !window.__mgActivityBoard.isOpen()
+        ) {
+          /* leave closed chip — do not open mid-run */
+        }
+      }
+    } catch (e1) {}
+    try {
+      if (window.__mgFloatLayout && window.__mgFloatLayout.closeHeavy)
+        window.__mgFloatLayout.closeHeavy({
+          keepPlay: false,
+          boardPill: true,
+          ctrlPill: true,
+        });
+    } catch (e2) {}
+    try {
+      if (window.__mgToolsDrawer && window.__mgToolsDrawer.isOpen &&
+          window.__mgToolsDrawer.isOpen() && window.__mgToolsDrawer.close)
+        window.__mgToolsDrawer.close();
+      if (window.__mgRightDrawer && window.__mgRightDrawer.isOpen &&
+          window.__mgRightDrawer.isOpen() && window.__mgRightDrawer.close)
+        window.__mgRightDrawer.close();
+    } catch (e3) {}
+  }
+
+  /** Opt-in only: ?mg_lab_full=1 or explicit FLOATS — not on normal play */
   function openPlayFloats() {
     try {
       if (window.__mgContrail) {
@@ -152,8 +233,7 @@
       if (window.__mgRubikLang && window.__mgRubikLang.open) window.__mgRubikLang.open();
     } catch (e4) {}
     try {
-      if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.open)
-        window.__mgKeyboardBeats.open();
+      /* Beats stay in TOOLS → Keys unless user pop-outs — never auto float on canvas */
     } catch (e5) {}
     try {
       if (window.__mgActivityBoard && window.__mgActivityBoard.open)
@@ -350,6 +430,8 @@
    * 3) Fire resize so React useEffect re-evaluates mobile breakpoint
    */
   function applyWebgridZoomOut(force) {
+    /* Never re-spoof viewport mid-run — resize events shake Neuralink grid */
+    if (_playBusy && !force) return window.__mgWebgridZoom || 1;
     var z = clampZoom(desiredZoom());
     if (!force && window.__mgWebgridZoom === z) {
       return z;
@@ -534,9 +616,15 @@
   }
 
   /** FILL: size play canvas to the largest square that fits the window (sidebar reserved). */
-  function kickCanvasResize() {
+  function kickCanvasResize(force) {
+    /* HARD FREEZE during play — dispatching resize + rewriting canvas.width
+     * re-lays the 30×30 grid and looks like the board is shaking. */
+    if ((_playBusy || _playFrozen) && !force) return;
     try {
-      window.dispatchEvent(new Event("resize"));
+      /* only notify Neuralink on intentional fills (lobby / end), not every timer */
+      if (force || !_playBusy) {
+        /* avoid resize storm: only when size will actually change below */
+      }
     } catch (e) {}
     try {
       var c =
@@ -591,9 +679,11 @@
 
       var curCss = parseFloat(c.style.width) || c.getBoundingClientRect().width || 0;
       /* Avoid thrashing buffer mid-frame unless size actually moved */
-      if (Math.abs(curCss - a) < 6 && Math.abs((c.width || 0) / (window.devicePixelRatio || 1) - a) < 6) {
+      if (Math.abs(curCss - a) < 8 && Math.abs((c.width || 0) / (window.devicePixelRatio || 1) - a) < 8) {
         return;
       }
+      /* deadband: ignore 1–2% jitter from chrome overlays measuring sideW */
+      if (curCss > 40 && Math.abs(curCss - a) / curCss < 0.02) return;
 
       c.style.width = a + "px";
       c.style.height = a + "px";
@@ -603,7 +693,9 @@
       c.style.minHeight = a + "px";
       var dpr = window.devicePixelRatio || 1;
       var px = Math.floor(a * dpr);
-      if (Math.abs(c.width - px) > 4) {
+      /* Changing canvas.width clears the buffer and forces Neuralink re-layout —
+       * only do it when buffer is wildly wrong (lobby/boot), never micro-nudge. */
+      if (Math.abs(c.width - px) > 24) {
         c.width = px;
         c.height = px;
       }
@@ -615,6 +707,10 @@
       try {
         window.__mgWebgridCanvasFill = { a: a, vw: vw, vh: vh, sideW: sideW, ver: VER };
       } catch (eF) {}
+      /* Notify React only after a real size change, never mid-play (see early return) */
+      try {
+        window.dispatchEvent(new Event("resize"));
+      } catch (eR) {}
     } catch (e2) {}
   }
 
@@ -624,6 +720,8 @@
    * stoplights, search dock, edges/grip — those are window controls + visual tools.
    */
   function hideMgChrome() {
+    /* Mid-run: do not re-touch body/html styles (causes full reflow → grid shake) */
+    if (_playBusy || _playFrozen) return;
     try {
       document.documentElement.classList.add("mg-webgrid-play");
       document.documentElement.style.setProperty("--mg-page-pad-bot", "0px");
@@ -707,11 +805,38 @@
       "html.mg-webgrid-play #mg-raider-stage," +
       "html.mg-webgrid-play #mg-rubik-float," +
       "html.mg-webgrid-play #mg-bloch-float," +
-      "html.mg-webgrid-play #mg-menu-health-pill{" +
-      "  z-index:2147483647!important;pointer-events:auto!important;}" +
+      "html.mg-webgrid-play #mg-menu-health-pill," +
+      "html.mg-webgrid-play #mg-tools-drawer," +
+      "html.mg-webgrid-play #mg-tools-mode-rail," +
+      "html.mg-webgrid-play #mg-tools-scrim," +
+      "html.mg-webgrid-play #mg-right-drawer," +
+      "html.mg-webgrid-play #mg-right-tab," +
+      "html.mg-webgrid-play #mg-right-scrim{" +
+      "  z-index:2147483647!important;pointer-events:auto!important;" +
+      "  visibility:visible!important;}" +
+      "html.mg-webgrid-play #mg-tools-mode-rail," +
+      "html.mg-webgrid-play #mg-right-tab{" +
+      "  display:flex!important;opacity:1!important;min-width:28px!important;}" +
+      "html.mg-webgrid-play #mg-tools-mode-rail button," +
+      "html.mg-webgrid-play #mg-right-tab{" +
+      "  min-width:28px!important;min-height:52px!important;pointer-events:auto!important;}" +
+      /* Play-safe: drop expensive glass blur mid-run (shake/lag) */ +
+      "html.mg-webgrid-playing #mg-activity-board," +
+      "html.mg-webgrid-play-busy #mg-activity-board," +
+      "html.mg-webgrid-playing #mg-tools-drawer," +
+      "html.mg-webgrid-playing #mg-right-drawer," +
+      "html.mg-webgrid-playing #mg-tools-mode-rail button," +
+      "html.mg-webgrid-playing #mg-right-tab," +
+      "html.mg-webgrid-play-busy #mg-tools-drawer," +
+      "html.mg-webgrid-play-busy #mg-right-drawer{" +
+      "  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}" +
+      "html.mg-webgrid-playing #mg-activity-board:not(.collapsed) .rank-table{" +
+      "  max-height:120px!important;}" +
       "html.mg-webgrid-play #mg-search-dock," +
-      "html.mg-webgrid-play #mg-search-peek{" +
-      "  pointer-events:auto!important;}" +
+      "html.mg-webgrid-play #mg-search-peek," +
+      "html.mg-webgrid-play #mg-board-toast," +
+      "html.mg-webgrid-play #mg-board-toast button{" +
+      "  pointer-events:auto!important;z-index:2147483647!important;}" +
       "html.mg-webgrid-play #mg-glass-cap button," +
       "html.mg-webgrid-play #mg-glass-cap input," +
       "html.mg-webgrid-play #mg-float-kb button," +
@@ -1424,11 +1549,64 @@
     return false;
   }
 
+  async function waitForCalIfNeeded() {
+    /* Cold launch: ?mg_cal=1 must finish CAL (+ SHOW) before agent play */
+    try {
+      if (!/[?&]mg_cal=/i.test(location.search || "")) return true;
+      var v = (location.search.match(/[?&]mg_cal=([^&]*)/i) || [])[1] || "1";
+      if (/^(0|off|false)$/i.test(decodeURIComponent(v))) return true;
+    } catch (e0) {
+      return true;
+    }
+    log(VER + " · waiting for __mgCal boot before autoplay…");
+    var deadline = Date.now() + 55000;
+    var sawStart = false;
+    while (Date.now() < deadline) {
+      try {
+        if (window.__mgCalReady) break;
+        if (window.__mgCalRunning || (window.__mgCal && window.__mgCal.isRunning && window.__mgCal.isRunning())) {
+          sawStart = true;
+          await sleep(200);
+          continue;
+        }
+        if (window.__mgCal && window.__mgCal.lastCal && window.__mgCal.lastCal()) {
+          /* CAL finished; SHOW may still be running */
+          if (window.__mgCal.isRunning && window.__mgCal.isRunning()) {
+            await sleep(200);
+            continue;
+          }
+          break;
+        }
+        /* module not injected yet or not started */
+        await sleep(250);
+        if (!sawStart && Date.now() > deadline - 8000) {
+          log(VER + " · cal gate timeout soft — proceeding to play");
+          break;
+        }
+      } catch (eW) {
+        break;
+      }
+    }
+    try {
+      var c = window.__mgCal && window.__mgCal.lastCal && window.__mgCal.lastCal();
+      log(
+        VER +
+          " · cal gate done · " +
+          (c ? c.pass + "/" + c.total + (c.ok ? " green" : " soft") + " " + c.ms + "ms" : "no-report") +
+          (window.__mgCalReady ? " · ready" : "")
+      );
+    } catch (eL) {}
+    /* brief settle after SHOW clear so field is free for WebGrid */
+    await sleep(700);
+    return true;
+  }
+
   async function autoplayIfEnabled() {
     if (!wantAutoplay()) {
       log("autoplay off · calibrated ready (set play_once / AgentPlayOnce / ?mg_autoplay=3)");
       return;
     }
+    await waitForCalIfNeeded();
     var rounds = autoplayRounds();
     var small = wantsSmallScale();
     log(
@@ -1546,13 +1724,14 @@
   /* ⌘− / ⌘+ / ⌘0 — capture phase so page doesn't eat them */
   window.addEventListener("keydown", onZoomKey, true);
   document.addEventListener("keydown", onZoomKey, true);
-  /* Keep layout fill after SPA transitions; re-assert size without thrashing */
+  /* FILL only in lobby/idle — NEVER while playing (grid freeze) */
   _fillTimer = setInterval(function () {
     try {
+      if (_playBusy || _playFrozen || window.__mgWebgridPlayBusy) return;
       hideMgChrome();
-      kickCanvasResize();
+      kickCanvasResize(false);
     } catch (eH) {}
-  }, 2200);
+  }, 5000);
 
   /* Expose for console / board */
   window.__mgWebgridFill = {
@@ -1578,12 +1757,15 @@
   };
   var zoomResizeT = 0;
   window.addEventListener("resize", function () {
+    /* Ignore synthetic resize storms + freeze mid-run */
+    if (_playBusy || _playFrozen || window.__mgWebgridPlayBusy) return;
     clearTimeout(zoomResizeT);
     zoomResizeT = setTimeout(function () {
+      if (_playBusy || _playFrozen) return;
       hideMgChrome();
       applyWebgridZoomOut(false);
-      kickCanvasResize();
-    }, 120);
+      kickCanvasResize(false);
+    }, 200);
   });
 
   log(VER + " · ⌘+ bigger · ⌘− smaller · ⌘0 reset");
@@ -1811,10 +1993,22 @@
   document.addEventListener("pointerdown", onPtr, true);
   document.addEventListener("mousedown", onPtr, true);
 
-  setInterval(function () {
-    sample(false);
-  }, 350);
+  /* Watch sample: ~400ms lobby; ~1Hz while playing (IPC thrash was laggy) */
+  (function watchLoop() {
+    var lastBusy = !!window.__mgWebgridPlayBusy;
+    var tid = setInterval(function () {
+      sample(false);
+      var busy = !!window.__mgWebgridPlayBusy;
+      if (busy !== lastBusy) {
+        lastBusy = busy;
+        clearInterval(tid);
+        tid = setInterval(function () {
+          sample(false);
+        }, busy ? 1000 : 400);
+      }
+    }, lastBusy ? 1000 : 400);
+  })();
   sample(true);
-  log(VER + " · watching playthrough → :9880");
+  log(VER + " · playperf · watching playthrough → :9880");
 })();
 

@@ -1,0 +1,60 @@
+{
+  "schema": "mg.glyph-plane-manifest/v1",
+  "ver": "harvest-v1",
+  "generated": "2026-07-19T08:15Z",
+  "sources": ["lark fontLab", "NEUwave"],
+  "mg_landing": {
+    "primary": "lang-codec-plane · rubik thought face (glyph) · lark governance type later",
+    "secondary": "staff alphabet poster (visual only)"
+  },
+  "fontlab_components": [
+    "WaveformLetterSystem",
+    "AlphabetPoster",
+    "AlphabetPreview",
+    "FontCreator",
+    "WaveformPresets",
+    "WritingSystemAnalyzer",
+    "DrawingCanvas",
+    "CodeExport",
+    "FontRepository",
+    "AudioWaveform",
+    "ImageAnalyzer"
+  ],
+  "neuwave_components": [
+    "Embossed3DTypography",
+    "TypographyWaveform",
+    "Typography3DStudio",
+    "SingleLineAlphabet3D",
+    "CMYKHalftone",
+    "FontShowcase",
+    "ParametricEQ",
+    "AudioPlayer",
+    "WaveformScrollPreview"
+  ],
+  "patterns": [
+    {
+      "name": "waveform→glyph",
+      "from": "WaveformLetterSystem / TypographyWaveform",
+      "to": "lang-codec glyph alphabet + rubik R thought face",
+      "status": "pattern-only",
+      "do_not_port": "full FontCreator export pipeline"
+    },
+    {
+      "name": "3d-type-studio",
+      "from": "Typography3DStudio / Embossed3DTypography",
+      "to": "optional future type plane float",
+      "status": "ranked-later"
+    },
+    {
+      "name": "alphabet-poster",
+      "from": "AlphabetPoster / FontShowcase",
+      "to": "reference sheet for lettering channels",
+      "status": "doc-only"
+    }
+  ],
+  "next_slices": [
+    "Export a 26–48 glyph table JSON for thought face (no React)",
+    "Wire one waveform-preset → stamp into rubik R face"
+  ],
+  "symbols": "frozen"
+}

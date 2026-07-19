@@ -2,11 +2,12 @@
  * Educational geometry only — not Neuralink implant claims.
  * P0: map path→gates every N samples + on stroke; mini orb always on.
  * P1: SO order + Rubik face → gate family; mueee cube links.
- * VER: bloch-solve-v1
+ * P2: live embed in TOOLS side drawer (Solve + pop-out host).
+ * VER: bloch-solve-v6-drawer-live
  */
 (function () {
   "use strict";
-  var VER = "bloch-solve-v4-no-overlap";
+  var VER = "bloch-solve-v6-drawer-live";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._blochSolveVer === VER) return;
   HP._blochSolveVer = VER;
@@ -32,6 +33,11 @@
   var panel = null;
   var panelCv = null;
   var floatOpen = false;
+  /* side drawer / pop-out embed (TOOLS → Solve · live) */
+  var embedHost = null;
+  var embedCv = null;
+  var embedFt = null;
+  var embedRoot = null;
 
   /* Rubik face → preferred gate family (educational) */
   var FACE_GATES = {
@@ -192,8 +198,9 @@
       "#mg-bloch-orb .lbl{position:absolute;left:0;right:0;bottom:2px;text-align:center;",
       "  font:700 7px/1 system-ui;letter-spacing:0.08em;color:rgba(160,210,255,0.85)}",
       /* Float: mid-left (right of maze/geo rail) — not stacked on GEO */
-      "#mg-bloch-float{position:fixed;left:min(300px,22vw);right:auto;top:56px;bottom:auto;",
-      "  z-index:2147482991;width:min(240px,32vw);border-radius:12px;overflow:hidden;",
+      /* Default under top-left CTRL — layout re-pins from measured CTRL bottom */
+      "#mg-bloch-float{position:fixed;left:12px;right:auto;top:56px;bottom:auto;",
+      "  z-index:2147482998;width:min(280px,28vw);border-radius:12px;overflow:hidden;",
       "  background:rgba(10,12,16,0.5);backdrop-filter:blur(22px) saturate(1.35);",
       "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
       "  border:1px solid rgba(255,255,255,0.16);",
@@ -212,6 +219,30 @@
       "#mg-bloch-float .acts button{appearance:none;cursor:pointer;padding:4px 7px;border-radius:999px;",
       "  font:700 8px/1 system-ui;color:rgba(230,240,255,0.95);",
       "  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14)}",
+      /* drawer embed — live sphere inside left TOOLS / pop-out host */
+      "#mg-drawer-bloch-host,#mg-bloch-embed{",
+      "  width:100%;margin:0;padding:0}",
+      "#mg-bloch-embed{",
+      "  border-radius:12px;overflow:hidden;",
+      "  background:rgba(4,8,14,0.72);",
+      "  border:1px solid rgba(255,255,255,0.12);",
+      "  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06)}",
+      "#mg-bloch-embed .hd{",
+      "  display:flex;justify-content:space-between;align-items:center;",
+      "  padding:6px 8px;font:650 9px/1.2 system-ui;letter-spacing:0.1em;",
+      "  text-transform:uppercase;color:rgba(160,210,255,0.92);",
+      "  border-bottom:1px solid rgba(255,255,255,0.1)}",
+      "#mg-bloch-embed canvas{",
+      "  width:100%;height:min(200px,28vh);display:block;",
+      "  background:radial-gradient(ellipse at 50% 45%,rgba(20,40,70,0.55),rgba(2,4,10,0.95))}",
+      "#mg-bloch-embed .ft{",
+      "  padding:5px 8px 6px;font:500 9px/1.3 ui-monospace,Menlo,monospace;",
+      "  color:rgba(160,200,180,0.9)}",
+      "#mg-bloch-embed .acts{display:flex;flex-wrap:wrap;gap:4px;padding:0 8px 8px}",
+      "#mg-bloch-embed .acts button{appearance:none;cursor:pointer;padding:5px 8px;border-radius:999px;",
+      "  font:700 9px/1 system-ui;color:rgba(230,240,255,0.95);",
+      "  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14)}",
+      "#mg-bloch-embed .acts button:hover{background:rgba(255,255,255,0.16)}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }
@@ -318,6 +349,32 @@
     }
   }
 
+  function statusLine() {
+    return (
+      "gate " +
+      (lastGate || "—") +
+      " · d=" +
+      (lastDist != null ? lastDist.toFixed(3) : "—") +
+      " · n=" +
+      sampleCount +
+      (enabled ? " · live" : " · off")
+    );
+  }
+
+  function paintCanvasSphere(cv, Hfix) {
+    if (!cv) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var W = Math.max(120, cv.clientWidth || 240);
+    var H = Hfix || Math.max(140, cv.clientHeight || 160);
+    cv.width = Math.floor(W * dpr);
+    cv.height = Math.floor(H * dpr);
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "rgba(4,8,14,0.88)";
+    ctx.fillRect(0, 0, W, H);
+    drawBlochSphere(ctx, W, H, Math.min(W, H) * 0.34, W * 0.5, H * 0.48);
+  }
+
   function paintOrb() {
     ensureOrb();
     if (!orbCv) return;
@@ -331,32 +388,122 @@
     ctx.clearRect(0, 0, W, H);
     drawBlochSphere(ctx, W, H, 16, 28, 24);
     if (floatOpen) paintFloat();
+    paintEmbed();
   }
 
   function paintFloat() {
     if (!floatOpen) return;
     ensureFloat();
     if (!panelCv) return;
-    var dpr = Math.min(2, window.devicePixelRatio || 1);
-    var W = panelCv.clientWidth || 240;
-    var H = 160;
-    panelCv.width = Math.floor(W * dpr);
-    panelCv.height = Math.floor(H * dpr);
-    var ctx = panelCv.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "rgba(4,8,14,0.88)";
-    ctx.fillRect(0, 0, W, H);
-    drawBlochSphere(ctx, W, H, Math.min(W, H) * 0.32, W * 0.5, H * 0.48);
+    paintCanvasSphere(panelCv, 160);
     var ft = document.getElementById("mg-bloch-ft");
-    if (ft) {
-      ft.textContent =
-        "gate " +
-        (lastGate || "—") +
-        " · d=" +
-        (lastDist != null ? lastDist.toFixed(3) : "—") +
-        " · n=" +
-        sampleCount;
+    if (ft) ft.textContent = statusLine();
+  }
+
+  function paintEmbed() {
+    if (!embedHost || !embedCv) return;
+    /* only paint when host is in document and roughly visible */
+    if (!document.body.contains(embedHost)) return;
+    var h = Math.max(160, Math.min(220, embedCv.clientHeight || 180));
+    paintCanvasSphere(embedCv, h);
+    if (embedFt) embedFt.textContent = statusLine();
+  }
+
+  /** Live Bloch inside TOOLS drawer / side menu host */
+  function embedInto(host) {
+    if (!host) return false;
+    ensureCss();
+    enabled = true;
+    embedHost = host;
+    try {
+      host.innerHTML = "";
+    } catch (e0) {}
+    while (host.firstChild) {
+      try {
+        host.removeChild(host.firstChild);
+      } catch (e1) {
+        break;
+      }
     }
+    embedRoot = document.createElement("div");
+    embedRoot.id = "mg-bloch-embed";
+
+    var hd = document.createElement("div");
+    hd.className = "hd";
+    var ttl = document.createElement("span");
+    ttl.textContent = "Bloch · live dual-solve";
+    var sub = document.createElement("span");
+    sub.style.opacity = "0.7";
+    sub.style.fontWeight = "500";
+    sub.style.letterSpacing = "0.04em";
+    sub.textContent = "path→gate";
+    hd.appendChild(ttl);
+    hd.appendChild(sub);
+    embedRoot.appendChild(hd);
+
+    embedCv = document.createElement("canvas");
+    embedCv.id = "mg-bloch-embed-cv";
+    embedCv.setAttribute("aria-label", "Live Bloch sphere");
+    embedRoot.appendChild(embedCv);
+
+    embedFt = document.createElement("div");
+    embedFt.className = "ft";
+    embedFt.id = "mg-bloch-embed-ft";
+    embedFt.textContent = "gate —";
+    embedRoot.appendChild(embedFt);
+
+    var acts = document.createElement("div");
+    acts.className = "acts";
+    acts.id = "mg-bloch-embed-acts";
+    ["H", "X", "Y", "Z", "S", "T"].forEach(function (g) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = g;
+      b.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+        if (Q() && Q().applyGate) Q().applyGate({ id: g, name: g });
+        lastGate = g + " (manual)";
+        paintOrb();
+      };
+      acts.appendChild(b);
+    });
+    var pop = document.createElement("button");
+    pop.type = "button";
+    pop.textContent = "FLOAT";
+    pop.title = "Open floating Bloch panel";
+    pop.onclick = function (ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      openFloat();
+    };
+    acts.appendChild(pop);
+    embedRoot.appendChild(acts);
+
+    host.appendChild(embedRoot);
+    paintEmbed();
+    log(VER + " · embedded live Bloch in drawer");
+    return true;
+  }
+
+  function unembed() {
+    if (embedHost) {
+      try {
+        embedHost.innerHTML = "";
+      } catch (e) {}
+    }
+    embedHost = null;
+    embedCv = null;
+    embedFt = null;
+    embedRoot = null;
+  }
+
+  function isEmbedded() {
+    return !!(embedHost && embedCv && document.body.contains(embedHost));
   }
 
   function openFloat() {
@@ -364,12 +511,25 @@
     enabled = true;
     ensureFloat();
     panel.classList.remove("hidden");
+    panel.classList.remove("mg-product-ghost");
+    panel.style.display = "";
+    panel.style.visibility = "visible";
+    panel.style.pointerEvents = "auto";
     paintFloat();
+    try {
+      if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
+        window.__mgFloatLayout.apply();
+    } catch (eA) {}
+    log(VER + " · float open · under CTRL");
   }
 
   function closeFloat() {
     floatOpen = false;
     if (panel) panel.classList.add("hidden");
+    try {
+      if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
+        window.__mgFloatLayout.apply();
+    } catch (eA) {}
   }
 
   function toggleFloat() {
@@ -412,6 +572,10 @@
     isOpen: function () {
       return floatOpen;
     },
+    embedInto: embedInto,
+    unembed: unembed,
+    isEmbedded: isEmbedded,
+    paint: paintOrb,
     trials: trials,
     report: function () {
       return (
@@ -422,7 +586,8 @@
         (lastDist != null ? lastDist.toFixed(3) : "—") +
         " n=" +
         sampleCount +
-        (floatOpen ? " float" : "")
+        (floatOpen ? " float" : "") +
+        (isEmbedded() ? " drawer" : "")
       );
     },
   };

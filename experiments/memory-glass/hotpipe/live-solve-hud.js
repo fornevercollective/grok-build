@@ -391,13 +391,18 @@
     tick: tick,
     place: placeOnStampRow,
     open: function () {
+      ensure();
       setOpen(true);
     },
     close: function () {
       setOpen(false);
     },
     toggle: function () {
+      ensure();
       setOpen(!open);
+    },
+    isOpen: function () {
+      return !!open;
     },
     report: function () {
       return VER + " open=" + open;

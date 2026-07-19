@@ -6,18 +6,53 @@
  * Stays open during WebGrid play.
  * Mini WebGrid: always findable (chip + auto-open on 12×12).
  * Fleet: Mac mini M4 + laptop benches seeded with real gameplay metrics.
- * VER: activity-board-v7-shell-hdr
+ * VER: activity-board-v14-inspect-pin
+ * LIVE RANK on inspect via board_live; throttled hard during WebGrid play.
+ * Inspect: mount in #panel flow (under hdr) — never fixed overlay over PIP/dock.
+ * Singleton + inline pin beats sx-rail / media-query fixed shells.
  */
 (function () {
   "use strict";
-  var VER = "activity-board-v8-narrow-safe";
+  var VER = "activity-board-v14-inspect-pin";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._activityBoardVer === VER) return;
   HP._activityBoardVer = VER;
 
+  /* Kill stacked clones left by prior injects (hot reload / multi-open) */
   try {
-    if (document.getElementById("pip-wrap")) return;
-  } catch (e0) {}
+    var orphans = document.querySelectorAll("#mg-activity-board");
+    for (var oi = 1; oi < orphans.length; oi++) {
+      if (orphans[oi] && orphans[oi].parentNode)
+        orphans[oi].parentNode.removeChild(orphans[oi]);
+    }
+    var chips = document.querySelectorAll("#mg-board-chip");
+    for (var ci = 1; ci < chips.length; ci++) {
+      if (chips[ci] && chips[ci].parentNode)
+        chips[ci].parentNode.removeChild(chips[ci]);
+    }
+  } catch (eOrph) {}
+
+  /* Live-detect inspect (pip-wrap may not exist if script raced early inject). */
+  function isInspectHost() {
+    try {
+      return !!document.getElementById("pip-wrap");
+    } catch (e) {
+      return false;
+    }
+  }
+  var INSPECT_HOST = isInspectHost();
+  try {
+    if (INSPECT_HOST) document.documentElement.classList.add("mg-inspect-host");
+  } catch (eH) {}
+  function refreshInspectFlag() {
+    INSPECT_HOST = isInspectHost();
+    try {
+      if (INSPECT_HOST)
+        document.documentElement.classList.add("mg-inspect-host");
+      else document.documentElement.classList.remove("mg-inspect-host");
+    } catch (e) {}
+    return INSPECT_HOST;
+  }
 
   var KEY = "mg.activity.leaderboard.v1";
   var MAX = 48;
@@ -31,6 +66,9 @@
   var filterMini = false; /* show mini-webgrid lane only */
   var filterFull = false;
   var filterMachine = "all"; /* all | mini | laptop */
+  /* Live mirror from main WebGrid → inspect (cross-origin, IPC only) */
+  var remoteLive = null; /* { t, live, pred, board, lastRun, webgrid, mini } */
+  var remoteBoard = null;
 
   /* Fleet seed: real soak metrics (Mac mini) + laptop Intel bench — not composites-only */
   var FLEET_SEED = [
@@ -271,6 +309,8 @@
   }
 
   function loadBoard() {
+    /* Inspect prefers mirrored board from main (origins don't share localStorage) */
+    if (INSPECT_HOST && remoteBoard && remoteBoard.length) return remoteBoard.slice();
     try {
       var a = JSON.parse(localStorage.getItem(KEY) || "[]");
       return Array.isArray(a) ? a : [];
@@ -283,6 +323,84 @@
     try {
       localStorage.setItem(KEY, JSON.stringify(arr.slice(0, MAX)));
     } catch (e) {}
+    /* push rank table to inspect float */
+    try {
+      if (!INSPECT_HOST) publishLiveToInspect(true);
+    } catch (eP) {}
+  }
+
+  /** Escape JSON for evaluate_script embedding */
+  function safeJson(obj) {
+    return JSON.stringify(obj)
+      .replace(/</g, "\\u003c")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+  }
+
+  function isPlayHot() {
+    try {
+      if (window.__mgWebgridPlayBusy) return true;
+      if (document.documentElement.classList.contains("mg-webgrid-playing"))
+        return true;
+    } catch (e) {}
+    return false;
+  }
+
+  /**
+   * Main → inspect: stream live WebGrid rank so LIVE RANK floats with inspect.
+   * Idle: ~700ms. Playing: ~2.5s (was 700ms — IPC thrash caused shake/lag).
+   */
+  var _lastPublish = 0;
+  function publishLiveToInspect(force) {
+    if (INSPECT_HOST) return;
+    var now = Date.now();
+    var minGap = isPlayHot() ? 2500 : 900;
+    if (!force && now - _lastPublish < minGap) return;
+    _lastPublish = now;
+    try {
+      if (!window.ipc || !window.ipc.postMessage) return;
+      var live = collectMetrics();
+      var pred = predictNext();
+      /* during play: slim board payload (top 8) */
+      var board = boardRanked().slice(0, isPlayHot() ? 8 : 20);
+      var payload = {
+        t: now,
+        ver: VER,
+        webgrid: isWebgridHost(),
+        mini: isMiniWebgrid(),
+        playing: isPlayHot(),
+        live: live,
+        pred: pred,
+        board: board,
+        lastRun: lastRun,
+      };
+      window.ipc.postMessage(
+        JSON.stringify({ op: "board_live", json: safeJson(payload) })
+      );
+    } catch (e) {}
+  }
+
+  /** Inspect side: apply mirrored payload from main */
+  function applyLiveFromMain(payload) {
+    if (!payload || typeof payload !== "object") return;
+    remoteLive = payload;
+    if (Array.isArray(payload.board) && payload.board.length)
+      remoteBoard = payload.board;
+    if (payload.lastRun) lastRun = payload.lastRun;
+    if (payload.mini) filterMini = true;
+    /* inspect: stay collapsed during play — full table is expensive */
+    if (!open) {
+      openPanel({
+        collapsed: !!(payload.playing || isPlayHot()),
+        expand: !(payload.playing || isPlayHot()),
+      });
+    } else {
+      if ((payload.playing || isPlayHot()) && !collapsed) {
+        collapsed = true;
+        applyCollapsedClass();
+      }
+      paintPanel();
+    }
   }
 
   /** Detect seat: Mac mini (external QHD) vs laptop retina — or native stamp */
@@ -1156,11 +1274,50 @@
       "  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14)}",
       "#mg-activity-board .ft button.hot{background:rgba(255,180,60,0.2);",
       "  border-color:rgba(255,190,100,0.45)}",
+      /* ── Inspect float: LIVE RANK is a flex row under #hdr — never fixed over PIP ── */
+      "html.mg-inspect-host #panel{isolation:isolate}",
+      "html.mg-inspect-host #hdr{position:relative;z-index:30;flex-shrink:0;",
+      "  background:rgba(10,12,16,0.55)}",
+      "html.mg-inspect-host #mg-activity-board{",
+      "  position:relative!important;left:auto!important;right:auto!important;",
+      "  top:auto!important;bottom:auto!important;",
+      "  width:auto!important;max-width:none!important;",
+      "  margin:0 10px 8px!important;flex:0 0 auto!important;",
+      "  z-index:20!important;order:0;",
+      "  border-radius:10px!important;",
+      "  max-height:min(34vh,280px)!important;overflow:auto!important;",
+      "  pointer-events:auto!important}",
+      "html.mg-inspect-host #mg-activity-board.collapsed{",
+      "  position:relative!important;top:auto!important;left:auto!important;right:auto!important;",
+      "  width:auto!important;max-width:none!important;max-height:none!important;",
+      "  margin:0 10px 6px!important;padding:4px 8px!important;",
+      "  background:rgba(10,12,16,0.55)!important;",
+      "  border:1px solid rgba(255,255,255,0.12)!important;border-radius:10px!important;",
+      "  box-shadow:none!important;backdrop-filter:blur(16px)!important;",
+      "  -webkit-backdrop-filter:blur(16px)!important}",
+      "html.mg-inspect-host #mg-activity-board.collapsed .pill-sum{",
+      "  max-width:none!important;font-size:10px!important}",
+      "html.mg-inspect-host #mg-activity-board.collapsed .hd{",
+      "  color:rgba(255,210,120,0.95)!important;letter-spacing:0.08em!important}",
+      "html.mg-inspect-host #mg-board-chip{display:none!important}",
+      "html.mg-inspect-host #stage{position:relative;z-index:10;flex-shrink:0}",
+      "html.mg-inspect-host #log{position:relative;z-index:5}",
+      "html.mg-inspect-host #mg-sys{position:relative;z-index:6}",
+      "html.mg-inspect-host #mg-dock{position:relative;z-index:15}",
+      "html.mg-inspect-host #mg-activity-board .rank-table{max-height:min(22vh,180px)}",
+      "html.mg-inspect-host #mg-activity-board .live{grid-template-columns:1fr 1fr 1fr}",
+      /* kill stray main-chrome leftovers if inject leaks */
+      "html.mg-inspect-host #mg-tools-drawer,html.mg-inspect-host #mg-tools-mode-rail,",
+      "html.mg-inspect-host #mg-right-drawer,html.mg-inspect-host #mg-right-tab,",
+      "html.mg-inspect-host #mg-tools-scrim,html.mg-inspect-host #mg-right-scrim,",
+      "html.mg-inspect-host #mg-search-dock,html.mg-inspect-host #mg-menu-health-pill{",
+      "  display:none!important;pointer-events:none!important}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }
 
   function ensureChip() {
+    if (INSPECT_HOST) return; /* board is always docked in inspect — no floating chip */
     if (chip || document.getElementById("mg-board-chip")) return;
     ensureCss();
     chip = document.createElement("button");
@@ -1180,8 +1337,15 @@
     paintChip();
   }
 
+  var _topRightWLast = 0;
   function measureTopRightW() {
     try {
+      /* skip CSS var churn mid-WebGrid play (affects layout near grid) */
+      if (
+        window.__mgWebgridPlayBusy ||
+        document.documentElement.classList.contains("mg-webgrid-playing")
+      )
+        return;
       var tr = document.getElementById("mg-top-right");
       var vw = window.innerWidth || 1200;
       var w = 120;
@@ -1193,14 +1357,18 @@
       }
       /* never reserve more than ~40% of narrow viewports */
       if (vw < 820) w = Math.min(w, Math.floor(vw * 0.28));
+      var next = w + 12;
+      if (Math.abs(next - _topRightWLast) < 4) return;
+      _topRightWLast = next;
       document.documentElement.style.setProperty(
         "--mg-top-right-w",
-        w + 12 + "px"
+        next + "px"
       );
     } catch (e) {}
   }
 
   function paintChip() {
+    if (INSPECT_HOST) return;
     ensureChip();
     if (!chip) return;
     measureTopRightW();
@@ -1229,19 +1397,230 @@
       (fold.title = collapsed
         ? "expand LIVE RANK"
         : "collapse to shell word (INSPECT/PAGE style)");
+    if (isInspectHost()) pinBoardInspect(panel);
+  }
+
+  /** Inspect: park under #hdr inside #panel. Main: body fixed float. */
+  function boardParent() {
+    if (INSPECT_HOST) {
+      var p = document.getElementById("panel");
+      if (p) return p;
+    }
+    return document.body || document.documentElement;
+  }
+
+  /** Beat every fixed/shell rule (sx-rail, media queries) with inline !important. */
+  function pinBoardInspect(node) {
+    if (!node) return;
+    var props = {
+      position: "relative",
+      left: "auto",
+      right: "auto",
+      top: "auto",
+      bottom: "auto",
+      width: "auto",
+      maxWidth: "none",
+      minWidth: "0",
+      height: "auto",
+      maxHeight: collapsed ? "none" : "min(28vh,220px)",
+      margin: "0 10px 6px",
+      transform: "none",
+      zIndex: "5",
+      flex: "0 0 auto",
+      alignSelf: "stretch",
+      float: "none",
+      inset: "auto",
+    };
+    Object.keys(props).forEach(function (k) {
+      try {
+        node.style.setProperty(
+          k.replace(/[A-Z]/g, function (m) {
+            return "-" + m.toLowerCase();
+          }),
+          props[k],
+          "important"
+        );
+      } catch (e) {}
+    });
+    /* camelCase setProperty needs kebab — fix keys that failed */
+    try {
+      node.style.setProperty("max-width", "none", "important");
+      node.style.setProperty("max-height", collapsed ? "none" : "min(28vh,220px)", "important");
+      node.style.setProperty("z-index", "5", "important");
+      node.style.setProperty("flex", "0 0 auto", "important");
+      node.style.setProperty("align-self", "stretch", "important");
+    } catch (e2) {}
+    node.classList.add("inspect-dock");
+  }
+
+  function placeBoard(node) {
+    if (!node) return;
+    refreshInspectFlag();
+    var parent = boardParent();
+    if (INSPECT_HOST && parent && parent.id === "panel") {
+      var hdr = document.getElementById("hdr");
+      if (hdr && hdr.parentNode === parent) {
+        if (!(node.parentNode === parent && node.previousSibling === hdr)) {
+          if (hdr.nextSibling && hdr.nextSibling !== node)
+            parent.insertBefore(node, hdr.nextSibling);
+          else if (node.parentNode !== parent) parent.appendChild(node);
+        }
+        pinBoardInspect(node);
+        return;
+      }
+    }
+    if (INSPECT_HOST) {
+      pinBoardInspect(node);
+      if (node.parentNode !== parent) parent.appendChild(node);
+      return;
+    }
+    /* main window: clear inspect pin leftovers */
+    try {
+      node.style.removeProperty("position");
+      node.style.removeProperty("left");
+      node.style.removeProperty("right");
+      node.style.removeProperty("top");
+      node.style.removeProperty("z-index");
+      node.style.removeProperty("max-height");
+      node.style.removeProperty("margin");
+      node.style.removeProperty("transform");
+    } catch (eC) {}
+    if (node.parentNode !== parent) parent.appendChild(node);
+  }
+
+  /** Keep exactly one LIVE RANK node in the document. */
+  function purgeDuplicateBoards(keep) {
+    var nodes = document.querySelectorAll("#mg-activity-board");
+    var survivor = keep || nodes[0] || null;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i] === survivor) continue;
+      try {
+        if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+      } catch (e) {}
+    }
+    return survivor || null;
+  }
+
+  function wirePanelOnce(el) {
+    if (!el || el._mgBoardWired) return;
+    el._mgBoardWired = true;
+    var x = el.querySelector("#mg-board-x");
+    if (x)
+      x.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+        close();
+      };
+    var fold = el.querySelector("#mg-board-fold");
+    if (fold)
+      fold.onclick = function (ev) {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+        if (collapsed) expand();
+        else collapse();
+      };
+    var hdr = el.querySelector(".hd");
+    if (hdr) {
+      hdr.addEventListener("click", function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+        if (collapsed) expand();
+        else collapse();
+      });
+    }
+    var snap = el.querySelector("#mg-board-snap");
+    if (snap)
+      snap.onclick = function () {
+        submitRun("manual");
+        paintPanel();
+      };
+    var post = el.querySelector("#mg-board-post");
+    if (post)
+      post.onclick = function () {
+        openLeaderboardWindow({ post: true, kind: "manual-post" });
+      };
+    var xd = el.querySelector("#mg-board-xdraft");
+    if (xd)
+      xd.onclick = function () {
+        var text = formatXDraft({ fresh: true, kind: "x-draft" });
+        copyText(text);
+        log("X draft from board · you post");
+        try {
+          alert("X draft (metrics + leaderboard) copied — you post when ready.");
+        } catch (e) {}
+      };
+    var clr = el.querySelector("#mg-board-clear");
+    if (clr)
+      clr.onclick = function () {
+        saveBoard([]);
+        lastRun = null;
+        paintPanel();
+      };
+    function lane(id, fn) {
+      var b = el.querySelector(id);
+      if (b) b.onclick = fn;
+    }
+    lane("#mg-board-lane-all", function () {
+      filterMini = false;
+      filterFull = false;
+      filterMachine = "all";
+      paintPanel();
+    });
+    lane("#mg-board-lane-macmini", function () {
+      filterMachine = "mini";
+      filterMini = false;
+      filterFull = false;
+      paintPanel();
+    });
+    lane("#mg-board-lane-laptop", function () {
+      filterMachine = "laptop";
+      filterMini = false;
+      filterFull = false;
+      paintPanel();
+    });
+    lane("#mg-board-lane-mini", function () {
+      filterMini = true;
+      filterFull = false;
+      filterMachine = "all";
+      paintPanel();
+    });
+    lane("#mg-board-lane-full", function () {
+      filterMini = false;
+      filterFull = true;
+      filterMachine = "all";
+      paintPanel();
+    });
   }
 
   function ensurePanel() {
-    if (panel && document.body.contains(panel)) return;
-    if (panel && !document.body.contains(panel)) panel = null;
+    refreshInspectFlag();
+    /* Always collapse any stacked clones first */
+    panel = purgeDuplicateBoards(panel);
+    if (panel && document.contains(panel)) {
+      placeBoard(panel);
+      wirePanelOnce(panel);
+      return;
+    }
+    /* adopt leftover singleton from prior inject */
+    var existing = document.getElementById("mg-activity-board");
+    if (existing) {
+      panel = purgeDuplicateBoards(existing);
+      placeBoard(panel);
+      wirePanelOnce(panel);
+      return;
+    }
     ensureCss();
-    ensureChip();
+    if (!INSPECT_HOST) ensureChip();
     panel = document.createElement("div");
     panel.id = "mg-activity-board";
     panel.className =
       (open ? "" : "hidden") +
       (isMiniWebgrid() ? " mini-layout" : "") +
-      (collapsed && open ? " collapsed" : "");
+      (collapsed && open ? " collapsed" : "") +
+      (INSPECT_HOST ? " inspect-dock" : "");
     panel.innerHTML =
       '<div class="hd">' +
       '<span class="ttl" id="mg-board-hd-title"><span class="dot">·</span>LIVE</span>' +
@@ -1270,160 +1649,178 @@
       '<button type="button" id="mg-board-xdraft">X DRAFT</button>' +
       '<button type="button" id="mg-board-clear">CLEAR</button>' +
       "</div>";
-    (document.body || document.documentElement).appendChild(panel);
-    panel.querySelector("#mg-board-x").onclick = function (ev) {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      close();
-    };
-    panel.querySelector("#mg-board-fold").onclick = function (ev) {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      if (collapsed) expand();
-      else collapse();
-    };
-    /* header click toggles collapse (CTRL feel) */
-    var hdr = panel.querySelector(".hd");
-    if (hdr) {
-      hdr.addEventListener("click", function (ev) {
-        if (ev.target && ev.target.closest && ev.target.closest("button")) return;
-        if (collapsed) expand();
-        else collapse();
-      });
-    }
-    panel.querySelector("#mg-board-snap").onclick = function () {
-      submitRun("manual");
-      paintPanel();
-    };
-    panel.querySelector("#mg-board-post").onclick = function () {
-      openLeaderboardWindow({ post: true, kind: "manual-post" });
-    };
-    panel.querySelector("#mg-board-xdraft").onclick = function () {
-      var text = formatXDraft({ fresh: true, kind: "x-draft" });
-      copyText(text);
-      log("X draft from board · you post");
-      try {
-        alert("X draft (metrics + leaderboard) copied — you post when ready.");
-      } catch (e) {}
-    };
-    panel.querySelector("#mg-board-clear").onclick = function () {
-      saveBoard([]);
-      lastRun = null;
-      paintPanel();
-    };
-    panel.querySelector("#mg-board-lane-all").onclick = function () {
-      filterMini = false;
-      filterFull = false;
-      filterMachine = "all";
-      paintPanel();
-    };
-    panel.querySelector("#mg-board-lane-macmini").onclick = function () {
-      filterMachine = "mini";
-      filterMini = false;
-      filterFull = false;
-      paintPanel();
-    };
-    panel.querySelector("#mg-board-lane-laptop").onclick = function () {
-      filterMachine = "laptop";
-      filterMini = false;
-      filterFull = false;
-      paintPanel();
-    };
-    panel.querySelector("#mg-board-lane-mini").onclick = function () {
-      filterMini = true;
-      filterFull = false;
-      filterMachine = "all";
-      paintPanel();
-    };
-    panel.querySelector("#mg-board-lane-full").onclick = function () {
-      filterMini = false;
-      filterFull = true;
-      filterMachine = "all";
-      paintPanel();
-    };
+    placeBoard(panel);
+    purgeDuplicateBoards(panel);
+    wirePanelOnce(panel);
   }
 
   function ensureToastCss() {
-    if (document.getElementById("mg-board-toast-css")) return;
+    var old = document.getElementById("mg-board-toast-css");
+    if (old) old.remove();
     var st = document.createElement("style");
     st.id = "mg-board-toast-css";
     st.textContent = [
-      "#mg-board-toast{position:fixed;right:320px;top:48px;z-index:2147483010;",
-      "  width:min(280px,36vw);border-radius:12px;overflow:hidden;",
-      "  background:rgba(10,12,16,0.58);backdrop-filter:blur(22px) saturate(1.35);",
-      "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
-      "  border:1px solid rgba(255,190,100,0.35);",
-      "  box-shadow:0 10px 28px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.1);",
-      "  font:650 10px/1.3 system-ui;color:rgba(244,246,250,0.95);pointer-events:auto}",
-      "#mg-board-toast.hidden{display:none}",
+      /* Above all MG chrome so DISMISS is always clickable */
+      "html > #mg-board-toast,#mg-board-toast{",
+      "  position:fixed!important;right:max(16px, min(28vw, 360px))!important;top:56px!important;",
+      "  left:auto!important;bottom:auto!important;transform:none!important;",
+      "  z-index:2147483647!important;width:min(300px,42vw)!important;",
+      "  border-radius:12px;overflow:visible;",
+      "  background:rgba(16,18,24,0.94)!important;",
+      "  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);",
+      "  border:1px solid rgba(255,190,100,0.4);",
+      "  box-shadow:0 12px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.1);",
+      "  font:650 10px/1.3 system-ui;color:rgba(244,246,250,0.95);",
+      "  pointer-events:auto!important;visibility:visible!important}",
+      "#mg-board-toast.hidden{display:none!important;pointer-events:none!important;opacity:0!important}",
       "#mg-board-toast .hd{padding:8px 10px;letter-spacing:0.1em;text-transform:uppercase;",
-      "  color:rgba(255,200,120,0.95);border-bottom:1px solid rgba(255,255,255,0.1)}",
+      "  color:rgba(255,200,120,0.95);border-bottom:1px solid rgba(255,255,255,0.1);",
+      "  display:flex;align-items:center;justify-content:space-between;gap:8px}",
+      "#mg-board-toast .hd .x{",
+      "  appearance:none;cursor:pointer;border:0;background:rgba(255,255,255,0.1);",
+      "  color:#fff;width:26px;height:26px;border-radius:50%;font:600 14px/1 system-ui}",
       "#mg-board-toast .bd{padding:8px 10px;font:500 11px/1.35 system-ui;color:rgba(220,230,240,0.92)}",
       "#mg-board-toast .ft{display:flex;gap:6px;padding:0 10px 10px;flex-wrap:wrap}",
-      "#mg-board-toast button{appearance:none;cursor:pointer;padding:6px 10px;border-radius:999px;",
+      "#mg-board-toast button{appearance:none;cursor:pointer;pointer-events:auto!important;",
+      "  padding:8px 12px;border-radius:999px;",
       "  font:700 9px/1 system-ui;letter-spacing:0.06em;color:rgba(240,245,255,0.95);",
-      "  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14)}",
-      "#mg-board-toast button.hot{background:rgba(255,170,60,0.25);",
-      "  border-color:rgba(255,190,100,0.5);color:rgba(255,210,140,0.98)}",
+      "  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18)}",
+      "#mg-board-toast button.hot{background:rgba(255,170,60,0.28);",
+      "  border-color:rgba(255,190,100,0.55);color:rgba(255,220,160,0.98)}",
+      "#mg-board-toast button:hover{background:rgba(255,255,255,0.16)}",
+      "html.mg-webgrid-play #mg-board-toast,html.mg-webgrid-playing #mg-board-toast{",
+      "  pointer-events:auto!important;z-index:2147483647!important}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
   }
 
+  function bindToastOnce() {
+    if (!postToast || postToast.__mgBound) return;
+    postToast.__mgBound = true;
+    function stop(ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    }
+    var go = postToast.querySelector("#mg-board-toast-go");
+    var xd = postToast.querySelector("#mg-board-toast-x");
+    var d = postToast.querySelector("#mg-board-toast-d");
+    var x = postToast.querySelector("#mg-board-toast-close");
+    if (go)
+      go.addEventListener(
+        "click",
+        function (ev) {
+          stop(ev);
+          openLeaderboardWindow({ post: true, run: lastRun, kind: "post-play" });
+          hidePostPrompt();
+        },
+        true
+      );
+    if (xd)
+      xd.addEventListener(
+        "click",
+        function (ev) {
+          stop(ev);
+          var text = formatXDraft({ run: lastRun, fresh: false });
+          copyText(text);
+          log("X draft · post-play · you post");
+          hidePostPrompt();
+        },
+        true
+      );
+    if (d)
+      d.addEventListener(
+        "click",
+        function (ev) {
+          stop(ev);
+          hidePostPrompt();
+        },
+        true
+      );
+    if (x)
+      x.addEventListener(
+        "click",
+        function (ev) {
+          stop(ev);
+          hidePostPrompt();
+        },
+        true
+      );
+  }
+
   function showPostPrompt(run) {
     if (IS_LB_PAGE || !run) return;
-    if (lastPromptRunId === run.id) return;
+    if (lastPromptRunId === run.id && postToast && !postToast.classList.contains("hidden"))
+      return;
     lastPromptRunId = run.id;
     ensureToastCss();
-    if (!postToast) {
+    if (!postToast || !document.getElementById("mg-board-toast")) {
       postToast = document.createElement("div");
       postToast.id = "mg-board-toast";
+      postToast.setAttribute("role", "dialog");
+      postToast.setAttribute("aria-label", "Playthrough done");
       postToast.innerHTML =
-        '<div class="hd">Playthrough done</div>' +
+        '<div class="hd"><span>Playthrough done</span>' +
+        '<button type="button" class="x" id="mg-board-toast-close" title="Dismiss">×</button></div>' +
         '<div class="bd" id="mg-board-toast-bd">Open clean leaderboard window to post.</div>' +
         '<div class="ft">' +
         '<button type="button" class="hot" id="mg-board-toast-go">POST BOARD ↗</button>' +
         '<button type="button" id="mg-board-toast-x">X DRAFT</button>' +
         '<button type="button" id="mg-board-toast-d">DISMISS</button>' +
         "</div>";
-      (document.body || document.documentElement).appendChild(postToast);
-      postToast.querySelector("#mg-board-toast-go").onclick = function () {
-        openLeaderboardWindow({ post: true, run: lastRun, kind: "post-play" });
-        hidePostPrompt();
-      };
-      postToast.querySelector("#mg-board-toast-x").onclick = function () {
-        var text = formatXDraft({ run: lastRun, fresh: false });
-        copyText(text);
-        log("X draft · post-play · you post");
-      };
-      postToast.querySelector("#mg-board-toast-d").onclick = hidePostPrompt;
+      (document.documentElement || document.body).appendChild(postToast);
+      bindToastOnce();
     }
     var bd = document.getElementById("mg-board-toast-bd");
     if (bd)
       bd.textContent =
         (run.synopsis || "run scored " + run.score).slice(0, 140) +
-        " · open clean window to post";
+        " · Esc or DISMISS to close";
     postToast.classList.remove("hidden");
-    /* keep toast out of the stacked center — float-layout slot */
-    try {
-      if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
-        window.__mgFloatLayout.apply();
-      else {
-        postToast.style.position = "fixed";
-        postToast.style.right = "320px";
-        postToast.style.top = "48px";
-        postToast.style.left = "auto";
-        postToast.style.bottom = "auto";
-        postToast.style.transform = "none";
-      }
-    } catch (eT) {}
+    postToast.style.display = "block";
+    postToast.style.pointerEvents = "auto";
+    postToast.style.zIndex = "2147483647";
+    /* fixed placement — do not let float-layout bury/hide the toast */
+    postToast.style.position = "fixed";
+    postToast.style.right = "max(16px, min(28vw, 360px))";
+    postToast.style.top = "56px";
+    postToast.style.left = "auto";
+    postToast.style.bottom = "auto";
+    postToast.style.transform = "none";
+    if (!window.__mgBoardToastEsc) {
+      window.__mgBoardToastEsc = true;
+      document.addEventListener(
+        "keydown",
+        function (ev) {
+          if (ev.key === "Escape") {
+            var t = document.getElementById("mg-board-toast");
+            if (t && !t.classList.contains("hidden")) {
+              hidePostPrompt();
+              ev.preventDefault();
+              ev.stopPropagation();
+            }
+          }
+        },
+        true
+      );
+    }
+    log(VER + " · playthrough done toast");
   }
 
   function hidePostPrompt() {
-    if (postToast) postToast.classList.add("hidden");
+    try {
+      var t = postToast || document.getElementById("mg-board-toast");
+      if (t) {
+        t.classList.add("hidden");
+        t.style.display = "none";
+        t.style.pointerEvents = "none";
+      }
+      postToast = t || postToast;
+      /* allow a later run to prompt again */
+      /* keep lastPromptRunId so same run doesn't re-spam; clear only if needed */
+      log(VER + " · playthrough toast dismissed");
+    } catch (e) {}
   }
 
   function slimRun(r) {
@@ -1532,12 +1929,16 @@
   }
 
   function paintPanel() {
-    ensureChip();
-    paintChip();
+    if (!INSPECT_HOST) {
+      ensureChip();
+      paintChip();
+    }
     if (!open) return;
     ensurePanel();
     if (panel) {
-      panel.classList.toggle("mini-layout", isMiniWebgrid());
+      if (INSPECT_HOST) placeBoard(panel);
+      panel.classList.toggle("mini-layout", isMiniWebgrid() || !!(remoteLive && remoteLive.mini));
+      panel.classList.toggle("inspect-dock", !!INSPECT_HOST);
       applyCollapsedClass();
     }
     var board = boardFiltered();
@@ -1545,19 +1946,30 @@
     var ol = document.getElementById("mg-board-ol");
     var hd = document.getElementById("mg-board-hd-title");
     var pill = document.getElementById("mg-board-pill-sum");
-    var live = collectMetrics();
-    var pred = predictNext();
+    /* Inspect: prefer mirrored live metrics from main WebGrid */
+    var live =
+      INSPECT_HOST && remoteLive && remoteLive.live
+        ? remoteLive.live
+        : collectMetrics();
+    var pred =
+      INSPECT_HOST && remoteLive && remoteLive.pred
+        ? remoteLive.pred
+        : predictNext();
     var elSc = document.getElementById("mg-board-live-sc");
     var elPred = document.getElementById("mg-board-pred");
     var elElo = document.getElementById("mg-board-elo");
     var elPredLine = document.getElementById("mg-board-predline");
-    measureTopRightW();
+    if (!INSPECT_HOST) measureTopRightW();
     if (hd)
       hd.innerHTML = collapsed
         ? '<span class="dot">·</span>LIVE'
-        : isMiniWebgrid()
-          ? "MINI board · 12×12"
-          : "Live rank · WebGrid";
+        : INSPECT_HOST
+          ? remoteLive && remoteLive.mini
+            ? "MINI · inspect"
+            : "LIVE RANK · inspect"
+          : isMiniWebgrid()
+            ? "MINI board · 12×12"
+            : "Live rank · WebGrid";
     /* collapsed summary — same density as shell FLOW / INSPECT metrics strip */
     if (pill) {
       var bpsPill =
@@ -1614,8 +2026,16 @@
     } catch (eL) {}
     if (syn)
       syn.textContent =
-        (lastRun ? lastRun.synopsis : synopsis(live)).slice(0, 140) ||
-        "chip top-right · BOARD · fleet Mini+laptop seeded";
+        (lastRun
+          ? lastRun.synopsis
+          : INSPECT_HOST && remoteLive
+            ? "mirrored from main WebGrid · " +
+              (remoteLive.t ? "t+" + Math.round((Date.now() - remoteLive.t) / 1000) + "s" : "live")
+            : synopsis(live)
+        ).slice(0, 140) ||
+        (INSPECT_HOST
+          ? "inspect float · waiting main WebGrid live…"
+          : "chip top-right · BOARD · fleet Mini+laptop seeded");
     if (ol) {
       ol.innerHTML = "";
       if (!board.length) {
@@ -1669,10 +2089,21 @@
     }
   }
 
-  /* Live refresh while open (sportsfield ticker) */
+  /* Live refresh + inspect bridge — publishLive self-throttles (0.9s / 2.5s play) */
   setInterval(function () {
-    if (open) paintPanel();
-  }, 900);
+    /* mid-play: only refresh collapsed pill text, not full layout storm */
+    if (open) {
+      if (isPlayHot() && !collapsed) {
+        /* force cheap collapsed paint path next tick */
+        try {
+          collapsed = true;
+          applyCollapsedClass();
+        } catch (eC) {}
+      }
+      paintPanel();
+    }
+    if (!INSPECT_HOST && (isWebgridHost() || open)) publishLiveToInspect(false);
+  }, 1200);
 
   function openPanel(opts) {
     opts = opts || {};
@@ -1682,10 +2113,11 @@
     else if (opts.expand) collapsed = false;
     else if (isWebgridHost()) collapsed = true;
     ensurePanel();
-    ensureChip();
-    panel.classList.remove("hidden");
+    if (!isInspectHost()) ensureChip();
+    if (panel) panel.classList.remove("hidden");
     applyCollapsedClass();
     if (chip) chip.classList.add("hidden");
+    if (isInspectHost() && panel) placeBoard(panel);
     paintPanel();
     try {
       if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
@@ -1743,11 +2175,32 @@
   }
 
   /* Chip always findable; panel opens collapsed on WebGrid play.
+   * Inspect float: always open LIVE RANK so it rides with inspect.
    * URL ?mg_board=1 or ?mg_lab_demo=1 auto-opens live rank (pill). */
+  var _bootOnce = false;
   function bootFindable() {
-    ensureChip();
-    paintChip();
+    if (_bootOnce) {
+      /* still purge stacks if re-entered */
+      purgeDuplicateBoards(panel || document.getElementById("mg-activity-board"));
+      return;
+    }
+    _bootOnce = true;
+    purgeDuplicateBoards(null);
+    if (!INSPECT_HOST) {
+      ensureChip();
+      paintChip();
+    }
     if (IS_LB_PAGE) return;
+    /* Native inspect window — LIVE RANK docks here; start collapsed (cheap) */
+    if (INSPECT_HOST) {
+      setTimeout(function () {
+        purgeDuplicateBoards(null);
+        openPanel({ collapsed: true });
+        purgeDuplicateBoards(panel);
+        log(VER + " · inspect float LIVE RANK singleton");
+      }, 350);
+      return;
+    }
     if (isWebgridHost()) {
       filterMini = isMiniWebgrid();
       var forceExpand = /[?&]mg_board=full\b/i.test(location.search || "");
@@ -1759,7 +2212,8 @@
       if (auto) {
         setTimeout(function () {
           openPanel({ collapsed: !forceExpand });
-          log(VER + " · board " + (forceExpand ? "expanded" : "pill"));
+          publishLiveToInspect(true);
+          log(VER + " · board " + (forceExpand ? "expanded" : "pill") + " · mirror→inspect");
         }, 700);
       } else {
         log(VER + " · chip ready · click BOARD to open rank");
@@ -1876,6 +2330,7 @@
 
   window.__mgActivityBoard = {
     ver: VER,
+    inspectHost: INSPECT_HOST,
     collectMetrics: collectMetrics,
     submitRun: submitRun,
     synopsis: synopsis,
@@ -1902,13 +2357,21 @@
     isCollapsed: function () {
       return open && collapsed;
     },
+    /** Inspect: apply mirrored live payload from main (IPC board_live) */
+    applyLive: applyLiveFromMain,
+    publishLive: function () {
+      publishLiveToInspect(true);
+    },
     openLeaderboardWindow: openLeaderboardWindow,
     openPage: openLeaderboardWindow,
     buildHandoff: buildHandoff,
     showPostPrompt: showPostPrompt,
     report: function () {
       var b = loadBoard();
-      var p = predictNext();
+      var p =
+        INSPECT_HOST && remoteLive && remoteLive.pred
+          ? remoteLive.pred
+          : predictNext();
       var miniN = b.filter(function (r) {
         return machineLane(r.metrics && r.metrics.machine) === "mini";
       }).length;
@@ -1922,6 +2385,7 @@
       }
       return (
         VER +
+        (INSPECT_HOST ? " inspect" : " main") +
         (open ? (collapsed ? " pill" : " open") : " closed") +
         " n=" +
         b.length +
@@ -1934,10 +2398,26 @@
         (topBps != null ? " topBps=" + topBps : "") +
         (lastRun ? " last=" + lastRun.score : "") +
         " pred=" +
-        (p.predBps != null ? p.predBps : "—")
+        (p.predBps != null ? p.predBps : "—") +
+        (remoteLive ? " live@" + (Date.now() - (remoteLive.t || 0)) + "ms" : "")
       );
     },
   };
 
-  log(VER + " · fleet Mini+laptop · sportsfield live rank");
+  /* Alias for rust inject */
+  window.__mgBoardLiveFromMain = function (payload) {
+    try {
+      if (typeof payload === "string") payload = JSON.parse(payload);
+    } catch (e) {
+      return;
+    }
+    applyLiveFromMain(payload);
+  };
+
+  log(
+    VER +
+      (INSPECT_HOST
+        ? " · inspect float LIVE RANK (mirror from main)"
+        : " · fleet Mini+laptop · mirror→inspect")
+  );
 })();

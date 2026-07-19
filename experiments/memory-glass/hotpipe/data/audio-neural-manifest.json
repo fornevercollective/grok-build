@@ -1,0 +1,43 @@
+{
+  "schema": "mg.audio-neural-manifest/v1",
+  "ver": "harvest-v1",
+  "generated": "2026-07-19T05:22Z",
+  "source": {
+    "project": "audio - Neural",
+    "landing": "Staff + beats"
+  },
+  "components": [
+    "BeatMappingPanel",
+    "Footer",
+    "NavigationMenu",
+    "PianoPanel",
+    "PopupPiano",
+    "PresetsPanel",
+    "RepositoryBrowser",
+    "SampleToolPanel",
+    "SamplesPanel",
+    "ScorePanel",
+    "SequencerPanel",
+    "SettingsPanel",
+    "Terminal",
+    "TidalEngine",
+    "VisualsPanel"
+  ],
+  "services": [
+    "SampleEditor",
+    "ScoreService",
+    "SongRepository",
+    "SoundLibrary"
+  ],
+  "mg": {
+    "priority": [
+      "PopupPiano",
+      "PianoPanel",
+      "SequencerPanel",
+      "BeatMappingPanel",
+      "ScorePanel",
+      "TidalEngine"
+    ],
+    "mapTo": "staff-lab-plane · keyboard-beats · music-packs"
+  }
+}

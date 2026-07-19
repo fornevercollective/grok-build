@@ -19,7 +19,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-contrail-v8-playperf";
+  var VER = "webgrid-contrail-v9-playoff";
   if (window.__mgContrailVer === VER) return;
   /* hot-reload prior */
   if (typeof window.__mgContrailTeardown === "function") {
@@ -47,8 +47,8 @@
   var lastHit = null; /* {cell, t, ok} */
   var overlay = null;
   var flowPanel = null;
-  var showOverlay = true; /* trail only — pointer-events none */
-  var showFlow = false; /* B: off until CONTRAIL */
+  var showOverlay = false; /* off by default during play (was continuous paint thrash) */
+  var showFlow = false; /* B: off until user opens CONTRAIL */
   var Ngrid = 30;
   var stats = {
     samples: 0,

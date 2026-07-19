@@ -1,10 +1,11 @@
 /* Memory Glass · Iron Line L0–L7 + cortical loop budgets (speed-first)
  * Inject after hurdles. No PAGE thrash. Inspect + main both OK (main is lightweight).
+ * Dual-clock: L3 from __mgQbitLoop inner · L5/cortical from outer 24ms pump.
  * Concepts: plans/IRONLINE_CORTICAL.md · μgrad ironline · qbit codec
  */
 (function () {
   "use strict";
-  var VER = "ironline-v1";
+  var VER = "ironline-v2";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._ironlineVer === VER) return;
   HP._ironlineVer = VER;
@@ -29,11 +30,14 @@
   var state = {
     ver: VER,
     corticalMs: 24,
+    corticalTicks: 0,
+    lastCorticalAt: 0,
     samples: {},
     ema: {},
     ok: {},
     qbitReady: false,
     lastReport: "",
+    lastQbit: null,
   };
 
   LAYERS.forEach(function (L) {
@@ -57,13 +61,30 @@
     return !!state.ok[layerId];
   }
 
+  /** Called by __mgQbitLoop cortical pump (~24ms). Outer clock owns L5 schedule. */
+  function tickCortical(ms) {
+    var m = ms != null ? +ms : state.corticalMs;
+    state.corticalTicks++;
+    state.lastCorticalAt = Date.now();
+    /* soft L0 sample for pump overhead */
+    tick("L0", Math.min(1.5, m * 0.02));
+    return state.corticalTicks;
+  }
+
   function report() {
     var parts = LAYERS.map(function (L) {
       var ema = state.ema[L.id];
       var flag = state.ok[L.id] ? "✓" : "!";
       return L.id + flag + ema.toFixed(ema < 1 ? 2 : 1);
     });
-    state.lastReport = "iron " + parts.join(" · ") + " · cort" + state.corticalMs + "ms";
+    state.lastReport =
+      "iron " +
+      parts.join(" · ") +
+      " · cort" +
+      state.corticalMs +
+      "ms" +
+      " n=" +
+      state.corticalTicks;
     return state.lastReport;
   }
 
@@ -117,6 +138,7 @@
     layers: LAYERS,
     state: state,
     tick: tick,
+    tickCortical: tickCortical,
     budgetOk: budgetOk,
     report: report,
     classify: classifyShort,
@@ -124,5 +146,5 @@
     corticalMs: state.corticalMs,
   };
 
-  log("ok", "ironline-v1 · L0–L7 budgets · cortical " + state.corticalMs + "ms");
+  log("ok", "ironline-v2 · L0–L7 · dual-clock cortical " + state.corticalMs + "ms");
 })();

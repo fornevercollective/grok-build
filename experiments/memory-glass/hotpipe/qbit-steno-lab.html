@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Qbit · Steno encode/decode lab · glyph holders</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --panel: rgba(255,255,255,0.05);
+      --line: rgba(255,255,255,0.12);
+      --text: rgba(240,244,250,0.94);
+      --muted: rgba(180,195,210,0.65);
+      --ok: #50e6a0;
+      --hot: #a0c8ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font: 500 13px/1.45 -apple-system, system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #1a2230, var(--bg));
+      color: var(--text);
+      padding: 24px;
+    }
+    h1 { font: 700 18px/1.2 system-ui; letter-spacing: -0.02em; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin-bottom: 18px; max-width: 720px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 14px; padding: 14px;
+    }
+    label { display: block; font: 600 10px/1 system-ui; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    textarea, input {
+      width: 100%; background: rgba(0,0,0,0.35); border: 1px solid var(--line);
+      border-radius: 10px; color: var(--text); padding: 10px 12px;
+      font: 500 12px/1.4 ui-monospace, Menlo, monospace;
+    }
+    textarea { min-height: 160px; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    button {
+      appearance: none; cursor: pointer; border: 0; border-radius: 999px;
+      padding: 8px 14px; font: 600 11px/1 system-ui; letter-spacing: 0.04em;
+      text-transform: uppercase; background: rgba(10,132,255,0.28); color: #e8f4ff;
+    }
+    button.ok { background: rgba(48,209,88,0.25); color: #d8ffe8; }
+    button.muted { background: rgba(255,255,255,0.1); }
+    .pfx { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+    .pfx span {
+      font: 600 11px/1 ui-monospace, Menlo, monospace; padding: 6px 8px;
+      border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid var(--line);
+    }
+    pre {
+      margin: 0; white-space: pre-wrap; word-break: break-word;
+      font: 500 11px/1.4 ui-monospace, Menlo, monospace; color: var(--muted);
+      max-height: 220px; overflow: auto;
+    }
+    .ok-line { color: var(--ok); }
+    .hot { color: var(--hot); }
+    .fleet {
+      margin-top: 16px; padding: 12px 14px; border-radius: 12px;
+      border: 1px dashed rgba(160,200,255,0.35); background: rgba(10,40,80,0.2);
+    }
+  </style>
+</head>
+<body>
+  <h1>Qbit steno lab · glyph holders</h1>
+  <p class="sub">
+    Every prefix <b class="hot">n: +1: -n: +0: 0: -1: +n: +2: -0: +3: 1:</b>
+    maps to a quantum gate. Every <b>blank</b> can be a 5-field steno glyph holder
+    (more data than a plain space). Round-trip encode → decode for Memory Glass / qbitos fleet.
+  </p>
+
+  <div class="pfx" id="pfx"></div>
+
+  <div class="grid">
+    <div class="card">
+      <label>Source (plain code / text)</label>
+      <textarea id="src">// qbit demo
+function hello(n) {
+  const x = n + 1;
+  if (x > 0) return x;
+  throw new Error("bad");
+}
+</textarea>
+      <div class="row">
+        <button type="button" id="btn-enc" class="ok">Encode · steno</button>
+        <button type="button" id="btn-strip" class="muted">Strip</button>
+        <button type="button" id="btn-self" class="muted">Self-test</button>
+      </div>
+    </div>
+    <div class="card">
+      <label>Encoded (.qbit · glyph blanks on lines)</label>
+      <textarea id="out" readonly placeholder="encode output…"></textarea>
+      <div class="row">
+        <button type="button" id="btn-dec">Decode</button>
+        <button type="button" id="btn-glyph" class="ok">Mint glyph holder</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <label>Log · stats · glyph decode</label>
+    <pre id="log">Loading codec…</pre>
+  </div>
+
+  <div class="fleet">
+    <b class="hot">Fleet concept</b> —
+    Memory Glass clients (Mini · laptop · inspect) share the same prefix + steno alphabet.
+    qbitos.ai quantum data site is the <em>canonical handler</em>; MG is the spatial tool surface.
+    Bus: <code>__mgQbitBus</code> · Loop: <code>__mgQbitLoop</code> · DAC: <code>__mgQbitDac</code> ·
+    Router: <code>__mgQbitRouter</code> · Adapters: <code>__mgQbitAdapters</code> · Codec: <code>QbitCodec</code>.
+  </div>
+
+  <script src="qbit-codec.js"></script>
+  <script src="qbit-bus.js"></script>
+  <script src="qbit-loop.js"></script>
+  <script src="qbit-dac.js"></script>
+  <script src="qbit-router.js"></script>
+  <script src="qbit-adapters.js"></script>
+  <script>
+    (function () {
+      var logEl = document.getElementById("log");
+      function log(s) {
+        logEl.textContent = s;
+      }
+      var pfx = document.getElementById("pfx");
+      var symbols = (window.QbitCodec && QbitCodec.SYMBOLS) || [
+        "n:", "+1:", "-n:", "+0:", "0:", "-1:", "+n:", "+2:", "-0:", "+3:", "1:"
+      ];
+      var gates = (window.QbitCodec && QbitCodec.GATES) || [];
+      symbols.forEach(function (s, i) {
+        var el = document.createElement("span");
+        el.textContent = s + (gates[i] ? " → " + gates[i] : "");
+        if (QbitCodec && QbitCodec.SYM_COLOR && QbitCodec.SYM_COLOR[s])
+          el.style.borderColor = QbitCodec.SYM_COLOR[s];
+        pfx.appendChild(el);
+      });
+
+      function requireCodec() {
+        if (!window.QbitCodec) {
+          log("FAIL · QbitCodec not loaded");
+          return false;
+        }
+        return true;
+      }
+
+      document.getElementById("btn-enc").onclick = function () {
+        if (!requireCodec()) return;
+        var src = document.getElementById("src").value;
+        var enc = QbitCodec.encode(src, "javascript", "steno-lab");
+        document.getElementById("out").value = enc.code;
+        log(
+          "ENCODE ok · classified " +
+            enc.stats.classified +
+            "/" +
+            enc.stats.totalLines +
+            " · coverage " +
+            (enc.stats.coverage * 100).toFixed(1) +
+            "%\n" +
+            "Each classified line leads with a glyph-holder blank (5 steno spaces).\n" +
+            JSON.stringify(enc.stats.counts, null, 2)
+        );
+        if (window.__mgQbitBus)
+          __mgQbitBus.publish({
+            src: "steno-lab",
+            kind: "encode",
+            prefix: "0:",
+            withGlyph: true,
+            payload: { coverage: enc.stats.coverage },
+            fleet: { role: "lab", surface: "steno" },
+          });
+      };
+
+      document.getElementById("btn-dec").onclick = function () {
+        if (!requireCodec()) return;
+        var code = document.getElementById("out").value || document.getElementById("src").value;
+        var dec = QbitCodec.decode(code);
+        log("DECODE\n" + JSON.stringify(dec, null, 2).slice(0, 4000));
+      };
+
+      document.getElementById("btn-strip").onclick = function () {
+        if (!requireCodec()) return;
+        var code = document.getElementById("out").value;
+        document.getElementById("src").value = QbitCodec.strip(code);
+        log("STRIP · plain source restored");
+      };
+
+      document.getElementById("btn-glyph").onclick = function () {
+        if (!window.__mgQbitBus) {
+          log("bus missing — load qbit-bus.js");
+          return;
+        }
+        var g = __mgQbitBus.makeGlyphHolder({ prefix: "+1:", depth: 2, layer: 3 });
+        var d = g.decode();
+        log(
+          "GLYPH HOLDER\n" +
+            "blank length=" +
+            g.blank.length +
+            " (one visual space, full record)\n" +
+            "fields=" +
+            JSON.stringify(g.fields) +
+            "\n" +
+            "decode=" +
+            JSON.stringify(d) +
+            "\n" +
+            "capacity: " +
+            g.capacity
+        );
+      };
+
+      document.getElementById("btn-self").onclick = function () {
+        var lines = [];
+        if (window.QbitCodec && QbitCodec.selfTest) {
+          try {
+            var r = QbitCodec.selfTest();
+            lines.push("QbitCodec.selfTest → " + JSON.stringify(r).slice(0, 500));
+          } catch (e) {
+            lines.push("codec selfTest err " + e);
+          }
+        }
+        if (window.__mgQbitLoop) {
+          lines.push(JSON.stringify(__mgQbitLoop.selfTest(), null, 2));
+        }
+        if (window.__mgQbitAdapters && __mgQbitAdapters.selfTest) {
+          lines.push(JSON.stringify(__mgQbitAdapters.selfTest(), null, 2));
+        }
+        if (window.__mgQbitBus) lines.push(__mgQbitBus.report());
+        if (window.__mgQbitDac) lines.push(__mgQbitDac.report());
+        if (window.__mgQbitRouter) lines.push(__mgQbitRouter.report());
+        if (window.__mgQbitAdapters) lines.push(__mgQbitAdapters.report());
+        log(lines.join("\n\n") || "no tests");
+      };
+
+      log(
+        (window.QbitCodec ? "codec ready · " : "codec MISSING · ") +
+          (window.__mgQbitBus ? __mgQbitBus.report() : "bus pending") +
+          "\n" +
+          (window.__mgQbitLoop ? __mgQbitLoop.report() : "loop pending") +
+          "\n" +
+          (window.__mgQbitDac ? __mgQbitDac.report() : "dac pending") +
+          "\n" +
+          (window.__mgQbitRouter ? __mgQbitRouter.report() : "router pending") +
+          "\n" +
+          (window.__mgQbitAdapters ? __mgQbitAdapters.report() : "adapters pending")
+      );
+    })();
+  </script>
+</body>
+</html>
