@@ -1,10 +1,10 @@
 /* Memory Glass · unified Dragon glass capsule
  * One floating glass-morphism panel (inspect-style) — modes never stack as full rails.
- * VER: glass-capsule-v15-cal-boot
+ * VER: glass-capsule-v17-bloch-reflow
  */
 (function () {
   "use strict";
-  var VER = "glass-capsule-v15-cal-boot";
+  var VER = "glass-capsule-v17-bloch-reflow";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._glassCapVer === VER) return;
   HP._glassCapVer = VER;
@@ -49,11 +49,20 @@
     if (statusEl) statusEl.textContent = s || "Control Center";
   }
 
+  var _layoutT = 0;
   function measure() {
     try {
       var cap = document.getElementById("mg-glass-cap");
       var h = cap && !collapsed ? cap.offsetHeight : 40;
       document.documentElement.style.setProperty("--mg-cap-h", h + 12 + "px");
+      /* reflow Bloch/Rubik under CTRL when cap height changes (debounced) */
+      clearTimeout(_layoutT);
+      _layoutT = setTimeout(function () {
+        try {
+          if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
+            window.__mgFloatLayout.apply();
+        } catch (e2) {}
+      }, 40);
     } catch (e) {}
   }
 
@@ -178,7 +187,7 @@
             if (!window.__mgSportsField.isOpen()) {
               window.__mgSportsField.open();
               if (window.__mgSportsField.setMode) window.__mgSportsField.setMode("webgrid");
-              if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
+              /* beats: drawer Keys stack — use popOut only when user wants canvas float */
             } else {
               var m = window.__mgSportsField.mode && window.__mgSportsField.mode();
               if (m === "webgrid") window.__mgSportsField.setMode("go");
@@ -289,6 +298,20 @@
             setStatus(window.__mgBlochSolve.report ? window.__mgBlochSolve.report() : "Bloch");
           } else setStatus("Bloch missing");
         }, { ico: "◉", sub: "Dual solve" })
+      );
+      row3.appendChild(
+        act("Rubik", "hot", function () {
+          if (window.__mgRubikLang) {
+            if (window.__mgRubikLang.toggle) window.__mgRubikLang.toggle();
+            else if (window.__mgRubikLang.open) window.__mgRubikLang.open();
+            setStatus(
+              window.__mgRubikLang.report
+                ? window.__mgRubikLang.report()
+                : "Rubik language"
+            );
+          } else setStatus("Rubik missing");
+          measure();
+        }, { ico: "▦", sub: "3D lang · solve" })
       );
       row3.appendChild(
         act("GEO", "hot", function () {

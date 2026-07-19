@@ -6,7 +6,7 @@
  */
 (function () {
   "use strict";
-  var VER = "float-layout-v14-drawer-chrome";
+  var VER = "float-layout-v16-beats-popout";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._floatLayoutVer === VER) return;
   HP._floatLayoutVer = VER;
@@ -246,6 +246,12 @@
   function pin(el, slot, opts) {
     if (!el || !slot || !isVisible(el)) return false;
     opts = opts || {};
+    /* drawer-embedded panels own their layout */
+    if (el.classList && el.classList.contains("mg-embedded")) return false;
+    if (el.closest && el.closest("#mg-tools-drawer,#mg-right-drawer,#mg-drawer-kb-host,#mg-drawer-beats-host,#mg-drawer-mkt-host"))
+      return false;
+    /* beats stay off center canvas unless user pop-out */
+    if (el.id === "mg-kb-beats" && !el.classList.contains("mg-popout")) return false;
     if (slot.skipPin) return false;
     if (slot.hide) {
       el.style.visibility = "hidden";
@@ -460,7 +466,13 @@
       id: "beats",
       label: "BEATS",
       run: function () {
-        if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
+        /* open Keys drawer stack — not canvas float (use popOut for float) */
+        try {
+          if (window.__mgToolsDrawer) {
+            if (window.__mgToolsDrawer.setMode) window.__mgToolsDrawer.setMode("keys");
+            if (window.__mgToolsDrawer.open) window.__mgToolsDrawer.open();
+          }
+        } catch (eB) {}
       },
     },
     /* Field / Bloch panel / GEO / Rubik: manual only via CTRL */
@@ -474,7 +486,7 @@
         if (window.__mgContrail.setFlow) window.__mgContrail.setFlow(true);
       }
       if (window.__mgMemoryMaze) window.__mgMemoryMaze.open();
-      if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
+      /* beats: drawer only unless user popOut — do not open canvas float */
       if (window.__mgActivityBoard) {
         if (window.__mgActivityBoard.mergeFleetSeed)
           window.__mgActivityBoard.mergeFleetSeed();
@@ -484,7 +496,7 @@
       if (window.__mgBlochSolve && window.__mgBlochSolve.setEnabled)
         window.__mgBlochSolve.setEnabled(true);
       apply();
-      log(VER + " · lab kit lean (beats·maze·board-pill·contrail)");
+      log(VER + " · lab kit lean (maze·board-pill·contrail · beats in Keys drawer)");
       return true;
     } catch (e) {
       log("lab kit err " + e);
@@ -567,7 +579,9 @@
         if (opts.mode && window.__mgSportsField.setMode)
           window.__mgSportsField.setMode(opts.mode);
       }
-      if (window.__mgKeyboardBeats) window.__mgKeyboardBeats.open();
+      /* beats float only on explicit popOut — Keys drawer is home */
+      if (opts.beatsPopOut && window.__mgKeyboardBeats && window.__mgKeyboardBeats.popOut)
+        window.__mgKeyboardBeats.popOut();
       if (opts.keyboard && window.__mgFloatKb) {
         if (window.__mgFloatKb.launch)
           window.__mgFloatKb.launch({
@@ -579,7 +593,7 @@
       if (window.__mgActivityBoard)
         window.__mgActivityBoard.open({ collapsed: true });
       apply();
-      log(VER + " · play stack field+beats" + (opts.keyboard ? "+kb" : ""));
+      log(VER + " · play stack field" + (opts.beatsPopOut ? "+beats-pop" : "") + (opts.keyboard ? "+kb" : ""));
       return true;
     } catch (e) {
       log("play stack err " + e);
@@ -675,11 +689,11 @@
       worldAnalyzedWordsApprox: 775000,
     },
     axes: {
-      dictionaries: { score: 0.88, dial: "D5-bulk-R4" },
-      schools: { score: 0.8, dial: "S2-live" },
-      museums: { score: 0.76, dial: "M3-live" },
-      typing: { score: 0.77, dial: "T2-live" },
-      music: { score: 0.75, dial: "R3-live" },
+      dictionaries: { score: 0.9, dial: "D5-10k+" },
+      schools: { score: 0.81, dial: "S2-live" },
+      museums: { score: 0.8, dial: "M3.5-kits-17" },
+      typing: { score: 0.84, dial: "T3-local-board" },
+      music: { score: 0.82, dial: "R4-staff-catalogue" },
     },
     links: {
       home: "https://kbatch.ugrad.ai/",

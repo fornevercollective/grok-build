@@ -9,7 +9,7 @@
  */
 (function () {
   "use strict";
-  var VER = "product-mode-v2-drawer-aware";
+  var VER = "product-mode-v3-narrow-chrome";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._productModeVer === VER) return;
   HP._productModeVer = VER;
@@ -78,12 +78,29 @@
       /* board collapsed = shell top word (INSPECT/PAGE language) */
       "html.mg-product #mg-activity-board.collapsed{",
       "  top:var(--mg-shell-top,2px)!important;",
-      "  right:max(12px, calc(12px + var(--mg-top-right-w,168px)))!important;",
+      "  right:max(8px, min(42vw, calc(8px + var(--mg-top-right-w,168px))))!important;",
       "  background:transparent!important;border:none!important;box-shadow:none!important;",
-      "  border-radius:0!important;width:auto!important}",
-      /* beats dock bottom — don't float mid-card */
-      "html.mg-product #mg-kb-beats{",
-      "  max-height:min(28vh,220px)!important}",
+      "  border-radius:0!important;width:auto!important;",
+      "  z-index:2147483641!important;pointer-events:auto!important}",
+      /* CTRL glass + top menu never lose hit targets when narrow */
+      "html.mg-product #mg-glass-cap{",
+      "  z-index:2147483004!important;pointer-events:auto!important;",
+      "  max-width:min(340px,92vw)!important}",
+      "html.mg-product #mg-top-right,html.mg-product #mg-mode-menu,",
+      "html.mg-product #mg-stoplights{",
+      "  z-index:2147483642!important;pointer-events:auto!important;",
+      "  opacity:1!important;visibility:visible!important}",
+      /* beats: stay ghosted on canvas unless pop-out */
+      "html.mg-product #mg-kb-beats:not(.mg-embedded):not(.mg-popout){",
+      "  display:none!important}",
+      "html.mg-product #mg-kb-beats.mg-popout{",
+      "  max-height:min(32vh,260px)!important;display:flex!important}",
+      "@media (max-width:820px){",
+      "  html.mg-product #mg-glass-cap.collapsed{",
+      "    max-width:min(200px,46vw)!important}",
+      "  html.mg-product #mg-activity-board.collapsed{",
+      "    max-width:min(38vw,200px)!important}",
+      "}",
       /* body floats always hit-testable on WebGrid (not trapped under #mg-root) */
       "html.mg-product #mg-glass-cap,",
       "html.mg-product #mg-float-kb,",

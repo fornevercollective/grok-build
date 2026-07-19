@@ -201,6 +201,15 @@ enum Cmd {
     },
     /// Re-read flip-board filmstrip JSON and inject into main for MKT rail
     LoadFilmstrip,
+    /// Native Yahoo OHLCV fetch for MKT charts (avoids WKWebView CORS)
+    FetchChart {
+        symbol: String,
+        interval: String,
+        range: String,
+        id: String,
+    },
+    /// Internal: deliver FetchChart payload to main webview on event loop thread
+    InjectChartResult { id: String, payload: String },
     /// Re-assert NSWindow/WK glass on both panes (after FS / multi-scale display move).
     ReassertGlass,
 }
@@ -214,13 +223,54 @@ fn place_on_primary(window: &Window) {
     if let Some(mon) = window.primary_monitor().or_else(|| window.current_monitor()) {
         let mpos = mon.position();
         let msize = mon.size();
-        // Sit on the LEFT third so inspect can dock fully on the right (not half off-screen)
-        let x = mpos.x + 24 + cascade;
-        let y = mpos.y + (msize.height as i32 - size.height as i32) / 5 + cascade;
-        window.set_outer_position(PhysicalPosition::new(x.max(mpos.x + 16), y.max(mpos.y + 36)));
+        // Prefer left-ish placement so inspect can still dock right, but not a
+        // narrow "tablet strip" — leave room for a real desktop browser width.
+        let x = mpos.x + 20 + cascade;
+        let y = mpos.y + (msize.height as i32 - size.height as i32).max(0) / 8 + cascade;
+        window.set_outer_position(PhysicalPosition::new(x.max(mpos.x + 12), y.max(mpos.y + 28)));
         return;
     }
     window.set_outer_position(LogicalPosition::new(40.0 + cascade as f64, 48.0 + cascade as f64));
+}
+
+/// Normal browse (Google / web search / SpaceX…): desktop-width main pane.
+/// Old default 980×820 sat on the left third and tripped Google's tablet SERP.
+/// Here we take most of the work area (room for inspect dock on the right).
+fn place_for_desktop_browse(main: &Window, inspect: Option<&Window>) {
+    let scale = main.scale_factor().max(1.0);
+    let Some(mon) = main
+        .primary_monitor()
+        .or_else(|| main.current_monitor())
+        .or_else(|| leftmost_landscape_monitor(main))
+    else {
+        place_on_primary(main);
+        return;
+    };
+    let mpos = mon.position();
+    let msize = mon.size();
+    let mon_w = msize.width as f64 / scale;
+    let mon_h = msize.height as f64 / scale;
+    // Leave a dock strip for inspect (~400–480 logical) + margins.
+    let insp_reserve = 420.0_f64.min(mon_w * 0.28).max(0.0);
+    let logical_w = (mon_w - insp_reserve - 48.0)
+        .clamp(1180.0, (mon_w - 32.0).max(1180.0));
+    let logical_h = (mon_h - 64.0).clamp(760.0, (mon_h - 36.0).max(760.0));
+    main.set_inner_size(LogicalSize::new(logical_w, logical_h));
+    let outer = main.outer_size();
+    let x = mpos.x + (16.0 * scale).round() as i32;
+    let y = mpos.y + (28.0 * scale).round() as i32;
+    main.set_outer_position(PhysicalPosition::new(x, y));
+    eprintln!(
+        "desktop layout: display {:.0}x{:.0} · main {:.0}x{:.0} (desktop SERP, not tablet 980)",
+        mon_w, mon_h, logical_w, logical_h
+    );
+    if let Some(insp) = inspect {
+        let gap = (12.0 * scale).round() as i32;
+        let is = insp.outer_size();
+        let ix = (x + outer.width as i32 + gap)
+            .min(mpos.x + msize.width as i32 - is.width as i32 - 12);
+        insp.set_outer_position(PhysicalPosition::new(ix, y));
+    }
 }
 
 /// Leftmost *landscape* (horizontal) monitor — never the tall vertical panel.
@@ -1459,20 +1509,115 @@ fn filmstrip_paths() -> Vec<std::path::PathBuf> {
     v
 }
 
+/// Slim a large rows.json into filmstrip-shaped payload (id/yahoo/sector/lists/frames.day).
+fn slim_filmstrip_json(raw: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(raw).ok()?;
+    let rows = if let Some(arr) = v.as_array() {
+        arr.clone()
+    } else {
+        v.get("rows")?.as_array()?.clone()
+    };
+    let mut slim_rows = Vec::with_capacity(rows.len());
+    for r in rows {
+        let obj = r.as_object()?;
+        let id = obj
+            .get("id")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        if id.is_empty() {
+            continue;
+        }
+        let yahoo = obj
+            .get("yahoo")
+            .and_then(|x| x.as_str())
+            .unwrap_or(&id)
+            .to_string();
+        let name = obj
+            .get("name")
+            .and_then(|x| x.as_str())
+            .unwrap_or(&id)
+            .to_string();
+        let sector = obj
+            .get("sector")
+            .and_then(|x| x.as_str())
+            .unwrap_or("?")
+            .to_string();
+        let lists = obj.get("lists").cloned().unwrap_or_else(|| {
+            serde_json::json!([sector])
+        });
+        // Keep day frame summary only (drop barsDaily / long series)
+        let mut frames = serde_json::Map::new();
+        if let Some(fr) = obj.get("frames").and_then(|x| x.as_object()) {
+            if let Some(day) = fr.get("day").and_then(|x| x.as_object()) {
+                let mut d = serde_json::Map::new();
+                for k in [
+                    "asOf",
+                    "close",
+                    "macdBias",
+                    "histogramBias",
+                    "bbPosition",
+                    "daysSinceFlip",
+                    "lastFlip",
+                ] {
+                    if let Some(val) = day.get(k) {
+                        d.insert(k.to_string(), val.clone());
+                    }
+                }
+                frames.insert("day".into(), serde_json::Value::Object(d));
+            }
+        }
+        slim_rows.push(serde_json::json!({
+            "id": id,
+            "yahoo": yahoo,
+            "name": name,
+            "sector": sector,
+            "lists": lists,
+            "frames": frames,
+        }));
+    }
+    let out = serde_json::json!({
+        "n": slim_rows.len(),
+        "rows": slim_rows,
+        "note": "slim inject · yahoo+train · industry sections",
+        "source": "slim_filmstrip_json",
+    });
+    serde_json::to_string(&out).ok()
+}
+
 /// Inject window.__mgFilmstripBoard from local JSON (auto-hydrate MKT rail).
 fn inject_filmstrip_board(wv: &wry::WebView) {
     for path in filmstrip_paths() {
         if !path.is_file() {
             continue;
         }
-        let Ok(raw) = std::fs::read_to_string(&path) else {
+        let Ok(raw0) = std::fs::read_to_string(&path) else {
             continue;
         };
-        // Cap payload size for evaluate_script (~ few MB max practical)
-        if raw.len() > 4_000_000 {
-            eprintln!("filmstrip: skip large {} ({} bytes)", path.display(), raw.len());
-            continue;
-        }
+        // Cap payload size for evaluate_script — slim oversized rows.json
+        let raw = if raw0.len() > 4_000_000 {
+            match slim_filmstrip_json(&raw0) {
+                Some(s) if s.len() <= 5_500_000 => {
+                    eprintln!(
+                        "filmstrip: slimmed {} ({} → {} bytes)",
+                        path.display(),
+                        raw0.len(),
+                        s.len()
+                    );
+                    s
+                }
+                _ => {
+                    eprintln!(
+                        "filmstrip: skip large {} ({} bytes)",
+                        path.display(),
+                        raw0.len()
+                    );
+                    continue;
+                }
+            }
+        } else {
+            raw0
+        };
         // Validate JSON
         if serde_json::from_str::<serde_json::Value>(&raw).is_err() {
             continue;
@@ -1542,7 +1687,12 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let menu_health = read_hotpipe_file("menu-health-monitor.js").unwrap_or_default();
     let mg_cal = read_hotpipe_file("mg-calibrate-boot.js").unwrap_or_default();
     let tools_drawer = read_hotpipe_file("mg-tools-drawer.js").unwrap_or_default();
+    let right_drawer = read_hotpipe_file("mg-right-drawer.js").unwrap_or_default();
     let grok_term = read_hotpipe_file("mg-grok-terminal.js").unwrap_or_default();
+    let market = read_hotpipe_file("market-filmstrip.js").unwrap_or_default();
+    let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
+    let chrome_tokens = read_hotpipe_file("mg-chrome-tokens.js").unwrap_or_default();
+    let jump_stack = read_hotpipe_file("mg-jump-stack.js").unwrap_or_default();
     let kbatch_fleet = read_hotpipe_file("kbatch-fleet-bridge.js").unwrap_or_default();
     let qbit_codec = read_hotpipe_file("qbit-codec.js")
         .or_else(|| read_hotpipe_file("concepts/qbit-codec.js"))
@@ -1561,6 +1711,10 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             }
             /* Dual-space floats — always on for WebGrid lab (unless strict) */
             if !strict {
+                /* presentable chrome tokens before drawers */
+                if !chrome_tokens.is_empty() {
+                    inject_js_blob(wv, &chrome_tokens);
+                }
                 if !sx_rail.is_empty() {
                     inject_js_blob(wv, &sx_rail);
                 }
@@ -1569,6 +1723,10 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 }
                 if !contrail.is_empty() {
                     inject_js_blob(wv, &contrail);
+                }
+                /* Lark governance tree (IANA + CDN + MG fleet) for GT drawer */
+                if !lark.is_empty() {
+                    inject_js_blob(wv, &lark);
                 }
                 if !glass_cap.is_empty() {
                     inject_js_blob(wv, &glass_cap);
@@ -1619,6 +1777,10 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !live_hud.is_empty() {
                     inject_js_blob(wv, &live_hud);
                 }
+                /* MKT filmstrip (list + strip + graph) for TOOLS drawer embed */
+                if !market.is_empty() {
+                    inject_js_blob(wv, &market);
+                }
                 /* tile floats so they never stack over WebGrid metrics */
                 if !float_layout.is_empty() {
                     inject_js_blob(wv, &float_layout);
@@ -1638,11 +1800,19 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
                 if !tools_drawer.is_empty() {
                     inject_js_blob(wv, &tools_drawer);
                 }
+                /* right data drawer (Live · Mkt · Inspect · Chat · Grok) */
+                if !right_drawer.is_empty() {
+                    inject_js_blob(wv, &right_drawer);
+                }
+                /* Jump A–F stack after dual drawers */
+                if !jump_stack.is_empty() {
+                    inject_js_blob(wv, &jump_stack);
+                }
                 /* Grok Build terminal bridge float */
                 if !grok_term.is_empty() {
                     inject_js_blob(wv, &grok_term);
                 }
-                /* Grok CAL boot → flourish SHOW */
+                /* Grok CAL boot → B0–B8 layers → flourish SHOW */
                 if !mg_cal.is_empty() {
                     inject_js_blob(wv, &mg_cal);
                 }
@@ -1653,14 +1823,18 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             if !session_rec.is_empty() {
                 inject_js_blob(wv, &session_rec);
             }
+            inject_filmstrip_board(wv);
             inject_leaderboard_handoff(wv);
         }
         eprintln!(
-            "hotpipe: LEAN play-lab floats={} product={} drawer={} grok-term={} → {} surface(s)",
+            "hotpipe: LEAN floats={} product={} L={} R={} jump={} cal={} mkt={} → {} surface(s)",
             !strict,
             !product_mode.is_empty(),
             !tools_drawer.is_empty(),
-            !grok_term.is_empty(),
+            !right_drawer.is_empty(),
+            !jump_stack.is_empty(),
+            !mg_cal.is_empty(),
+            !market.is_empty(),
             targets.len()
         );
         return true;
@@ -1677,9 +1851,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let ironline = read_hotpipe_file("ironline.js").unwrap_or_default();
     let ugrad = read_hotpipe_file("ugrad-ladder.js").unwrap_or_default();
     let ugrad_wg = read_hotpipe_file("ugrad-webgrid-tensor.js").unwrap_or_default();
-    let market = read_hotpipe_file("market-filmstrip.js").unwrap_or_default();
+    /* market already read above for lean+full */
     let video = read_hotpipe_file("video-feed-panel.js").unwrap_or_default();
-    let lark = read_hotpipe_file("lark-governance.js").unwrap_or_default();
+    /* lark already read above for lean + full */
     for wv in targets {
         inject_js_blob(wv, &js);
         if !body.is_empty() {
@@ -1799,8 +1973,17 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         if !menu_health.is_empty() {
             inject_js_blob(wv, &menu_health);
         }
+        if !chrome_tokens.is_empty() {
+            inject_js_blob(wv, &chrome_tokens);
+        }
         if !tools_drawer.is_empty() {
             inject_js_blob(wv, &tools_drawer);
+        }
+        if !right_drawer.is_empty() {
+            inject_js_blob(wv, &right_drawer);
+        }
+        if !jump_stack.is_empty() {
+            inject_js_blob(wv, &jump_stack);
         }
         if !grok_term.is_empty() {
             inject_js_blob(wv, &grok_term);
@@ -1812,13 +1995,14 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
         inject_leaderboard_handoff(wv);
     }
     eprintln!(
-        "hotpipe: FULL stack injected product={} kbatch={} menu-health={} cal={} drawer={} grok-term={} → {} surface(s)",
+        "hotpipe: FULL product={} menu={} cal={} L={} R={} jump={} tokens={} → {} surface(s)",
         !product_mode.is_empty(),
-        !kbatch_fleet.is_empty(),
         !menu_health.is_empty(),
         !mg_cal.is_empty(),
         !tools_drawer.is_empty(),
-        !grok_term.is_empty(),
+        !right_drawer.is_empty(),
+        !jump_stack.is_empty(),
+        !chrome_tokens.is_empty(),
         targets.len()
     );
     true
@@ -3435,6 +3619,8 @@ fn hud_init_script() -> &'static str {
     + "    inset 0 0 36px rgba(255,255,255,0.04);"
     + "  background:transparent;"
     + "}"
+    /* Page-axis leans <body> only. Chrome (TOOLS drawer, rails) must mount on <html>
+     * — fixed children of a transformed body scroll/stick with the page. */
     + "html.mg-axis-on:not(.mg-yt-theater):not(.mg-yt-fs):not(.mg-scrolling) body{"
     + "  transform:perspective(var(--mg-fov,1600px))"
     + "    rotateX(var(--mg-rx,0deg)) rotateY(var(--mg-ry,0deg))"
@@ -3447,7 +3633,9 @@ fn hud_init_script() -> &'static str {
     + "html.mg-yt-theater body,html.mg-yt-fs body{"
     + "  transform:none!important;"
     + "  will-change:auto;"
-    + "}";
+    + "}"
+    /* Guard: never transform html (breaks viewport-fixed chrome) */
+    + "html{transform:none!important}";
   (document.documentElement || document.head).appendChild(drop);
 
   var css = ""
@@ -8094,26 +8282,26 @@ fn main() -> Result<()> {
     let webgrid_small = webgrid_mode && webgrid_wants_small_window();
     let mut wb = WindowBuilder::new()
         .with_title(format!("Memory Glass · {ver_short}"))
-        // Medium browser for play (WebGrid); slightly wider default otherwise
+        // WebGrid: large → 30×30 / small → 12×12. Browse: desktop (≥1180) so Google
+        // SERP is not the tablet column that old 980×820 left-third layout produced.
         .with_inner_size(LogicalSize::new(
-            // WebGrid large → 30×30; small → 12×12 (h≤600 / w≤751)
-            // Initial size; place_for_webgrid_play resizes to laptop display.
+            // Initial size; place_for_* resizes to the active display.
             if webgrid_small {
                 720.0
             } else if webgrid_mode {
                 2400.0
             } else {
-                980.0
+                1440.0
             },
             if webgrid_small {
                 560.0
             } else if webgrid_mode {
                 1350.0
             } else {
-                820.0
+                900.0
             },
         ))
-        .with_min_inner_size(LogicalSize::new(520.0, 400.0))
+        .with_min_inner_size(LogicalSize::new(640.0, 480.0))
         // Decorations ON so macOS keeps system resize edges; custom .mg-edge strips as backup.
         .with_decorations(true)
         .with_transparent(true)
@@ -8297,6 +8485,29 @@ fn main() -> Result<()> {
                         .to_string(),
                 }),
                 "load_filmstrip" | "filmstrip" => Some(Cmd::LoadFilmstrip),
+                "fetch_chart" | "chart_fetch" => Some(Cmd::FetchChart {
+                    symbol: v
+                        .get("symbol")
+                        .or_else(|| v.get("sym"))
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("SPY")
+                        .to_string(),
+                    interval: v
+                        .get("interval")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("1d")
+                        .to_string(),
+                    range: v
+                        .get("range")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("2y")
+                        .to_string(),
+                    id: v
+                        .get("id")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                }),
                 "reassert_glass" | "glass" => Some(Cmd::ReassertGlass),
                 "hot_mitigate" => Some(Cmd::HotMitigate {
                     msg: v
@@ -8509,7 +8720,8 @@ fn main() -> Result<()> {
             }
         }
     }
-    // Dual-pane default — WebGrid uses left landscape medium + inspect parked
+    // Dual-pane default — WebGrid uses near-fullscreen landscape; browse uses
+    // desktop-width main (not the old tablet 980 left strip that broke Google).
     if webgrid_mode {
         place_for_webgrid_play(&window, Some(&inspect_window));
         eprintln!("  layout : webgrid play · large landscape · 30×30 desktop grid · chrome-safe");
@@ -8521,7 +8733,13 @@ fn main() -> Result<()> {
             eprintln!("  zoom   : 1.0 (fill play area via CSS — not shrink)");
         }
     } else {
+        place_for_desktop_browse(&window, Some(&inspect_window));
         tile_browser_and_inspect(&window, &inspect_window, true);
+        if let Err(e) = webview.zoom(1.0) {
+            eprintln!("browse default zoom: {e}");
+        } else {
+            eprintln!("  zoom   : 1.0 · desktop browse layout");
+        }
     }
 
     let inspect_wv = WebViewBuilder::new()
@@ -8710,6 +8928,9 @@ fn main() -> Result<()> {
                 Cmd::Navigate(url) => {
                     if let Some(wv) = webview.as_ref() {
                         let _ = wv.load_url(&url);
+                        // Always reset WK page zoom on navigate so SERP/desktop
+                        // sites never inherit a leftover WebGrid tablet zoom.
+                        let _ = wv.zoom(1.0);
                         // Re-spit + re-stamp after tab navigate (page reload wipes HUD)
                         dev_spit_at =
                             Some(std::time::Instant::now() + std::time::Duration::from_millis(1200));
@@ -9303,6 +9524,93 @@ fn main() -> Result<()> {
                 Cmd::LoadFilmstrip => {
                     if let Some(wv) = webview.as_ref() {
                         inject_filmstrip_board(wv);
+                    }
+                }
+                Cmd::FetchChart {
+                    symbol,
+                    interval,
+                    range,
+                    id,
+                } => {
+                    // curl Yahoo off the UI thread; deliver via InjectChartResult
+                    let sym = symbol
+                        .chars()
+                        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '.' || *c == '=')
+                        .take(16)
+                        .collect::<String>()
+                        .to_uppercase();
+                    let interval = interval
+                        .chars()
+                        .filter(|c| c.is_ascii_alphanumeric())
+                        .take(12)
+                        .collect::<String>();
+                    let range = range
+                        .chars()
+                        .filter(|c| c.is_ascii_alphanumeric())
+                        .take(8)
+                        .collect::<String>();
+                    let id_safe = id
+                        .chars()
+                        .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+                        .take(48)
+                        .collect::<String>();
+                    if sym.is_empty() || interval.is_empty() || range.is_empty() {
+                        eprintln!("fetch_chart: bad args");
+                    } else {
+                        let url = format!(
+                            "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval={interval}&range={range}"
+                        );
+                        let proxy_tx = proxy.clone();
+                        std::thread::spawn(move || {
+                            let out = std::process::Command::new("curl")
+                                .args([
+                                    "-sS",
+                                    "-m",
+                                    "18",
+                                    "-A",
+                                    "Mozilla/5.0 (Macintosh; MemoryGlass)",
+                                    &url,
+                                ])
+                                .output();
+                            let payload = match out {
+                                Ok(o) if o.status.success() => {
+                                    let body = String::from_utf8_lossy(&o.stdout);
+                                    if serde_json::from_str::<serde_json::Value>(&body).is_ok() {
+                                        body.to_string()
+                                    } else {
+                                        r#"{"chart":{"error":{"description":"invalid yahoo json"}}}"#
+                                            .to_string()
+                                    }
+                                }
+                                Ok(o) => format!(
+                                    r#"{{"chart":{{"error":{{"description":"curl {}"}}}}}}"#,
+                                    o.status
+                                ),
+                                Err(e) => format!(
+                                    r#"{{"chart":{{"error":{{"description":"curl err {e}"}}}}}}"#
+                                ),
+                            };
+                            let _ = proxy_tx.send_event(Cmd::InjectChartResult {
+                                id: id_safe,
+                                payload,
+                            });
+                        });
+                    }
+                }
+                Cmd::InjectChartResult { id, payload } => {
+                    if let Some(wv) = webview.as_ref() {
+                        let id_js =
+                            serde_json::to_string(&id).unwrap_or_else(|_| "\"\"".to_string());
+                        let js = format!(
+                            r#"(function(){{try{{
+  var id={id_js};
+  var data={payload};
+  if(window.__mgOnChartFetch) window.__mgOnChartFetch(id, data);
+}}catch(e){{try{{if(window.__mgDevLog)window.__mgDevLog('err',String(e),'mkt');}}catch(_e){{}}}}}})();"#
+                        );
+                        if let Err(e) = wv.evaluate_script(&js) {
+                            eprintln!("inject_chart: {e}");
+                        }
                     }
                 }
                 Cmd::ReassertGlass => {

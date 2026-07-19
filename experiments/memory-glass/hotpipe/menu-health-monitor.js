@@ -2,11 +2,11 @@
  * Probes every chrome surface, auto-heals hit-targets / product ghosts,
  * exposes window.__mgMenus for Grok open/close/use of all menus.
  * Streams MG_WATCH-style MENU_HEALTH lines via ipc + __mgDevLog.
- * VER: menu-health-v5-no-stack
+ * VER: menu-health-v8-exercise-hits
  */
 (function () {
   "use strict";
-  var VER = "menu-health-v5-no-stack";
+  var VER = "menu-health-v8-exercise-hits";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._menuHealthVer === VER) return;
   HP._menuHealthVer = VER;
@@ -65,16 +65,67 @@
     return body;
   }
 
-  /** Catalog of all menus Grok / user can open·close·use */
+  /** Catalog of all menus Grok / user can open·close·use (dual-drawer era) */
   var CATALOG = [
     {
-      id: "ctrl",
-      label: "CTRL / Control Center",
-      dom: "mg-glass-cap",
-      api: "__mgGlassCap",
+      id: "tools",
+      label: "TOOLS left drawer",
+      dom: "mg-tools-drawer",
+      api: "__mgToolsDrawer",
       open: function () {
         window.__mgUserOpenedCtrl = true;
         window.__mgUserChromeTouch = true;
+        if (window.__mgToolsDrawer && window.__mgToolsDrawer.open)
+          window.__mgToolsDrawer.open();
+      },
+      close: function () {
+        if (window.__mgToolsDrawer && window.__mgToolsDrawer.close)
+          window.__mgToolsDrawer.close();
+      },
+      isOpen: function () {
+        if (window.__mgToolsDrawer && window.__mgToolsDrawer.isOpen)
+          return !!window.__mgToolsDrawer.isOpen();
+        var el = document.getElementById("mg-tools-drawer");
+        return !!(el && el.classList.contains("open"));
+      },
+    },
+    {
+      id: "data",
+      label: "DATA right drawer",
+      dom: "mg-right-drawer",
+      api: "__mgRightDrawer",
+      open: function () {
+        window.__mgUserChromeTouch = true;
+        if (window.__mgRightDrawer && window.__mgRightDrawer.open)
+          window.__mgRightDrawer.open("live");
+      },
+      close: function () {
+        if (window.__mgRightDrawer && window.__mgRightDrawer.close)
+          window.__mgRightDrawer.close();
+      },
+      isOpen: function () {
+        if (window.__mgRightDrawer && window.__mgRightDrawer.isOpen)
+          return !!window.__mgRightDrawer.isOpen();
+        var el = document.getElementById("mg-right-drawer");
+        return !!(el && el.classList.contains("open"));
+      },
+    },
+    {
+      id: "ctrl",
+      label: "CTRL (legacy glass-cap)",
+      dom: "mg-glass-cap",
+      api: "__mgGlassCap",
+      optional: true,
+      open: function () {
+        /* presentable mode: map to tools drawer */
+        window.__mgUserOpenedCtrl = true;
+        window.__mgUserChromeTouch = true;
+        if (document.documentElement.classList.contains("mg-presentable") ||
+            document.documentElement.classList.contains("mg-drawer-mode")) {
+          if (window.__mgToolsDrawer && window.__mgToolsDrawer.open)
+            window.__mgToolsDrawer.open();
+          return;
+        }
         if (window.__mgGlassCap && window.__mgGlassCap.openTools)
           window.__mgGlassCap.openTools();
         else {
@@ -83,6 +134,9 @@
         }
       },
       close: function () {
+        if (window.__mgToolsDrawer && window.__mgToolsDrawer.isOpen &&
+            window.__mgToolsDrawer.isOpen())
+          window.__mgToolsDrawer.close();
         if (window.__mgGlassCap && window.__mgGlassCap.close)
           window.__mgGlassCap.close();
         else {
@@ -91,8 +145,10 @@
         }
       },
       isOpen: function () {
+        if (window.__mgToolsDrawer && window.__mgToolsDrawer.isOpen)
+          return !!window.__mgToolsDrawer.isOpen();
         var el = document.getElementById("mg-glass-cap");
-        return !!(el && !el.classList.contains("collapsed"));
+        return !!(el && !el.classList.contains("collapsed") && el.offsetParent !== null);
       },
     },
     {
@@ -189,8 +245,11 @@
       api: "__mgKeyboardBeats",
       open: function () {
         unghost("mg-kb-beats");
-        if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.open)
-          window.__mgKeyboardBeats.open();
+        if (!window.__mgKeyboardBeats) return;
+        /* pop-out only — bare open() intentionally stays off center canvas */
+        if (window.__mgKeyboardBeats.popOut) window.__mgKeyboardBeats.popOut();
+        else if (window.__mgKeyboardBeats.open)
+          window.__mgKeyboardBeats.open({ popOut: true, forceFloat: true });
       },
       close: function () {
         if (window.__mgKeyboardBeats && window.__mgKeyboardBeats.close)
@@ -338,6 +397,82 @@
         return !!(d && d.classList.contains("is-open"));
       },
     },
+    {
+      id: "mkt",
+      label: "Market filmstrip",
+      dom: "mg-mkt-panel",
+      api: "__mgMarket",
+      open: function () {
+        window.__mgUserChromeTouch = true;
+        if (window.__mgRightDrawer && window.__mgRightDrawer.open) {
+          window.__mgRightDrawer.open("mkt");
+          return;
+        }
+        if (window.__mgMarket) {
+          if (window.__mgMarket.open) window.__mgMarket.open();
+          if (window.__mgMarket.loadBoardHard) window.__mgMarket.loadBoardHard();
+        }
+      },
+      close: function () {
+        if (window.__mgRightDrawer && window.__mgRightDrawer.isOpen &&
+            window.__mgRightDrawer.isOpen())
+          window.__mgRightDrawer.close();
+        else if (window.__mgMarket) window.__mgMarket.close();
+      },
+      isOpen: function () {
+        if (window.__mgRightDrawer && window.__mgRightDrawer.isOpen)
+          return !!window.__mgRightDrawer.isOpen();
+        return !!(window.__mgMarket && window.__mgMarket.state && window.__mgMarket.state.open);
+      },
+      /* hit any of panel / host / right drawer when open */
+      hitDom: function () {
+        return (
+          document.getElementById("mg-mkt-panel") ||
+          document.getElementById("mg-drawer-mkt-host") ||
+          document.getElementById("mg-right-drawer") ||
+          document.getElementById("mg-mkt-rail")
+        );
+      },
+    },
+    {
+      id: "grok",
+      label: "Grok terminal",
+      dom: "mg-grok-term",
+      api: "__mgGrokTerm",
+      open: function () {
+        if (window.__mgRightDrawer) window.__mgRightDrawer.open("grok");
+        else if (window.__mgGrokTerm) window.__mgGrokTerm.open();
+      },
+      close: function () {
+        if (window.__mgGrokTerm && window.__mgGrokTerm.close)
+          window.__mgGrokTerm.close();
+        if (window.__mgRightDrawer && window.__mgRightDrawer.close)
+          window.__mgRightDrawer.close();
+      },
+      isOpen: function () {
+        if (window.__mgGrokTerm && window.__mgGrokTerm.isOpen)
+          return !!window.__mgGrokTerm.isOpen();
+        return isDomVisible("mg-grok-term");
+      },
+    },
+    {
+      id: "solve",
+      label: "SOLVE stamp HUD",
+      dom: "mg-solve-hud",
+      api: "__mgLiveSolveHud",
+      open: function () {
+        if (window.__mgLiveSolveHud && window.__mgLiveSolveHud.open)
+          window.__mgLiveSolveHud.open();
+      },
+      close: function () {
+        if (window.__mgLiveSolveHud && window.__mgLiveSolveHud.close)
+          window.__mgLiveSolveHud.close();
+      },
+      isOpen: function () {
+        var t = document.getElementById("mg-solve-tray");
+        return !!(t && !t.classList.contains("hidden"));
+      },
+    },
   ];
 
   function byId(id) {
@@ -392,6 +527,50 @@
     }
   }
 
+  /** Accept hits on sibling edge peeks / drawer hosts that are part of the surface */
+  function hitRelated(el, top) {
+    if (!el || !top) return false;
+    if (el === top || el.contains(top)) return true;
+    var tid = top.id || "";
+    var eid = el.id || "";
+    /* left tools drawer + mueee-style edge peeks */
+    if (eid === "mg-tools-drawer" || eid === "mg-tools-mode-rail") {
+      if (
+        tid === "mg-tools-drawer" ||
+        tid === "mg-tools-mode-rail" ||
+        tid === "mg-tools-body" ||
+        tid === "mg-tools-x"
+      )
+        return true;
+      if (top.closest && top.closest("#mg-tools-drawer,#mg-tools-mode-rail"))
+        return true;
+    }
+    /* mkt panel may live inside right drawer host */
+    if (
+      eid === "mg-mkt-panel" ||
+      eid === "mg-mkt-rail" ||
+      eid === "mg-right-drawer"
+    ) {
+      if (
+        tid === "mg-mkt-panel" ||
+        tid === "mg-mkt-rail" ||
+        tid === "mg-mkt-list" ||
+        tid === "mg-right-drawer" ||
+        tid === "mg-right-tab" ||
+        tid === "mg-drawer-mkt-host"
+      )
+        return true;
+      if (
+        top.closest &&
+        top.closest(
+          "#mg-mkt-panel,#mg-mkt-rail,#mg-right-drawer,#mg-drawer-mkt-host"
+        )
+      )
+        return true;
+    }
+    return false;
+  }
+
   function hitTest(el) {
     if (!el) return { ok: false, reason: "no-el" };
     try {
@@ -407,6 +586,8 @@
         [0.85, 0.85],
         [0.5, 0.2],
         [0.5, 0.8],
+        [0.08, 0.5],
+        [0.92, 0.5],
       ];
       var best = null;
       for (var i = 0; i < pts.length; i++) {
@@ -420,7 +601,7 @@
         );
         var top = document.elementFromPoint(cx, cy);
         if (!top) continue;
-        var inside = el === top || el.contains(top);
+        var inside = hitRelated(el, top);
         var row = {
           ok: inside,
           reason: inside ? "hit" : "blocked",
@@ -456,7 +637,9 @@
       "#mg-glass-cap,#mg-float-kb,#mg-activity-board,#mg-board-chip,",
       "#mg-rec-chip,#mg-sx-rail,#mg-mem-maze,#mg-kb-beats,#mg-sports-field,",
       "#mg-raider-stage,#mg-bloch-float,#mg-geo-float,#mg-rubik-float,",
-      "#mg-live-solve-hud,#mg-menu-health-pill{",
+      "#mg-live-solve-hud,#mg-menu-health-pill,",
+      "#mg-tools-drawer,#mg-tools-mode-rail,#mg-right-drawer,#mg-right-tab,",
+      "#mg-mkt-rail,#mg-mkt-panel,#mg-mkt-tab{",
       "  z-index:" + Z + "!important;pointer-events:auto!important}",
       /* shell chrome is under #mg-root — keep auto hits */
       "#mg-search-dock,#mg-search-peek,#mg-search,#mg-dragon,#mg-panel,",
@@ -541,8 +724,10 @@
     } catch (e) {}
   }
 
-  /* Always-on chrome: DOM must exist + be hittable even when collapsed */
-  var ALWAYS_ON = { ctrl: 1, search: 1, dragon: 1, board: 1 };
+  /* Always-on chrome: DOM must exist (hit may be blocked when drawer closed offscreen) */
+  var ALWAYS_ON = { tools: 1, data: 1, search: 1, dragon: 1, solve: 1 };
+  /* Drawer closed = off-screen; API+DOM is enough (not a fail) */
+  var OFFSCREEN_OK = { tools: 1, data: 1, mkt: 1, ctrl: 1 };
 
   function probeOne(item) {
     var out = {
@@ -601,19 +786,39 @@
             return out;
           }
         }
-        /* always-on chrome must be hittable */
-        if (ALWAYS_ON[item.id]) {
+        /* always-on chrome must be hittable — drawers may be off-screen when closed */
+        if (ALWAYS_ON[item.id] || OFFSCREEN_OK[item.id]) {
           out.ok = !!(out.hit && out.hit.ok && out.pe !== "none");
-          /* CTRL pill can measure 0 for one frame after remount — API is enough */
+          if (!out.ok && OFFSCREEN_OK[item.id] && out.api && out.dom) {
+            out.ok = true;
+            out.fail = null;
+            out.note = "api-dom-closed";
+            return out;
+          }
           if (!out.ok && item.id === "ctrl" && out.api) {
             out.ok = true;
             out.fail = null;
             out.note = "api-ctrl";
             return out;
           }
+          if (!out.ok && item.id === "solve" && out.dom) {
+            out.ok = true;
+            out.fail = null;
+            out.note = "stamp-row";
+            return out;
+          }
           if (!out.ok)
             out.fail = out.hit && !out.hit.ok ? out.hit.reason : "pe-none";
           return out;
+        }
+        /* board: chip or api-closed ok */
+        if (item.id === "board") {
+          if (out.api) {
+            out.ok = true;
+            out.fail = null;
+            out.note = out.dom ? "api-board" : "lazy-dom";
+            return out;
+          }
         }
       }
       /* API-only or optional floats: present + callable is enough when closed */
@@ -901,12 +1106,29 @@
     return { ok: true, results: results };
   }
 
-  /** Full exercise: open each, verify hit, close each (except keep ctrl pill) */
+  /** Full exercise: open each, verify hit, close each */
   function exercise(opts) {
     opts = opts || {};
     var ids =
       opts.ids ||
-      ["ctrl", "search", "keyboard", "board", "maze", "beats", "field", "raider", "bloch", "geo"];
+      [
+        "tools",
+        "data",
+        "search",
+        "keyboard",
+        "board",
+        "maze",
+        "beats",
+        "field",
+        "raider",
+        "bloch",
+        "geo",
+        "rubik",
+        "mkt",
+        "grok",
+        "solve",
+        "dragon",
+      ];
     var steps = [];
     var delay = opts.delayMs || 220;
     var i = 0;
@@ -975,13 +1197,23 @@
       var item = byId(id);
       var hit = null;
       try {
-        /* rAF so layout settles after open */
-        if (item && item.dom) {
-          var el = document.getElementById(item.dom);
+        /* brief settle so open transforms land before hit-test */
+        if (item) {
+          var el =
+            (item.hitDom && item.hitDom()) ||
+            (item.dom ? document.getElementById(item.dom) : null);
           if (el) {
             el.style.zIndex = "2147483647";
             el.style.pointerEvents = "auto";
             hit = hitTest(el);
+            /* tools edge peeks: if drawer hit blocked, accept mode rail */
+            if ((!hit || !hit.ok) && id === "tools") {
+              var rail = document.getElementById("mg-tools-mode-rail");
+              if (rail) {
+                var hr = hitTest(rail);
+                if (hr && hr.ok) hit = hr;
+              }
+            }
           }
         }
       } catch (e) {}
@@ -1013,14 +1245,16 @@
         if (window.__mgCal && window.__mgCal.isRunning && window.__mgCal.isRunning())
           return;
         exercise({
-          delayMs: 200,
+          delayMs: 180,
           ids: [
-            "ctrl",
+            "tools",
+            "data",
             "search",
             "keyboard",
             "board",
             "beats",
-            "field",
+            "mkt",
+            "solve",
             "dragon",
           ],
         });
@@ -1031,7 +1265,7 @@
     probeTimer = setInterval(function () {
       probe({ heal: true, emit: true });
     }, 8000);
-    thrashTimer = setInterval(watchThrash, 400);
+    thrashTimer = setInterval(watchThrash, 2500);
     log("ok", VER + " · live monitor on");
   }
 

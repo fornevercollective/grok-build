@@ -6,11 +6,11 @@
  * Stays open during WebGrid play.
  * Mini WebGrid: always findable (chip + auto-open on 12×12).
  * Fleet: Mac mini M4 + laptop benches seeded with real gameplay metrics.
- * VER: activity-board-v6-collapse-pill
+ * VER: activity-board-v7-shell-hdr
  */
 (function () {
   "use strict";
-  var VER = "activity-board-v6-collapse-pill";
+  var VER = "activity-board-v8-narrow-safe";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._activityBoardVer === VER) return;
   HP._activityBoardVer = VER;
@@ -1016,21 +1016,51 @@
     var st = document.createElement("style");
     st.id = "mg-board-css";
     st.textContent = [
-      "#mg-activity-board{position:fixed;right:12px;top:48px;z-index:2147482993;",
+      /* Expanded panel — glass card (open state only) */
+      "#mg-activity-board{position:fixed;right:12px;top:44px;z-index:2147482993;",
       "  width:min(300px,42vw);border-radius:12px;overflow:hidden;",
       "  background:rgba(10,12,16,0.55);backdrop-filter:blur(22px) saturate(1.35);",
       "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
       "  border:1px solid rgba(255,255,255,0.16);",
       "  box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.1);",
       "  font:650 9px/1.25 system-ui;color:rgba(244,246,250,0.92);pointer-events:auto;",
-      "  transition:max-height .2s ease,width .18s ease,border-radius .18s ease}",
+      "  transition:max-height .2s ease,width .18s ease,border-radius .18s ease,",
+      "    background .15s,border-color .15s,box-shadow .15s,top .15s,right .15s}",
       "#mg-activity-board.mini-layout{right:8px;top:40px;width:min(260px,48vw)}",
       "#mg-activity-board.hidden{display:none!important}",
-      /* CTRL-style collapsed pill — live metrics without covering Field/Beats */
+      /*
+       * Collapsed = same language as shell top chrome (#mg-dev-toggle / #mg-mode-trigger):
+       * flat word · uppercase · wide tracking · no pill chrome · sits in top-right band.
+       */
       "#mg-activity-board.collapsed{",
-      "  max-height:44px!important;min-height:0!important;height:auto!important;",
-      "  width:min(300px,72vw)!important;border-radius:999px;",
-      "  overflow:hidden;background:rgba(12,18,14,0.78)}",
+      "  top:var(--mg-shell-top,2px)!important;right:auto!important;",
+      "  left:auto!important;",
+      /* sit left of INSPECT · PAGE; clamp so it never slides off small windows */
+      "  right:max(8px, min(42vw, calc(8px + var(--mg-top-right-w, 168px))))!important;",
+      "  max-height:none!important;min-height:28px!important;height:auto!important;",
+      "  width:auto!important;max-width:min(46vw,360px)!important;",
+      "  border-radius:0!important;overflow:visible!important;",
+      "  background:transparent!important;border:none!important;box-shadow:none!important;",
+      "  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;",
+      "  font:600 var(--mg-hdr-fs,11px)/1 system-ui,sans-serif;",
+      "  z-index:2147483641!important;pointer-events:auto!important}",
+      /* narrow: LIVE RANK becomes compact chip-word, still in top band */
+      "@media (max-width:820px){",
+      "  #mg-activity-board.collapsed{",
+      "    right:max(6px, calc(6px + var(--mg-top-right-w, 120px)))!important;",
+      "    max-width:min(38vw,200px)!important}",
+      "  #mg-activity-board.collapsed .pill-sum{max-width:72px!important;font-size:9px!important}",
+      "  #mg-activity-board.collapsed .hd .acts button:not(#mg-board-fold){display:none!important}",
+      "  #mg-board-chip{right:max(6px, calc(6px + var(--mg-top-right-w,120px)))!important;",
+      "    max-width:min(36vw,160px)!important;overflow:hidden;text-overflow:ellipsis}",
+      "}",
+      "@media (max-width:560px){",
+      "  #mg-activity-board.collapsed{",
+      "    top:calc(var(--mg-shell-top,2px) + 26px)!important;",
+      "    right:8px!important;max-width:min(90vw,280px)!important}",
+      "  #mg-board-chip{",
+      "    top:calc(var(--mg-shell-top,2px) + 26px)!important;right:8px!important}",
+      "}",
       "#mg-activity-board.collapsed .lane,",
       "#mg-activity-board.collapsed .live,",
       "#mg-activity-board.collapsed .pred,",
@@ -1038,24 +1068,48 @@
       "#mg-activity-board.collapsed .rank-table,",
       "#mg-activity-board.collapsed .ft{display:none!important}",
       "#mg-activity-board.collapsed .hd{",
-      "  border-bottom:0;padding:9px 12px;gap:8px}",
-      "#mg-activity-board.collapsed .hd .ttl{font-size:10px}",
+      "  border-bottom:0!important;padding:var(--mg-hdr-pad-y,6px) 2px!important;",
+      "  gap:8px;min-height:28px;cursor:pointer;",
+      "  color:rgba(255,255,255,0.9);letter-spacing:var(--mg-hdr-ls,0.22em);",
+      "  text-transform:uppercase;background:transparent!important;",
+      "  text-shadow:0 1px 2px rgba(0,0,0,0.4)}",
+      "#mg-activity-board.collapsed .hd .ttl{",
+      "  font:600 var(--mg-hdr-fs,11px)/1 system-ui,sans-serif!important;",
+      "  letter-spacing:var(--mg-hdr-ls,0.22em)!important;flex-shrink:0;",
+      "  color:rgba(255,255,255,0.9)!important}",
+      "#mg-activity-board.collapsed .hd .ttl .dot{",
+      "  opacity:0.55;margin-right:6px;letter-spacing:0;font-weight:700}",
       "#mg-activity-board.collapsed .pill-sum{display:inline!important;",
-      "  font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:0.02em;",
-      "  text-transform:none;color:rgba(140,255,190,0.98);flex:1;min-width:0;",
-      "  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      "  font:600 10px/1 ui-monospace,Menlo,monospace!important;",
+      "  letter-spacing:0.06em!important;text-transform:none!important;",
+      "  color:rgba(255,255,255,0.72)!important;flex:0 1 auto;min-width:0;",
+      "  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
+      "  text-shadow:0 1px 2px rgba(0,0,0,0.4)}",
+      "#mg-activity-board.collapsed .hd .acts{gap:4px}",
+      "#mg-activity-board.collapsed .hd button{",
+      "  font:600 10px/1 system-ui!important;padding:2px 4px!important;",
+      "  border-radius:0!important;opacity:0.55;letter-spacing:0.08em;",
+      "  color:rgba(255,255,255,0.75)!important}",
+      "#mg-activity-board.collapsed .hd button:hover{opacity:1;background:transparent!important;",
+      "  color:#fff!important;text-shadow:0 0 12px rgba(255,255,255,0.4)}",
+      "#mg-activity-board.collapsed:hover .hd{opacity:1;color:#fff}",
       "#mg-activity-board .pill-sum{display:none}",
-      "#mg-board-chip{position:fixed;right:10px;top:10px;z-index:2147483005;",
-      "  padding:7px 12px;border-radius:999px;cursor:pointer;pointer-events:auto;",
-      "  background:rgba(10,14,12,0.72);backdrop-filter:blur(18px);",
-      "  -webkit-backdrop-filter:blur(18px);border:1px solid rgba(120,230,160,0.45);",
-      "  box-shadow:0 4px 16px rgba(0,0,0,0.2),0 0 12px rgba(80,200,140,0.15);",
-      "  font:700 10px/1 system-ui;letter-spacing:0.08em;text-transform:uppercase;",
-      "  color:rgba(140,255,190,0.98)}",
-      "#mg-board-chip:hover{background:rgba(20,40,28,0.85);border-color:rgba(160,255,200,0.7)}",
+      /* chip when board fully closed — same flat shell word as INSPECT / PAGE */
+      "#mg-board-chip{position:fixed;right:max(12px, calc(12px + var(--mg-top-right-w,168px)));",
+      "  top:var(--mg-shell-top,2px);z-index:2147483005;",
+      "  padding:var(--mg-hdr-pad-y,6px) 2px;border-radius:0;cursor:pointer;pointer-events:auto;",
+      "  background:transparent!important;border:none!important;box-shadow:none!important;",
+      "  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;",
+      "  font:600 var(--mg-hdr-fs,11px)/1 system-ui,sans-serif;",
+      "  letter-spacing:var(--mg-hdr-ls,0.22em);text-transform:uppercase;",
+      "  color:rgba(255,255,255,0.9);text-shadow:0 1px 2px rgba(0,0,0,0.4);",
+      "  min-height:28px;opacity:0.92}",
+      "#mg-board-chip:hover{opacity:1;color:#fff;background:transparent!important;",
+      "  text-shadow:0 0 14px rgba(255,255,255,0.45)}",
       "#mg-board-chip.hidden{display:none}",
-      "#mg-board-chip .n{opacity:0.75;font-weight:600;margin-left:6px;letter-spacing:0.02em;",
-      "  text-transform:none}",
+      "#mg-board-chip .dot{opacity:0.55;margin-right:6px;letter-spacing:0}",
+      "#mg-board-chip .n{opacity:0.65;font:600 10px/1 ui-monospace,Menlo,monospace;",
+      "  margin-left:8px;letter-spacing:0.06em;text-transform:none}",
       "#mg-activity-board .hd{display:flex;justify-content:space-between;align-items:center;gap:6px;",
       "  padding:6px 8px;letter-spacing:0.1em;text-transform:uppercase;",
       "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,210,120,0.95);",
@@ -1113,7 +1167,8 @@
     chip.type = "button";
     chip.id = "mg-board-chip";
     chip.title = "Open WebGrid leaderboard (mini + full)";
-    chip.innerHTML = 'BOARD<span class="n" id="mg-board-chip-n">·</span>';
+    chip.innerHTML =
+      '<span class="dot">·</span>BOARD<span class="n" id="mg-board-chip-n"></span>';
     chip.onclick = function (ev) {
       if (ev) {
         ev.preventDefault();
@@ -1125,20 +1180,42 @@
     paintChip();
   }
 
+  function measureTopRightW() {
+    try {
+      var tr = document.getElementById("mg-top-right");
+      var vw = window.innerWidth || 1200;
+      var w = 120;
+      if (tr) {
+        var r = tr.getBoundingClientRect();
+        w = Math.max(80, Math.ceil(r.width || tr.offsetWidth || 120));
+        /* if top-right is off-screen / zero, don't shove LIVE RANK left forever */
+        if (r.width < 8 || r.right < 20) w = Math.min(140, Math.floor(vw * 0.22));
+      }
+      /* never reserve more than ~40% of narrow viewports */
+      if (vw < 820) w = Math.min(w, Math.floor(vw * 0.28));
+      document.documentElement.style.setProperty(
+        "--mg-top-right-w",
+        w + 12 + "px"
+      );
+    } catch (e) {}
+  }
+
   function paintChip() {
     ensureChip();
     if (!chip) return;
+    measureTopRightW();
     var b = boardFiltered();
     var top = b[0] ? fmtNum(b[0].score) : "—";
     var mini = isMiniWebgrid();
     chip.innerHTML =
-      (mini ? "MINI BOARD" : "BOARD") +
+      '<span class="dot">·</span>' +
+      (mini ? "MINI" : "BOARD") +
       '<span class="n">#' +
       top +
       " · n" +
       boardRanked().length +
       "</span>";
-    /* chip visible when panel closed — always findable on WebGrid */
+    /* chip only when panel fully closed — collapsed panel IS the top chrome word */
     if (open) chip.classList.add("hidden");
     else chip.classList.remove("hidden");
   }
@@ -1147,8 +1224,11 @@
     if (!panel) return;
     panel.classList.toggle("collapsed", !!collapsed && !!open);
     var fold = panel.querySelector("#mg-board-fold");
-    if (fold) fold.textContent = collapsed ? "+" : "—";
-    fold && (fold.title = collapsed ? "expand LIVE RANK" : "collapse to pill");
+    if (fold) fold.textContent = collapsed ? "▾" : "—";
+    fold &&
+      (fold.title = collapsed
+        ? "expand LIVE RANK"
+        : "collapse to shell word (INSPECT/PAGE style)");
   }
 
   function ensurePanel() {
@@ -1164,7 +1244,7 @@
       (collapsed && open ? " collapsed" : "");
     panel.innerHTML =
       '<div class="hd">' +
-      '<span class="ttl" id="mg-board-hd-title">Live rank</span>' +
+      '<span class="ttl" id="mg-board-hd-title"><span class="dot">·</span>LIVE</span>' +
       '<span class="pill-sum" id="mg-board-pill-sum">—</span>' +
       '<span class="acts">' +
       '<button type="button" id="mg-board-fold" title="collapse">—</button>' +
@@ -1471,13 +1551,14 @@
     var elPred = document.getElementById("mg-board-pred");
     var elElo = document.getElementById("mg-board-elo");
     var elPredLine = document.getElementById("mg-board-predline");
+    measureTopRightW();
     if (hd)
-      hd.textContent = collapsed
-        ? "LIVE"
+      hd.innerHTML = collapsed
+        ? '<span class="dot">·</span>LIVE'
         : isMiniWebgrid()
           ? "MINI board · 12×12"
           : "Live rank · WebGrid";
-    /* pill summary: BPS · rank · ELO */
+    /* collapsed summary — same density as shell FLOW / INSPECT metrics strip */
     if (pill) {
       var bpsPill =
         live && live.webgrid
@@ -1493,9 +1574,9 @@
       var rk = pred.rankNow != null ? pred.rankNow : board.length ? 1 : "—";
       pill.textContent =
         (bpsPill != null ? fmtNum(bpsPill) + " BPS" : "—") +
-        " · #" +
+        "  ·  #" +
         rk +
-        " · ELO " +
+        "  ·  ELO " +
         (pred.eloHint != null ? pred.eloHint : "—");
     }
     if (elSc) elSc.textContent = fmtNum(pred.liveScore);

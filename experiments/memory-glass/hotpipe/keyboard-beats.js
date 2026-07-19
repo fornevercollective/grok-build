@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var VER = "keyboard-beats-v5-match-stack";
+  var VER = "keyboard-beats-v9-popout-only";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._kbBeatsVer === VER) return;
   HP._kbBeatsVer = VER;
@@ -31,6 +31,10 @@
   var pianoCv = null;
   var raf = 0;
   var litUntil = {}; /* midi → timestamp until lit on piano */
+  var lastCatEntry = null; /* last loaded staff-catalogue entry */
+  var playTimers = []; /* sequential motif/scale playback */
+  /* Float on center canvas ONLY when user pop-outs — drawer embed is the default surface */
+  var floatAllowed = false;
 
   /* keyboard map (float-kb) */
   var NOTE_MAP = {
@@ -90,27 +94,43 @@
       "  font:600 10px/1.35 ui-monospace,Menlo,monospace;color:rgba(220,235,250,0.94);",
       "  pointer-events:auto;letter-spacing:0.04em}",
       "#mg-kb-beats.hidden{display:none!important}",
+      "#mg-kb-beats.mg-embedded,#mg-drawer-beats-host #mg-kb-beats{",
+      "  position:relative!important;left:auto!important;right:auto!important;",
+      "  top:auto!important;bottom:auto!important;",
+      "  width:100%!important;max-width:none!important;",
+      "  max-height:none!important;min-height:220px!important;height:auto!important;",
+      "  z-index:1!important;margin:0!important;",
+      "  border-radius:16px!important;",
+      "  border:1px solid rgba(255,255,255,0.12)!important;",
+      "  background:rgba(255,255,255,0.06)!important;",
+      "  backdrop-filter:blur(24px) saturate(1.4)!important;",
+      "  -webkit-backdrop-filter:blur(24px) saturate(1.4)!important;",
+      "  box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.12)!important;",
+      "  display:flex!important;visibility:visible!important;opacity:1!important;",
+      "  pointer-events:auto!important}",
       "#mg-kb-beats .hd{display:flex;justify-content:space-between;align-items:center;",
-      "  padding:6px 10px;letter-spacing:0.1em;text-transform:uppercase;",
-      "  border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(160,210,255,0.9);",
+      "  padding:10px 12px;letter-spacing:0.1em;text-transform:uppercase;",
+      "  border-bottom:1px solid rgba(255,255,255,0.08);color:rgba(160,210,255,0.9);",
       "  font:650 10px/1.2 system-ui;flex-shrink:0}",
       "#mg-kb-beats .hd button{appearance:none;background:transparent;border:0;color:inherit;",
       "  cursor:pointer;font:700 12px/1 system-ui;padding:2px 6px}",
       "#mg-kb-beats .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;",
-      "  padding:6px 10px;flex-shrink:0}",
+      "  padding:8px 12px;flex-shrink:0}",
       "#mg-kb-beats b{color:rgba(160,210,255,0.95)}",
       "#mg-kb-beats .bar{flex:1;min-width:80px;height:7px;border-radius:4px;",
       "  background:rgba(255,255,255,0.08);overflow:hidden}",
       "#mg-kb-beats .bar i{display:block;height:100%;background:linear-gradient(90deg,",
       "  #50e6a0,#a0c8ff,#ffb060,#f070d0,#70e0ff);width:0%;transition:width .12s}",
-      "#mg-kb-beats .staff-wrap{padding:0 8px;flex:1 1 auto;min-height:88px;",
-      "  display:flex;flex-direction:column;gap:4px}",
-      "#mg-kb-beats canvas.staff{width:100%;height:96px;display:block;border-radius:8px;",
+      "#mg-kb-beats .staff-wrap{padding:0 10px 10px;flex:1 1 auto;min-height:100px;",
+      "  display:flex;flex-direction:column;gap:6px}",
+      "#mg-kb-beats canvas.staff{width:100%;height:96px;display:block;border-radius:10px;",
       "  background:rgba(4,8,14,0.9);border:1px solid rgba(255,255,255,0.12);",
-      "  flex:1 1 auto;min-height:80px}",
-      "#mg-kb-beats canvas.piano{width:100%;height:52px;display:block;border-radius:8px;",
+      "  flex:1 1 auto;min-height:88px}",
+      "#mg-kb-beats canvas.piano{width:100%;height:56px;display:block;border-radius:10px;",
       "  background:rgba(8,10,14,0.95);border:1px solid rgba(255,255,255,0.12);",
       "  flex-shrink:0;cursor:pointer}",
+      "#mg-kb-beats.mg-embedded canvas.staff{min-height:100px;height:108px}",
+      "#mg-kb-beats.mg-embedded canvas.piano{height:64px}",
       "#mg-kb-beats .src{opacity:0.75;font-size:9px}",
       "#mg-kb-beats .note-live{color:rgba(180,230,255,0.95);font-weight:700}",
     ].join("");
@@ -122,10 +142,11 @@
     ensureCss();
     strip = document.createElement("div");
     strip.id = "mg-kb-beats";
-    strip.className = open ? "" : "hidden";
+    strip.className = open && (floatAllowed || false) ? "" : "hidden mg-product-ghost";
     strip.innerHTML =
       '<div class="hd"><span>Beats · maze staff · piano</span>' +
       '<span style="display:flex;gap:4px;align-items:center">' +
+      '<button type="button" id="mg-kb-beats-dock" title="Dock to Keys drawer">DOCK</button>' +
       '<button type="button" id="mg-kb-beats-clr" title="clear staff">CLR</button>' +
       '<button type="button" id="mg-kb-beats-x">×</button></span></div>' +
       '<div class="row">' +
@@ -146,6 +167,11 @@
     strip.querySelector("#mg-kb-beats-x").onclick = function () {
       setOpen(false);
     };
+    var dockB = strip.querySelector("#mg-kb-beats-dock");
+    if (dockB)
+      dockB.onclick = function () {
+        dockIn();
+      };
     strip.querySelector("#mg-kb-beats-clr").onclick = function () {
       beats = [];
       keys = [];
@@ -214,17 +240,21 @@
     ctx.textBaseline = "alphabetic";
     ctx.fillText("𝄞", 4, top + 3.6 * gap);
 
-    /* time / maze pack tag */
+    /* time / catalogue or maze pack tag */
     var packId = "—";
-    try {
-      if (window.__mgMemoryMaze && window.__mgMemoryMaze.packs) {
-        var rep = window.__mgMemoryMaze.report && window.__mgMemoryMaze.report();
-        if (rep && /pack=([\w-]+)/.test(rep)) packId = RegExp.$1;
-      }
-    } catch (eP) {}
+    if (lastCatEntry && (lastCatEntry.title || lastCatEntry.id)) {
+      packId = String(lastCatEntry.title || lastCatEntry.id).slice(0, 28);
+    } else {
+      try {
+        if (window.__mgMemoryMaze && window.__mgMemoryMaze.packs) {
+          var rep = window.__mgMemoryMaze.report && window.__mgMemoryMaze.report();
+          if (rep && /pack=([\w-]+)/.test(rep)) packId = RegExp.$1;
+        }
+      } catch (eP) {}
+    }
     ctx.fillStyle = "rgba(140,180,200,0.7)";
     ctx.font = "600 8px ui-monospace,Menlo,monospace";
-    ctx.fillText(bpm + "♩ · maze " + packId, left, H - 4);
+    ctx.fillText(bpm + "♩ · " + packId, left, H - 4);
 
     /* MIDI → Y: C4(60) sits on ledger below staff (treble) */
     /* E4=64 = bottom line, G5=79 = top line approximately:
@@ -511,23 +541,30 @@
       }
     } catch (e) {}
 
-    if (open) paint();
+    if (open) requestPaint(true);
     return { midi: midi, name: midiName(midi), src: src };
   }
+
+  var lastKeyT = 0;
+  var lastKeyCh = "";
 
   function onKey(ch, nx, ny) {
     ensureUi();
     var now = Date.now();
     ch = String(ch || "").toLowerCase();
+    if (ch === " " || ch === "spc" || ch === "space") ch = "g";
+    /* de-dupe: emitHop + legacy click hook (or double paint) same key within 40ms */
+    if (ch === lastKeyCh && now - lastKeyT < 40) return { hit: false, bpm: bpm, midi: null, deduped: true };
+    lastKeyCh = ch;
+    lastKeyT = now;
+
     keys.push({ ch: ch, t: now, nx: nx || 0.5, ny: ny || 0.5 });
     if (keys.length > 64) keys.shift();
-    attempts++;
 
     var midi = NOTE_MAP[ch];
     /* prefer maze pack mapping when maze open */
     try {
       if (window.__mgMemoryMaze && window.__mgMemoryMaze.isOpen && window.__mgMemoryMaze.isOpen()) {
-        /* maze ingestKey will map — use scale-aligned if possible */
         var sc = mazeScaleMidis();
         if (sc.length) midi = sc[(ch.charCodeAt(0) || 0) % sc.length];
       }
@@ -540,7 +577,6 @@
     var phase = (now - lastBeatT) % interval;
     var err = Math.min(phase, interval - phase);
     var hit = err < interval * 0.22;
-    if (hit) hits++;
     if (now - lastBeatT > interval * 0.5) lastBeatT = now;
 
     if (keys.length >= 4) {
@@ -551,16 +587,13 @@
       }
     }
 
+    /* attempts/hits only in ingestNote — do not double-count here */
     ingestNote(midi, { src: "key", hit: hit, ch: ch });
 
     try {
       if (window.__mgMemoryMaze && window.__mgMemoryMaze.ingestKey)
         window.__mgMemoryMaze.ingestKey(ch, nx || 0.5, ny || 0.5);
     } catch (e) {}
-    try {
-      if (window.__mgBlochSolve && window.__mgBlochSolve.onKeyHop)
-        window.__mgBlochSolve.onKeyHop(ch);
-    } catch (e2) {}
     try {
       var bc = new BroadcastChannel("qbpm-live");
       bc.postMessage({
@@ -577,7 +610,6 @@
       bc.close();
     } catch (e3) {}
 
-    paint();
     return { hit: hit, bpm: bpm, midi: midi };
   }
 
@@ -610,45 +642,53 @@
     drawPiano();
   }
 
+  var paintDirty = false;
+  var paintTimer = 0;
+
+  function requestPaint(force) {
+    if (!open && !force) return;
+    paintDirty = true;
+    if (paintTimer) return;
+    paintTimer = requestAnimationFrame(function () {
+      paintTimer = 0;
+      if (!paintDirty) return;
+      paintDirty = false;
+      paint();
+      /* keep painting only while keys are lit (not every frame forever) */
+      var now = Date.now();
+      var anyLit = false;
+      for (var k in litUntil) {
+        if (litUntil[k] > now) {
+          anyLit = true;
+          break;
+        }
+      }
+      if (anyLit) requestPaint(true);
+    });
+  }
+
   function loop() {
+    /* legacy entry — prefer requestPaint; only used if something still sets raf */
     if (!open) {
       raf = 0;
       return;
     }
-    paint();
-    raf = requestAnimationFrame(loop);
+    requestPaint(true);
+    raf = 0;
   }
 
+  /**
+   * Single-path sync: float-keyboard.emitHop → onKey.
+   * No document click capture (that double-fired with emitHop and desynced piano).
+   */
   function hookKb() {
-    var K = window.__mgFloatKb;
-    if (!K || K._beatsHooked) return;
-    K._beatsHooked = true;
-    document.addEventListener(
-      "click",
-      function (ev) {
-        var t = ev.target;
-        if (!t || !t.classList || !t.classList.contains("kb-key")) return;
-        var ch = (t.textContent || "").trim().toLowerCase();
-        if (ch === "space" || ch === "spc") ch = " ";
-        if (ch.length > 2) return;
-        var r = t.getBoundingClientRect();
-        var pr = document.getElementById("mg-float-kb");
-        var nx = 0.5,
-          ny = 0.5;
-        if (pr) {
-          var b = pr.getBoundingClientRect();
-          nx = (r.left + r.width / 2 - b.left) / Math.max(1, b.width);
-          ny = (r.top + r.height / 2 - b.top) / Math.max(1, b.height);
-        }
-        onKey(ch === " " ? "g" : ch, nx, ny);
-      },
-      true
-    );
-    log(VER + " · keyboard + piano hooked");
+    if (window.__mgKbBeatsHooked) return;
+    window.__mgKbBeatsHooked = true;
+    log(VER + " · single-path emitHop → onKey (no click double-fire)");
   }
 
-  setTimeout(hookKb, 500);
-  setTimeout(hookKb, 1500);
+  setTimeout(hookKb, 200);
+  setTimeout(hookKb, 800);
 
   /* pull maze BPM into staff when pack active */
   setInterval(function () {
@@ -665,51 +705,493 @@
     } catch (e) {}
   }, 2000);
 
-  function setOpen(on) {
+  function isEmbedded() {
+    return !!(strip && strip.classList && strip.classList.contains("mg-embedded"));
+  }
+
+  function setOpen(on, opts) {
+    opts = opts || {};
+    /* Canvas float requires explicit pop-out (or force). Drawer embed always allowed. */
+    if (on && !isEmbedded() && !floatAllowed && !opts.forceFloat && !opts.popOut) {
+      open = false;
+      if (strip && !isEmbedded()) {
+        strip.classList.add("hidden");
+        strip.classList.add("mg-product-ghost");
+        strip.classList.remove("mg-popout");
+      }
+      return;
+    }
+    if (on && (opts.popOut || opts.forceFloat)) {
+      floatAllowed = true;
+    }
     open = !!on;
     if (open) {
       ensureUi();
       strip.classList.remove("hidden");
-      paint();
-      if (!raf) raf = requestAnimationFrame(loop);
+      strip.classList.remove("mg-product-ghost");
+      if (floatAllowed && !isEmbedded()) strip.classList.add("mg-popout");
+      requestPaint(true);
       try {
-        if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
+        if (
+          window.__mgFloatLayout &&
+          window.__mgFloatLayout.apply &&
+          !isEmbedded() &&
+          floatAllowed
+        )
           window.__mgFloatLayout.apply();
       } catch (eA) {}
     } else {
-      if (strip) strip.classList.add("hidden");
+      if (strip) {
+        strip.classList.add("hidden");
+        if (!isEmbedded()) {
+          strip.classList.add("mg-product-ghost");
+          strip.classList.remove("mg-popout");
+        }
+      }
+      if (!opts.keepFloat) floatAllowed = false;
       if (raf) {
         cancelAnimationFrame(raf);
         raf = 0;
       }
+      if (paintTimer) {
+        cancelAnimationFrame(paintTimer);
+        paintTimer = 0;
+      }
     }
   }
 
+  function popOut() {
+    floatAllowed = true;
+    if (strip && isEmbedded()) {
+      try {
+        unembed();
+      } catch (eU) {}
+    }
+    setOpen(true, { popOut: true, forceFloat: true });
+    log(VER + " · pop-out float on canvas");
+    return true;
+  }
+
+  function dockIn() {
+    floatAllowed = false;
+    setOpen(false);
+    if (strip) {
+      strip.classList.add("hidden");
+      strip.classList.add("mg-product-ghost");
+      strip.classList.remove("mg-popout");
+    }
+    /* prefer left drawer Keys if available */
+    try {
+      if (window.__mgToolsDrawer) {
+        if (window.__mgToolsDrawer.setMode) window.__mgToolsDrawer.setMode("keys");
+        if (window.__mgToolsDrawer.open) window.__mgToolsDrawer.open();
+      }
+    } catch (eD) {}
+    return true;
+  }
+
   window.addEventListener("resize", function () {
-    if (open) paint();
+    if (open) requestPaint(true);
   });
+
+  function clearCataloguePlay() {
+    for (var i = 0; i < playTimers.length; i++) {
+      try {
+        clearTimeout(playTimers[i]);
+      } catch (e) {}
+    }
+    playTimers = [];
+  }
+
+  function entryMidis(entry) {
+    if (!entry) return [];
+    if (entry.midi && entry.midi.length) return entry.midi.slice();
+    var tonic = entry.tonicMidi != null ? entry.tonicMidi : 60;
+    var deg = entry.degrees || [];
+    var midis = [];
+    for (var i = 0; i < deg.length; i++) midis.push(tonic + deg[i]);
+    return midis;
+  }
+
+  /**
+   * Load a KBatch staff-catalogue entry onto live staff + piano.
+   * entry: full kbatch-music-staff entry or { midi, degrees, tonicMidi, bpm, title, id }
+   * opts: { clear, bpm, play (audio), sequential (timed), silent (no blip on dump) }
+   */
+  function loadCatalogue(entry, opts) {
+    opts = opts || {};
+    if (!entry) return { ok: false, reason: "no entry" };
+    clearCataloguePlay();
+    var midis = entryMidis(entry);
+    if (!midis.length) return { ok: false, reason: "no midi", id: entry.id || null };
+
+    if (opts.clear !== false) beats = [];
+    if (entry.bpm > 30 && entry.bpm < 240) bpm = entry.bpm;
+    else if (opts.bpm > 30 && opts.bpm < 240) bpm = opts.bpm;
+
+    lastCatEntry = {
+      id: entry.id || null,
+      title: entry.title || entry.id || "catalogue",
+      kind: entry.kind || "",
+      family: entry.family || "",
+      solfege: entry.solfege || "",
+      modern: entry.modern || "",
+      rights: entry.rights || "",
+      bpm: bpm,
+      notes: midis.length,
+    };
+    window.__mgStaffLastEntry = lastCatEntry;
+
+    /* stay in drawer if embedded; never auto-float catalogue onto canvas */
+    if (isEmbedded()) {
+      open = true;
+      if (strip) strip.classList.remove("hidden");
+    } else if (floatAllowed) {
+      setOpen(true, { forceFloat: true });
+    } else {
+      open = true; /* logical open for paint if UI exists */
+      ensureUi();
+      if (strip && !isEmbedded()) {
+        strip.classList.add("hidden");
+        strip.classList.add("mg-product-ghost");
+      }
+    }
+    var pack = entry.id || entry.title || "catalogue";
+    var durs = entry.durations || [];
+    var sequential = opts.sequential !== false && midis.length > 1;
+    var playAudio = opts.play !== false;
+    var n = 0;
+
+    /* dump all notes onto staff immediately for notation readout */
+    for (var j = 0; j < midis.length; j++) {
+      beats.push({
+        t: Date.now() + j,
+        midi: Math.round(midis[j]),
+        name: midiName(midis[j]),
+        hit: true,
+        src: "staff-catalogue",
+        ch: entry.solfege ? String(entry.solfege).split(/\s+/)[j] || "" : "",
+        pack: pack,
+        bpm: bpm,
+      });
+      n++;
+    }
+    if (beats.length > 96) beats = beats.slice(-96);
+
+    /* light full chord/scale on piano once */
+    for (var k = 0; k < midis.length; k++) lightPiano(midis[k], sequential ? 180 : 420);
+
+    /* sequential audio playback (motifs / scales) — durations are beat units */
+    if (playAudio) {
+      var beatMs = 60000 / Math.max(40, bpm);
+      if (sequential) {
+        var t = 0;
+        for (var p = 0; p < midis.length; p++) {
+          (function (midi, delay) {
+            playTimers.push(
+              setTimeout(function () {
+                blip(midi);
+                lightPiano(midi, 280);
+                requestPaint(true);
+              }, delay)
+            );
+          })(Math.round(midis[p]), t);
+          var d = durs[p] != null && isFinite(durs[p]) ? Number(durs[p]) : 1;
+          t += Math.max(0.25, d) * beatMs;
+        }
+      } else {
+        /* chord-like: arpeggiate lightly or stack */
+        for (var q = 0; q < midis.length; q++) {
+          (function (midi, delay) {
+            playTimers.push(
+              setTimeout(function () {
+                blip(midi);
+                lightPiano(midi, 360);
+              }, delay)
+            );
+          })(Math.round(midis[q]), q * 55);
+        }
+      }
+    }
+
+    requestPaint(true);
+    log(
+      VER +
+        " · staff cat " +
+        (entry.id || entry.title || "") +
+        " notes=" +
+        n +
+        " kind=" +
+        (entry.kind || "—")
+    );
+    return {
+      ok: true,
+      notes: n,
+      id: entry.id || null,
+      title: entry.title || null,
+      kind: entry.kind || null,
+      bpm: bpm,
+    };
+  }
+
+  var catalogueLoading = false;
+
+  /** Fetch full KBatch staff pack (live first, then bundled seed). */
+  function loadCatalogueSeed(cb) {
+    if (window.__mgStaffCatalogueSeed && (window.__mgStaffCatalogueSeed.entries || []).length) {
+      if (cb)
+        cb({
+          ok: true,
+          count: window.__mgStaffCatalogueSeed.entries.length,
+          source: "cache",
+        });
+      return;
+    }
+    if (catalogueLoading) {
+      var wait = setInterval(function () {
+        if (!catalogueLoading) {
+          clearInterval(wait);
+          if (cb)
+            cb({
+              ok: !!(window.__mgStaffCatalogueSeed && window.__mgStaffCatalogueSeed.entries),
+              count: (window.__mgStaffCatalogueSeed && window.__mgStaffCatalogueSeed.entries
+                ? window.__mgStaffCatalogueSeed.entries.length
+                : 0),
+              source: "wait",
+            });
+        }
+      }, 80);
+      return;
+    }
+    catalogueLoading = true;
+    var paths = [
+      "https://kbatch.ugrad.ai/data/music-staff/entries.json",
+      "hotpipe/data/staff-catalogue-seed.json",
+      "../hotpipe/data/staff-catalogue-seed.json",
+      "./data/staff-catalogue-seed.json",
+    ];
+    var i = 0;
+    function next() {
+      if (i >= paths.length) {
+        catalogueLoading = false;
+        if (cb) cb({ ok: false, reason: "seed not found" });
+        return;
+      }
+      var url = paths[i++];
+      fetch(url)
+        .then(function (r) {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then(function (j) {
+          if (!j.entries && j.schema) {
+            /* some packs nest differently */
+          }
+          window.__mgStaffCatalogueSeed = j;
+          catalogueLoading = false;
+          log(VER + " · staff cat seed " + (j.entries || []).length + " · " + url);
+          if (cb) cb({ ok: true, count: (j.entries || []).length, source: url });
+        })
+        .catch(function () {
+          next();
+        });
+    }
+    next();
+  }
+
+  function cataloguePack() {
+    return window.__mgStaffCatalogueSeed || null;
+  }
+
+  function listCatalogue(filter) {
+    filter = filter || {};
+    var pack = cataloguePack();
+    var entries = (pack && pack.entries) || [];
+    var kind = filter.kind || filter.family || "";
+    var q = String(filter.q || filter.query || "")
+      .toLowerCase()
+      .trim();
+    var out = [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      if (kind) {
+        var k = String(kind).toLowerCase();
+        if (
+          String(e.kind || "").toLowerCase() !== k &&
+          String(e.family || "").toLowerCase() !== k &&
+          String(e.family || "").toLowerCase().indexOf(k) < 0
+        )
+          continue;
+      }
+      if (q) {
+        var hay = (
+          (e.id || "") +
+          " " +
+          (e.title || "") +
+          " " +
+          (e.kind || "") +
+          " " +
+          (e.solfege || "") +
+          " " +
+          (e.tags || []).join(" ")
+        ).toLowerCase();
+        if (hay.indexOf(q) < 0) continue;
+      }
+      out.push(e);
+    }
+    if (filter.limit > 0 && out.length > filter.limit) out = out.slice(0, filter.limit);
+    return out;
+  }
+
+  function getCatalogueEntry(id) {
+    if (!id) return null;
+    var entries = (cataloguePack() && cataloguePack().entries) || [];
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].id === id) return entries[i];
+    }
+    return null;
+  }
+
+  function catalogueKinds() {
+    var pack = cataloguePack();
+    if (pack && pack.kinds) return pack.kinds;
+    var counts = {};
+    var entries = (pack && pack.entries) || [];
+    for (var i = 0; i < entries.length; i++) {
+      var k = entries[i].kind || "other";
+      counts[k] = (counts[k] || 0) + 1;
+    }
+    return counts;
+  }
+
+  function loadCatalogueId(id, cb, opts) {
+    function tryLoad(pack) {
+      var entries = (pack && pack.entries) || [];
+      var hit = null;
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].id === id) {
+          hit = entries[i];
+          break;
+        }
+      }
+      if (!hit) {
+        var r0 = { ok: false, reason: "id not in catalogue: " + id };
+        if (cb) cb(r0);
+        return r0;
+      }
+      var r = loadCatalogue(hit, opts || {});
+      if (cb) cb(r);
+      return r;
+    }
+    if (window.__mgStaffCatalogueSeed) return tryLoad(window.__mgStaffCatalogueSeed);
+    loadCatalogueSeed(function (st) {
+      if (!st.ok) {
+        if (cb) cb(st);
+        return;
+      }
+      tryLoad(window.__mgStaffCatalogueSeed);
+    });
+    return { ok: true, pending: true, id: id };
+  }
+
+  /* warm cache on load */
+  setTimeout(function () {
+    try {
+      loadCatalogueSeed(function () {});
+    } catch (eW) {}
+  }, 900);
+
+  function unembed() {
+    if (!strip || !strip.classList.contains("mg-embedded")) return;
+    strip.classList.remove("mg-embedded");
+    strip.style.position = "";
+    strip.style.width = "";
+    strip.style.maxHeight = "";
+    strip.style.minHeight = "";
+    strip.style.margin = "";
+    (document.body || document.documentElement).appendChild(strip);
+    /* leave canvas unless user had pop-out */
+    if (!floatAllowed) {
+      open = false;
+      strip.classList.add("hidden");
+      strip.classList.add("mg-product-ghost");
+      strip.classList.remove("mg-popout");
+    } else {
+      strip.classList.remove("hidden");
+      strip.classList.add("mg-popout");
+    }
+  }
+
+  function embedInto(host) {
+    if (!host) return false;
+    ensureUi();
+    if (!strip) return false;
+    host.appendChild(strip);
+    strip.classList.add("mg-embedded");
+    strip.classList.remove("hidden");
+    strip.classList.remove("mg-product-ghost");
+    strip.classList.remove("mg-popout");
+    open = true;
+    /* embed is not a canvas float */
+    floatAllowed = false;
+    hookKb();
+    requestPaint(true);
+    return true;
+  }
 
   window.__mgKeyboardBeats = {
     ver: VER,
     onKey: onKey,
     ingestNote: ingestNote,
+    embedInto: embedInto,
+    unembed: unembed,
+    popOut: popOut,
+    dockIn: dockIn,
+    isPopOut: function () {
+      return !!floatAllowed && !isEmbedded();
+    },
+    requestPaint: requestPaint,
     /** maze rain / path drops call this */
     onMazeNote: function (midi, meta) {
       meta = meta || {};
       meta.src = meta.src || "maze";
       return ingestNote(midi, meta);
     },
-    open: function () {
-      setOpen(true);
+    /** KBatch staff catalogue → live staff + piano (music twin of word dictionary) */
+    loadCatalogue: loadCatalogue,
+    loadCatalogueSeed: loadCatalogueSeed,
+    loadCatalogueId: loadCatalogueId,
+    listCatalogue: listCatalogue,
+    getCatalogueEntry: getCatalogueEntry,
+    catalogueKinds: catalogueKinds,
+    cataloguePack: cataloguePack,
+    lastCatalogueEntry: function () {
+      return lastCatEntry;
+    },
+    stopCataloguePlay: clearCataloguePlay,
+    /** Quick PD motif / scale helpers */
+    playOdeJoy: function (cb) {
+      return loadCatalogueId("motif-ode-joy", cb);
+    },
+    playIonian: function (cb) {
+      return loadCatalogueId("scale-c-ionian", cb);
+    },
+    playBlues: function (cb) {
+      return loadCatalogueId("scale-c-blues", cb);
+    },
+    open: function (opts) {
+      /* open() without popOut does not put beats on center canvas */
+      setOpen(true, opts || {});
     },
     close: function () {
       setOpen(false);
     },
     toggle: function () {
-      setOpen(!open);
+      if (open && (isEmbedded() || floatAllowed)) setOpen(false);
+      else popOut();
     },
     isOpen: function () {
-      return open;
+      return open && (isEmbedded() || floatAllowed);
     },
     bpm: function () {
       return bpm;
@@ -739,9 +1221,12 @@
         attempts +
         " hit=" +
         hits +
-        (open ? " staff+piano" : "")
+        (open ? " staff+piano" : "") +
+        (lastCatEntry ? " cat=" + (lastCatEntry.id || lastCatEntry.title) : "") +
+        " pack=" +
+        ((cataloguePack() && cataloguePack().entries && cataloguePack().entries.length) || 0)
       );
     },
   };
-  log(VER + " · maze staff + piano notation");
+  log(VER + " · maze staff + piano + staff catalogue");
 })();

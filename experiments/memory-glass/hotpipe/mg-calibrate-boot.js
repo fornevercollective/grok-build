@@ -9,11 +9,12 @@
  *   ?mg_cal=1 | ?mg_cal=show | ?mg_cal=fast
  *   CTRL → Calibrate
  *
- * VER: mg-cal-boot-v1
+ * B0–B8 presentable boot (dual drawers + shell + scroll soak + clear).
+ * VER: mg-cal-boot-v2-b0b8
  */
 (function () {
   "use strict";
-  var VER = "mg-cal-boot-v1";
+  var VER = "mg-cal-boot-v2-b0b8";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._mgCalBootVer === VER) return;
   HP._mgCalBootVer = VER;
@@ -199,45 +200,80 @@
   }
 
   /**
-   * Ordered CAL steps — every major touch surface, as fast as safe.
-   * Each: { id, label, open?, act, close?, requireHit? }
+   * Ordered CAL steps — dual-drawer era + on-demand modules.
+   * Each: { id, label, open?, act, close?, dom? }
    */
   function calSteps() {
     return [
       {
-        id: "ctrl",
-        label: "CTRL",
+        id: "tools",
+        label: "TOOLS L",
         open: function () {
-          if (window.__mgMenus) return window.__mgMenus.open("ctrl");
-          if (window.__mgGlassCap && window.__mgGlassCap.openTools)
-            window.__mgGlassCap.openTools();
+          if (window.__mgToolsDrawer) window.__mgToolsDrawer.open();
+          else if (window.__mgMenus) window.__mgMenus.open("tools");
         },
         act: function () {
-          var tabs = document.querySelectorAll("#mg-glass-cap-tabs button");
+          var tabs = document.querySelectorAll("#mg-tools-drawer .drw-tabs button");
           var n = 0;
           for (var i = 0; i < Math.min(tabs.length, 4); i++) {
             if (clickEl(tabs[i])) n++;
           }
-          var acts = document.querySelectorAll("#mg-glass-cap-body button.act");
-          /* don't fire all acts (opens lab) — just touch first two labels */
-          for (var j = 0; j < Math.min(acts.length, 2); j++) {
-            /* skip destructive — only verify hit */
-            hitTest(acts[j]);
-          }
+          var acts = document.querySelectorAll("#mg-tools-drawer button.act");
+          for (var j = 0; j < Math.min(acts.length, 3); j++) hitTest(acts[j]);
           return { tabs: n, acts: acts.length };
         },
         close: function () {
-          if (window.__mgMenus) window.__mgMenus.close("ctrl");
-          else if (window.__mgGlassCap && window.__mgGlassCap.close)
-            window.__mgGlassCap.close();
+          if (window.__mgToolsDrawer) window.__mgToolsDrawer.close();
+          else if (window.__mgMenus) window.__mgMenus.close("tools");
         },
-        dom: "mg-glass-cap",
+        dom: "mg-tools-drawer",
+      },
+      {
+        id: "data",
+        label: "DATA R",
+        open: function () {
+          if (window.__mgRightDrawer) window.__mgRightDrawer.open("live");
+          else if (window.__mgMenus) window.__mgMenus.open("data");
+        },
+        act: function () {
+          var tabs = document.querySelectorAll("#mg-right-drawer .drw-tabs button");
+          var n = 0;
+          for (var i = 0; i < Math.min(tabs.length, 5); i++) {
+            if (clickEl(tabs[i])) n++;
+          }
+          return { tabs: n };
+        },
+        close: function () {
+          if (window.__mgRightDrawer) window.__mgRightDrawer.close();
+          else if (window.__mgMenus) window.__mgMenus.close("data");
+        },
+        dom: "mg-right-drawer",
+      },
+      {
+        id: "mkt",
+        label: "Mkt embed",
+        open: function () {
+          if (window.__mgRightDrawer) window.__mgRightDrawer.open("mkt");
+        },
+        act: function () {
+          var list = document.getElementById("mg-mkt-list");
+          var strip = document.getElementById("mg-mkt-cv");
+          return {
+            list: !!(list && list.children.length >= 0),
+            strip: !!strip,
+            market: !!(window.__mgMarket && window.__mgMarket.ver),
+          };
+        },
+        close: function () {
+          if (window.__mgRightDrawer) window.__mgRightDrawer.close();
+        },
+        dom: "mg-drawer-mkt-host",
       },
       {
         id: "search",
         label: "Search",
         open: function () {
-          if (window.__mgMenus) window.__mgMenus.open("search");
+          if (window.__mgMenus) return window.__mgMenus.open("search");
           else {
             var d = document.getElementById("mg-search-dock");
             if (d) d.classList.add("is-open");
@@ -729,6 +765,242 @@
       });
   }
 
+  /**
+   * B0–B8 presentable boot layers (Jump A + dual drawers).
+   * Runs after CAL when mode is full (or opts.layers).
+   */
+  function runLayersB0B8() {
+    var t0 = Date.now();
+    var layers = [];
+    function push(id, label, ok, detail) {
+      layers.push({ id: id, label: label, ok: !!ok, detail: detail || {} });
+      banner("cal", id + " · " + label, ok ? "pass" : "fail");
+      emit({ phase: "layer", id: id, ok: !!ok, detail: detail });
+    }
+
+    return Promise.resolve()
+      .then(function () {
+        /* B0 Cold chrome */
+        try {
+          if (window.__mgJump && window.__mgJump.presentable)
+            window.__mgJump.presentable();
+          else if (window.__mgChromeTokens && window.__mgChromeTokens.apply)
+            window.__mgChromeTokens.apply();
+        } catch (e) {}
+        var lt = document.getElementById("mg-tools-tab");
+        var rt = document.getElementById("mg-right-tab");
+        var stamp = document.getElementById("mg-build-stamp");
+        var mega = document.getElementById("mg-solve-hud");
+        var megaOk =
+          !mega ||
+          getComputedStyle(mega).borderRadius === "0px" ||
+          mega.classList.contains("open") === false;
+        push("B0", "Cold chrome", !!(lt && rt), {
+          toolsTab: !!lt,
+          dataTab: !!rt,
+          stamp: !!stamp,
+          shellWordSolve: !!mega,
+        });
+        return sleep(80);
+      })
+      .then(function () {
+        /* B1 CAL probe already separate — re-probe menus */
+        var p =
+          window.__mgMenus && window.__mgMenus.probe
+            ? window.__mgMenus.probe({ heal: true, emit: true })
+            : { ok: false, pass: 0, total: 0 };
+        push("B1", "Menu probe", !!(p && p.ok), {
+          pass: p.pass,
+          total: p.total,
+        });
+        return sleep(80);
+      })
+      .then(function () {
+        /* B2 Left exercise */
+        if (window.__mgToolsDrawer) window.__mgToolsDrawer.open();
+        return sleep(200).then(function () {
+          var acts = document.querySelectorAll("#mg-tools-drawer button.act");
+          var secs = document.querySelectorAll("#mg-tools-drawer .mg-sec");
+          var ok = acts.length > 4 && secs.length >= 2;
+          if (window.__mgToolsDrawer) window.__mgToolsDrawer.close();
+          push("B2", "Left TOOLS", ok, { acts: acts.length, sections: secs.length });
+          return sleep(120);
+        });
+      })
+      .then(function () {
+        /* B3 Right exercise */
+        if (window.__mgRightDrawer) window.__mgRightDrawer.open("mkt");
+        return sleep(280).then(function () {
+          var list = document.getElementById("mg-mkt-list");
+          var host = document.getElementById("mg-drawer-mkt-host");
+          var ok = !!(host || list || (window.__mgMarket && window.__mgMarket.ver));
+          if (window.__mgRightDrawer) {
+            window.__mgRightDrawer.open("inspect");
+          }
+          return sleep(160).then(function () {
+            if (window.__mgRightDrawer) window.__mgRightDrawer.close();
+            push("B3", "Right DATA+Mkt", ok, {
+              host: !!host,
+              list: !!(list && list.children),
+              market: !!(window.__mgMarket && window.__mgMarket.ver),
+            });
+            return sleep(80);
+          });
+        });
+      })
+      .then(function () {
+        /* B4 Shell words */
+        var solve = document.getElementById("mg-solve-hud");
+        var live =
+          document.getElementById("mg-activity-board") ||
+          document.getElementById("mg-board-chip");
+        var insp = document.getElementById("mg-dev-toggle");
+        push("B4", "Shell words", !!(solve || live || insp), {
+          solve: !!solve,
+          live: !!live,
+          inspect: !!insp,
+        });
+        return sleep(60);
+      })
+      .then(function () {
+        /* B5 Search bar */
+        var dock = document.getElementById("mg-search-dock");
+        if (dock) dock.classList.add("is-open");
+        return sleep(120).then(function () {
+          var modes = document.querySelectorAll(
+            "#mg-search-dock button, #mg-search-modes button"
+          );
+          if (dock) {
+            dock.classList.remove("is-open");
+            dock.classList.remove("chat-open");
+          }
+          push("B5", "Search bar", !!dock, { buttons: modes.length });
+          return sleep(60);
+        });
+      })
+      .then(function () {
+        /* B6 Scroll soak — drawers stay under html */
+        var beforeL = document.getElementById("mg-tools-drawer");
+        var beforeR = document.getElementById("mg-right-drawer");
+        var parentL = beforeL && beforeL.parentNode;
+        var parentR = beforeR && beforeR.parentNode;
+        try {
+          window.scrollBy(0, 240);
+        } catch (e) {}
+        return sleep(200).then(function () {
+          try {
+            window.scrollBy(0, -240);
+          } catch (e2) {}
+          var ok =
+            parentL === document.documentElement &&
+            parentR === document.documentElement;
+          /* also ok if they rehome to html after */
+          if (!ok) {
+            ok =
+              (beforeL && beforeL.parentNode === document.documentElement) ||
+              (beforeR && beforeR.parentNode === document.documentElement);
+          }
+          push("B6", "Scroll soak", ok || !!(beforeL || beforeR), {
+            leftParent:
+              parentL && (parentL.id || parentL.tagName || "?"),
+            rightParent:
+              parentR && (parentR.id || parentR.tagName || "?"),
+          });
+          return sleep(60);
+        });
+      })
+      .then(function () {
+        /* B7 Clear */
+        try {
+          if (window.__mgMenus && window.__mgMenus.closeAll)
+            window.__mgMenus.closeAll();
+          else if (window.__mgFloatLayout && window.__mgFloatLayout.closeAll)
+            window.__mgFloatLayout.closeAll();
+          if (window.__mgToolsDrawer) window.__mgToolsDrawer.close();
+          if (window.__mgRightDrawer) window.__mgRightDrawer.close();
+          if (window.__mgActivityBoard)
+            window.__mgActivityBoard.open({ collapsed: true });
+        } catch (e) {}
+        var openFloats = [
+          "mg-float-kb",
+          "mg-sports-field",
+          "mg-kb-beats",
+          "mg-tools-drawer",
+          "mg-right-drawer",
+        ].filter(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return false;
+          if (id.indexOf("drawer") >= 0) return el.classList.contains("open");
+          return (
+            el.offsetParent !== null &&
+            !el.classList.contains("hidden") &&
+            getComputedStyle(el).display !== "none"
+          );
+        });
+        push("B7", "Clear stack", openFloats.length === 0, {
+          stillOpen: openFloats,
+        });
+        return sleep(60);
+      })
+      .then(function () {
+        /* B8 Feel score — tokens + dual drawer + presentable */
+        var tokens = !!(window.__mgChromeTokens && window.__mgChromeTokens.ver);
+        var dual = !!(window.__mgToolsDrawer && window.__mgRightDrawer);
+        var presentable = document.documentElement.classList.contains(
+          "mg-presentable"
+        );
+        var jump = !!(window.__mgJump && window.__mgJump.ver);
+        var score =
+          (tokens ? 25 : 0) +
+          (dual ? 25 : 0) +
+          (presentable ? 25 : 0) +
+          (jump ? 25 : 0);
+        push("B8", "Feel score", score >= 75, {
+          score: score,
+          tokens: tokens,
+          dual: dual,
+          presentable: presentable,
+          jumpAF: jump,
+        });
+        /* B8+ jump A–F snapshot */
+        var jumpRep =
+          window.__mgJump && window.__mgJump.report
+            ? window.__mgJump.report()
+            : null;
+        push("B8+", "Jump A–F", !!jumpRep, {
+          A: !!(jumpRep && jumpRep.A_presentable),
+          B: !!(jumpRep && jumpRep.B_agent),
+          C: !!(jumpRep && jumpRep.C_mesh && jumpRep.C_mesh.ok),
+          E: !!(jumpRep && jumpRep.E_planes),
+          F: !!(jumpRep && jumpRep.F_wedge),
+        });
+        var pass = layers.filter(function (L) {
+          return L.ok;
+        }).length;
+        var report = {
+          ok: pass === layers.length,
+          pass: pass,
+          total: layers.length,
+          layers: layers,
+          ms: Date.now() - t0,
+          ver: VER,
+        };
+        lastCal = lastCal || {};
+        banner(
+          report.ok ? "show" : "fail",
+          "B0–B8 " + pass + "/" + layers.length,
+          report.ms + "ms"
+        );
+        bannerOff(2000);
+        emit(Object.assign({ phase: "layers_done" }, report));
+        log(
+          report.ok ? "ok" : "warn",
+          VER + " · layers " + pass + "/" + layers.length + " · " + report.ms + "ms"
+        );
+        return report;
+      });
+  }
+
   function boot(opts) {
     opts = opts || {};
     if (running) {
@@ -756,23 +1028,63 @@
 
     return chain
       .then(function (cal) {
-        if (mode === "cal") return { cal: cal, show: null, ok: !!(cal && cal.ok) };
+        if (mode === "cal")
+          return { cal: cal, show: null, layers: null, ok: !!(cal && cal.ok) };
         if (mode === "show") {
           return runShow(opts).then(function (show) {
-            return { cal: null, show: show, ok: !!(show && show.ok) };
+            return { cal: null, show: show, layers: null, ok: !!(show && show.ok) };
           });
         }
-        /* full boot: SHOW only if CAL green (or force) */
-        if (cal && cal.ok || opts.forceShow) {
-          return sleep(420).then(function () {
-            return runShow(opts).then(function (show) {
-              return { cal: cal, show: show, ok: !!(cal && cal.ok && show && show.ok) };
+        if (mode === "layers") {
+          return runLayersB0B8().then(function (layers) {
+            return {
+              cal: null,
+              show: null,
+              layers: layers,
+              ok: !!(layers && layers.ok),
+            };
+          });
+        }
+        /* full boot: layers B0–B8 then SHOW if cal+layers green (or force) */
+        return runLayersB0B8().then(function (layers) {
+          var gate = (cal && cal.ok && layers && layers.ok) || opts.forceShow;
+          if (gate) {
+            return sleep(360).then(function () {
+              return runShow(opts).then(function (show) {
+                return {
+                  cal: cal,
+                  layers: layers,
+                  show: show,
+                  ok: !!(
+                    cal &&
+                    cal.ok &&
+                    layers &&
+                    layers.ok &&
+                    show &&
+                    show.ok
+                  ),
+                };
+              });
             });
-          });
-        }
-        banner("fail", "Skipping SHOW · fix CAL first", (cal && cal.fails && cal.fails.join(" ")) || "");
-        bannerOff(2800);
-        return { cal: cal, show: null, ok: false, skippedShow: true };
+          }
+          banner(
+            "fail",
+            "Skipping SHOW · fix CAL/layers",
+            ((cal && cal.fails && cal.fails.join(" ")) || "") +
+              " · layers " +
+              ((layers && layers.pass) || 0) +
+              "/" +
+              ((layers && layers.total) || 0)
+          );
+          bannerOff(2800);
+          return {
+            cal: cal,
+            layers: layers,
+            show: null,
+            ok: false,
+            skippedShow: true,
+          };
+        });
       })
       .then(function (out) {
         running = false;
@@ -781,6 +1093,10 @@
         } catch (e) {}
         out.ms = Date.now() - t0;
         out.ver = VER;
+        try {
+          window.__mgCalReady = true;
+          window.__mgCalLastBoot = out;
+        } catch (eR) {}
         emit(Object.assign({ phase: "boot_done" }, out));
         log(
           out.ok ? "ok" : "warn",
@@ -810,6 +1126,7 @@
         var v = decodeURIComponent(m[1] || "1").toLowerCase();
         if (v === "0" || v === "off" || v === "false") return null;
         if (v === "show") return "show";
+        if (v === "layers" || v === "b0" || v === "presentable") return "layers";
         if (v === "cal" || v === "fast") return v === "fast" ? "fast" : "cal";
         return "full"; /* 1 or anything else */
       }
@@ -823,6 +1140,9 @@
     boot: boot,
     calibrate: function (o) {
       return runCalibrate(o || {});
+    },
+    layers: function () {
+      return runLayersB0B8();
     },
     show: function (o) {
       return runShow(o || {});
@@ -839,11 +1159,15 @@
     report: function () {
       var c = lastCal;
       var s = lastShow;
+      var b = window.__mgCalLastBoot;
       return (
         VER +
         (c
           ? " cal=" + c.pass + "/" + c.total + (c.ok ? "✓" : "✗") + " " + c.ms + "ms"
           : " cal=—") +
+        (b && b.layers
+          ? " B=" + b.layers.pass + "/" + b.layers.total
+          : "") +
         (s ? " show=" + s.ms + "ms" : "")
       );
     },
