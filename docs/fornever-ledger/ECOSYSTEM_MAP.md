@@ -1,7 +1,8 @@
 # Fornever Collective · Year Development Ecosystem Map
 
 **Policy:** ENUMERATE · LEARN · DOCUMENT. **Never delete repos.**  
-**Saved:** 2026-07-18 · living inventory for agents + bug bounty work.
+**Saved:** 2026-07-18 · living inventory for agents + bug bounty work.  
+**Upstream vs MG check:** 2026-07-23 → [`XAI-GROK-BUILD-VS-MG-TRAJECTORY.md`](./XAI-GROK-BUILD-VS-MG-TRAJECTORY.md) (product tree DRIFT · MG trajectory separate).
 
 ---
 

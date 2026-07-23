@@ -76,12 +76,18 @@ Path-checkout brings the open-source harness into the **workspace** Lab and tool
 
 | Pin | Value |
 |-----|--------|
-| Fork `main` tip (example) | check `git log -1 --oneline` |
-| `SOURCE_REV` | `ba69d70c2f7d70a130a323b2becdf137af784c7f` |
-| Upstream product tree | matches `upstream/main` via path-checkout content (verify exit 0) |
+| Fork `main` tip | path-checkout **2026-07-23** → matches `upstream/main` product tree |
+| Local `SOURCE_REV` | `95d84f443eddcbed6cbfd6eed22e2eafe6b3939d` |
+| Upstream tip | `69f0ba8` · `SOURCE_REV=95d84f443eddcbed6cbfd6eed22e2eafe6b3939d` |
+| Product tree vs tip | **MATCH** (after path-checkout + orphan prune) |
+| Shell | **0.2.111** |
 | Upstream remote | `https://github.com/xai-org/grok-build.git` |
 | Origin remote | `https://github.com/fornevercollective/grok-build.git` |
 | No merge-base with upstream | **expected** (unrelated histories) |
 
-Verified: `./scripts/verify-upstream-sync.sh` → product tree **OK** (crates / Cargo / SOURCE_REV / …).  
+**2026-07-23 verify:** working tree product paths match `upstream/main` (crates / Cargo.* / SOURCE_REV / prod / bin / `.cargo`).  
+Note: `git checkout REV -- crates/` does **not** delete orphans; prune files present on fork but absent on tip before verify.  
+
+**Trajectory check (xai vs MG):** [`docs/fornever-ledger/XAI-GROK-BUILD-VS-MG-TRAJECTORY.md`](fornever-ledger/XAI-GROK-BUILD-VS-MG-TRAJECTORY.md)  
+
 Memory Glass + Lab live only under `experiments/` and `docs/` — never path-checkout those from upstream.

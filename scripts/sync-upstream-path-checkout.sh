@@ -57,6 +57,32 @@ PY
   git add README.md 2>/dev/null || true
 fi
 
+# Prune product files still tracked on the fork but absent on $REV
+# (git checkout REV -- dir updates/adds; it does not delete orphans).
+echo "Pruning product-tree orphans not present on $REV …"
+python3 - "$REV" <<'PY'
+import subprocess, sys
+rev = sys.argv[1]
+paths = ["crates", "prod", "bin", "third_party"]
+orphan = []
+for p in paths:
+    try:
+        up = set(
+            subprocess.check_output(
+                ["git", "ls-tree", "-r", "--name-only", rev, p], text=True
+            ).splitlines()
+        )
+    except subprocess.CalledProcessError:
+        continue
+    tracked = subprocess.check_output(["git", "ls-files", p], text=True).splitlines()
+    for f in tracked:
+        if f not in up:
+            orphan.append(f)
+for f in orphan:
+    subprocess.run(["git", "rm", "-f", "--quiet", "--", f], check=False)
+print(f"  pruned {len(orphan)} orphan path(s)")
+PY
+
 echo ""
 echo "Staged monorepo product paths from $REV"
 echo "  SOURCE_REV=$(cat SOURCE_REV 2>/dev/null || echo '?')"

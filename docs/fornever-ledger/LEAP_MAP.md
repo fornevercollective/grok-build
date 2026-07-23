@@ -104,10 +104,11 @@ See `docs/fornever-ledger/PATTERN_STEAL.md`.
 | architecture-lab video-feed | VID implementation pattern |
 | fornevercollective/composer | Bloch lab links |
 
-## Git posture
+## Git posture (refreshed 2026-07-23 · post path-checkout)
 
-- **origin:** 0/0 when LEAP commits land
-- **upstream xai-org:** ~63 product commits ahead; 3 monorepo syncs behind; **unrelated roots** — cherry-pick crates only, never clobber `experiments/`
+- **upstream xai-org:** product tree **MATCH** tip · `SOURCE_REV=95d84f4…` · shell **0.2.111** · **unrelated roots** — path-checkout only, never merge, never clobber `experiments/`
+- **MG:** hotpipe **v32-contrails-live** · dual-space WebGrid · contrails/maze live mid-play
+- **Trajectory check:** [`XAI-GROK-BUILD-VS-MG-TRAJECTORY.md`](./XAI-GROK-BUILD-VS-MG-TRAJECTORY.md)
 
 ## Safety
 

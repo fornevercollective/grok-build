@@ -3,7 +3,7 @@
 **Purpose:** Durable list of things that break, cause issues, or are bounty-shaped (product reliability + security + fork hygiene).  
 **Policy:** Notate · reproduce · fix or escalate. **Do not delete evidence or repos.**  
 **Owners:** Fornever / Memory Glass / grok-build agents.  
-**Last updated:** 2026-07-18
+**Last updated:** 2026-07-21
 
 Severity: **S0** ship-blocker · **S1** high · **S2** medium · **S3** polish · **INFO** research
 
@@ -28,6 +28,7 @@ Severity: **S0** ship-blocker · **S1** high · **S2** medium · **S3** polish �
 | MG-013 | INFO | BPS mouse ≠ BCI | Inflated agent BPS | Synthetic pointer channel | Label demos; never claim implant parity | **Policy** |
 | MG-014 | S2 | Spaces fullscreen glass black | Vertical 2nd screen | Layer / scale | Reassert + fill CSS; may need simple FS | **Partial** |
 | MG-015 | S3 | Dock icon stale | After rebuild | LaunchServices cache | lsregister; killall Dock tip | **Known** |
+| MG-016 | S1 | Play kills contrails · scrim blocks maze | No trails; glitchy floats; board/maze blocked | quietPlayChrome off + openPlayFloats dead + scrim pe:auto on play | v32 ensurePlayContrails; scrim pe:none mid-play; z-index fix | **Mitigated** |
 
 ### Reproduce pack (MG-001)
 ```bash
@@ -128,3 +129,5 @@ echo "$(date -u +%Y-%m-%d) MG-0XX title — repro: …" >> \
 - `experiments/memory-glass/hotpipe/plans/OVERNIGHT_BROWSER.md`  
 - `experiments/memory-glass/hotpipe/SESSION_HANDOFF.md`  
 - `experiments/memory-glass/hotpipe/plans/COMPETITIVE_HARD_TRUTH.md`  
+
+| MG-042 | P0 | SIGABRT titlebar nil / IPC | tao titlebar_buttons_hidden null FullScreen button (macOS 26) | safe hide + ipc catch_unwind | fixed 2026-07-19 |
