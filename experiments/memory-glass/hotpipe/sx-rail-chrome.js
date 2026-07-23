@@ -1,10 +1,10 @@
 /* Memory Glass · glass morphism + Dragon capsule chrome (shared)
  * CTRL-style collapsed control menu (compact pill → Control Center grid).
- * VER: sx-rail-v4-ctrl
+ * VER: sx-rail-v11-row3-controls
  */
 (function () {
   "use strict";
-  var VER = "sx-rail-v9-inspect-board";
+  var VER = "sx-rail-v11-row3-controls";
   if (window.__mgSxRail && window.__mgSxRail.ver === VER) return;
 
   var CSS_ID = "mg-sx-rail-css";
@@ -66,11 +66,11 @@
       "@media (max-width:700px){",
       "  #mg-bloch-orb,#mg-rubik-orb{visibility:hidden!important;pointer-events:none!important}",
       "}",
-      /* ── CTRL · top-left Control Center (never sinks under search) ── */
+      /* ── Control Center · below 3-row header (after CTRL/INSPECT row) ── */
       "#mg-glass-cap{",
-      "  position:fixed;left:12px;right:auto;",
-      "  top:max(10px, env(safe-area-inset-top,0px));bottom:auto;",
-      "  transform:none;z-index:2147483004;",
+      "  position:fixed;left:10px;right:auto;",
+      "  top:var(--mg-chrome-below,102px);bottom:auto;",
+      "  transform:none;z-index:2147483003;",
       "  width:min(340px,88vw);max-height:min(72vh,620px);",
       "  display:flex;flex-direction:column;pointer-events:auto;",
       "  font:500 13px/1.25 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;",

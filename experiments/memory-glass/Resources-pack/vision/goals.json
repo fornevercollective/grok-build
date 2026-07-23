@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "schema": "mg.goals/v1",
+  "updated": "2026-07-20",
+  "northStar": "Native WKWebView lab droplet · still-pipe hub · phone fleet · dual-space train · collab mesh — without Electron bloat.",
+  "oneLiner": "Mini hub (no cam) + phone stream + laptop join + loud phone TTS + deploy desk with live chat log.",
+  "goals": [
+    {
+      "id": "G1",
+      "title": "Still-pipe hub always warm",
+      "status": "done",
+      "detail": "9877/9878 · live.jpg · audio-levels · protect while agents work"
+    },
+    {
+      "id": "G2",
+      "title": "Phone loud TTS + fleet link",
+      "status": "done",
+      "detail": "speak-local → /reply + m4a · phone-speak.js · fleet.html Mini↔laptop"
+    },
+    {
+      "id": "G3",
+      "title": "Deploy desk 4-col + spatial progress",
+      "status": "done",
+      "detail": "deploy.html columns · cube/gsplat health · relaunch desk"
+    },
+    {
+      "id": "G4",
+      "title": "Dog IK · Jinx Dorgi track",
+      "status": "shipped",
+      "detail": "dog-pose.js · COCO-SSD + short-leg long-body IK · multi-subject with human"
+    },
+    {
+      "id": "G5",
+      "title": "Deploy chat log + collapsible + plan/goals",
+      "status": "now",
+      "detail": "Live conversation/bus readouts · agent-style plan list · collapse sections"
+    },
+    {
+      "id": "G6",
+      "title": "STT noise filter (no false bro)",
+      "status": "open",
+      "detail": "Confirm phone transcripts before speaking · dial-in filters"
+    },
+    {
+      "id": "G7",
+      "title": "Names expand past bulk LIMIT",
+      "status": "deferred",
+      "detail": "Open names rebuild at higher LIMIT only when asked"
+    }
+  ],
+  "hurdles": [
+    { "id": "H0", "label": "Baseline shell + still-pipe", "status": "done" },
+    { "id": "H1", "label": "Hands / air pointer", "status": "done" },
+    { "id": "H6", "label": "Sub-16ms HUD path", "status": "done" },
+    { "id": "F1", "label": "Fleet multi-device", "status": "shipped" },
+    { "id": "D1", "label": "Dog/pet subject track", "status": "shipped" }
+  ],
+  "loop": {
+    "product": "WebGrid · contrail/Bloch/Rubik/maze · KBatch · collab mesh",
+    "not": "Dia/Comet clone · auto-X · implant claims · Electron",
+    "agent": [
+      "Hotpipe JS first under experiments/memory-glass/hotpipe/",
+      "Sync to Memory Glass.app Resources/hotpipe when using .app",
+      "Rust rebuild only for IPC / main.rs",
+      "Never kill still-server 9877/9878 without user ask",
+      "Update goals.json + GOALS.md when pillars ship"
+    ]
+  }
+}

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0c10" />
+  <title>Memory Glass · Fleet link</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <style>
+    :root { color-scheme: dark; --bg:#0a0c10; --line:rgba(255,255,255,.12); --text:#e8f0ff; --muted:#9ab; --ok:#6d6; --hot:#fc8; --acc:#8ecbff; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100dvh; background:var(--bg); color:var(--text); font:14px/1.45 system-ui,-apple-system,sans-serif; padding:14px; padding-bottom:max(20px,env(safe-area-inset-bottom)); }
+    h1 { font:700 13px/1.2 system-ui; letter-spacing:.12em; text-transform:uppercase; color:var(--hot); margin:0 0 6px; }
+    .sub { color:var(--muted); font:500 12px/1.4 ui-monospace,Menlo,monospace; margin-bottom:14px; }
+    .card { border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.04); padding:12px; margin-bottom:12px; }
+    .card h2 { margin:0 0 8px; font:650 11px/1 system-ui; letter-spacing:.1em; text-transform:uppercase; color:var(--acc); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .m { padding:8px; border-radius:10px; background:rgba(0,0,0,.25); border:1px solid var(--line); }
+    .m .k { font:650 9px/1 system-ui; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .m .v { font:700 13px/1.2 ui-monospace,Menlo,monospace; margin-top:4px; word-break:break-all; }
+    .ok { color:var(--ok); } .muted { color:var(--muted); }
+    button, a.btn { appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.08); color:var(--text); border-radius:10px; padding:10px 12px; font:650 12px/1 system-ui; cursor:pointer; text-decoration:none; display:inline-block; }
+    button.primary { background:rgba(10,132,255,.3); border-color:rgba(10,132,255,.5); }
+    button.hot { background:rgba(255,160,60,.2); color:var(--hot); }
+    .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    #live { width:100%; max-height:220px; object-fit:contain; border-radius:10px; background:#000; border:1px solid var(--line); }
+    #log { font:500 11px/1.4 ui-monospace,Menlo,monospace; color:var(--muted); max-height:180px; overflow:auto; white-space:pre-wrap; }
+    #log .you { color:var(--acc); } #log .lab { color:var(--ok); }
+    textarea { width:100%; min-height:56px; border-radius:10px; border:1px solid var(--line); background:rgba(0,0,0,.35); color:var(--text); padding:10px; font:500 14px/1.35 system-ui; resize:vertical; }
+    /* No top HTTPS banner — wave strip owns that slot */
+    .hdr {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      margin:0 -4px 8px; padding:calc(4px + env(safe-area-inset-top,0px)) 10px 8px;
+      background:rgba(10,12,16,0.52); backdrop-filter:blur(18px);
+      border:1px solid rgba(255,255,255,0.12); border-top:none; border-radius:0 0 10px 10px;
+    }
+    .hdr .ttl { font:700 10px/1 system-ui; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.78); }
+    .hdr .stamp { font:600 9px/1.2 ui-monospace,Menlo,monospace; color:rgba(160,210,255,0.75); margin-top:4px; }
+    #wave-box, .mg-wave {
+      margin:0 0 10px; padding:6px 8px 5px; border-radius:10px;
+      border:1px solid rgba(180,200,220,0.22); background:rgba(4,6,10,0.95);
+      display:flex; flex-direction:column; gap:2px;
+    }
+    #wave-box .whd, .mg-wave .whd {
+      display:flex; justify-content:space-between; font:650 9px/1 system-ui;
+      letter-spacing:0.12em; text-transform:uppercase; color:rgba(160,200,230,0.8);
+    }
+    #wave-box .whd .ws { color:rgba(120,220,160,0.9); font-weight:700; }
+    #wave-box .whd .ws.off { color:rgba(255,160,120,0.75); }
+    #wave-box .lane, .mg-wave .lane {
+      display:grid; grid-template-columns:16px 1fr 36px; gap:4px; align-items:center; height:22px;
+    }
+    #wave-box .lane .ch { font:700 10px/1 ui-monospace,Menlo,monospace; text-align:center; }
+    #wave-box .lane.L .ch { color:#6ec8ff; }
+    #wave-box .lane.R .ch { color:#ffb078; }
+    #wave-box .lane.M .ch { color:#7aebb0; }
+    #wave-box canvas, .mg-wave canvas {
+      width:100%; height:20px; display:block; border-radius:3px; background:rgba(0,0,0,0.45);
+    }
+    #wave-box .db { font:600 9px/1 ui-monospace,Menlo,monospace; color:rgba(150,180,210,0.75); text-align:right; }
+    #log .media { display:block; margin:6px 0 2px; max-width:200px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,190,100,0.35); }
+    #log .media img { display:block; width:100%; height:auto; max-height:160px; object-fit:cover; }
+    #log .snap { color:var(--hot); }
+    .phone-nav {
+      position:fixed; left:0; right:0; bottom:0; z-index:40;
+      display:grid; grid-template-columns:repeat(4,1fr); gap:2px;
+      padding:6px 8px max(8px, env(safe-area-inset-bottom));
+      background:rgba(8,10,14,0.92); border-top:1px solid rgba(255,255,255,0.1);
+    }
+    .phone-nav a {
+      display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px;
+      border-radius:8px; text-decoration:none; color:rgba(180,200,220,0.7);
+      font:650 9px/1 system-ui; letter-spacing:0.06em; text-transform:uppercase;
+    }
+    .phone-nav a.on { color:#8ecbff; }
+    body { padding-bottom: max(72px, calc(56px + env(safe-area-inset-bottom))); }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div>
+      <div class="ttl"><span style="opacity:.5">.</span>inspect · fleet</div>
+      <div class="stamp" id="sub">phone streams → Mini · laptop · chat · loud TTS</div>
+    </div>
+  </div>
+  <div id="mg-wave-slot"></div>
+
+  <div class="card">
+    <h2>Hub</h2>
+    <div class="grid" id="hub-grid"></div>
+    <div class="row">
+      <button type="button" class="primary" id="btn-join">Join as laptop</button>
+      <button type="button" id="btn-refresh">Refresh</button>
+      <button type="button" class="hot" id="btn-unlock">Unlock speaker</button>
+      <a class="btn" id="lnk-phone" href="/phone.html">Phone cam</a>
+      <a class="btn" id="lnk-chat" href="/phone-chat.html">Chat</a>
+      <a class="btn" id="lnk-talk" href="/phone-talk.html">Talk</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Peers</h2>
+    <div id="peers" class="muted">…</div>
+  </div>
+
+  <div class="card">
+    <h2>Still-pipe (phone → Mini)</h2>
+    <img id="live" alt="live" />
+    <div class="row muted" id="live-meta">waiting…</div>
+  </div>
+
+  <div class="card">
+    <h2>Snaps · Conversation</h2>
+    <div id="log">…</div>
+    <textarea id="input" placeholder="Message from laptop → hub / phone chat…"></textarea>
+    <div class="row">
+      <button type="button" class="primary" id="btn-send">Send</button>
+      <button type="button" id="btn-speak-last">Replay last Mini</button>
+    </div>
+  </div>
+
+  <nav class="phone-nav" aria-label="Primary">
+    <a href="/phone-chat.html"><span>◎</span>Chat</a>
+    <a href="/phone.html"><span>◉</span>Cam</a>
+    <a href="/phone-talk.html"><span>◌</span>Talk</a>
+    <a href="/fleet.html" class="on" aria-current="page"><span>◈</span>Fleet</a>
+  </nav>
+
+  <script src="/phone-wave.js?v=1"></script>
+  <script src="/phone-speak.js?v=1"></script>
+  <script>
+(function () {
+  var BASE = location.origin;
+  var stillHttp = location.protocol === "https:"
+    ? "https://" + location.hostname + ":" + (location.port || "9878")
+    : "http://" + location.hostname + ":" + (location.port || "9877");
+  /* Prefer same origin for APIs when already on 9877/9878 */
+  if (location.port === "9877" || location.port === "9878") stillHttp = location.origin;
+  if (window.__mgPhoneSpeak) window.__mgPhoneSpeak.setBase(stillHttp);
+  if (window.__mgPhoneWave) window.__mgPhoneWave.setBase(stillHttp);
+
+  var $ = function (id) { return document.getElementById(id); };
+  var secure = window.isSecureContext || location.protocol === "https:" ||
+    location.hostname === "localhost" || location.hostname === "127.0.0.1";
+
+  if (!secure) {
+    $("sub").textContent = "prefer HTTPS :9878 for mic/cam · hub still works";
+  }
+
+  function esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  }
+
+  function join() {
+    var id = localStorage.getItem("mg.fleet.laptopId") || "laptop-" + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem("mg.fleet.laptopId", id);
+    return fetch(stillHttp + "/fleet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: id,
+        role: "laptop",
+        name: "Laptop upstairs",
+        host: location.hostname,
+        caps: ["mg", "chat", "no-cam-ok", "fleet"],
+        ua: (navigator.userAgent || "").slice(0, 100),
+      }),
+    }).then(function (r) { return r.json(); });
+  }
+
+  function renderFleet(j) {
+    var hub = (j && j.hub) || {};
+    $("hub-grid").innerHTML =
+      '<div class="m"><div class="k">LAN</div><div class="v ok">' + esc(hub.host || "—") + "</div></div>" +
+      '<div class="m"><div class="k">HTTP / HTTPS</div><div class="v">' + esc(String(hub.http || 9877)) + " · " + esc(String(hub.https || 9878)) + "</div></div>" +
+      '<div class="m"><div class="k">Peers</div><div class="v">' + esc(String(j.n || 0)) + "</div></div>" +
+      '<div class="m"><div class="k">Hub id</div><div class="v muted">' + esc(j.self || "—") + "</div></div>";
+    $("sub").textContent = "hub " + (hub.host || "?") + " · join from laptop browser or Memory Glass → this URL";
+    if (hub.phone) $("lnk-phone").href = hub.phone;
+    if (hub.chat) $("lnk-chat").href = hub.chat;
+    var peers = (j && j.peers) || [];
+    if (!peers.length) {
+      $("peers").textContent = "no peers yet · phone + laptop should open hub and Join";
+      return;
+    }
+    $("peers").innerHTML = peers.map(function (p) {
+      var age = p.seen ? Math.round(Date.now() / 1000 - p.seen) : "—";
+      return "<div><b>" + esc(p.role) + "</b> · " + esc(p.name || p.id) +
+        " · " + esc(p.host || "") + " · seen " + age + "s · caps " + esc((p.caps || []).join(",") || "—") + "</div>";
+    }).join("");
+  }
+
+  function poll() {
+    fetch(stillHttp + "/fleet?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(renderFleet)
+      .catch(function (e) { $("peers").textContent = "fleet " + e; });
+
+    fetch(stillHttp + "/health?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (h) {
+        $("live-meta").textContent =
+          "live=" + !!h.live + " age=" + (h.live_age_s != null ? h.live_age_s.toFixed(1) + "s" : "—") +
+          " · levels=" + !!h.levels + " · peers=" + (h.peers || 0) +
+          (h.lan ? " · lan=" + h.lan : "");
+        if (h.live) $("live").src = stillHttp + "/live.jpg?t=" + Date.now();
+      })
+      .catch(function () {});
+
+    fetch(stillHttp + "/conversation?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var msgs = (j && j.messages) || [];
+        $("log").innerHTML = msgs.slice(-48).map(function (m) {
+          var cls = m.role === "assistant" ? "lab" : "you";
+          var kind = m.kind || (m.image ? "photo" : "text");
+          var media = "";
+          if (m.image) {
+            var src = m.image.charAt(0) === "/" ? stillHttp + m.image : m.image;
+            media = '<a class="media" href="' + esc(src) + '" target="_blank" rel="noopener">' +
+              '<img src="' + esc(src) + '" alt="" loading="lazy"/></a>';
+          }
+          var t = m.text || "";
+          if (m.image && /^phone snap$/i.test(t.trim())) t = "";
+          return '<div class="' + cls + (m.image ? " snap" : "") + '">[' +
+            esc((m.ts || "").slice(11, 19)) + "] " +
+            esc(m.role) + (kind !== "text" ? " · " + esc(kind) : "") + ": " +
+            esc(t) + (m.tts ? " · tts" : "") + media + "</div>";
+        }).join("") || "empty · snaps land here";
+        if (window.__mgPhoneSpeak) window.__mgPhoneSpeak.onMessages(msgs);
+      })
+      .catch(function () {});
+  }
+
+  $("btn-join").onclick = function () {
+    join().then(function () { poll(); $("btn-join").textContent = "Joined ✓"; });
+  };
+  $("btn-refresh").onclick = poll;
+  $("btn-unlock").onclick = function () {
+    if (window.__mgPhoneSpeak) window.__mgPhoneSpeak.unlock();
+    $("btn-unlock").textContent = "Speaker unlocked";
+  };
+  $("btn-send").onclick = function () {
+    var t = ($("input").value || "").trim();
+    if (!t) return;
+    fetch(stillHttp + "/transcript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: t, src: "laptop-fleet" }),
+    }).then(function () {
+      $("input").value = "";
+      poll();
+    });
+  };
+  $("btn-speak-last").onclick = function () {
+    if (window.__mgPhoneSpeak) {
+      window.__mgPhoneSpeak.unlock();
+      window.__mgPhoneSpeak.playUrl(stillHttp + "/tts/latest.m4a");
+      window.__mgPhoneSpeak.speakText && window.__mgPhoneSpeak.speakMessage({
+        role: "assistant",
+        text: "Replaying last reply.",
+        epoch: Date.now() / 1000,
+        tts_latest: "/tts/latest.m4a",
+      });
+    }
+  };
+
+  join().then(poll);
+  setInterval(poll, 2000);
+  setInterval(function () { join(); }, 30000);
+})();
+  </script>
+  <script src="/phone-pwa.js" defer></script>
+</body>
+</html>

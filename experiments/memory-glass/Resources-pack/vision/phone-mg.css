@@ -145,57 +145,130 @@ html, body.mg-phone {
   mask-image: none;
 }
 
-/* ── Top chrome (lean CTRL) ── */
+/* ── Top chrome · Memory Glass inspect float language ──
+ * Matches native inspect #hdr: glass plate · micro ttl · stamp · act chips */
 .mg-top {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: calc(0.4rem + var(--safe-t)) 0.75rem 0.4rem;
-  border-bottom: 1px solid var(--mg-line);
-  background: linear-gradient(180deg, rgba(12, 16, 24, 0.62), rgba(12, 16, 24, 0.28));
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  justify-content: space-between;
+  gap: 6px;
+  /* Compact — do not eat video / waveform vertical space */
+  padding: calc(4px + var(--safe-t)) 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 12, 16, 0.52);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   z-index: 20;
+  border-radius: 0 0 10px 10px;
+  margin: 0 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: calc(52px + var(--safe-t));
+}
+.mg-top .mg-top-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .mg-top .mark {
-  width: 22px; height: 22px; object-fit: contain; flex-shrink: 0;
-  filter: drop-shadow(0 0 8px rgba(110, 203, 255, 0.35));
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 10px rgba(110, 203, 255, 0.25);
+  background: rgba(8, 10, 14, 0.6);
 }
-.mg-top .title {
-  font-family: var(--mg-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
+.mg-top .mg-top-titles {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mg-top .title,
+.mg-top .ttl {
+  font: 700 10px/1 system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
 }
-.mg-top .title span { color: var(--mg-cyan); font-weight: 500; letter-spacing: 0.1em; }
-.mg-top .host {
-  margin-left: auto;
-  font-family: var(--mg-mono);
-  font-size: 0.55rem;
-  color: var(--mg-mute);
-  max-width: 38%;
+.mg-top .title .dot,
+.mg-top .ttl .dot {
+  opacity: 0.5;
+  margin-right: 6px;
+}
+.mg-top .title span,
+.mg-top .ttl span.mode {
+  color: rgba(160, 210, 255, 0.92);
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+.mg-top .host,
+.mg-top .stamp {
+  font: 600 9px/1.2 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.04em;
+  color: rgba(160, 210, 255, 0.72);
+  text-transform: none;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mg-top .host.on { color: var(--mg-ok); }
-.mg-top .ghost {
+.mg-top .host.on,
+.mg-top .stamp.on {
+  color: rgba(140, 240, 180, 0.95);
+}
+.mg-top .acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  max-width: 58%;
+  flex: 0 1 auto;
+}
+.mg-top .ghost,
+.mg-top .acts button {
   appearance: none;
-  border: 1px solid var(--mg-line);
-  background: var(--mg-glass);
-  color: var(--mg-dim);
-  font-family: var(--mg-mono);
-  font-size: 0.55rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.82);
+  font: 650 9px/1 system-ui, -apple-system, sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.32rem 0.48rem;
-  border-radius: 999px;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
+  padding: 6px 8px;
+  border-radius: 4px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
-.mg-top .ghost:active { border-color: rgba(110, 203, 255, 0.45); color: var(--mg-cyan); }
+.mg-top .ghost:active,
+.mg-top .acts button:active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.mg-top .ghost.primary,
+.mg-top .acts button.primary {
+  border-color: rgba(140, 200, 255, 0.45);
+  color: rgba(160, 210, 255, 0.95);
+}
+.mg-top .ghost.on,
+.mg-top .acts button.on {
+  border-color: rgba(100, 220, 160, 0.55);
+  color: rgba(140, 240, 180, 0.98);
+  background: rgba(60, 160, 110, 0.22);
+}
+
+/* standalone PWA: keep glass under status bar */
+html.mg-pwa-standalone .mg-top {
+  border-radius: 0 0 12px 12px;
+}
 
 /* ── Flagship glass orb (x.ai voice orbs language) ── */
 .mg-face {
@@ -479,6 +552,10 @@ html, body.mg-phone {
   opacity: 0.55;
   margin-left: 0.25rem;
 }
+.mg-log .line.snap {
+  border-color: rgba(255, 190, 100, 0.32);
+  background: rgba(60, 40, 12, 0.18);
+}
 
 /* ── Composer ── */
 .mg-compose {
@@ -611,19 +688,78 @@ html, body.mg-phone {
   box-shadow: 0 0 12px rgba(110, 203, 255, 0.2);
 }
 
-.mg-banner {
-  display: none;
-  margin: 0 0.7rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  background: rgba(40, 30, 10, 0.45);
-  color: #fde68a;
-  font-size: 0.68rem;
-  backdrop-filter: blur(10px);
+/* Top notification removed — wave strip owns this slot */
+.mg-banner { display: none !important; }
+
+/* Shared L/R/M waveforms (phone-wave.js · cam · chat · talk · fleet) */
+#wave-box,
+.mg-wave {
+  flex: 0 0 auto;
+  margin: 0.2rem 0.5rem 0.15rem;
+  padding: 6px 8px 5px;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 200, 220, 0.22);
+  background: rgba(4, 6, 10, 0.92);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  z-index: 15;
+  position: relative;
 }
-.mg-banner.show { display: block; }
-.mg-banner a { color: var(--mg-cyan); }
+#wave-box .whd,
+.mg-wave .whd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 650 9px/1 system-ui;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(160, 200, 230, 0.8);
+  padding: 0 2px 1px;
+}
+#wave-box .whd .ws,
+.mg-wave .whd .ws {
+  color: rgba(120, 220, 160, 0.9);
+  font-weight: 700;
+}
+#wave-box .whd .ws.off,
+.mg-wave .whd .ws.off {
+  color: rgba(255, 160, 120, 0.75);
+}
+#wave-box .lane,
+.mg-wave .lane {
+  display: grid;
+  grid-template-columns: 16px 1fr 36px;
+  gap: 4px;
+  align-items: center;
+  height: 22px;
+}
+#wave-box .lane .ch,
+.mg-wave .lane .ch {
+  font: 700 10px/1 ui-monospace, Menlo, monospace;
+  text-align: center;
+}
+#wave-box .lane.L .ch,
+.mg-wave .lane.L .ch { color: #6ec8ff; }
+#wave-box .lane.R .ch,
+.mg-wave .lane.R .ch { color: #ffb078; }
+#wave-box .lane.M .ch,
+.mg-wave .lane.M .ch { color: #7aebb0; }
+#wave-box canvas,
+.mg-wave canvas {
+  width: 100%;
+  height: 20px;
+  display: block;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.45);
+}
+#wave-box .db,
+.mg-wave .db {
+  font: 600 9px/1 ui-monospace, Menlo, monospace;
+  color: rgba(150, 180, 210, 0.75);
+  text-align: right;
+}
 
 .mg-toast {
   position: fixed;

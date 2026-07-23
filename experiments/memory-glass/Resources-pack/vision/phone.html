@@ -4,84 +4,657 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Memory Glass" />
+  <meta name="application-name" content="Memory Glass" />
+  <meta name="theme-color" content="#0a0c10" />
+  <link rel="manifest" href="/manifest.webmanifest?v=icon7" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" sizes="192x192" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
   <title>Memory Glass · phone cam</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
     body {
-      margin: 0; min-height: 100dvh; font-family: system-ui, sans-serif;
+      margin: 0; min-height: 100dvh; font-family: system-ui, -apple-system, sans-serif;
       background: #0a0e14; color: #e8f0ff; display: flex; flex-direction: column;
-      align-items: stretch; gap: 10px; padding: 12px;
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      align-items: stretch; gap: 10px; padding: 0 12px 12px;
+      padding-bottom: max(72px, calc(56px + env(safe-area-inset-bottom)));
     }
-    h1 { font-size: 1rem; font-weight: 600; margin: 0; letter-spacing: 0.04em; color: #8ecbff; }
-    .banner {
-      font-size: 13px; line-height: 1.35; padding: 10px 12px; border-radius: 10px;
-      background: #2a1a10; border: 1px solid #a06030; color: #ffd0a0;
-      display: none;
+    /* Inspect-float glass header — compact so video + wave stay visible */
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      margin: 0 -6px 4px; padding: calc(4px + env(safe-area-inset-top, 0px)) 10px 6px;
+      background: rgba(10,12,16,0.52);
+      backdrop-filter: blur(22px) saturate(1.35); -webkit-backdrop-filter: blur(22px) saturate(1.35);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.1);
+      flex-shrink: 0;
     }
-    .banner.show { display: block; }
-    .banner a { color: #8ecbff; word-break: break-all; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    button, select, label.filebtn {
-      flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid #2a3a50;
-      background: #152033; color: #e8f0ff; font-size: 15px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    .hdr .left { min-width: 0; display: flex; gap: 8px; align-items: flex-start; }
+    .hdr .left img {
+      width: 22px; height: 22px; border-radius: 6px; object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.16);
     }
-    button.go { background: #1a4a7a; border-color: #3a7ab8; }
-    button.stop { background: #4a1a1a; border-color: #a04040; }
-    button:disabled { opacity: 0.45; }
-    video, canvas, img#snap {
-      width: 100%; max-height: 42dvh; border-radius: 12px; background: #000;
-      object-fit: cover;
+    .hdr .ttl {
+      font: 700 10px/1 system-ui; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(255,255,255,0.78); margin: 0;
     }
-    canvas { display: none; }
+    .hdr .ttl .dot { opacity: 0.5; margin-right: 6px; }
+    .hdr .stamp {
+      font: 600 9px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.04em;
+      color: rgba(160,210,255,0.75); margin-top: 4px;
+    }
+    .hdr .acts { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 55%; }
+    .hdr .acts a, .hdr .acts button {
+      appearance: none; cursor: pointer; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.85); font: 650 9px/1 system-ui; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 6px 8px; border-radius: 4px; flex: 0 0 auto; min-height: 0;
+    }
+    h1 {
+      font-size: 1rem; font-weight: 650; margin: 0; letter-spacing: 0.04em;
+      color: #8ecbff; display: flex; align-items: center; gap: 8px;
+    }
+    h1 img { width: 28px; height: 28px; border-radius: 7px; }
+    #active-pill {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 999px; font: 700 10px/1 system-ui;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(40,40,48,0.75); color: rgba(200,210,220,0.7);
+    }
+    #active-pill .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #666;
+      box-shadow: none;
+    }
+    #active-pill.on {
+      border-color: rgba(80,220,140,0.55); color: rgba(160,255,200,0.98);
+      background: rgba(20,60,40,0.55);
+    }
+    #active-pill.on .dot {
+      background: #3dde80; box-shadow: 0 0 8px rgba(61,222,128,0.9);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    #active-pill.warn {
+      border-color: rgba(255,180,80,0.5); color: #ffd090;
+      background: rgba(60,40,12,0.55);
+    }
+    #active-pill.warn .dot { background: #f0a040; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    /* No top notification strip — waveforms own this slot */
+    .hdr {
+      max-height: calc(48px + env(safe-area-inset-top, 0px));
+      overflow: hidden;
+      margin-bottom: 0;
+    }
+    .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    /* Compact inspect-style control strip */
+    .ctl {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+      padding: 6px 8px; margin: 0 0 6px;
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8,10,14,0.72);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .ctl .grp {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 2px; border-radius: 8px; background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .ctl .lab {
+      font: 650 8px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(160,200,230,0.7); padding: 0 4px 0 2px;
+    }
+    .ctl button, .ctl select, .ctl label.filebtn {
+      appearance: none; flex: 0 0 auto;
+      min-height: 0; height: 28px; min-width: 0;
+      border-radius: 6px; border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.07); color: rgba(232,240,255,0.9);
+      font: 650 10px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 0 8px; display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .ctl select { padding: 0 4px; max-width: 72px; }
+    .ctl button.on {
+      border-color: rgba(100,220,160,0.55); color: rgba(160,255,200,0.98);
+      background: rgba(40,120,80,0.35);
+    }
+    .ctl button.go { border-color: rgba(80,160,220,0.45); color: rgba(160,210,255,0.95); }
+    .ctl button.go.live {
+      border-color: rgba(100,220,160,0.55); color: rgba(160,255,200,0.98);
+      background: rgba(30,100,60,0.4);
+    }
+    .ctl button.stop { border-color: rgba(255,120,120,0.4); color: rgba(255,180,180,0.95); }
+    .ctl button.snap {
+      border-color: rgba(255,190,100,0.45); color: rgba(255,210,140,0.98);
+    }
+    .ctl button:disabled { opacity: 0.4; }
+    /* Video + computer-talk panel side by side */
+    .stage-row {
+      display: grid;
+      grid-template-columns: 1fr minmax(96px, 34%);
+      gap: 8px;
+      align-items: stretch;
+      flex-shrink: 0;
+      height: min(38dvh, 320px);
+      max-height: 38dvh;
+    }
+    @media (max-width: 360px) {
+      .stage-row { grid-template-columns: 1fr 88px; }
+    }
+    /* Live camera only — no Mini still-pipe snapshot overlay */
+    .stage {
+      position: relative; width: 100%; height: 100%;
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid rgba(160,210,255,0.28);
+      background: #050608;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      min-height: 0;
+    }
+    .stage video, .stage img#snap {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      /* full frame visible (no crop) */
+      object-fit: contain; background: #050608; margin: 0; max-height: none;
+      border-radius: 0;
+    }
+    .stage video.mirror { transform: scaleX(-1); }
+    .stage .pip-lbl {
+      position: absolute; left: 8px; bottom: 6px; z-index: 3;
+      font: 650 8px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(180,220,255,0.75); text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+    .stage .pip-hover {
+      position: absolute; right: 6px; top: 6px; z-index: 4; display: flex; gap: 4px;
+    }
+    .stage .pip-hover button {
+      appearance: none; height: 26px; border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(8,10,14,0.72); color: rgba(255,255,255,0.9);
+      font: 700 9px/1 system-ui; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0 8px; cursor: pointer;
+    }
+    .stage .pip-hover button.on {
+      border-color: rgba(100,220,160,0.55); color: rgba(160,255,200,0.98);
+    }
+    /* AI agent rock / brand waveform — right of video */
+    .talk-pane {
+      position: relative;
+      border-radius: 14px;
+      border: 1px solid rgba(180, 160, 255, 0.28);
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 30%, rgba(90, 60, 160, 0.28), transparent 55%),
+        radial-gradient(ellipse 80% 60% at 50% 100%, rgba(20, 80, 120, 0.35), transparent 50%),
+        linear-gradient(165deg, #0a0c14 0%, #06080e 55%, #0c1018 100%);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      min-width: 0; min-height: 0;
+      box-shadow:
+        0 8px 28px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        inset 0 -20px 40px rgba(40, 20, 80, 0.15);
+    }
+    .talk-pane::before {
+      content: "";
+      position: absolute; inset: 0; pointer-events: none; z-index: 1;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.06), transparent 28%),
+        repeating-linear-gradient(
+          -18deg,
+          transparent,
+          transparent 11px,
+          rgba(255,255,255,0.015) 11px,
+          rgba(255,255,255,0.015) 12px
+        );
+      mix-blend-mode: soft-light;
+    }
+    .talk-pane .tp-hd {
+      position: relative; z-index: 2;
+      flex: 0 0 auto;
+      padding: 7px 9px 5px;
+      font: 700 8px/1 system-ui; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(200, 190, 255, 0.85);
+      display: flex; justify-content: space-between; align-items: center; gap: 4px;
+      border-bottom: 1px solid rgba(160, 140, 255, 0.15);
+      background: linear-gradient(180deg, rgba(30, 20, 50, 0.55), transparent);
+    }
+    .talk-pane .tp-hd .brand {
+      font: 800 8px/1 system-ui; letter-spacing: 0.16em;
+      background: linear-gradient(90deg, #8ecbff, #c4a0ff, #ff8ec8);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+    }
+    .talk-pane .tp-hd .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #456; box-shadow: none;
+    }
+    .talk-pane.speaking .tp-hd .dot {
+      background: #c4a0ff;
+      box-shadow: 0 0 12px rgba(196, 160, 255, 0.95), 0 0 4px #8ecbff;
+      animation: talk-pulse 0.7s ease-in-out infinite;
+    }
+    .talk-pane.speaking {
+      border-color: rgba(180, 140, 255, 0.55);
+      box-shadow:
+        0 0 28px rgba(120, 80, 220, 0.28),
+        0 0 40px rgba(60, 160, 255, 0.12),
+        inset 0 0 40px rgba(100, 60, 200, 0.12);
+    }
+    @keyframes talk-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+    .talk-pane canvas#talk-cv {
+      position: relative; z-index: 1;
+      display: block; width: 100%; flex: 1 1 auto; min-height: 0;
+      background: transparent;
+    }
+    /* text under wave removed — snaps chat is the only readout */
+    .talk-pane .tp-text { display: none !important; }
+    /* Chat + Talk dock under camera */
+    .chat-dock {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8,10,14,0.88);
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .chat-dock .cd-hd {
+      flex: 0 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      padding: 6px 8px;
+      font: 700 8px/1 system-ui; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(160,200,230,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .chat-dock .cd-hd .on { color: #6d6; }
+    #cam-chat-log {
+      flex: 1 1 auto;
+      min-height: 96px;
+      max-height: 28dvh;
+      overflow: auto;
+      padding: 6px 8px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    #cam-chat-log .line {
+      padding: 6px 8px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      font: 500 11px/1.35 system-ui;
+    }
+    #cam-chat-log .line.you {
+      border-color: rgba(140,200,255,0.28);
+      background: rgba(40,80,120,0.18);
+    }
+    #cam-chat-log .line.lab {
+      border-color: rgba(100,220,160,0.25);
+      background: rgba(30,80,50,0.16);
+    }
+    #cam-chat-log .line.snap {
+      border-color: rgba(255,190,100,0.35);
+      background: rgba(60,40,12,0.22);
+    }
+    #cam-chat-log .who {
+      display: block; font: 650 8px/1 system-ui; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(160,180,200,0.7); margin-bottom: 2px;
+    }
+    #cam-chat-log .kind-tag {
+      font: 650 8px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,200,120,0.8); margin-left: 4px;
+    }
+    #cam-chat-log .media {
+      display: block; margin: 6px 0 2px; max-width: min(100%, 220px);
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid rgba(255,190,100,0.35);
+      background: rgba(0,0,0,0.35);
+    }
+    #cam-chat-log .media img {
+      display: block; width: 100%; height: auto; max-height: 180px; object-fit: cover;
+    }
+    #cam-chat-log .link-chip {
+      display: inline-block; margin-top: 4px; padding: 4px 8px; border-radius: 999px;
+      border: 1px solid rgba(110,203,255,0.35); background: rgba(110,203,255,0.1);
+      color: #8ecbff; font: 600 10px/1.2 system-ui; text-decoration: none; word-break: break-all;
+    }
+    /* Bottom nav — shared across phone pages */
+    .phone-nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+      padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+      background: rgba(8,10,14,0.92);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .phone-nav a {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 6px 4px; border-radius: 8px; text-decoration: none;
+      color: rgba(180,200,220,0.7); font: 650 9px/1 system-ui;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .phone-nav a .ico {
+      width: 22px; height: 22px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; background: rgba(255,255,255,0.04);
+    }
+    .phone-nav a.on, .phone-nav a[aria-current="page"] {
+      color: #8ecbff;
+    }
+    .phone-nav a.on .ico, .phone-nav a[aria-current="page"] .ico {
+      border-color: rgba(110,203,255,0.4);
+      background: rgba(110,203,255,0.12);
+      box-shadow: 0 0 10px rgba(110,203,255,0.2);
+    }
+    .cd-compose {
+      flex: 0 0 auto;
+      display: flex; gap: 4px; align-items: stretch;
+      padding: 6px 6px max(6px, env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.25);
+    }
+    .cd-compose button.hold {
+      flex: 0 0 auto;
+      min-width: 64px;
+      border-radius: 8px;
+      border: 1px solid rgba(100,220,160,0.4);
+      background: rgba(30,90,60,0.35);
+      color: rgba(180,255,210,0.95);
+      font: 700 10px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 0 10px; cursor: pointer;
+    }
+    .cd-compose button#btn-speaker {
+      min-width: 44px;
+      border-color: rgba(255,190,100,0.5);
+      background: rgba(80,50,10,0.45);
+      color: #ffd090;
+      font-size: 16px;
+      letter-spacing: 0;
+      text-transform: none;
+      animation: talk-pulse 1.6s ease-in-out infinite;
+    }
+    .cd-compose button#btn-speaker.on {
+      animation: none;
+      border-color: rgba(100,220,160,0.55);
+      background: rgba(30,90,60,0.4);
+      color: #bfffd0;
+    }
+    .cd-compose button.hold.live {
+      background: rgba(200,60,60,0.45);
+      border-color: rgba(255,120,120,0.55);
+      color: #fff;
+      animation: talk-pulse 0.8s ease-in-out infinite;
+    }
+    .cd-compose input {
+      flex: 1; min-width: 0;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.4);
+      color: #e8f0ff;
+      font: 500 13px/1.3 system-ui;
+      padding: 8px 10px;
+    }
+    .cd-compose button.send {
+      flex: 0 0 auto;
+      border-radius: 8px;
+      border: 1px solid rgba(100,160,255,0.45);
+      background: rgba(20,80,140,0.45);
+      color: #cfe8ff;
+      font: 700 10px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 0 12px; cursor: pointer;
+    }
+    body {
+      /* use column flex so chat dock fills remaining space */
+      display: flex; flex-direction: column;
+    }
+    canvas#c { display: none; }
+    img#snap-thumb {
+      display: none; width: 56px; height: 56px; object-fit: cover;
+      border-radius: 8px; border: 1px solid rgba(255,190,100,0.4);
+    }
+    img#snap-thumb.show { display: block; }
     #log {
       font: 12px/1.4 ui-monospace, Menlo, monospace; color: #9ab;
       white-space: pre-wrap; min-height: 4em; flex: 1; overflow: auto;
     }
     input[type=file] { display: none; }
+    html.mg-pwa-standalone body { background: #080b10; }
+    html.mg-pwa-standalone #active-pill { min-height: 28px; }
+    /* Audio waveform L/R/M — top slot (replaces old HTTPS notification) */
+    #wave-box {
+      flex-shrink: 0;
+      border: 1px solid rgba(180,200,220,0.22); border-radius: 10px;
+      background: rgba(4,6,10,0.95); padding: 6px 8px 5px;
+      display: flex; flex-direction: column; gap: 2px;
+      margin: 0 0 2px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    }
+    #wave-box .whd {
+      display: flex; justify-content: space-between; align-items: center;
+      font: 650 9px/1 system-ui; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(160,200,230,0.8); padding: 0 2px 1px;
+    }
+    #wave-box .whd .ws { color: rgba(120,220,160,0.9); font-weight: 700; }
+    #wave-box .whd .ws.off { color: rgba(255,160,120,0.75); }
+    #wave-box .lane {
+      display: grid; grid-template-columns: 16px 1fr 36px; gap: 4px; align-items: center;
+      height: 22px;
+    }
+    #wave-box .lane .ch {
+      font: 700 10px/1 ui-monospace, Menlo, monospace; text-align: center;
+    }
+    #wave-box .lane.L .ch { color: #6ec8ff; }
+    #wave-box .lane.R .ch { color: #ffb078; }
+    #wave-box .lane.M .ch { color: #7aebb0; }
+    #wave-box canvas {
+      width: 100%; height: 20px; display: block; border-radius: 3px;
+      background: rgba(0,0,0,0.45); max-height: none;
+    }
+    #wave-box .db {
+      font: 600 9px/1 ui-monospace, Menlo, monospace; color: rgba(150,180,210,0.75);
+      text-align: right;
+    }
+    #stats {
+      display: none !important; /* was duplicate strip under video+agent wave */
+    }
+    /* message readout first priority under stage */
+    .chat-dock { order: 2; }
+    .stage-row { order: 1; }
+    #wave-box { order: 0; }
+    .ctl { order: 0; }
+
   </style>
 </head>
 <body>
-  <h1>MG PHONE → still-pipe</h1>
-  <div id="insecure" class="banner"></div>
-  <div class="row">
-    <select id="facing">
-      <option value="user">Front</option>
-      <option value="environment" selected>Back</option>
-    </select>
-    <select id="fps">
-      <option value="4">4 fps</option>
-      <option value="8" selected>8 fps</option>
-      <option value="12">12 fps</option>
-    </select>
+  <div class="hdr">
+    <div class="left">
+      <img src="/icons/icon-192.png" width="22" height="22" alt="" />
+      <div>
+        <div class="ttl"><span class="dot">.</span>inspect · phone · cam</div>
+        <div class="stamp" id="hdr-stamp">still-pipe · Mini hub</div>
+      </div>
+    </div>
+    <div class="acts">
+      <!-- Chat / Talk / Fleet live in bottom nav only — no top-right repeat -->
+      <div id="active-pill" title="Still-pipe link"><span class="dot"></span><span id="active-lab">idle</span></div>
+    </div>
   </div>
-  <div class="row">
-    <button class="go" id="start" type="button">Start → Mini</button>
-    <button class="stop" id="stop" type="button">Stop</button>
+
+  <!-- Waveforms in former top-notification slot -->
+  <div id="wave-box" aria-label="Audio waveform L R M">
+    <div class="whd"><span>AUDIO · L / R / M</span><span class="ws off" id="wave-src">idle</span></div>
+    <div class="lane L"><span class="ch">L</span><canvas id="wL" width="720" height="68"></canvas><span class="db" id="dbL">—</span></div>
+    <div class="lane R"><span class="ch">R</span><canvas id="wR" width="720" height="68"></canvas><span class="db" id="dbR">—</span></div>
+    <div class="lane M"><span class="ch">M</span><canvas id="wM" width="720" height="68"></canvas><span class="db" id="dbM">—</span></div>
   </div>
-  <div class="row">
-    <label class="filebtn" for="file">Snap (works on HTTP)</label>
+
+  <!-- Compact inspect-style controls -->
+  <div class="ctl" role="toolbar" aria-label="Cam controls">
+    <span class="lab">Cam</span>
+    <div class="grp" id="facing-grp">
+      <button type="button" class="on" id="face-front" data-facing="user">Front</button>
+      <button type="button" id="face-back" data-facing="environment">Back</button>
+    </div>
+    <span class="lab">Fps</span>
+    <div class="grp" id="fps-grp">
+      <button type="button" data-fps="4">4</button>
+      <button type="button" class="on" data-fps="8">8</button>
+      <button type="button" data-fps="12">12</button>
+      <button type="button" data-fps="16">16</button>
+    </div>
+    <button type="button" class="go" id="start">Stream</button>
+    <button type="button" class="stop" id="stop">Stop</button>
+    <button type="button" class="snap" id="btn-snap" title="Freeze frame → Mini still-pipe">Snap</button>
+    <button type="button" class="on" id="btn-hold-ctl" title="Hold to talk (speech → Mini)">Talk</button>
+    <label class="filebtn" for="file" title="Pick / capture photo">File</label>
     <input id="file" type="file" accept="image/*" capture="environment" />
+    <img id="snap-thumb" alt="" />
   </div>
-  <video id="v" playsinline autoplay muted></video>
-  <img id="snap" alt="" hidden />
+  <select id="facing" hidden>
+    <option value="user" selected>Front</option>
+    <option value="environment">Back</option>
+  </select>
+  <select id="fps" hidden>
+    <option value="4">4</option>
+    <option value="8" selected>8</option>
+    <option value="12">12</option>
+    <option value="16">16</option>
+  </select>
+
+  <!-- Live camera + computer-talk color panel (right) -->
+  <div class="stage-row">
+    <div class="stage" id="stage">
+      <video id="v" playsinline autoplay muted class="mirror"></video>
+      <img id="snap" alt="" hidden />
+      <div class="pip-hover">
+        <button type="button" id="btn-mirror" class="on" title="Selfie mirror">Flip</button>
+      </div>
+      <div class="pip-lbl" id="pip-lbl">live cam · stream → Mini</div>
+    </div>
+    <aside class="talk-pane" id="talk-pane" aria-label="AI agent waveform">
+      <div class="tp-hd">
+        <span class="brand">MG · rock wave</span>
+        <span class="dot" id="talk-dot" aria-hidden="true"></span>
+      </div>
+      <canvas id="talk-cv" width="240" height="320" aria-label="Agent rock waveform"></canvas>
+      <!-- no duplicate caption under wave — messages live in snaps chat only -->
+      <!-- talk-text removed: no caption under agent wave -->
+    </aside>
+  </div>
   <canvas id="c"></canvas>
-  <div id="log">…</div>
+  <div id="stats" hidden aria-hidden="true"></div>
+
+  <!-- Snaps + chat under the camera window -->
+  <section class="chat-dock" id="chat-dock" aria-label="Snaps chat">
+    <div class="cd-hd">
+      <span>Snaps · Chat</span>
+      <span id="cd-status" class="">idle</span>
+    </div>
+    <div id="cam-chat-log" role="log"></div>
+    <div class="cd-compose">
+      <button type="button" class="hold" id="btn-speaker" title="Unlock phone loud speaker (iOS needs one tap)">🔊</button>
+      <button type="button" class="hold" id="btn-hold" title="Tap to start/stop speech recognition">Talk</button>
+      <input id="chat-in" type="text" maxlength="2000" placeholder="Message Mini…" autocomplete="off" />
+      <button type="button" class="send" id="btn-send">Send</button>
+    </div>
+  </section>
+  <nav class="phone-nav" aria-label="Primary">
+    <a href="/phone-chat.html"><span class="ico">◎</span>Chat</a>
+    <a href="/phone.html" class="on" aria-current="page"><span class="ico">◉</span>Cam</a>
+    <a href="/phone-talk.html"><span class="ico">◌</span>Talk</a>
+    <a href="/fleet.html"><span class="ico">◈</span>Fleet</a>
+  </nav>
+  <div id="log" hidden>…</div>
   <script>
     (function () {
       var v = document.getElementById("v");
       var c = document.getElementById("c");
       var snap = document.getElementById("snap");
       var logEl = document.getElementById("log");
-      var banner = document.getElementById("insecure");
-      var stream = null, timer = null, n = 0, fails = 0;
+      var statsEl = document.getElementById("stats");
+      var pill = document.getElementById("active-pill");
+      var pillLab = document.getElementById("active-lab");
+      var startBtn = document.getElementById("start");
+      var stopBtn = document.getElementById("stop");
+      var snapBtn = document.getElementById("btn-snap");
+      var snapThumb = document.getElementById("snap-thumb");
+      var stageEl = document.getElementById("stage");
+      var pipLbl = document.getElementById("pip-lbl");
+      var facingSel = document.getElementById("facing");
+      var fpsSel = document.getElementById("fps");
+      var stream = null, timer = null, n = 0, fails = 0, lastOk = 0;
+      var wantActive = false;
+      var mirrorOn = true;
+      var wakeLock = null;
+      /* Computer-talk color pane (right of video) */
+      var talkPane = document.getElementById("talk-pane");
+      var talkText = null; /* captions only in snaps chat */
+      var talkCv = document.getElementById("talk-cv");
+      var talkCtx = talkCv ? talkCv.getContext("2d") : null;
+      var talkSpeaking = false;
+      var talkUntil = 0;
+      var talkPhase = 0;
+      var talkLastId = "";
+      var talkRaf = 0;
+      /* Talk (STT) + chat on cam page */
+      var rec = null;
+      var talkLive = false;
+      var chatLogEl = document.getElementById("cam-chat-log");
+      var chatIn = document.getElementById("chat-in");
+      var btnHold = document.getElementById("btn-hold");
+      var btnHoldCtl = document.getElementById("btn-hold-ctl");
+      var cdStatus = document.getElementById("cd-status");
+      var lastChatRender = "";
       var BASE = location.origin;
+      /* Audio wave L/R/M */
+      var ACTX = window.AudioContext || window.webkitAudioContext;
+      var audioCtx = null;
+      var analysers = { L: null, R: null, M: null };
+      var timeBuf = { L: null, R: null, M: null };
+      var waveRaf = 0;
+      var waveSrcEl = document.getElementById("wave-src");
+      var cvs = {
+        L: document.getElementById("wL"),
+        R: document.getElementById("wR"),
+        M: document.getElementById("wM"),
+      };
+      var dbs = {
+        L: document.getElementById("dbL"),
+        R: document.getElementById("dbR"),
+        M: document.getElementById("dbM"),
+      };
+      var COLORS = {
+        L: "rgba(110,200,255,0.98)",
+        R: "rgba(255,176,120,0.98)",
+        M: "rgba(122,235,176,0.98)",
+      };
+      var lastLevelsPost = 0;
       var secure = window.isSecureContext === true
         || location.protocol === "https:"
         || location.hostname === "localhost"
         || location.hostname === "127.0.0.1";
+
+      function isStandalone() {
+        try {
+          return (
+            window.matchMedia("(display-mode: standalone)").matches ||
+            window.navigator.standalone === true ||
+            /[?&]pwa=1\b/.test(location.search)
+          );
+        } catch (e) {
+          return false;
+        }
+      }
 
       function errText(e) {
         if (e == null) return "unknown";
@@ -94,6 +667,66 @@
       function log(msg, cls) {
         var line = (cls ? "[" + cls + "] " : "") + msg;
         logEl.textContent = line + "\n" + logEl.textContent.slice(0, 1400);
+      }
+
+      function setActive(state, label) {
+        /* state: idle | on | warn */
+        pill.classList.remove("on", "warn");
+        if (state === "on") pill.classList.add("on");
+        if (state === "warn") pill.classList.add("warn");
+        pillLab.textContent = label || state;
+        try {
+          document.documentElement.classList.toggle("mg-cam-active", state === "on");
+        } catch (e) {}
+        if (startBtn) {
+          startBtn.classList.toggle("live", state === "on");
+          startBtn.classList.toggle("on", state === "on");
+          startBtn.textContent = state === "on" ? "Active" : "Stream";
+        }
+        if (pipLbl) {
+          pipLbl.textContent =
+            state === "on"
+              ? "live cam · stream → Mini · #" + n
+              : "live cam · tap Stream";
+        }
+      }
+
+      function setFacing(mode) {
+        facingSel.value = mode === "environment" ? "environment" : "user";
+        document.querySelectorAll("#facing-grp button").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-facing") === facingSel.value);
+        });
+        /* front cam usually mirrored; back not */
+        mirrorOn = facingSel.value === "user";
+        v.classList.toggle("mirror", mirrorOn);
+        var bm = document.getElementById("btn-mirror");
+        if (bm) bm.classList.toggle("on", mirrorOn);
+      }
+      function setFps(f) {
+        f = String(Math.max(2, Math.min(20, +f || 8)));
+        fpsSel.value = f;
+        document.querySelectorAll("#fps-grp button").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-fps") === f);
+        });
+        if (timer && stream) {
+          clearInterval(timer);
+          timer = setInterval(tick, Math.round(1000 / (+f || 8)));
+          log("fps → " + f, "ok");
+        }
+      }
+
+      function updateStats() {
+        var age = lastOk ? ((Date.now() - lastOk) / 1000).toFixed(1) + "s" : "—";
+        var mode = isStandalone() ? "PWA" : "Safari";
+        statsEl.textContent =
+          mode +
+          " · frames " +
+          n +
+          " · last ok " +
+          age +
+          " · fails " +
+          fails +
+          (stream ? " · cam live" : " · cam off");
       }
 
       function gum() {
@@ -114,65 +747,374 @@
         return null;
       }
 
-      // iOS: camera live stream needs HTTPS (secure context). HTTP → mediaDevices is undefined.
+      async function requestWakeLock() {
+        try {
+          if (!("wakeLock" in navigator)) return;
+          if (wakeLock) return;
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", function () {
+            wakeLock = null;
+          });
+          log("wake lock on · keep screen active", "ok");
+        } catch (e) {
+          /* iOS may deny — ignore */
+        }
+      }
+
+      function releaseWakeLock() {
+        try {
+          if (wakeLock) wakeLock.release();
+        } catch (e) {}
+        wakeLock = null;
+      }
+
+      /* No top HTTPS banner — status lives in pill / stamp / stats only */
       if (!secure) {
-        var host = location.hostname;
-        var httpsUrl = "https://" + host + ":9878/phone.html";
-        banner.className = "banner show";
-        banner.innerHTML =
-          "<b>iPhone needs HTTPS for live cam.</b><br>" +
-          "HTTP blocks getUserMedia → “undefined is not an object”.<br>" +
-          "Open: <a href=\"" + httpsUrl + "\">" + httpsUrl + "</a><br>" +
-          "(Tap Advanced → proceed if self‑signed cert warning.) " +
-          "Or use <b>Snap</b> below on this HTTP page.";
-        document.getElementById("start").disabled = true;
-        log("insecure context · use HTTPS :9878 or Snap", "err");
+        startBtn.disabled = true;
+        setActive("warn", "need HTTPS");
+        try {
+          var st = document.getElementById("hdr-stamp");
+          if (st) st.textContent = "open https://" + location.hostname + ":9878 · cam";
+        } catch (eS) {}
+        log("insecure context · use HTTPS :9878", "err");
       } else {
-        log("secure · ready " + BASE, "ok");
+        log("secure · " + (isStandalone() ? "PWA standalone" : "browser") + " · " + BASE, "ok");
+        setActive("idle", isStandalone() ? "PWA ready" : "idle");
+      }
+
+      function setWaveSrc(lab, okOn) {
+        if (!waveSrcEl) return;
+        waveSrcEl.textContent = lab || "idle";
+        waveSrcEl.classList.toggle("off", !okOn);
+      }
+
+      function ensureAudioCtx() {
+        if (!ACTX) return null;
+        if (!audioCtx) {
+          try {
+            audioCtx = new ACTX();
+          } catch (e) {
+            return null;
+          }
+        }
+        if (audioCtx.state === "suspended") {
+          try {
+            audioCtx.resume();
+          } catch (e2) {}
+        }
+        return audioCtx;
+      }
+
+      function wireWaveFromStream(mediaStream) {
+        var ctx = ensureAudioCtx();
+        if (!ctx || !mediaStream) {
+          setWaveSrc("no audio", false);
+          return false;
+        }
+        var atracks = mediaStream.getAudioTracks();
+        if (!atracks || !atracks.length) {
+          setWaveSrc("no mic track", false);
+          return false;
+        }
+        try {
+          var src = ctx.createMediaStreamSource(mediaStream);
+          var mk = function () {
+            var a = ctx.createAnalyser();
+            a.fftSize = 2048;
+            a.smoothingTimeConstant = 0.7;
+            return a;
+          };
+          analysers.L = mk();
+          analysers.R = mk();
+          analysers.M = mk();
+          timeBuf.L = new Uint8Array(analysers.L.fftSize);
+          timeBuf.R = new Uint8Array(analysers.R.fftSize);
+          timeBuf.M = new Uint8Array(analysers.M.fftSize);
+          try {
+            var split = ctx.createChannelSplitter(2);
+            src.connect(split);
+            split.connect(analysers.L, 0);
+            split.connect(analysers.R, 1);
+            var gL = ctx.createGain();
+            var gR = ctx.createGain();
+            gL.gain.value = 0.5;
+            gR.gain.value = 0.5;
+            split.connect(gL, 0);
+            split.connect(gR, 1);
+            gL.connect(analysers.M);
+            gR.connect(analysers.M);
+          } catch (eSp) {
+            src.connect(analysers.L);
+            src.connect(analysers.R);
+            src.connect(analysers.M);
+          }
+          /* silent monitor */
+          var mute = ctx.createGain();
+          mute.gain.value = 0;
+          analysers.M.connect(mute);
+          mute.connect(ctx.destination);
+          setWaveSrc("mic · live", true);
+          if (!waveRaf) waveRaf = requestAnimationFrame(drawWave);
+          return true;
+        } catch (eW) {
+          setWaveSrc("wave fail", false);
+          return false;
+        }
+      }
+
+      function rms01(arr) {
+        if (!arr || !arr.length) return 0;
+        var s = 0;
+        for (var i = 0; i < arr.length; i++) {
+          var v = (arr[i] - 128) / 128;
+          s += v * v;
+        }
+        return Math.min(1, Math.sqrt(s / arr.length) * 2.4);
+      }
+
+      function drawLane(ch) {
+        var canvas = cvs[ch];
+        var an = analysers[ch];
+        var td = timeBuf[ch];
+        if (!canvas) return [];
+        var g = canvas.getContext("2d");
+        var w = canvas.width;
+        var h = canvas.height;
+        g.clearRect(0, 0, w, h);
+        g.strokeStyle = "rgba(255,255,255,0.07)";
+        g.beginPath();
+        g.moveTo(0, h / 2);
+        g.lineTo(w, h / 2);
+        g.stroke();
+        var samples = [];
+        if (an && td) {
+          an.getByteTimeDomainData(td);
+          g.strokeStyle = COLORS[ch];
+          g.lineWidth = 2;
+          g.beginPath();
+          var step = Math.max(1, Math.floor(td.length / w));
+          for (var x = 0; x < w; x++) {
+            var i = Math.min(td.length - 1, x * step);
+            var y = (td[i] / 255) * h;
+            samples.push((td[i] - 128) / 128);
+            if (x === 0) g.moveTo(x, y);
+            else g.lineTo(x, y);
+          }
+          g.stroke();
+          var r = rms01(td);
+          var db = r < 1e-4 ? -90 : 20 * Math.log10(r);
+          if (dbs[ch]) dbs[ch].textContent = db <= -89 ? "—∞" : db.toFixed(0) + "dB";
+        } else {
+          var t = performance.now() / 800;
+          g.strokeStyle = "rgba(120,140,160,0.4)";
+          g.beginPath();
+          for (var x2 = 0; x2 < w; x2++) {
+            var y2 = h / 2 + Math.sin(x2 * 0.05 + t) * 4;
+            if (x2 === 0) g.moveTo(x2, y2);
+            else g.lineTo(x2, y2);
+          }
+          g.stroke();
+          if (dbs[ch]) dbs[ch].textContent = "—";
+        }
+        /* downsample for POST */
+        var out = [];
+        var nS = 64;
+        if (samples.length) {
+          var st = Math.max(1, Math.floor(samples.length / nS));
+          for (var j = 0; j < nS; j++) out.push(samples[Math.min(samples.length - 1, j * st)]);
+        }
+        return out;
+      }
+
+      function postLevels(payload) {
+        var now = Date.now();
+        if (now - lastLevelsPost < 80) return;
+        lastLevelsPost = now;
+        try {
+          fetch(BASE + "/audio-levels", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            cache: "no-store",
+            keepalive: true,
+          }).catch(function () {});
+        } catch (e) {}
+      }
+
+      function drawWave() {
+        var wL = drawLane("L");
+        var wR = drawLane("R");
+        var wM = drawLane("M");
+        if (wantActive && analysers.M && timeBuf.M) {
+          postLevels({
+            src: "phone-pwa",
+            L: rms01(timeBuf.L),
+            R: rms01(timeBuf.R),
+            M: rms01(timeBuf.M),
+            peak: Math.max(rms01(timeBuf.L), rms01(timeBuf.R), rms01(timeBuf.M)),
+            wave: { L: wL, R: wR, M: wM },
+          });
+        }
+        waveRaf = requestAnimationFrame(drawWave);
       }
 
       async function start() {
-        stop();
+        wantActive = true;
+        stop(true);
+        setActive("warn", "starting…");
+        setWaveSrc("starting…", false);
         var get = gum();
         if (!get) {
           log(
-            "Camera API missing. On iPhone open HTTPS: https://" +
-              location.hostname + ":9878/phone.html  (not plain http)",
+            "Camera API missing. Open HTTPS PWA: https://" +
+              location.hostname + ":9878/phone.html",
             "err"
           );
+          setActive("warn", "no cam API");
           return;
         }
-        var facing = document.getElementById("facing").value;
+        var facing = facingSel.value || "user";
         try {
+          /* video + audio so waveform is live in PWA and levels reach Mini inspect */
           stream = await get({
-            audio: false,
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              channelCount: { ideal: 2 },
+            },
             video: {
               facingMode: { ideal: facing },
-              width: { ideal: 960 },
-              height: { ideal: 720 }
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 24 },
             }
           });
         } catch (e) {
-          log("cam denied: " + errText(e), "err");
-          return;
+          /* fallback video-only if mic denied */
+          try {
+            stream = await get({
+              audio: false,
+              video: {
+                facingMode: { ideal: facing },
+                width: { ideal: 960 },
+                height: { ideal: 720 }
+              }
+            });
+            log("mic denied · video only · " + errText(e), "err");
+          } catch (e2) {
+            log("cam denied: " + errText(e2), "err");
+            setActive("warn", "cam denied");
+            return;
+          }
         }
         v.hidden = false;
         snap.hidden = true;
         v.srcObject = stream;
         try { await v.play(); } catch (e) { log("play: " + errText(e), "err"); }
-        var fps = Math.max(2, Math.min(20, +document.getElementById("fps").value || 8));
+        wireWaveFromStream(stream);
+        var fps = Math.max(2, Math.min(20, +fpsSel.value || 8));
         n = 0; fails = 0;
-        log("streaming → " + BASE + "/upload @ " + fps + " fps", "ok");
+        log(
+          "STREAM → " + BASE + "/upload @ " + fps + " fps · inspect-style still-pipe · " +
+            (isStandalone() ? "PWA" : "web"),
+          "ok"
+        );
         timer = setInterval(tick, Math.round(1000 / fps));
+        setActive("on", "active");
+        await requestWakeLock();
+        try {
+          localStorage.setItem("mg.phone.wantActive", "1");
+        } catch (eL) {}
+        updateStats();
       }
 
-      function stop() {
+      /** One-shot snap from live video (or last frame) → Mini still-pipe + optional share */
+      function snapNow() {
+        function encodeAndSend(drawFn) {
+          try {
+            drawFn();
+          } catch (eD) {
+            log("snap draw: " + errText(eD), "err");
+            return;
+          }
+          var quality = 0.88;
+          if (c.toBlob) {
+            c.toBlob(function (blob) {
+              if (!blob) return;
+              postBlob(blob);
+              /* also land in shares + snaps chat under the window */
+              try {
+                var fd = new FormData();
+                fd.append("file", blob, "snap-" + Date.now() + ".jpg");
+                fd.append("text", "phone snap");
+                fd.append("src", "phone-snap");
+                fetch(BASE + "/share", { method: "POST", body: fd, cache: "no-store" })
+                  .then(function () {
+                    lastChatRender = "";
+                    pollComputerTalk();
+                    setCdStatus("snap sent", true);
+                  })
+                  .catch(function () {});
+              } catch (eS) {}
+              if (snapThumb) {
+                snapThumb.src = URL.createObjectURL(blob);
+                snapThumb.classList.add("show");
+              }
+              /* optimistic local thumb — newest first (top, under video) */
+              if (chatLogEl) {
+                var localUrl = URL.createObjectURL(blob);
+                var row = document.createElement("div");
+                row.className = "line you snap";
+                row.innerHTML =
+                  '<span class="who">you · now</span><span class="kind-tag">snap</span>' +
+                  '<a class="media" href="' +
+                  localUrl +
+                  '" target="_blank" rel="noopener"><img src="' +
+                  localUrl +
+                  '" alt=""/></a>';
+                if (chatLogEl.firstChild) chatLogEl.insertBefore(row, chatLogEl.firstChild);
+                else chatLogEl.appendChild(row);
+                chatLogEl.scrollTop = 0;
+              }
+              log("SNAP → Mini " + blob.size + " B", "ok");
+              if (pipLbl) pipLbl.textContent = "pip · snap sent";
+            }, "image/jpeg", quality);
+          }
+        }
+        if (stream && v.videoWidth > 2) {
+          encodeAndSend(function () {
+            var w = v.videoWidth, h = v.videoHeight;
+            var maxW = 1280;
+            if (w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
+            c.width = w; c.height = h;
+            var cx = c.getContext("2d");
+            /* snap is unmirrored for Mini (raw still-pipe space) */
+            cx.drawImage(v, 0, 0, w, h);
+          });
+          return;
+        }
+        /* no live stream — open file picker as fallback */
+        document.getElementById("file").click();
+      }
+
+      function stop(soft) {
+        if (!soft) wantActive = false;
         if (timer) { clearInterval(timer); timer = null; }
         if (stream) {
           stream.getTracks().forEach(function (t) { try { t.stop(); } catch (_) {} });
           stream = null;
         }
         v.srcObject = null;
+        analysers.L = analysers.R = analysers.M = null;
+        if (!soft) {
+          releaseWakeLock();
+          setActive("idle", isStandalone() ? "PWA idle" : "idle");
+          setWaveSrc("idle", false);
+          try {
+            localStorage.setItem("mg.phone.wantActive", "0");
+          } catch (eL) {}
+        }
+        updateStats();
       }
 
       function postBlob(blob) {
@@ -187,10 +1129,15 @@
           return r.json();
         }).then(function (j) {
           n += 1; fails = 0;
-          if (n % 6 === 1) log("frame #" + n + " " + (j.bytes || blob.size) + " B", "ok");
+          lastOk = Date.now();
+          setActive("on", "active · #" + n);
+          if (n % 8 === 1) log("frame #" + n + " " + (j.bytes || blob.size) + " B", "ok");
+          updateStats();
         }).catch(function (e) {
           fails += 1;
+          setActive(fails > 5 ? "warn" : "on", fails > 5 ? "link fail" : "active");
           if (fails <= 3 || fails % 10 === 0) log("upload fail: " + errText(e), "err");
+          updateStats();
         });
       }
 
@@ -204,7 +1151,6 @@
         if (c.toBlob) {
           c.toBlob(function (blob) { postBlob(blob); }, "image/jpeg", 0.72);
         } else {
-          // older WebKit fallback
           try {
             var dataUrl = c.toDataURL("image/jpeg", 0.72);
             var bin = atob(dataUrl.split(",")[1]);
@@ -217,23 +1163,50 @@
         }
       }
 
-      document.getElementById("start").onclick = function () {
+      startBtn.onclick = function () {
+        if (stream && timer) {
+          /* already streaming — treat as stop toggle optional */
+          log("already streaming · tap Stop to end", "ok");
+          return;
+        }
         start().catch(function (e) { log("start: " + errText(e), "err"); });
       };
-      document.getElementById("stop").onclick = function () {
-        stop();
+      stopBtn.onclick = function () {
+        stop(false);
         log("stopped", "ok");
       };
+      if (snapBtn) snapBtn.onclick = function () { snapNow(); };
 
-      // HTTP-safe: one photo at a time via capture input (iOS allows this without secure context)
+      document.querySelectorAll("#facing-grp button").forEach(function (b) {
+        b.onclick = function () {
+          var mode = b.getAttribute("data-facing");
+          setFacing(mode);
+          if (stream) {
+            start().catch(function (e) { log("switch cam: " + errText(e), "err"); });
+          }
+        };
+      });
+      document.querySelectorAll("#fps-grp button").forEach(function (b) {
+        b.onclick = function () { setFps(b.getAttribute("data-fps")); };
+      });
+      var btnMirror = document.getElementById("btn-mirror");
+      if (btnMirror) {
+        btnMirror.onclick = function () {
+          mirrorOn = !mirrorOn;
+          v.classList.toggle("mirror", mirrorOn);
+          btnMirror.classList.toggle("on", mirrorOn);
+        };
+      }
+      setFacing("user");
+      setFps("8");
+
       document.getElementById("file").onchange = function (ev) {
         var f = ev.target.files && ev.target.files[0];
         if (!f) return;
         var url = URL.createObjectURL(f);
         snap.hidden = false;
-        v.hidden = true;
         snap.onload = function () {
-          var maxW = 720;
+          var maxW = 1280;
           var w = snap.naturalWidth || 720;
           var h = snap.naturalHeight || 960;
           if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
@@ -241,13 +1214,590 @@
           c.getContext("2d").drawImage(snap, 0, 0, w, h);
           c.toBlob(function (blob) {
             postBlob(blob);
-            log("snap uploaded " + (blob && blob.size) + " B", "ok");
-          }, "image/jpeg", 0.8);
+            if (snapThumb && blob) {
+              snapThumb.src = URL.createObjectURL(blob);
+              snapThumb.classList.add("show");
+            }
+            log("file snap → Mini " + (blob && blob.size) + " B", "ok");
+          }, "image/jpeg", 0.88);
           URL.revokeObjectURL(url);
+          setTimeout(function () { snap.hidden = true; }, 400);
         };
         snap.src = url;
         ev.target.value = "";
       };
+
+      /* Resume when PWA comes back to foreground */
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") {
+          if (wantActive && !stream && secure) {
+            log("resume · re-activate still-pipe", "ok");
+            start().catch(function (e) { log("resume: " + errText(e), "err"); });
+          } else if (wantActive) {
+            requestWakeLock();
+          }
+        }
+      });
+      window.addEventListener("pageshow", function (ev) {
+        if (ev.persisted && wantActive && !stream && secure) {
+          start().catch(function () {});
+        }
+      });
+      window.addEventListener("online", function () {
+        if (wantActive && !stream && secure) start().catch(function () {});
+      });
+
+      /* Auto-ACTIVE when launched as installed PWA (or ?auto=1) */
+      function maybeAutoStart() {
+        if (!secure) return;
+        var auto =
+          isStandalone() ||
+          /[?&]auto=1\b/.test(location.search) ||
+          (function () {
+            try {
+              return localStorage.getItem("mg.phone.wantActive") === "1";
+            } catch (e) {
+              return false;
+            }
+          })();
+        if (!auto) return;
+        log("PWA auto-active · starting still-pipe", "ok");
+        setTimeout(function () {
+          start().catch(function (e) {
+            log("auto-start: " + errText(e) + " · tap Start", "err");
+            setActive("warn", "tap Start");
+          });
+        }, 350);
+      }
+
+      window.__mgPhoneCam = {
+        start: start,
+        stop: function () { stop(false); },
+        snap: snapNow,
+        setFps: setFps,
+        setFacing: setFacing,
+        isActive: function () { return !!stream && !!timer; },
+        standalone: isStandalone,
+        frames: function () { return n; },
+      };
+
+      /* ── Color talk pane: show when Mini / computer is speaking ── */
+      function setTalkSpeaking(on, text, durMs) {
+        talkSpeaking = !!on;
+        if (talkPane) talkPane.classList.toggle("speaking", talkSpeaking);
+        /* text readout lives only in snaps chat — no duplicate under wave */
+        if (on) {
+          talkUntil = Date.now() + (durMs || 4000);
+        }
+      }
+
+      function estimateSpeakMs(text) {
+        var w = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+        return Math.max(2200, Math.min(22000, 420 * w + 1200));
+      }
+
+      /* Rock / brand agent waveform — crystalline mountain + ribbon + mirror */
+      var talkSeed = [];
+      for (var si = 0; si < 48; si++) {
+        talkSeed.push(0.35 + 0.65 * Math.abs(Math.sin(si * 1.7 + 0.4) * Math.cos(si * 0.55)));
+      }
+
+      function rockAmp(i, n, phase, hot) {
+        var u = i / Math.max(1, n - 1);
+        /* mountain envelope — tall center mass, tapered edges (rock silhouette) */
+        var env = Math.pow(Math.sin(Math.PI * u), 1.35);
+        var grain =
+          talkSeed[i % talkSeed.length] *
+          (0.55 + 0.45 * Math.sin(phase * 1.1 + i * 0.55));
+        var pulse = hot
+          ? 0.55 +
+            0.45 * Math.abs(Math.sin(phase * 2.2 + i * 0.38)) *
+              (0.5 + 0.5 * Math.sin(phase * 0.7 + i * 0.15))
+          : 0.12 + 0.08 * Math.abs(Math.sin(phase * 0.35 + i * 0.2));
+        return env * (0.35 + 0.65 * grain) * pulse;
+      }
+
+      function drawTalkViz() {
+        talkRaf = requestAnimationFrame(drawTalkViz);
+        if (!talkCtx || !talkCv) return;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        var cssW = talkCv.clientWidth || 120;
+        var cssH = talkCv.clientHeight || 200;
+        var tw = Math.floor(cssW * dpr);
+        var th = Math.floor(cssH * dpr);
+        if (talkCv.width !== tw || talkCv.height !== th) {
+          talkCv.width = tw;
+          talkCv.height = th;
+        }
+        talkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var W = cssW,
+          H = cssH;
+        talkCtx.clearRect(0, 0, W, H);
+
+        if (talkSpeaking && Date.now() > talkUntil) {
+          setTalkSpeaking(false);
+        }
+        talkPhase += talkSpeaking ? 0.14 : 0.035;
+        var hot = talkSpeaking;
+        var midY = H * 0.52;
+
+        /* deep void + aurora wash */
+        var bg = talkCtx.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, hot ? "rgba(28,18,55,0.95)" : "rgba(12,14,22,0.92)");
+        bg.addColorStop(0.5, "rgba(6,8,14,0.4)");
+        bg.addColorStop(1, hot ? "rgba(10,30,50,0.9)" : "rgba(8,10,16,0.95)");
+        talkCtx.fillStyle = bg;
+        talkCtx.fillRect(0, 0, W, H);
+
+        /* floating brand orbs */
+        for (var o = 0; o < 4; o++) {
+          var ox = W * (0.15 + o * 0.22) + Math.sin(talkPhase * 0.6 + o) * 6;
+          var oy = H * (0.2 + 0.12 * Math.sin(talkPhase * 0.4 + o * 1.3));
+          var rad = (hot ? 22 : 14) + 6 * Math.sin(talkPhase + o);
+          var rg = talkCtx.createRadialGradient(ox, oy, 0, ox, oy, rad);
+          var hues = [
+            "110,200,255",
+            "180,140,255",
+            "255,130,200",
+            "100,230,180",
+          ];
+          rg.addColorStop(0, "rgba(" + hues[o] + "," + (hot ? 0.28 : 0.1) + ")");
+          rg.addColorStop(1, "transparent");
+          talkCtx.fillStyle = rg;
+          talkCtx.beginPath();
+          talkCtx.arc(ox, oy, Math.abs(rad), 0, Math.PI * 2);
+          talkCtx.fill();
+        }
+
+        var bars = Math.max(18, Math.floor(W / 5.5));
+        var gap = 1.5;
+        var bw = (W - gap * (bars + 1)) / bars;
+        var maxH = H * (hot ? 0.42 : 0.22);
+
+        /* mirrored rock mass (bottom reflection first so crest sits on top) */
+        function paintRock(sign, alphaMul) {
+          for (var i = 0; i < bars; i++) {
+            var amp = rockAmp(i, bars, talkPhase, hot);
+            var bh = Math.max(2, maxH * amp);
+            var x = gap + i * (bw + gap);
+            var y0 = midY;
+            /* crystalline facet: trapezoid-ish bar with top bevel */
+            var top = sign < 0 ? y0 - bh : y0;
+            var bot = sign < 0 ? y0 : y0 + bh * 0.92;
+
+            var lg = talkCtx.createLinearGradient(x, top, x + bw, bot);
+            if (hot) {
+              var t = i / bars;
+              lg.addColorStop(0, "rgba(140,220,255," + 0.95 * alphaMul + ")");
+              lg.addColorStop(0.35, "rgba(180,150,255," + 0.9 * alphaMul + ")");
+              lg.addColorStop(0.7, "rgba(255,140,200," + 0.75 * alphaMul + ")");
+              lg.addColorStop(1, "rgba(40,20,80," + 0.35 * alphaMul + ")");
+            } else {
+              lg.addColorStop(0, "rgba(90,110,150," + 0.45 * alphaMul + ")");
+              lg.addColorStop(1, "rgba(30,40,60," + 0.2 * alphaMul + ")");
+            }
+            talkCtx.fillStyle = lg;
+            /* rock facet path */
+            talkCtx.beginPath();
+            var bevel = Math.min(bw * 0.35, 3.5);
+            if (sign < 0) {
+              talkCtx.moveTo(x + bevel, top);
+              talkCtx.lineTo(x + bw - bevel, top);
+              talkCtx.lineTo(x + bw, bot);
+              talkCtx.lineTo(x, bot);
+            } else {
+              talkCtx.moveTo(x, top);
+              talkCtx.lineTo(x + bw, top);
+              talkCtx.lineTo(x + bw - bevel, bot);
+              talkCtx.lineTo(x + bevel, bot);
+            }
+            talkCtx.closePath();
+            talkCtx.fill();
+
+            /* bright ridge edge */
+            if (hot && amp > 0.25) {
+              talkCtx.strokeStyle = "rgba(255,255,255," + 0.35 * alphaMul + ")";
+              talkCtx.lineWidth = 1;
+              talkCtx.beginPath();
+              if (sign < 0) {
+                talkCtx.moveTo(x + bevel, top);
+                talkCtx.lineTo(x + bw - bevel, top);
+              } else {
+                talkCtx.moveTo(x + bevel, bot);
+                talkCtx.lineTo(x + bw - bevel, bot);
+              }
+              talkCtx.stroke();
+            }
+          }
+        }
+        paintRock(1, hot ? 0.35 : 0.2); /* mirror below */
+        paintRock(-1, 1); /* main rock above */
+
+        /* smooth brand ribbon over the crest */
+        talkCtx.save();
+        talkCtx.beginPath();
+        for (var j = 0; j <= bars; j++) {
+          var u = j / bars;
+          var amp2 = rockAmp(Math.min(bars - 1, j), bars, talkPhase + 0.4, hot);
+          var y = midY - maxH * amp2 * 1.05 - (hot ? 4 : 2);
+          var x2 = gap + j * (bw + gap) + bw * 0.5;
+          if (j === 0) talkCtx.moveTo(x2, y);
+          else talkCtx.lineTo(x2, y);
+        }
+        var rib = talkCtx.createLinearGradient(0, 0, W, 0);
+        rib.addColorStop(0, "rgba(110,200,255," + (hot ? 0.95 : 0.35) + ")");
+        rib.addColorStop(0.5, "rgba(200,160,255," + (hot ? 1 : 0.4) + ")");
+        rib.addColorStop(1, "rgba(255,140,200," + (hot ? 0.95 : 0.35) + ")");
+        talkCtx.strokeStyle = rib;
+        talkCtx.lineWidth = hot ? 2.4 : 1.2;
+        talkCtx.lineJoin = "round";
+        talkCtx.lineCap = "round";
+        talkCtx.shadowColor = hot ? "rgba(180,140,255,0.85)" : "transparent";
+        talkCtx.shadowBlur = hot ? 12 : 0;
+        talkCtx.stroke();
+        talkCtx.restore();
+
+        /* center horizon line (brand mark) */
+        talkCtx.strokeStyle = hot
+          ? "rgba(255,255,255,0.22)"
+          : "rgba(140,160,200,0.12)";
+        talkCtx.lineWidth = 1;
+        talkCtx.beginPath();
+        talkCtx.moveTo(6, midY);
+        talkCtx.lineTo(W - 6, midY);
+        talkCtx.stroke();
+
+        /* small logo core when speaking */
+        if (hot) {
+          var cx = W * 0.5;
+          var cy = midY;
+          var core = 6 + 3 * Math.abs(Math.sin(talkPhase * 2));
+          var cg = talkCtx.createRadialGradient(cx, cy, 0, cx, cy, core * 3);
+          cg.addColorStop(0, "rgba(255,255,255,0.85)");
+          cg.addColorStop(0.35, "rgba(180,150,255,0.55)");
+          cg.addColorStop(1, "transparent");
+          talkCtx.fillStyle = cg;
+          talkCtx.beginPath();
+          talkCtx.arc(cx, cy, core * 3, 0, Math.PI * 2);
+          talkCtx.fill();
+        }
+
+        /* footer tag */
+        talkCtx.font = "600 8px system-ui,sans-serif";
+        talkCtx.fillStyle = hot
+          ? "rgba(220,210,255,0.55)"
+          : "rgba(140,150,180,0.35)";
+        talkCtx.textAlign = "center";
+        talkCtx.fillText(hot ? "SPEAKING" : "STANDBY", W / 2, H - 6);
+      }
+
+      function setCdStatus(t, on) {
+        if (!cdStatus) return;
+        cdStatus.textContent = t || "idle";
+        cdStatus.classList.toggle("on", !!on);
+      }
+
+      function escHtml(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/"/g, "&quot;");
+      }
+      function absMedia(path) {
+        if (!path) return "";
+        if (/^https?:\/\//i.test(path)) return path;
+        if (path.charAt(0) !== "/") path = "/" + path;
+        return BASE + path;
+      }
+      function renderCamChat(msgs) {
+        if (!chatLogEl) return;
+        var last = msgs && msgs.length ? msgs[msgs.length - 1] : null;
+        var key =
+          (msgs ? msgs.length : 0) +
+          "|" +
+          ((last && last.epoch) || "") +
+          "|" +
+          ((last && last.image) || "");
+        if (key === lastChatRender) return;
+        lastChatRender = key;
+        /* newest first (top, right under video) · oldest last (bottom) */
+        var raw = (msgs || []).slice(-64);
+        var seen = {};
+        var list = [];
+        for (var di = 0; di < raw.length; di++) {
+          var dm = raw[di] || {};
+          var dkey =
+            String(dm.role || "") +
+            "|" +
+            String(dm.epoch || dm.ts || "") +
+            "|" +
+            String(dm.text || "").slice(0, 96) +
+            "|" +
+            String(dm.image || "");
+          if (seen[dkey]) continue;
+          /* collapse near-duplicate assistant text */
+          var soft =
+            String(dm.role || "") +
+            "|" +
+            String(dm.text || "").slice(0, 80);
+          if (dm.role === "assistant" && seen["soft:" + soft]) continue;
+          seen[dkey] = 1;
+          if (dm.role === "assistant") seen["soft:" + soft] = 1;
+          list.push(dm);
+        }
+        list = list.slice(-48).reverse();
+        chatLogEl.innerHTML =
+          list
+            .map(function (m) {
+              var you = m.role !== "assistant";
+              var ts = m.ts ? String(m.ts).slice(11, 19) : "";
+              var kind = m.kind || (m.image ? "photo" : "text");
+              var isSnap = kind === "photo" || kind === "snapshot" || !!m.image;
+              var cls = you ? "you" : "lab";
+              if (isSnap) cls += " snap";
+              var tag =
+                kind !== "text"
+                  ? '<span class="kind-tag">' + escHtml(kind) + "</span>"
+                  : "";
+              var media = "";
+              if (m.image) {
+                var src = absMedia(m.image);
+                media =
+                  '<a class="media" href="' +
+                  escHtml(src) +
+                  '" target="_blank" rel="noopener">' +
+                  '<img src="' +
+                  escHtml(src) +
+                  '" alt="" loading="lazy"/></a>';
+              }
+              var text = String(m.text || "");
+              if (m.image && /^phone snap$/i.test(text.trim())) text = "";
+              return (
+                '<div class="line ' +
+                cls +
+                '"><span class="who">' +
+                (you ? "you" : "mini") +
+                (ts ? " · " + ts : "") +
+                "</span>" +
+                tag +
+                (text ? " " + escHtml(text) : "") +
+                media +
+                "</div>"
+              );
+            })
+            .join("") ||
+          '<div class="line"><span class="who">snaps · chat</span>Snap a frame or type — photos land here</div>';
+        /* keep latest visible under video */
+        chatLogEl.scrollTop = 0;
+      }
+
+      function postTranscript(text, src) {
+        text = String(text || "").trim();
+        if (text.length < 1) return Promise.resolve();
+        return fetch(BASE + "/transcript", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text, src: src || "phone-cam" }),
+          cache: "no-store",
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function () {
+            log("you → Mini: " + text.slice(0, 80), "ok");
+            setCdStatus("sent", true);
+            pollComputerTalk();
+          })
+          .catch(function (e) {
+            log("transcript: " + errText(e), "err");
+            setCdStatus("send fail", false);
+          });
+      }
+
+      function sendChat() {
+        if (!chatIn) return;
+        var t = (chatIn.value || "").trim();
+        if (!t) return;
+        chatIn.value = "";
+        postTranscript(t, "phone-cam-chat");
+        try {
+          if (window.__mgPhoneSpeak) window.__mgPhoneSpeak.unlock();
+        } catch (e) {}
+      }
+
+      function syncHoldUi(on) {
+        talkLive = !!on;
+        [btnHold, btnHoldCtl].forEach(function (b) {
+          if (!b) return;
+          b.classList.toggle("live", talkLive);
+          b.classList.toggle("on", talkLive);
+          b.textContent = talkLive ? "Live" : "Talk";
+        });
+        setCdStatus(talkLive ? "listening…" : "idle", talkLive);
+      }
+
+      function stopTalkRec() {
+        talkLive = false;
+        syncHoldUi(false);
+        try {
+          if (rec) rec.stop();
+        } catch (e) {}
+        rec = null;
+      }
+
+      function startTalkRec() {
+        if (!secure) {
+          setCdStatus("need HTTPS", false);
+          log("Talk needs HTTPS :9878", "err");
+          return;
+        }
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          setCdStatus("no STT", false);
+          log("SpeechRecognition missing — type chat instead", "err");
+          return;
+        }
+        try {
+          if (window.__mgPhoneSpeak) {
+            window.__mgPhoneSpeak.setBase(BASE);
+            window.__mgPhoneSpeak.unlock();
+          }
+        } catch (eU) {}
+        stopTalkRec();
+        rec = new SR();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = "en-US";
+        rec.onresult = function (ev) {
+          var i = ev.resultIndex;
+          for (; i < ev.results.length; i++) {
+            if (ev.results[i].isFinal) {
+              var t = (ev.results[i][0].transcript || "").trim();
+              if (t.length >= 2) postTranscript(t, "phone-cam-talk");
+            }
+          }
+        };
+        rec.onerror = function (e) {
+          log("speech: " + (e.error || errText(e)), "err");
+          if (e.error === "not-allowed") stopTalkRec();
+        };
+        rec.onend = function () {
+          if (talkLive) {
+            try {
+              rec.start();
+            } catch (e2) {}
+          }
+        };
+        try {
+          rec.start();
+          syncHoldUi(true);
+          log("Talk on · speech → Mini", "ok");
+        } catch (e3) {
+          log("speech start: " + errText(e3), "err");
+          stopTalkRec();
+        }
+      }
+
+      function toggleTalk() {
+        if (talkLive) stopTalkRec();
+        else startTalkRec();
+      }
+
+      function pollComputerTalk() {
+        fetch(BASE + "/conversation?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var msgs = (j && j.messages) || [];
+            renderCamChat(msgs);
+            var lastA = null;
+            for (var i = msgs.length - 1; i >= 0; i--) {
+              if (msgs[i] && msgs[i].role === "assistant") {
+                lastA = msgs[i];
+                break;
+              }
+            }
+            if (!lastA || !lastA.text) return;
+            var id = String(lastA.epoch || "") + "|" + String(lastA.text).slice(0, 48);
+            if (id === talkLastId) return;
+            talkLastId = id;
+            var age = lastA.epoch ? Date.now() / 1000 - lastA.epoch : 999;
+            /* treat recent assistant lines as "computer talking" */
+            if (age < 45) {
+              setTalkSpeaking(true, lastA.text, estimateSpeakMs(lastA.text));
+              /* also try phone loud path if speak helper present */
+              try {
+                if (window.__mgPhoneSpeak) {
+                  window.__mgPhoneSpeak.setBase(BASE);
+                  window.__mgPhoneSpeak.onMessages(msgs);
+                }
+              } catch (eS) {}
+            }
+          })
+          .catch(function () {});
+        /* tts meta age as backup pulse */
+        fetch(BASE + "/tts/latest.json?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (t) {
+            if (!t || !t.t) return;
+            var age = Date.now() / 1000 - t.t;
+            if (age < 12 && t.text) {
+              var tid = "tts|" + (t.id || t.t);
+              if (tid !== talkLastId) {
+                talkLastId = tid;
+                setTalkSpeaking(true, t.text, estimateSpeakMs(t.text));
+              }
+            }
+          })
+          .catch(function () {});
+      }
+
+      if (btnHold) btnHold.onclick = toggleTalk;
+      if (btnHoldCtl) btnHoldCtl.onclick = toggleTalk;
+      var btnSend = document.getElementById("btn-send");
+      if (btnSend) btnSend.onclick = sendChat;
+      if (chatIn) {
+        chatIn.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            sendChat();
+          }
+        });
+      }
+
+      maybeAutoStart();
+      setInterval(updateStats, 1000);
+      setInterval(pollComputerTalk, 1200);
+      pollComputerTalk();
+      if (!talkRaf) talkRaf = requestAnimationFrame(drawTalkViz);
+      /* always paint wave (idle shimmer or live mic) */
+      if (!waveRaf) waveRaf = requestAnimationFrame(drawWave);
+      /* unlock audio on first tap */
+      document.addEventListener(
+        "pointerdown",
+        function unlockA() {
+          ensureAudioCtx();
+          if (wantActive && stream) wireWaveFromStream(stream);
+        },
+        { once: true, capture: true }
+      );
+    })();
+  </script>
+  <script src="/phone-speak.js?v=4"></script>
+  <script src="/phone-pwa.js?v=wave-top1" defer></script>
+  <script>
+    (function () {
+      var sp = document.getElementById("btn-speaker");
+      if (!sp) return;
+      sp.addEventListener("click", function () {
+        try {
+          if (window.__mgPhoneSpeak) {
+            window.__mgPhoneSpeak.unlock();
+            window.__mgPhoneSpeak.pullLatest(true);
+            sp.classList.add("on");
+            sp.title = "Speaker unlocked · replaying latest";
+          }
+        } catch (e) {}
+      });
     })();
   </script>
 </body>

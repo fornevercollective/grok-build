@@ -1,0 +1,150 @@
+{
+  "schema": "mg.tools-bench/v3",
+  "ver": "bench-v3-local",
+  "note": "Working tools from disk via loopback — no freya.world / pages.dev / remote iframes",
+  "localRoot": "/Volumes/qbitOS/00.dev/projects/uvspeed/web",
+  "localHttp": "http://127.0.0.1:8765",
+  "serve": "cd /Volumes/qbitOS/00.dev/projects/uvspeed/web && python3 -m http.server 8765 --bind 127.0.0.1",
+  "hubs": {
+    "local": "http://127.0.0.1:8765/",
+    "disk": "file:///Volumes/qbitOS/00.dev/projects/uvspeed/web/"
+  },
+  "trades": [
+    {
+      "id": "electric",
+      "label": "Electrician",
+      "glyph": "⚡",
+      "hint": "Load balance · phase · VA charts",
+      "tools": ["load-bal", "freya-calc", "hexbench", "grid"]
+    },
+    {
+      "id": "signal",
+      "label": "Signal / RF",
+      "glyph": "📡",
+      "hint": "Cable/harness · freq · spectrum",
+      "tools": ["cable-cal", "spectrum", "hexcast", "questcast", "jawta"]
+    },
+    {
+      "id": "construct",
+      "label": "Construction",
+      "glyph": "🏗️",
+      "hint": "Materials BOM · sizes → pynote",
+      "tools": ["pynote", "archflow", "freya-calc", "freya"]
+    },
+    {
+      "id": "data",
+      "label": "Data / Lab",
+      "glyph": "◈",
+      "hint": "Bench · freya · grid · feed · QA",
+      "tools": ["hexbench", "freya", "grid", "feed", "qa", "notepad"]
+    }
+  ],
+  "tools": [
+    {
+      "id": "load-bal",
+      "label": "Load Balance",
+      "kind": "native",
+      "panel": "electric",
+      "desc": "3-phase / single-phase load chart"
+    },
+    {
+      "id": "cable-cal",
+      "label": "Cable / Harness",
+      "kind": "native",
+      "panel": "signal",
+      "desc": "Length · loss · impedance quick cal"
+    },
+    {
+      "id": "spectrum",
+      "label": "Frequency / Spectrum",
+      "kind": "native",
+      "panel": "spectrum",
+      "desc": "Band plan · λ · quick RF math"
+    },
+    {
+      "id": "freya-calc",
+      "label": "Freya Math",
+      "kind": "native",
+      "panel": "freya",
+      "local": "freya.html",
+      "desc": "Field calculator · OPEN FULL → freya.html"
+    },
+    {
+      "id": "pynote",
+      "label": "Materials BOM",
+      "kind": "native",
+      "panel": "pynote",
+      "desc": "Construction list · sizes → desk"
+    },
+    {
+      "id": "hexbench",
+      "label": "Hex Bench",
+      "kind": "local",
+      "local": "hexbench.html",
+      "desc": "Voltage lab · PSU · electronics (local uvspeed)"
+    },
+    {
+      "id": "archflow",
+      "label": "Arch Flow",
+      "kind": "local",
+      "local": "archflow.html",
+      "desc": "Architecture · mermaid (local)"
+    },
+    {
+      "id": "hexcast",
+      "label": "Hex Cast",
+      "kind": "local",
+      "local": "hexcast.html",
+      "desc": "Signal cast (local)"
+    },
+    {
+      "id": "questcast",
+      "label": "Quest Cast",
+      "kind": "local",
+      "local": "questcast.html",
+      "desc": "Quest cast (local)"
+    },
+    {
+      "id": "jawta",
+      "label": "Jawta Audio",
+      "kind": "local",
+      "local": "jawta-audio.html",
+      "desc": "Audio path (local)"
+    },
+    {
+      "id": "feed",
+      "label": "Feed",
+      "kind": "local",
+      "local": "feed.html",
+      "desc": "Live feed (local)"
+    },
+    {
+      "id": "grid",
+      "label": "Grid",
+      "kind": "local",
+      "local": "grid.html",
+      "desc": "Grid board (local)"
+    },
+    {
+      "id": "qa",
+      "label": "QA",
+      "kind": "local",
+      "local": "qa.html",
+      "desc": "QA checklist (local)"
+    },
+    {
+      "id": "freya",
+      "label": "Freya Units",
+      "kind": "local",
+      "local": "freya.html",
+      "desc": "Full FreyaUnits (local)"
+    },
+    {
+      "id": "notepad",
+      "label": "Quantum Notepad",
+      "kind": "local",
+      "local": "quantum-notepad.html",
+      "desc": "Notepad (local)"
+    }
+  ]
+}

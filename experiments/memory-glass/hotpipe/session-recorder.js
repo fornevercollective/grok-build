@@ -5,6 +5,14 @@
  */
 (function () {
   "use strict";
+  /* Product browse: never boot embedded float-layout (lag). Lab only. */
+  try {
+    if (!/[?&]mg_lab_full=1\b/i.test(location.search || "") && !window.__mgForceFloatLayout) {
+      return;
+    }
+  } catch (eSkip) {
+    return;
+  }
   /* If float-layout.js already mounted v10+, skip this embedded layout */
   var VER = "float-layout-v10-no-overlap";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
@@ -377,11 +385,14 @@
 /* Memory Glass · session recorder (P2) + X draft from run metrics / board (P4)
  * Cam still-pipe samples + lab composite SNAP (game canvas + floats + metrics HUD).
  * X draft = activity leaderboard synopsis (you post — no auto-post).
- * VER: session-rec-v3e-lab-snap
+ * VER: session-rec-v12-bot-lab-strip
+ * LAB: bottom chrome horizontal glass strip (rec · snap · draw · share · dev · agent)
+ * Fallback: . lab ▾ PAGE-style drop if bottom chrome missing.
+ * Always remount so upgrades land.
  */
 (function () {
   "use strict";
-  var VER = "session-rec-v3e-lab-snap";
+  var VER = "session-rec-v12-bot-lab-strip";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._sessionRecVer === VER) return;
   HP._sessionRecVer = VER;
@@ -402,75 +413,742 @@
   var timer = null;
   var recBtn = null;
 
-  function ensureUi() {
-    if (recBtn || document.getElementById("mg-rec-chip")) return;
-    if (!document.getElementById("mg-rec-css")) {
+  function hideStandaloneFabs() {
+    try {
+      var df = document.getElementById("mg-draw-fab");
+      if (df) df.style.display = "none";
+      var af = document.getElementById("mg-agent-desk-fab");
+      if (af) af.style.display = "none";
+    } catch (e) {}
+  }
+
+  function chipToast(msg) {
+    try {
+      log(msg);
+      if (window.__mgDevLog) window.__mgDevLog("ok", String(msg), "rec");
+    } catch (e) {}
+    try {
+      var t = document.getElementById("mg-rec-toast");
+      if (!t) {
+        t = document.createElement("div");
+        t.id = "mg-rec-toast";
+        t.style.cssText =
+          "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);" +
+          "z-index:2147483647;padding:8px 12px;border-radius:10px;" +
+          "background:rgba(12,16,28,0.9);color:#e8f0ff;font:650 11px/1.3 system-ui;" +
+          "border:1px solid rgba(140,200,255,0.35);pointer-events:none;" +
+          "box-shadow:0 10px 30px rgba(0,0,0,0.4)";
+        document.documentElement.appendChild(t);
+      }
+      t.textContent = String(msg || "");
+      t.style.opacity = "1";
+      clearTimeout(t._hide);
+      t._hide = setTimeout(function () {
+        t.style.opacity = "0";
+      }, 2200);
+    } catch (e2) {}
+  }
+
+  /* ── Mini DRAW (always available — no separate module required) ── */
+  var miniDraw = null;
+  function ensureMiniDraw() {
+    if (miniDraw) return miniDraw;
+    var canvas = null;
+    var ctx = null;
+    var toolbar = null;
+    var active = false;
+    var drawing = false;
+    var strokes = [];
+    var cur = null;
+    var color = "#f87171";
+
+    function css() {
+      if (document.getElementById("mg-mini-draw-css")) return;
       var st = document.createElement("style");
-      st.id = "mg-rec-css";
+      st.id = "mg-mini-draw-css";
       st.textContent = [
-        "#mg-rec-chip{position:fixed;left:12px;bottom:calc(12px + var(--mg-kb-h,0px));",
-        "  z-index:2147483006;display:flex;gap:6px;align-items:center;",
-        "  padding:7px 11px;border-radius:999px;",
-        "  background:rgba(10,12,16,0.55);backdrop-filter:blur(22px) saturate(1.35);",
-        "  -webkit-backdrop-filter:blur(22px) saturate(1.35);",
-        "  border:1px solid rgba(255,255,255,0.18);",
-        "  box-shadow:0 6px 18px rgba(0,0,0,0.18);",
-        "  font:650 9px/1 system-ui;letter-spacing:0.1em;text-transform:uppercase;",
-        "  color:rgba(244,246,250,0.92);pointer-events:auto}",
-        "#mg-rec-chip button{appearance:none;cursor:pointer;border:1px solid rgba(255,255,255,0.16);",
-        "  background:rgba(255,255,255,0.08);color:inherit;padding:5px 8px;border-radius:6px;",
-        "  font:inherit;letter-spacing:0.08em}",
-        "#mg-rec-chip button.on{border-color:rgba(255,100,100,0.55);color:rgba(255,160,160,0.98);",
-        "  background:rgba(120,30,30,0.35)}",
-        "#mg-rec-chip .dot{width:8px;height:8px;border-radius:50%;background:rgba(120,120,120,0.5)}",
-        "#mg-rec-chip.on .dot{background:rgba(255,80,80,0.95);box-shadow:0 0 8px rgba(255,80,80,0.6)}",
+        "#mg-mini-draw-cv{position:fixed;inset:0;z-index:2147483646;display:none;",
+        "  cursor:crosshair;touch-action:none;pointer-events:none}",
+        "#mg-mini-draw-cv.on{display:block;pointer-events:auto!important}",
+        "#mg-mini-draw-tb{position:fixed;top:calc(12px + var(--mg-chrome-below,100px));",
+        "  left:50%;transform:translateX(-50%);z-index:2147483647;display:none;",
+        "  gap:6px;padding:6px 10px;border-radius:12px;align-items:center;",
+        "  background:rgba(12,16,28,0.9);border:1px solid rgba(248,113,113,0.35);",
+        "  font:650 11px system-ui;color:#fecaca;pointer-events:auto!important}",
+        "#mg-mini-draw-tb.on{display:flex}",
+        "#mg-mini-draw-tb button{appearance:none;border:1px solid rgba(255,255,255,0.15);",
+        "  background:rgba(255,255,255,0.08);color:inherit;padding:6px 10px;",
+        "  border-radius:8px;cursor:pointer;font:inherit}",
+        "#mg-mini-draw-tb button.pick{border-color:rgba(96,165,250,0.55);color:#93c5fd}",
       ].join("");
-      (document.head || document.documentElement).appendChild(st);
+      document.documentElement.appendChild(st);
     }
-    recBtn = document.createElement("div");
-    recBtn.id = "mg-rec-chip";
-    recBtn.innerHTML =
-      '<span class="dot"></span>' +
-      '<button type="button" id="mg-rec-toggle">REC</button>' +
-      '<button type="button" id="mg-rec-snap">SNAP</button>' +
-      '<button type="button" id="mg-rec-board">BOARD</button>' +
-      '<button type="button" id="mg-rec-post">POST ↗</button>' +
-      '<button type="button" id="mg-rec-x">X DRAFT</button>';
-    (document.body || document.documentElement).appendChild(recBtn);
-    recBtn.querySelector("#mg-rec-toggle").onclick = function () {
+
+    function live(fn, a, b) {
+      try {
+        var C = window.__mgLiveCollab;
+        if (C && C[fn]) return C[fn](a, b);
+      } catch (e) {}
+    }
+
+    function resize() {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      redraw();
+    }
+
+    function redraw() {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokes.forEach(function (s) {
+        if (!s.pts || s.pts.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(s.pts[0].x, s.pts[0].y);
+        for (var i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+        ctx.strokeStyle = s.color || color;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+      });
+      if (cur && cur.pts && cur.pts.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(cur.pts[0].x, cur.pts[0].y);
+        for (var j = 1; j < cur.pts.length; j++) ctx.lineTo(cur.pts[j].x, cur.pts[j].y);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+    }
+
+    function pt(e) {
+      if (e.touches && e.touches[0])
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function activate() {
+      css();
+      if (!canvas) {
+        canvas = document.createElement("canvas");
+        canvas.id = "mg-mini-draw-cv";
+        document.documentElement.appendChild(canvas);
+        ctx = canvas.getContext("2d");
+        canvas.addEventListener("mousedown", function (e) {
+          if (!active) return;
+          e.preventDefault();
+          e.stopPropagation();
+          drawing = true;
+          cur = { color: color, pts: [pt(e)] };
+        });
+        canvas.addEventListener("mousemove", function (e) {
+          if (!drawing || !cur) return;
+          e.preventDefault();
+          cur.pts.push(pt(e));
+          redraw();
+        });
+        function up(e) {
+          if (!drawing) return;
+          drawing = false;
+          if (e) e.preventDefault();
+          if (cur && cur.pts && cur.pts.length > 1) {
+            strokes.push(cur);
+            live("onStroke", cur, { n: strokes.length });
+          }
+          cur = null;
+          redraw();
+        }
+        canvas.addEventListener("mouseup", up);
+        canvas.addEventListener("mouseleave", up);
+        canvas.addEventListener(
+          "touchstart",
+          function (e) {
+            if (!active) return;
+            e.preventDefault();
+            drawing = true;
+            cur = { color: color, pts: [pt(e)] };
+          },
+          { passive: false }
+        );
+        canvas.addEventListener(
+          "touchmove",
+          function (e) {
+            if (!drawing || !cur) return;
+            e.preventDefault();
+            cur.pts.push(pt(e));
+            redraw();
+          },
+          { passive: false }
+        );
+        canvas.addEventListener(
+          "touchend",
+          function (e) {
+            up(e);
+          },
+          { passive: false }
+        );
+        window.addEventListener("resize", function () {
+          if (active) resize();
+        });
+      }
+      if (!toolbar) {
+        toolbar = document.createElement("div");
+        toolbar.id = "mg-mini-draw-tb";
+        toolbar.innerHTML =
+          "<span>DRAW</span>" +
+          '<button type="button" data-a="undo">↩</button>' +
+          '<button type="button" data-a="clear">∅</button>' +
+          '<button type="button" class="pick" data-a="pick" title="Pick element · structure assess">◎</button>' +
+          '<button type="button" data-a="fix">FIX</button>' +
+          '<button type="button" data-a="close">✕</button>';
+        document.documentElement.appendChild(toolbar);
+        toolbar.addEventListener("click", function (e) {
+          var b = e.target && e.target.closest ? e.target.closest("button") : e.target;
+          if (!b || !b.getAttribute) return;
+          var a = b.getAttribute("data-a");
+          if (a === "undo") {
+            strokes.pop();
+            redraw();
+          } else if (a === "clear") {
+            strokes = [];
+            redraw();
+          } else if (a === "close") {
+            deactivate();
+          } else if (a === "pick") {
+            deactivate();
+            live("togglePick");
+            chipToast("PICK · hover site · click to assess in DESK");
+          } else if (a === "fix") {
+            var md =
+              "# FIX · Memory Glass DRAW\n\n" +
+              "- URL: " +
+              location.href +
+              "\n- strokes: " +
+              strokes.length +
+              "\n- title: " +
+              (document.title || "") +
+              "\n\nPlease fix the marked UI issues on the fly.\n";
+            try {
+              if (window.ipc)
+                window.ipc.postMessage(
+                  JSON.stringify({ op: "clipboard_copy", text: md })
+                );
+              else if (navigator.clipboard) navigator.clipboard.writeText(md);
+            } catch (eC) {}
+            chipToast("FIX packet → clipboard + live desk");
+            var packet = {
+              md: md,
+              strokes: strokes.length,
+              note: "see DRAW marks",
+              url: location.href,
+            };
+            live("onFix", packet);
+            try {
+              if (window.__mgAgentDesk) {
+                if (window.__mgAgentDesk.open) window.__mgAgentDesk.open();
+                if (window.__mgAgentDesk.pushLog)
+                  window.__mgAgentDesk.pushLog(
+                    "sys",
+                    "DRAW FIX · " + strokes.length + " strokes · live linked"
+                  );
+              }
+            } catch (eD) {}
+          }
+        });
+      }
+      active = true;
+      try {
+        document.documentElement.classList.add("mg-drawing");
+      } catch (eD) {}
+      canvas.classList.add("on");
+      toolbar.classList.add("on");
+      resize();
+      document.addEventListener("keydown", onEsc, true);
+      live("onDrawToggle", true);
+    }
+
+    function onEsc(e) {
+      if (e.key === "Escape" && active) {
+        e.preventDefault();
+        deactivate();
+      }
+    }
+
+    function deactivate() {
+      active = false;
+      drawing = false;
+      cur = null;
+      try {
+        document.documentElement.classList.remove("mg-drawing");
+      } catch (eD) {}
+      if (canvas) canvas.classList.remove("on");
+      if (toolbar) toolbar.classList.remove("on");
+      document.removeEventListener("keydown", onEsc, true);
+      var draw = document.getElementById("mg-rec-draw");
+      if (draw) draw.classList.remove("on");
+      live("onDrawToggle", false);
+    }
+
+    function toggle() {
+      if (active) deactivate();
+      else activate();
+      return active;
+    }
+
+    miniDraw = {
+      toggle: toggle,
+      activate: activate,
+      deactivate: deactivate,
+      isActive: function () {
+        return active;
+      },
+      getStrokes: function () {
+        return strokes.slice();
+      },
+      report: function () {
+        return "mini-draw active=" + active + " strokes=" + strokes.length;
+      },
+    };
+    /* Expose so external annotate can detect / collab */
+    if (!window.__mgSiteAnnotate) {
+      window.__mgMiniDraw = miniDraw;
+    }
+    return miniDraw;
+  }
+
+  var actLock = 0;
+  function actOnce(fn) {
+    var now = Date.now();
+    if (now - actLock < 280) return false;
+    actLock = now;
+    return fn();
+  }
+
+  function actDraw() {
+    return actOnce(function () {
+    /* Prefer full annotate if already loaded; else mini-draw always works */
+    var A = window.__mgSiteAnnotate || window.screenAnnotate;
+    if (A && (A.toggle || A.activate)) {
+      try {
+        if (A.toggle) A.toggle();
+        else if (A.isActive && A.isActive()) A.deactivate();
+        else A.activate();
+        var on = !!(A.isActive && A.isActive());
+        var draw = document.getElementById("mg-rec-draw");
+        if (draw) draw.classList.toggle("on", on);
+        chipToast(on ? "DRAW on · full annotate" : "DRAW off");
+        return true;
+      } catch (e) {
+        chipToast("annotate err · falling back mini");
+      }
+    }
+    /* Lazy-load full annotate in background; mini works immediately */
+    try {
+      if (window.__mgLazy && window.__mgLazy.need) window.__mgLazy.need("annotate");
+    } catch (eL) {}
+    try {
+      var M = ensureMiniDraw();
+      var on2 = M.toggle();
+      var d2 = document.getElementById("mg-rec-draw");
+      if (d2) d2.classList.toggle("on", on2);
+      chipToast(on2 ? "DRAW on · mark issues · FIX when done" : "DRAW off");
+      return true;
+    } catch (e2) {
+      chipToast("DRAW err " + e2);
+      return false;
+    }
+    });
+  }
+
+  function actDesk() {
+    return actOnce(function () {
+    function openDesk() {
+      var D = window.__mgAgentDesk;
+      if (!D) return false;
+      try {
+        if (D.toggle) D.toggle();
+        else if (D.open) D.open();
+        var open = !!(D.state && D.state.open);
+        var desk = document.getElementById("mg-rec-desk");
+        if (desk) desk.classList.toggle("on", open);
+        chipToast(open ? "DESK αβγδ open" : "DESK closed");
+        return true;
+      } catch (e) {
+        chipToast("DESK err " + e);
+        return false;
+      }
+    }
+    if (window.__mgAgentDesk) return openDesk();
+    chipToast("DESK loading…");
+    try {
+      if (window.__mgLazy && window.__mgLazy.need) {
+        window.__mgLazy.need("desk", function (ok) {
+          if (ok) openDesk();
+          else chipToast("DESK offline — rebuild/hot module");
+        });
+        return true;
+      }
+    } catch (eL) {}
+    chipToast("DESK offline — ⌘⇧R");
+    return false;
+    });
+  }
+
+  function setLabMenuOpen(on) {
+    if (!recBtn) return;
+    var menu = recBtn.querySelector("#mg-rec-menu");
+    var trig = recBtn.querySelector("#mg-rec-trigger");
+    if (!menu) return;
+    menu.classList.toggle("is-open", !!on);
+    if (trig) trig.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+
+  function labRoots() {
+    var roots = [];
+    var bot = document.getElementById("mg-bot-lab");
+    if (bot) roots.push(bot);
+    if (recBtn) roots.push(recBtn);
+    return roots;
+  }
+
+  function syncDropOnState() {
+    var map = {
+      "mg-lab-rec": recording,
+      "mg-lab-draw": !!(
+        (window.__mgMiniDraw &&
+          window.__mgMiniDraw.isActive &&
+          window.__mgMiniDraw.isActive()) ||
+        (window.__mgSiteAnnotate &&
+          window.__mgSiteAnnotate.isActive &&
+          window.__mgSiteAnnotate.isActive())
+      ),
+      "mg-lab-dev": !!(
+        window.__mgLiveCollab &&
+        window.__mgLiveCollab.isPicking &&
+        window.__mgLiveCollab.isPicking()
+      ),
+      "mg-lab-agent": !!(
+        window.__mgAgentDesk &&
+        window.__mgAgentDesk.state &&
+        window.__mgAgentDesk.state.open
+      ),
+    };
+    labRoots().forEach(function (rootEl) {
+      Object.keys(map).forEach(function (id) {
+        var b = rootEl.querySelector("#" + id);
+        if (b) b.classList.toggle("on", !!map[id]);
+      });
+      var tgl = rootEl.querySelector("#mg-lab-rec");
+      if (tgl) {
+        tgl.innerHTML =
+          '<span class="dot">.</span>' + (recording ? "stop" : "rec");
+      }
+    });
+    if (recBtn) recBtn.classList.toggle("on", !!recording);
+  }
+
+  function bindLabButtons() {
+    var bot = document.getElementById("mg-bot-lab");
+    if (!bot || bot._mgWired) return;
+    bot._mgWired = true;
+    bot.addEventListener(
+      "click",
+      function (ev) {
+        var t = ev.target;
+        if (!t) return;
+        var btn = t.closest ? t.closest("button") : t;
+        if (!btn || !btn.id) return;
+        if (btn.id.indexOf("mg-lab-") !== 0) return;
+        try {
+          ev.preventDefault();
+          ev.stopPropagation();
+        } catch (e0) {}
+        window.__mgUserChromeTouch = true;
+        runRecAction(btn.id);
+      },
+      true
+    );
+    syncDropOnState();
+  }
+
+  function runRecAction(id) {
+    /* Map PAGE-style menu ids → actions */
+    if (id === "mg-lab-rec" || id === "mg-rec-toggle") {
       if (recording) stop();
       else start();
-    };
-    recBtn.querySelector("#mg-rec-snap").onclick = function () {
+    } else if (id === "mg-lab-snap" || id === "mg-rec-snap") {
       try {
         if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
           window.__mgFloatLayout.apply();
         if (window.__mgActivityBoard) {
-          window.__mgActivityBoard.mergeFleetSeed && window.__mgActivityBoard.mergeFleetSeed();
+          window.__mgActivityBoard.mergeFleetSeed &&
+            window.__mgActivityBoard.mergeFleetSeed();
           window.__mgActivityBoard.open();
           window.__mgActivityBoard.submitRun("snap");
         }
       } catch (eB) {}
       snap("manual").then(function (fr) {
-        log(
-          "SNAP lab " +
-            (fr && fr.lab && fr.lab.peakBps != null ? fr.lab.peakBps + " BPS" : "ok")
+        chipToast(
+          "snap " +
+            (fr && fr.lab && fr.lab.peakBps != null
+              ? fr.lab.peakBps + " bps"
+              : "ok")
         );
       });
-    };
-    recBtn.querySelector("#mg-rec-board").onclick = function () {
-      if (window.__mgActivityBoard) window.__mgActivityBoard.toggle();
-      else log("board missing");
-    };
-    recBtn.querySelector("#mg-rec-post").onclick = function () {
-      if (window.__mgActivityBoard && window.__mgActivityBoard.openLeaderboardWindow) {
-        window.__mgActivityBoard.openLeaderboardWindow({ post: true, kind: "post-play" });
-      } else log("board page missing");
-    };
-    recBtn.querySelector("#mg-rec-x").onclick = function () {
+    } else if (id === "mg-lab-draw" || id === "mg-rec-draw") {
+      actDraw();
+    } else if (id === "mg-lab-share" || id === "mg-rec-x" || id === "mg-rec-post") {
+      /* share = X draft + optional board post packet */
       exportXDraft();
+      chipToast("share · draft copied");
+    } else if (id === "mg-lab-dev" || id === "mg-rec-pick") {
+      /* dev = structure pick + inspect float */
+      try {
+        if (window.__mgLiveCollab && window.__mgLiveCollab.togglePick) {
+          window.__mgLiveCollab.togglePick();
+          chipToast(
+            window.__mgLiveCollab.isPicking && window.__mgLiveCollab.isPicking()
+              ? "dev · pick on"
+              : "dev · pick off"
+          );
+        }
+      } catch (ePk) {}
+      try {
+        if (window.ipc)
+          window.ipc.postMessage(JSON.stringify({ op: "dev_show" }));
+      } catch (eD) {}
+    } else if (id === "mg-lab-agent" || id === "mg-rec-desk") {
+      actDesk();
+    } else if (id === "mg-rec-board") {
+      if (window.__mgActivityBoard) window.__mgActivityBoard.toggle();
+    }
+    setTimeout(syncDropOnState, 50);
+  }
+
+  function wireRecActions() {
+    if (!recBtn) return;
+    if (!recBtn._mgWired) {
+      recBtn._mgWired = true;
+      recBtn.addEventListener(
+        "click",
+        function (ev) {
+          var t = ev.target;
+          if (!t) return;
+          var btn = t.closest ? t.closest("button") : t;
+          if (!btn || !btn.id) return;
+          var id = btn.id;
+          try {
+            ev.preventDefault();
+            ev.stopPropagation();
+          } catch (e0) {}
+
+          if (id === "mg-rec-trigger") {
+            var menu = recBtn.querySelector("#mg-rec-menu");
+            setLabMenuOpen(!(menu && menu.classList.contains("is-open")));
+            syncDropOnState();
+            return;
+          }
+          if (id.indexOf("mg-lab-") === 0 || id.indexOf("mg-rec-") === 0) {
+            runRecAction(id);
+            /* close after primary work items (match PAGE: pick and go) */
+            if (
+              id === "mg-lab-draw" ||
+              id === "mg-lab-dev" ||
+              id === "mg-lab-agent" ||
+              id === "mg-rec-draw" ||
+              id === "mg-rec-desk" ||
+              id === "mg-rec-pick"
+            ) {
+              setLabMenuOpen(false);
+            }
+          }
+        },
+        true
+      );
+      /* close LAB menu on outside click */
+      if (!window.__mgRecMenuDocClose) {
+        window.__mgRecMenuDocClose = true;
+        document.addEventListener(
+          "pointerdown",
+          function (ev) {
+            if (!recBtn) return;
+            var menu = recBtn.querySelector("#mg-rec-menu");
+            if (!menu || !menu.classList.contains("is-open")) return;
+            if (recBtn.contains(ev.target)) return;
+            setLabMenuOpen(false);
+          },
+          true
+        );
+      }
+    }
+    hideStandaloneFabs();
+    syncDropOnState();
+  }
+
+  function ensureUi() {
+    var css = document.getElementById("mg-rec-css");
+    if (css) {
+      try {
+        css.parentNode.removeChild(css);
+      } catch (eR) {}
+    }
+    var st = document.createElement("style");
+    st.id = "mg-rec-css";
+    st.textContent = [
+      /* Bottom chrome owns LAB when present */
+      "html.mg-bot-chrome #mg-rec-chip{display:none!important;pointer-events:none!important}",
+      /* Flat shell word — fallback when bottom chrome absent */
+      "#mg-rec-chip{",
+      "  position:fixed!important;left:14px!important;",
+      "  bottom:calc(14px + var(--mg-kb-h,0px))!important;",
+      "  z-index:2147483647!important;display:flex!important;",
+      "  flex-direction:column;align-items:flex-start;",
+      "  padding:0;margin:0;border:none!important;background:transparent!important;",
+      "  box-shadow:none!important;backdrop-filter:none!important;",
+      "  -webkit-backdrop-filter:none!important;",
+      "  font:600 11px/1 system-ui,sans-serif;",
+      "  letter-spacing:0.22em;text-transform:uppercase;",
+      "  color:rgba(255,255,255,0.9)!important;pointer-events:auto!important;",
+      "  isolation:isolate!important}",
+      "#mg-rec-menu{",
+      "  position:relative!important;display:flex!important;",
+      "  flex-direction:column;align-items:flex-start;text-align:left;",
+      "  user-select:none}",
+      "#mg-rec-trigger{",
+      "  appearance:none;cursor:pointer;user-select:none;",
+      "  display:inline-flex;align-items:center;gap:8px;",
+      "  min-height:28px;padding:6px 2px;margin:0;",
+      "  background:transparent!important;border:none!important;box-shadow:none!important;",
+      "  color:rgba(255,255,255,0.9);",
+      "  font:600 11px/1 system-ui,sans-serif;",
+      "  letter-spacing:0.22em;text-transform:uppercase;",
+      "  text-shadow:0 1px 2px rgba(0,0,0,0.4);",
+      "  transition:color .15s,opacity .15s,text-shadow .15s;opacity:0.92}",
+      "#mg-rec-trigger:hover{opacity:1;color:#fff;",
+      "  text-shadow:0 0 14px rgba(255,255,255,0.45)}",
+      "#mg-rec-trigger .dot{opacity:0.55;letter-spacing:0;margin-right:4px}",
+      "#mg-rec-chip.on #mg-rec-trigger .dot{opacity:1;color:#f87171;",
+      "  text-shadow:0 0 8px rgba(248,113,113,0.6)}",
+      "#mg-rec-trigger .chev{font-size:9px;opacity:0.65;letter-spacing:0;",
+      "  transition:transform .25s cubic-bezier(.2,.9,.2,1)}",
+      "#mg-rec-menu.is-open #mg-rec-trigger .chev{transform:rotate(180deg)}",
+      /* Drop UP — same glass as PAGE drop */
+      "#mg-rec-drop{",
+      "  display:none!important;flex-direction:column;align-items:flex-start;gap:0;",
+      "  position:absolute;left:0;bottom:calc(100% + 4px);z-index:2147483647;",
+      "  margin:0;padding:8px 0 6px;min-width:168px;",
+      "  background:rgba(8,10,14,0.42)!important;",
+      "  backdrop-filter:blur(22px) saturate(1.25);",
+      "  -webkit-backdrop-filter:blur(22px) saturate(1.25);",
+      "  border:1px solid rgba(255,255,255,0.12);border-radius:2px;",
+      "  box-shadow:0 -16px 48px rgba(0,0,0,0.28);",
+      "  visibility:hidden;opacity:0;pointer-events:none}",
+      "html.mg-low-power #mg-rec-drop{",
+      "  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;",
+      "  background:rgba(8,10,14,0.92)!important}",
+      "#mg-rec-menu.is-open #mg-rec-drop{",
+      "  display:flex!important;visibility:visible!important;opacity:1!important;",
+      "  pointer-events:auto!important}",
+      "#mg-rec-drop button{",
+      "  appearance:none;cursor:pointer;user-select:none;width:100%;",
+      "  display:block;text-align:left;",
+      "  padding:9px 14px;margin:0;",
+      "  background:transparent!important;border:none!important;box-shadow:none!important;",
+      "  color:rgba(255,255,255,0.5);",
+      "  font:600 11px/1 system-ui,sans-serif;",
+      "  letter-spacing:0.22em;text-transform:uppercase;",
+      "  transition:color .12s,background .12s,opacity .12s}",
+      "#mg-rec-drop button:hover{color:#fff;background:rgba(255,255,255,0.06)!important}",
+      "#mg-rec-drop button.on{color:#fff;",
+      "  text-shadow:0 0 10px rgba(255,255,255,0.35)}",
+      "#mg-rec-drop button .dot{opacity:0.45;margin-right:8px;letter-spacing:0}",
+      "#mg-rec-drop button.on .dot{opacity:0.9}",
+      "#mg-rec-drop button#mg-lab-rec.on{color:#fca5a5}",
+      "#mg-rec-drop button#mg-lab-draw.on{color:#fecaca}",
+      "#mg-rec-drop button#mg-lab-dev.on{color:#93c5fd}",
+      "#mg-rec-drop button#mg-lab-agent.on{color:#9fd0ff}",
+      "#mg-draw-fab,#mg-agent-desk-fab,#mg-pick-fab{display:none!important}",
+    ].join("");
+    (document.head || document.documentElement).appendChild(st);
+
+    /* Always remount LAB chip (stale multi-button strips refuse to upgrade otherwise) */
+    recBtn = document.getElementById("mg-rec-chip");
+    if (recBtn) {
+      try {
+        recBtn._mgWired = false;
+        if (recBtn.parentNode) recBtn.parentNode.removeChild(recBtn);
+      } catch (eX) {}
+      recBtn = null;
+    }
+    recBtn = document.createElement("div");
+    recBtn.id = "mg-rec-chip";
+    /* Exact PAGE menu pattern: . lab ▾  /  . rec · . snap · . draw · . share · . dev · . agent */
+    recBtn.innerHTML =
+      '<div id="mg-rec-menu" role="navigation" aria-label="Lab tools">' +
+      '<button type="button" id="mg-rec-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="mg-rec-drop" title="Lab: rec · snap · draw · share · dev · agent">' +
+      '<span class="dot">.</span><span class="lbl">lab</span><span class="chev">▾</span></button>' +
+      '<div id="mg-rec-drop" role="menu">' +
+      '<button type="button" role="menuitem" id="mg-lab-rec"><span class="dot">.</span>rec</button>' +
+      '<button type="button" role="menuitem" id="mg-lab-snap"><span class="dot">.</span>snap</button>' +
+      '<button type="button" role="menuitem" id="mg-lab-draw"><span class="dot">.</span>draw</button>' +
+      '<button type="button" role="menuitem" id="mg-lab-share"><span class="dot">.</span>share</button>' +
+      '<button type="button" role="menuitem" id="mg-lab-dev"><span class="dot">.</span>dev</button>' +
+      '<button type="button" role="menuitem" id="mg-lab-agent"><span class="dot">.</span>agent</button>' +
+      "</div></div>";
+    document.documentElement.appendChild(recBtn);
+    wireRecActions();
+    bindLabButtons();
+    try {
+      if (window.__mgBottomChrome && window.__mgBottomChrome.layout) {
+        window.__mgBottomChrome.layout();
+        bindLabButtons();
+      }
+    } catch (eBot) {}
+
+    window.__mgRecChip = {
+      ver: VER,
+      el: recBtn,
+      draw: actDraw,
+      desk: actDesk,
+      openMenu: function () {
+        setLabMenuOpen(true);
+      },
+      closeMenu: function () {
+        setLabMenuOpen(false);
+      },
+      ensure: ensureUi,
+      report: function () {
+        return (
+          VER +
+          " chip=" +
+          !!document.getElementById("mg-rec-chip") +
+          " botLab=" +
+          !!document.getElementById("mg-bot-lab") +
+          " menu=" +
+          !!document.getElementById("mg-rec-menu") +
+          " items=rec,snap,draw,share,dev,agent" +
+          " deskApi=" +
+          !!window.__mgAgentDesk +
+          " glass=" +
+          !!document.getElementById("mg-row3-glass")
+        );
+      },
     };
   }
+
+  /* Public API for bottom chrome strip + desk */
+  window.__mgSessionRec = window.__mgSessionRec || {};
+  window.__mgSessionRec.ver = VER;
+  window.__mgSessionRec.labClick = function (id) {
+    runRecAction(id || "mg-lab-rec");
+  };
+  window.__mgSessionRec.bindLabButtons = bindLabButtons;
+  window.__mgSessionRec.syncLab = syncDropOnState;
+  window.__mgSessionRec.isRecording = function () {
+    return !!recording;
+  };
 
   function grabStillPipe() {
     return new Promise(function (resolve) {
@@ -911,8 +1589,9 @@
     };
     ensureUi();
     recBtn.classList.add("on");
-    recBtn.querySelector("#mg-rec-toggle").classList.add("on");
-    recBtn.querySelector("#mg-rec-toggle").textContent = "STOP";
+    try {
+      syncDropOnState();
+    } catch (eS) {}
     snap("start");
     timer = setInterval(function () {
       snap("tick");
@@ -929,8 +1608,9 @@
     meta.frameCount = frames.length;
     if (recBtn) {
       recBtn.classList.remove("on");
-      recBtn.querySelector("#mg-rec-toggle").classList.remove("on");
-      recBtn.querySelector("#mg-rec-toggle").textContent = "REC";
+      try {
+        syncDropOnState();
+      } catch (eSt) {}
     }
     var pack = buildPack();
     /* submit run metrics to built-in leaderboard + offer clean post window */
@@ -1114,9 +1794,45 @@
 
   ensureUi();
 
-  /* Auto lab demo: tile floats, keep BOARD metrics open, SNAP mid + end */
+  /* Self-test DRAW once when ?mg_draw_smoke=1 (agent/live monitor) */
+  try {
+    if (/[?&]mg_draw_smoke=1\b/i.test(location.search || "")) {
+      setTimeout(function () {
+        try {
+          actDraw();
+          var r = {
+            t: Date.now(),
+            smoke: "draw",
+            mini: !!(miniDraw && miniDraw.isActive && miniDraw.isActive()),
+            canvasOn: !!(
+              document.getElementById("mg-mini-draw-cv") &&
+              document.getElementById("mg-mini-draw-cv").classList.contains("on")
+            ),
+            report: window.__mgRecChip && window.__mgRecChip.report
+              ? window.__mgRecChip.report()
+              : null,
+          };
+          window.__mgDrawSmoke = r;
+          if (window.ipc)
+            window.ipc.postMessage(
+              JSON.stringify({ op: "smoke_probe", json: JSON.stringify(r) })
+            );
+          chipToast("draw smoke " + (r.mini || r.canvasOn ? "PASS" : "FAIL"));
+        } catch (eS) {
+          chipToast("draw smoke err");
+        }
+      }, 900);
+    }
+  } catch (eSm) {}
+
+  /* Auto lab demo ONLY with ?mg_lab_demo=1 — never poll otherwise (lag) */
   var autoSnapDone = {};
+  var labDemoOn = false;
+  try {
+    labDemoOn = /[?&]mg_lab_demo=1\b/i.test(location.search || "");
+  } catch (eLab) {}
   function labDemoTick() {
+    if (!labDemoOn) return;
     try {
       if (!/[?&]mg_lab_demo=1\b/i.test(location.search || "")) return;
       if (window.__mgFloatLayout && window.__mgFloatLayout.apply)
@@ -1141,10 +1857,10 @@
       }
     } catch (eD) {}
   }
-  setInterval(labDemoTick, 1200);
+  if (labDemoOn) setInterval(labDemoTick, 1200);
   setTimeout(function () {
     try {
-      if (/[?&]mg_lab_demo=1\b/i.test(location.search || "")) {
+      if (labDemoOn && /[?&]mg_lab_demo=1\b/i.test(location.search || "")) {
         function afterOpen() {
           try {
             if (window.__mgActivityBoard) {
@@ -1179,13 +1895,26 @@
     stop: stop,
     snap: snap,
     exportXDraft: exportXDraft,
+    labClick: function (id) {
+      runRecAction(id || "mg-lab-rec");
+    },
+    bindLabButtons: bindLabButtons,
+    syncLab: syncDropOnState,
     isRecording: function () {
       return recording;
     },
     report: function () {
-      return VER + " rec=" + recording + " frames=" + frames.length;
+      return (
+        VER +
+        " rec=" +
+        recording +
+        " frames=" +
+        frames.length +
+        " botLab=" +
+        !!document.getElementById("mg-bot-lab")
+      );
     },
   };
 
-  log(VER + " · lab SNAP · X draft only");
+  log(VER + " · bot lab strip · SNAP · X draft");
 })();

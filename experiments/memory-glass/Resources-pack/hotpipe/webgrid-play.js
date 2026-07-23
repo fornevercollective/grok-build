@@ -22,6 +22,15 @@
  * ⌘0 = 100% / 30×30 desktop.
  * Local LLM pace: ?mg_local_llm=1 polls http://127.0.0.1:9880/pace (llama3.2:1b advisor).
  * P-001 score truth: NEVER use marketing body BPS/grid (10.39 / 40×40); sidebar+peak only.
+ * P-002 Intel laptop: auto pace profile + play-perf (throttle redraws, keep floats).
+ * P-003 All dual-space floats LIVE during WebGrid play (contrail/maze/bloch/rubik/beats/board/kb).
+ * P-004 Canvas FILL: use full window (not cramped Neuralink max-height / min(96vw,96vh)).
+ * P-005 Aggressive fill: ~88% of main view square; score column stays readable.
+ * P-006 Keep Memory Glass chrome (dragon grabber, tools, tabs, stoplights) VISIBLE.
+ * VER: webgrid-play-v32-contrails-live
+ * Play-safe: freeze canvas geometry mid-run (no resize storms → no grid shake).
+ * v32: force contrail overlay+flow + maze during play (was quietPlayChrome killing them);
+ *       elevate #mg-contrail-ov; tools-scrim never captures; openPlayFloats actually runs.
  */
 (function () {
   "use strict";
@@ -30,7 +39,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v20-score-truth";
+  var VER = "webgrid-play-v32-contrails-live";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -57,8 +66,18 @@
   var _fillTimer = null;
   /* Offline pace (webgrid-pace-advisor.py → collector /pace) */
   var PACE_URL = "http://127.0.0.1:9880/pace";
-  var _pace = { sleep_ms: 4, wait_loops: 18, mode: "steady", source: "default" };
+  /* Intel UHD + Retina: sleep_ms 4 is too hot → ghost misses + UI lag */
+  var PACE_PROFILES = {
+    fast: { sleep_ms: 4, wait_loops: 16, mode: "fast", source: "profile-fast" },
+    heavy: { sleep_ms: 9, wait_loops: 13, mode: "heavy-retina", source: "profile-heavy" },
+    intel: { sleep_ms: 18, wait_loops: 14, mode: "intel-buffer", source: "profile-intel" },
+  };
+  var _pace = Object.assign({}, PACE_PROFILES.intel);
   var _paceTimer = null;
+  var _imgCache = { t: 0, w: 0, h: 0, data: null, c: null };
+  var _scoreCache = { t: 0, sc: null };
+  var _playBusy = false;
+  var _adaptClicks = 0;
 
   function wantsLocalLlm() {
     try {
@@ -67,6 +86,225 @@
     } catch (e) {}
     return false;
   }
+
+  /** Detect laptop class for default agent pace (MacBookPro16,1 Intel bench). */
+  function detectPaceProfile() {
+    try {
+      var q = /[?&]mg_pace=(intel|fast|heavy)\b/i.exec(location.search);
+      if (q) return q[1].toLowerCase();
+    } catch (e0) {}
+    try {
+      var ls = localStorage.getItem("mg.webgrid.pace_profile");
+      if (ls && PACE_PROFILES[ls]) return ls;
+    } catch (e1) {}
+    try {
+      var dpr = window.devicePixelRatio || 1;
+      var cores = navigator.hardwareConcurrency || 4;
+      var area = (window.innerWidth || 1) * (window.innerHeight || 1) * dpr * dpr;
+      var ua = navigator.userAgent || "";
+      /* Intel Macs often report "Intel" in UA on older macOS; also high-DPR + ≤8 cores */
+      if (/Intel/i.test(ua) || /MacBookPro1[456]/i.test(ua)) return "intel";
+      if (cores <= 8 && dpr >= 2) return "intel";
+      if (area > 3.5e6) return "heavy";
+    } catch (e2) {}
+    return "fast";
+  }
+
+  function applyPaceProfile(name, source) {
+    var p = PACE_PROFILES[name] || PACE_PROFILES.intel;
+    _pace.sleep_ms = p.sleep_ms;
+    _pace.wait_loops = p.wait_loops;
+    _pace.mode = p.mode;
+    _pace.source = source || p.source || name;
+    try {
+      localStorage.setItem("mg.webgrid.pace_profile", name);
+    } catch (e) {}
+    return _pace;
+  }
+
+  var _playFrozen = false; /* true once canvas size locked for this run */
+  var _frozenCanvasA = 0;
+
+  function wantsLabFull() {
+    try {
+      if (/[?&]mg_lab_full=1\b/i.test(location.search || "")) return true;
+      if (localStorage.getItem("mg.webgrid.lab_full") === "1") return true;
+      if (window.__mgForcePlayFloats) return true;
+    } catch (e) {}
+    /* Default ON for agent play — user expects maze+contrails visible */
+    return true;
+  }
+
+  function setPlayBusy(on) {
+    var was = _playBusy;
+    _playBusy = !!on;
+    try {
+      window.__mgWebgridPlayBusy = _playBusy;
+      document.documentElement.classList.toggle("mg-webgrid-play-busy", _playBusy);
+      document.documentElement.classList.toggle("mg-webgrid-playing", _playBusy);
+    } catch (e) {}
+    /* Play-safe: collapse drawers/scrims that block hits, freeze grid.
+       NEVER kill contrail/maze — that was "no contrails" glitch. */
+    try {
+      if (_playBusy && !was) {
+        quietPlayChrome();
+        freezeGridGeometry();
+        ensurePlayContrails();
+      }
+      if (!_playBusy) {
+        _playFrozen = false;
+        _frozenCanvasA = 0;
+      }
+    } catch (e2) {}
+  }
+
+  /** Snapshot canvas CSS size and stop all resize/FILL thrash until run ends */
+  function freezeGridGeometry() {
+    try {
+      var c =
+        document.querySelector("canvas._canvas_1wslk_27") ||
+        document.querySelector("canvas");
+      if (c) {
+        var w = c.getBoundingClientRect().width || parseFloat(c.style.width) || 0;
+        if (w > 40) {
+          _frozenCanvasA = Math.round(w);
+          c.style.width = _frozenCanvasA + "px";
+          c.style.height = _frozenCanvasA + "px";
+          c.style.maxWidth = _frozenCanvasA + "px";
+          c.style.maxHeight = _frozenCanvasA + "px";
+        }
+      }
+      _playFrozen = true;
+      log(VER + " · grid geometry frozen a=" + _frozenCanvasA);
+    } catch (e) {
+      _playFrozen = true;
+    }
+  }
+
+  /** Collapse thrash chrome for smooth paint — drawers/scrims only.
+   *  Does NOT kill contrail overlay/flow or maze (user wants them live). */
+  function quietPlayChrome() {
+    try {
+      /* collapse rank only if open — avoid open() reflow when already pill */
+      if (window.__mgActivityBoard) {
+        if (
+          window.__mgActivityBoard.isOpen &&
+          window.__mgActivityBoard.isOpen() &&
+          window.__mgActivityBoard.collapse
+        )
+          window.__mgActivityBoard.collapse();
+      }
+    } catch (e1) {}
+    try {
+      /* closeHeavy kills maze — skip when lab floats wanted */
+      if (!wantsLabFull() && window.__mgFloatLayout && window.__mgFloatLayout.closeHeavy)
+        window.__mgFloatLayout.closeHeavy({
+          keepPlay: false,
+          boardPill: true,
+          ctrlPill: true,
+        });
+    } catch (e2) {}
+    try {
+      if (window.__mgToolsDrawer && window.__mgToolsDrawer.isOpen &&
+          window.__mgToolsDrawer.isOpen() && window.__mgToolsDrawer.close)
+        window.__mgToolsDrawer.close();
+      if (window.__mgRightDrawer && window.__mgRightDrawer.isOpen &&
+          window.__mgRightDrawer.isOpen() && window.__mgRightDrawer.close)
+        window.__mgRightDrawer.close();
+    } catch (e3) {}
+    try {
+      /* hard-kill tools/right scrims so they never eat maze/board clicks */
+      ["mg-tools-scrim", "mg-right-scrim", "mg-scrim"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.setProperty("pointer-events", "none", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("display", "none", "important");
+      });
+    } catch (e4) {}
+  }
+
+  /** Force visible contrail trail + maze for the whole agent run */
+  function ensurePlayContrails() {
+    if (!wantsLabFull()) return;
+    try {
+      function arm() {
+        try {
+          if (window.__mgContrail) {
+            if (window.__mgContrail.setOverlay) window.__mgContrail.setOverlay(true);
+            if (window.__mgContrail.setFlow) window.__mgContrail.setFlow(true);
+          }
+          var ov = document.getElementById("mg-contrail-ov");
+          if (ov) {
+            ov.style.setProperty("z-index", "2147483646", "important");
+            ov.style.setProperty("pointer-events", "none", "important");
+            ov.style.setProperty("visibility", "visible", "important");
+            ov.style.setProperty("opacity", "1", "important");
+            ov.style.setProperty("display", "block", "important");
+          }
+          if (window.__mgMemoryMaze && window.__mgMemoryMaze.open)
+            window.__mgMemoryMaze.open();
+          if (window.__mgFloatLayout && window.__mgFloatLayout.openLabKit)
+            window.__mgFloatLayout.openLabKit();
+          log(VER + " · contrails+maze armed");
+        } catch (eA) {
+          log(VER + " · arm err " + eA);
+        }
+      }
+      arm();
+      /* lazy boot may land after first frame */
+      if (window.__mgLazy && window.__mgLazy.need) {
+        window.__mgLazy.need("contrail", function () {
+          arm();
+        });
+        window.__mgLazy.need("maze", function () {
+          arm();
+        });
+      }
+      setTimeout(arm, 400);
+      setTimeout(arm, 1200);
+    } catch (e) {
+      log(VER + " · ensurePlayContrails " + e);
+    }
+  }
+
+  /** Full lab parade (CTRL FLOATS / mg_lab_full) — lean: contrail + maze + board pill */
+  function openPlayFloats() {
+    ensurePlayContrails();
+    try {
+      if (window.__mgActivityBoard) {
+        if (window.__mgActivityBoard.mergeFleetSeed)
+          window.__mgActivityBoard.mergeFleetSeed();
+        if (window.__mgActivityBoard.open)
+          window.__mgActivityBoard.open({ collapsed: true });
+      }
+    } catch (e6) {}
+    log(VER + " · play floats live (contrail·maze·board pill)");
+  }
+
+  function adaptPace(hitsGuess, missGuess) {
+    var total = hitsGuess + missGuess;
+    if (total < 12 || total % 10 !== 0) return;
+    var missRate = missGuess / Math.max(1, total);
+    if (missRate > 0.28 && _pace.sleep_ms < 22) {
+      _pace.sleep_ms = Math.min(22, _pace.sleep_ms + 2);
+      _pace.wait_loops = Math.max(10, _pace.wait_loops - 1);
+      _pace.mode = "adapt-slow";
+      _pace.source = "adapt";
+      log("pace adapt slower sleep=" + _pace.sleep_ms + " miss%=" + Math.round(missRate * 100));
+    } else if (missRate < 0.12 && _pace.sleep_ms > 5) {
+      _pace.sleep_ms = Math.max(5, _pace.sleep_ms - 1);
+      _pace.mode = "adapt-fast";
+      _pace.source = "adapt";
+    }
+  }
+
+  /* Boot pace profile immediately */
+  (function bootPace() {
+    var name = detectPaceProfile();
+    applyPaceProfile(name, "boot-" + name);
+    log(VER + " · pace profile " + name + " sleep=" + _pace.sleep_ms + " wait=" + _pace.wait_loops);
+  })();
 
   function pullPace() {
     if (!wantsLocalLlm()) return;
@@ -219,6 +457,8 @@
    * 3) Fire resize so React useEffect re-evaluates mobile breakpoint
    */
   function applyWebgridZoomOut(force) {
+    /* Never re-spoof viewport mid-run — resize events shake Neuralink grid */
+    if (_playBusy && !force) return window.__mgWebgridZoom || 1;
     var z = clampZoom(desiredZoom());
     if (!force && window.__mgWebgridZoom === z) {
       return z;
@@ -402,33 +642,117 @@
     }
   }
 
-  /** Kick Neuralink's canvas resize (min(clientW, clientH) of container) */
-  function kickCanvasResize() {
+  /** FILL: size play canvas to the largest square that fits the window (sidebar reserved). */
+  function kickCanvasResize(force) {
+    /* HARD FREEZE during play — dispatching resize + rewriting canvas.width
+     * re-lays the 30×30 grid and looks like the board is shaking. */
+    if ((_playBusy || _playFrozen) && !force) return;
     try {
-      window.dispatchEvent(new Event("resize"));
+      /* only notify Neuralink on intentional fills (lobby / end), not every timer */
+      if (force || !_playBusy) {
+        /* avoid resize storm: only when size will actually change below */
+      }
     } catch (e) {}
     try {
-      var c = document.querySelector("canvas._canvas_1wslk_27") || document.querySelector("canvas");
+      var c =
+        document.querySelector("canvas._canvas_1wslk_27") ||
+        document.querySelector("canvas");
+      if (!c) return;
       var box = document.querySelector("._container_1wslk_16");
-      if (c && box) {
-        var a = Math.min(box.clientWidth, box.clientHeight);
-        if (a > 40) {
-          c.style.width = a + "px";
-          c.style.height = a + "px";
-          var dpr = window.devicePixelRatio || 1;
-          c.width = Math.floor(a * dpr);
-          c.height = Math.floor(a * dpr);
+      var side = document.querySelector("._sidebar_1bxtc_139");
+      var vw = 0;
+      var vh = 0;
+      try {
+        if (window.__mgNativeInnerWidth) vw = window.__mgNativeInnerWidth();
+        if (window.__mgNativeInnerHeight) vh = window.__mgNativeInnerHeight();
+      } catch (eN) {}
+      if (!vw || !vh) {
+        try {
+          var vv = window.visualViewport;
+          vw = (vv && vv.width) || window.innerWidth || 0;
+          vh = (vv && vv.height) || window.innerHeight || 0;
+        } catch (eV) {
+          vw = window.innerWidth || 1280;
+          vh = window.innerHeight || 800;
         }
       }
+      /* Score column ~9–12rem; floats are overlays — reserve only score strip */
+      var sideW = 0;
+      if (side) {
+        var r = side.getBoundingClientRect();
+        sideW = Math.max(r.width || 0, side.offsetWidth || 0);
+        if (sideW < 40 || r.right < 8) sideW = 0;
+        sideW = Math.min(sideW, Math.floor(vw * 0.18));
+      }
+      if (!sideW) sideW = Math.min(160, Math.floor(vw * 0.12));
+      var pad = 12;
+      /* Aggressive fill: target ~88% of shorter axis (was leaving huge ocean margins) */
+      var targetH = Math.floor(vh * 0.9);
+      var targetW = Math.floor(vw - sideW - pad * 2);
+      var fromWin = Math.floor(Math.min(targetW, targetH));
+      var fromBox = 0;
+      if (box) {
+        var bw = box.clientWidth || 0;
+        var bh = box.clientHeight || 0;
+        if (bw > 40 && bh > 40) fromBox = Math.floor(Math.min(bw, bh) * 0.98);
+      }
+      var a = Math.max(fromBox, fromWin);
+      /* hard floor: never leave a postage-stamp grid on a large display */
+      var minFill = Math.floor(Math.min(vw, vh) * 0.62);
+      if (a < minFill) a = minFill;
+      a = Math.min(a, Math.floor(Math.min(vw - 8, vh - 8)));
+      a = Math.max(200, a);
+      if (a < 40) return;
+
+      var curCss = parseFloat(c.style.width) || c.getBoundingClientRect().width || 0;
+      /* Avoid thrashing buffer mid-frame unless size actually moved */
+      if (Math.abs(curCss - a) < 8 && Math.abs((c.width || 0) / (window.devicePixelRatio || 1) - a) < 8) {
+        return;
+      }
+      /* deadband: ignore 1–2% jitter from chrome overlays measuring sideW */
+      if (curCss > 40 && Math.abs(curCss - a) / curCss < 0.02) return;
+
+      c.style.width = a + "px";
+      c.style.height = a + "px";
+      c.style.maxWidth = a + "px";
+      c.style.maxHeight = a + "px";
+      c.style.minWidth = a + "px";
+      c.style.minHeight = a + "px";
+      var dpr = window.devicePixelRatio || 1;
+      var px = Math.floor(a * dpr);
+      /* Changing canvas.width clears the buffer and forces Neuralink re-layout —
+       * only do it when buffer is wildly wrong (lobby/boot), never micro-nudge. */
+      if (Math.abs(c.width - px) > 24) {
+        c.width = px;
+        c.height = px;
+      }
+      if (box) {
+        box.style.width = "100%";
+        box.style.height = "100%";
+        box.style.maxHeight = "100dvh";
+      }
+      try {
+        window.__mgWebgridCanvasFill = { a: a, vw: vw, vh: vh, sideW: sideW, ver: VER };
+      } catch (eF) {}
+      /* Notify React only after a real size change, never mid-play (see early return) */
+      try {
+        window.dispatchEvent(new Event("resize"));
+      } catch (eR) {}
     } catch (e2) {}
   }
 
+  /**
+   * Expand Neuralink play area for FILL canvas.
+   * NEVER hide Memory Glass shell chrome: dragon grabber, tools panel, tabs,
+   * stoplights, search dock, edges/grip — those are window controls + visual tools.
+   */
   function hideMgChrome() {
+    /* Mid-run: do not re-touch body/html styles (causes full reflow → grid shake) */
+    if (_playBusy || _playFrozen) return;
     try {
       document.documentElement.classList.add("mg-webgrid-play");
       document.documentElement.style.setProperty("--mg-page-pad-bot", "0px");
       document.documentElement.style.setProperty("--mg-page-pad-top", "0px");
-      /* Kill Neuralink nav offset so root can use full height */
       document.documentElement.style.setProperty("--root-nav-height", "0px");
       if (document.body) {
         document.body.style.setProperty("padding-top", "0", "important");
@@ -445,65 +769,184 @@
       (document.head || document.documentElement).appendChild(st);
     }
     st.textContent =
-      "html.mg-webgrid-play #mg-tabs," +
-      "html.mg-webgrid-play #mg-tab-row," +
-      "html.mg-webgrid-play #mg-search-dock," +
-      "html.mg-webgrid-play #mg-search-peek," +
-      "html.mg-webgrid-play #mg-stoplights," +
-      "html.mg-webgrid-play #mg-top-right," +
-      "html.mg-webgrid-play #mg-mode-menu," +
-      "html.mg-webgrid-play #mg-tab," +
-      "html.mg-webgrid-play .mg-edge," +
-      "html.mg-webgrid-play .mg-grip," +
+      /* ── MG shell chrome MUST stay visible + interactive ── */ +
       "html.mg-webgrid-play #mg-dragon," +
       "html.mg-webgrid-play #mg-panel," +
-      "html.mg-webgrid-play #mg-dev," +
-      "html.mg-webgrid-play #mg-scrim{" +
-      "  display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;}" +
+      "html.mg-webgrid-play #mg-tabs," +
+      "html.mg-webgrid-play #mg-tab-row," +
+      "html.mg-webgrid-play #mg-tab," +
+      "html.mg-webgrid-play #mg-stoplights," +
+      "html.mg-webgrid-play #mg-search-dock," +
+      "html.mg-webgrid-play #mg-search-peek," +
+      "html.mg-webgrid-play #mg-top-right," +
+      "html.mg-webgrid-play #mg-mode-menu," +
+      "html.mg-webgrid-play #mg-drag-pad," +
+      "html.mg-webgrid-play .mg-edge," +
+      "html.mg-webgrid-play .mg-grip," +
+      "html.mg-webgrid-play #mg-sx-rail," +
+      "html.mg-webgrid-play #mg-glass-capsule{" +
+      "  visibility:visible!important;pointer-events:auto!important;}" +
+      "html.mg-webgrid-play #mg-dragon," +
+      "html.mg-webgrid-play #mg-tabs," +
+      "html.mg-webgrid-play #mg-stoplights," +
+      "html.mg-webgrid-play #mg-search-dock{" +
+      "  opacity:1!important;z-index:2147483600!important;}" +
+      /* panel only when dragon open — don't force display if closed */ +
+      "html.mg-webgrid-play #mg-dragon.is-open #mg-panel{display:flex!important;opacity:1!important;}" +
       "html.mg-webgrid-play,html.mg-webgrid-play body{" +
       "  padding:0!important;margin:0!important;overflow:hidden!important;height:100%!important;" +
       "  width:100%!important;max-width:100%!important;}" +
+      /* page content receives clicks; MG chrome overlays stay above */ +
       "html.mg-webgrid-play #mg-root{pointer-events:none!important;}" +
-      "html.mg-webgrid-play canvas,html.mg-webgrid-play button,html.mg-webgrid-play a,html.mg-webgrid-play input{" +
+      "html.mg-webgrid-play #mg-root #mg-dragon," +
+      "html.mg-webgrid-play #mg-root #mg-panel," +
+      "html.mg-webgrid-play #mg-root #mg-tabs," +
+      "html.mg-webgrid-play #mg-root #mg-tab-row," +
+      "html.mg-webgrid-play #mg-root #mg-stoplights," +
+      "html.mg-webgrid-play #mg-root #mg-search-dock," +
+      "html.mg-webgrid-play #mg-root #mg-search-peek," +
+      "html.mg-webgrid-play #mg-root #mg-search," +
+      "html.mg-webgrid-play #mg-root #mg-top-right," +
+      "html.mg-webgrid-play #mg-root #mg-mode-menu," +
+      "html.mg-webgrid-play #mg-root #mg-drag-pad," +
+      "html.mg-webgrid-play #mg-root .mg-edge," +
+      "html.mg-webgrid-play #mg-root .mg-grip{" +
       "  pointer-events:auto!important;}" +
-      /* ── FILL PLAY AREA (override Neuralink max-height: 100dvh - 20rem) ── */ +
+      /* scrim NEVER captures — #mg-root z is above body floats; scrim ate all clicks */ +
+      "html.mg-webgrid-play #mg-scrim," +
+      "html.mg-webgrid-play #mg-root #mg-scrim," +
+      "html.mg-webgrid-play #mg-dragon.is-open ~ #mg-scrim{" +
+      "  pointer-events:none!important;opacity:0!important;}" +
+      /* body-level floats ABOVE #mg-root (2147483646) */ +
+      "html.mg-webgrid-play #mg-glass-cap," +
+      "html.mg-webgrid-play #mg-float-kb," +
+      "html.mg-webgrid-play #mg-activity-board," +
+      "html.mg-webgrid-play #mg-board-chip," +
+      "html.mg-webgrid-play #mg-rec-chip," +
+      "html.mg-webgrid-play #mg-sx-rail," +
+      "html.mg-webgrid-play #mg-live-solve-hud," +
+      "html.mg-webgrid-play #mg-kb-beats," +
+      "html.mg-webgrid-play #mg-mem-maze," +
+      "html.mg-webgrid-play #mg-sports-field," +
+      "html.mg-webgrid-play #mg-geo-float," +
+      "html.mg-webgrid-play #mg-raider-stage," +
+      "html.mg-webgrid-play #mg-rubik-float," +
+      "html.mg-webgrid-play #mg-bloch-float," +
+      "html.mg-webgrid-play #mg-menu-health-pill," +
+      "html.mg-webgrid-play #mg-tools-drawer," +
+      "html.mg-webgrid-play #mg-tools-mode-rail," +
+      "html.mg-webgrid-play #mg-right-drawer," +
+      "html.mg-webgrid-play #mg-right-tab," +
+      "html.mg-webgrid-play #mg-contrail-ov," +
+      "html.mg-webgrid-play #mg-contrail-flow{" +
+      "  z-index:2147483647!important;visibility:visible!important;}" +
+      "html.mg-webgrid-play #mg-tools-drawer," +
+      "html.mg-webgrid-play #mg-tools-mode-rail," +
+      "html.mg-webgrid-play #mg-right-drawer," +
+      "html.mg-webgrid-play #mg-right-tab," +
+      "html.mg-webgrid-play #mg-contrail-flow{" +
+      "  pointer-events:auto!important;}" +
+      /* trail canvas never steals clicks */ +
+      "html.mg-webgrid-play #mg-contrail-ov{" +
+      "  pointer-events:none!important;opacity:1!important;display:block!important;}" +
+      /* scrims NEVER capture during play (maze/board were blocked) */ +
+      "html.mg-webgrid-play #mg-tools-scrim," +
+      "html.mg-webgrid-play #mg-right-scrim{" +
+      "  pointer-events:none!important;opacity:0!important;" +
+      "  visibility:hidden!important;display:none!important;}" +
+      "html.mg-webgrid-play #mg-tools-mode-rail," +
+      "html.mg-webgrid-play #mg-right-tab{" +
+      "  display:flex!important;opacity:1!important;min-width:28px!important;}" +
+      "html.mg-webgrid-play #mg-tools-mode-rail button," +
+      "html.mg-webgrid-play #mg-right-tab{" +
+      "  min-width:28px!important;min-height:52px!important;pointer-events:auto!important;}" +
+      /* Play-safe: drop expensive glass blur mid-run (shake/lag) */ +
+      "html.mg-webgrid-playing #mg-activity-board," +
+      "html.mg-webgrid-play-busy #mg-activity-board," +
+      "html.mg-webgrid-playing #mg-tools-drawer," +
+      "html.mg-webgrid-playing #mg-right-drawer," +
+      "html.mg-webgrid-playing #mg-tools-mode-rail button," +
+      "html.mg-webgrid-playing #mg-right-tab," +
+      "html.mg-webgrid-play-busy #mg-tools-drawer," +
+      "html.mg-webgrid-play-busy #mg-right-drawer{" +
+      "  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}" +
+      "html.mg-webgrid-playing #mg-activity-board:not(.collapsed) .rank-table{" +
+      "  max-height:120px!important;}" +
+      "html.mg-webgrid-play #mg-search-dock," +
+      "html.mg-webgrid-play #mg-search-peek," +
+      "html.mg-webgrid-play #mg-board-toast," +
+      "html.mg-webgrid-play #mg-board-toast button{" +
+      "  pointer-events:auto!important;z-index:2147483647!important;}" +
+      "html.mg-webgrid-play #mg-glass-cap button," +
+      "html.mg-webgrid-play #mg-glass-cap input," +
+      "html.mg-webgrid-play #mg-float-kb button," +
+      "html.mg-webgrid-play #mg-activity-board button," +
+      "html.mg-webgrid-play #mg-search-dock button," +
+      "html.mg-webgrid-play #mg-search-dock input," +
+      "html.mg-webgrid-play #mg-search button," +
+      "html.mg-webgrid-play #mg-search input," +
+      "html.mg-webgrid-play #mg-dragon button," +
+      "html.mg-webgrid-play #mg-panel button{" +
+      "  pointer-events:auto!important;cursor:pointer;}" +
+      /* game canvas clickable; do NOT blanket-enable every button (site chrome) */ +
+      "html.mg-webgrid-play canvas{" +
+      "  pointer-events:auto!important;}" +
+      /* ── FILL Neuralink play only (site chrome) ── */ +
       "html.mg-webgrid-play{--root-nav-height:0px!important;}" +
-      "html.mg-webgrid-play header," +
-      "html.mg-webgrid-play nav," +
-      "html.mg-webgrid-play [class*='Nav']," +
-      "html.mg-webgrid-play [class*='nav_']," +
-      "html.mg-webgrid-play [class*='Header']," +
-      "html.mg-webgrid-play [class*='header_']{" +
+      "html.mg-webgrid-play body > header," +
+      "html.mg-webgrid-play body > nav," +
+      "html.mg-webgrid-play ._root_1bxtc_16 > header," +
+      "html.mg-webgrid-play [class*='_root_'] > header{" +
       "  display:none!important;height:0!important;min-height:0!important;overflow:hidden!important;}" +
       "html.mg-webgrid-play ._root_1bxtc_16{" +
-      "  margin-top:0!important;margin:0!important;padding:0.4rem!important;" +
-      "  height:100dvh!important;max-height:100dvh!important;width:100%!important;" +
-      "  max-width:100vw!important;box-sizing:border-box!important;" +
-      "  display:flex!important;align-items:stretch!important;justify-content:center!important;}" +
-      "html.mg-webgrid-play ._gameplay_1bxtc_131{" +
-      "  height:100%!important;width:100%!important;max-width:100%!important;" +
-      "  gap:0.75rem!important;align-items:center!important;justify-content:center!important;" +
-      "  box-sizing:border-box!important;}" +
-      /* Canvas container: use almost entire viewport (was 100dvh - 20rem) */ +
-      "html.mg-webgrid-play ._container_1wslk_16{" +
-      "  flex:1 1 auto!important;width:100%!important;height:100%!important;" +
-      "  max-height:none!important;max-height:min(98dvh,100%)!important;" +
-      "  min-height:0!important;overflow:hidden!important;" +
+      "  margin:0!important;padding:0!important;" +
+      "  height:100dvh!important;max-height:100dvh!important;min-height:100dvh!important;" +
+      "  width:100vw!important;max-width:100vw!important;box-sizing:border-box!important;" +
+      "  display:flex!important;align-items:stretch!important;justify-content:stretch!important;}" +
+      "html.mg-webgrid-play ._gameplay_1bxtc_131," +
+      "html.mg-webgrid-play [class*='_gameplay_']{" +
+      "  height:100dvh!important;width:100vw!important;max-width:100vw!important;" +
+      "  max-height:100dvh!important;margin:0!important;padding:0.2rem 0.35rem!important;" +
+      "  gap:0.35rem!important;align-items:center!important;justify-content:center!important;" +
+      "  box-sizing:border-box!important;display:flex!important;flex-direction:row!important;}" +
+      "html.mg-webgrid-play ._container_1wslk_16," +
+      "html.mg-webgrid-play [class*='_container_']{" +
+      "  flex:1 1 auto!important;width:auto!important;height:100%!important;" +
+      "  max-height:100dvh!important;max-width:none!important;min-width:0!important;" +
+      "  min-height:min(90dvh,100%)!important;overflow:visible!important;" +
+      "  margin:0!important;padding:0!important;" +
       "  display:flex!important;align-items:center!important;justify-content:center!important;}" +
-      "html.mg-webgrid-play ._canvas_1wslk_27{" +
-      "  max-width:min(96vw,96vh)!important;max-height:min(96vw,96vh)!important;" +
-      "  width:min(96vw,96vh)!important;height:min(96vw,96vh)!important;}" +
-      /* Compact sidebar so grid gets the pixels */ +
-      "html.mg-webgrid-play ._sidebar_1bxtc_139{" +
-      "  flex:0 0 auto!important;min-width:10rem!important;max-width:16rem!important;" +
-      "  margin:0!important;padding:0.5rem!important;}" +
+      "html.mg-webgrid-play ._canvas_1wslk_27," +
+      "html.mg-webgrid-play canvas[class*='_canvas_']{" +
+      "  max-width:none!important;max-height:none!important;" +
+      "  object-fit:contain!important;flex-shrink:0!important;}" +
+      "html.mg-webgrid-play ._sidebar_1bxtc_139," +
+      "html.mg-webgrid-play [class*='_sidebar_']{" +
+      "  flex:0 0 8.5rem!important;min-width:7.5rem!important;max-width:10.5rem!important;" +
+      "  width:8.5rem!important;margin:0!important;padding:0.25rem 0.35rem!important;" +
+      "  align-self:center!important;position:relative!important;z-index:5!important;}" +
       "html.mg-webgrid-play ._timer_1bxtc_69," +
       "html.mg-webgrid-play ._bigScore_1bxtc_69{" +
-      "  font-size:clamp(1.8rem,4vw,3.2rem)!important;letter-spacing:-0.04em!important;}" +
+      "  font-size:clamp(1.5rem,3.4vw,2.8rem)!important;letter-spacing:-0.04em!important;" +
+      "  color:#111!important;text-shadow:0 0 8px rgba(255,255,255,0.9)!important;}" +
       "html.mg-webgrid-play ._smallScore_1bxtc_74{" +
-      "  font-size:clamp(1rem,2vw,1.6rem)!important;margin-top:0!important;}";
+      "  font-size:clamp(0.85rem,1.5vw,1.2rem)!important;margin-top:0!important;}" +
+      "html.mg-webgrid-play ._dialog_1bxtc_30," +
+      "html.mg-webgrid-play [class*='_dialog_']{" +
+      "  max-width:min(92vw,48rem)!important;}" +
+      "html.mg-webgrid-play main,html.mg-webgrid-play #__next,html.mg-webgrid-play [id='__next']{" +
+      "  min-height:100dvh!important;height:100%!important;padding:0!important;margin:0!important;}";
     kickCanvasResize();
-    log(VER + " · fill play area · zoom " + desiredZoom());
+    setTimeout(kickCanvasResize, 60);
+    setTimeout(kickCanvasResize, 200);
+    setTimeout(kickCanvasResize, 600);
+    setTimeout(function () {
+      try {
+        if (window.__mgFloatLayout && window.__mgFloatLayout.apply) window.__mgFloatLayout.apply();
+      } catch (eL) {}
+      kickCanvasResize();
+    }, 900);
+    log(VER + " · canvas FILL · MG chrome kept · zoom " + desiredZoom());
   }
 
   /** How many agent rounds to run (1–5). URL ?mg_autoplay=3 or localStorage mg.webgrid.play_rounds */
@@ -625,6 +1068,10 @@
    * - Grid N only 12 or 30 (public page); ignore 16/35/40 marketing
    */
   function scrapeScore() {
+    /* Throttle full body.innerText during agent chase (Intel CPU burn) */
+    var now = Date.now();
+    var ttl = _playBusy ? 90 : 40;
+    if (_scoreCache.sc && now - _scoreCache.t < ttl) return _scoreCache.sc;
     var body = ((document.body && document.body.innerText) || "").replace(/\s+/g, " ");
     var bps = null,
       ntpm = null,
@@ -662,7 +1109,7 @@
     if (!timer && peak && /play again/i.test(body)) {
       phase = "end";
     }
-    return {
+    var scOut = {
       bps: bps,
       ntpm: ntpm,
       timer: timer,
@@ -672,6 +1119,8 @@
       peak: peak,
       truth: true,
     };
+    _scoreCache = { t: now, sc: scOut };
+    return scOut;
   }
 
   function detectGridSize() {
@@ -709,26 +1158,42 @@
     var w = c.width,
       h = c.height;
     if (!w || !h) return null;
-    var ctx;
-    try {
-      ctx = c.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return null;
-      var data = ctx.getImageData(0, 0, w, h).data;
-    } catch (e) {
-      return null;
+    var now = Date.now();
+    /* Cache full-frame read — wait loops called this 12–18× per click */
+    var data;
+    var cacheMs = _playBusy ? 12 : 6;
+    if (
+      _imgCache.data &&
+      _imgCache.c === c &&
+      _imgCache.w === w &&
+      _imgCache.h === h &&
+      now - _imgCache.t < cacheMs
+    ) {
+      data = _imgCache.data;
+    } else {
+      try {
+        var ctx = c.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return null;
+        data = ctx.getImageData(0, 0, w, h).data;
+        _imgCache = { t: now, w: w, h: h, data: data, c: c };
+      } catch (e) {
+        return null;
+      }
     }
     var cell = w / N;
     var best = null;
     var bestScore = -1;
+    /* Intel: 1 center sample first pass; only refine if hit */
+    var samplesLite = [[0.5, 0.5]];
+    var samplesFull = [
+      [0.5, 0.5],
+      [0.35, 0.35],
+      [0.65, 0.65],
+    ];
+    var samples = _pace.sleep_ms >= 10 ? samplesLite : samplesFull;
     for (var row = 0; row < N; row++) {
       for (var col = 0; col < N; col++) {
-        /* sample 3 points in cell (avoid grid lines) */
         var hits = 0;
-        var samples = [
-          [0.5, 0.5],
-          [0.35, 0.35],
-          [0.65, 0.65],
-        ];
         for (var s = 0; s < samples.length; s++) {
           var px = Math.min(w - 1, Math.floor((col + samples[s][0]) * cell));
           var py = Math.min(h - 1, Math.floor((row + samples[s][1]) * cell));
@@ -913,6 +1378,8 @@
       livePeakNtpm = 0;
 
     startPaceLoop();
+    setPlayBusy(true);
+    openPlayFloats();
     log(
       "chase start N=" +
         N +
@@ -924,9 +1391,11 @@
         _pace.wait_loops +
         " (" +
         (_pace.source || "?") +
-        ")"
+        ") contrails=" +
+        (wantsLabFull() ? "on" : "off")
     );
 
+    try {
     while (Date.now() < tEnd) {
       var stepMs = _pace.sleep_ms || 4;
       var waitMax = _pace.wait_loops || 18;
@@ -971,12 +1440,16 @@
         clicks++;
         hitsGuess++;
         lastIndex = tgt.index;
+        _adaptClicks++;
+        adaptPace(hitsGuess, missGuess);
         try {
-          if (window.__mgUgradWebgrid) {
+          /* ugrad tensor every other click on intel — save CPU */
+          if (window.__mgUgradWebgrid && (clicks % 2 === 0 || _pace.sleep_ms < 8)) {
             window.__mgUgradWebgrid.observeCell(tgt.index, N);
           }
         } catch (eOb) {}
         try {
+          /* every hop — dense visible trail (was every 3rd → looked empty) */
           if (window.__mgContrail && window.__mgContrail.observeAgent) {
             window.__mgContrail.observeAgent(tgt.clientX, tgt.clientY, tgt.index, tgt.conf);
           }
@@ -1043,7 +1516,9 @@
         break;
       }
     }
-
+    } finally {
+      setPlayBusy(false);
+    }
     var fin = scrapeScore();
     var peakBps = fin.peak ? fin.peak.bps : bestBps;
     var peakNtpm = fin.peak ? fin.peak.ntpm : bestNtpm;
@@ -1064,6 +1539,7 @@
       peak: fin.peak || { bps: peakBps, ntpm: peakNtpm },
       peakBps: peakBps,
       peakNtpm: peakNtpm,
+      pace: { sleep_ms: _pace.sleep_ms, wait_loops: _pace.wait_loops, mode: _pace.mode, source: _pace.source },
       N: N,
       round: roundIdx + 1,
       rounds: roundsTotal,
@@ -1098,6 +1574,45 @@
         body: JSON.stringify(Object.assign({ kind: "agent_round_result", ver: VER }, result)),
       });
     } catch (eF) {}
+    /* After play: paint contrail path as on-screen DRAW ink */
+    try {
+      function runContrailDraw() {
+        try {
+          if (window.__mgContrailDraw && window.__mgContrailDraw.animate) {
+            window.__mgContrailDraw.animate();
+            log("contrail → DRAW ink");
+            return;
+          }
+        } catch (e0) {}
+        fetch("http://127.0.0.1:9877/contrail-to-draw.js?v=2", { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw 0;
+            return r.text();
+          })
+          .then(function (code) {
+            var el = document.createElement("script");
+            el.textContent = code;
+            (document.head || document.documentElement).appendChild(el);
+            setTimeout(function () {
+              try {
+                if (window.__mgContrailDraw) {
+                  if (window.__mgContrailDraw.openFloats)
+                    window.__mgContrailDraw.openFloats();
+                  if (window.__mgContrailDraw.animate)
+                    window.__mgContrailDraw.animate();
+                  else if (window.__mgContrailDraw.paint)
+                    window.__mgContrailDraw.paint();
+                  log("contrail → DRAW ink (loaded)");
+                }
+              } catch (e1) {}
+            }, 200);
+          })
+          .catch(function () {
+            log("contrail-to-draw load fail");
+          });
+      }
+      setTimeout(runContrailDraw, 800);
+    } catch (eD) {}
     return result;
   }
 
@@ -1111,11 +1626,64 @@
     return false;
   }
 
+  async function waitForCalIfNeeded() {
+    /* Cold launch: ?mg_cal=1 must finish CAL (+ SHOW) before agent play */
+    try {
+      if (!/[?&]mg_cal=/i.test(location.search || "")) return true;
+      var v = (location.search.match(/[?&]mg_cal=([^&]*)/i) || [])[1] || "1";
+      if (/^(0|off|false)$/i.test(decodeURIComponent(v))) return true;
+    } catch (e0) {
+      return true;
+    }
+    log(VER + " · waiting for __mgCal boot before autoplay…");
+    var deadline = Date.now() + 55000;
+    var sawStart = false;
+    while (Date.now() < deadline) {
+      try {
+        if (window.__mgCalReady) break;
+        if (window.__mgCalRunning || (window.__mgCal && window.__mgCal.isRunning && window.__mgCal.isRunning())) {
+          sawStart = true;
+          await sleep(200);
+          continue;
+        }
+        if (window.__mgCal && window.__mgCal.lastCal && window.__mgCal.lastCal()) {
+          /* CAL finished; SHOW may still be running */
+          if (window.__mgCal.isRunning && window.__mgCal.isRunning()) {
+            await sleep(200);
+            continue;
+          }
+          break;
+        }
+        /* module not injected yet or not started */
+        await sleep(250);
+        if (!sawStart && Date.now() > deadline - 8000) {
+          log(VER + " · cal gate timeout soft — proceeding to play");
+          break;
+        }
+      } catch (eW) {
+        break;
+      }
+    }
+    try {
+      var c = window.__mgCal && window.__mgCal.lastCal && window.__mgCal.lastCal();
+      log(
+        VER +
+          " · cal gate done · " +
+          (c ? c.pass + "/" + c.total + (c.ok ? " green" : " soft") + " " + c.ms + "ms" : "no-report") +
+          (window.__mgCalReady ? " · ready" : "")
+      );
+    } catch (eL) {}
+    /* brief settle after SHOW clear so field is free for WebGrid */
+    await sleep(700);
+    return true;
+  }
+
   async function autoplayIfEnabled() {
     if (!wantAutoplay()) {
       log("autoplay off · calibrated ready (set play_once / AgentPlayOnce / ?mg_autoplay=3)");
       return;
     }
+    await waitForCalIfNeeded();
     var rounds = autoplayRounds();
     var small = wantsSmallScale();
     log(
@@ -1182,6 +1750,19 @@
     desktopGridOk: desktopGridOk,
     bpsFromNtpm: bpsFromNtpm,
     scrapeScore: scrapeScore,
+    pace: function () {
+      return Object.assign({}, _pace);
+    },
+    setPaceProfile: function (name) {
+      return applyPaceProfile(name || "intel", "api");
+    },
+    setPace: function (sleepMs, waitLoops) {
+      if (sleepMs != null) _pace.sleep_ms = Math.max(2, Math.min(40, parseInt(sleepMs, 10) || 14));
+      if (waitLoops != null)
+        _pace.wait_loops = Math.max(4, Math.min(30, parseInt(waitLoops, 10) || 12));
+      _pace.source = "api";
+      return Object.assign({}, _pace);
+    },
     targetRgb: [TARGET_R, TARGET_G, TARGET_B],
     zoomOut: applyWebgridZoomOut,
     setZoom: function (z) {
@@ -1220,13 +1801,22 @@
   /* ⌘− / ⌘+ / ⌘0 — capture phase so page doesn't eat them */
   window.addEventListener("keydown", onZoomKey, true);
   document.addEventListener("keydown", onZoomKey, true);
-  /* Keep layout fill after SPA transitions; don't spam zoom IPC */
+  /* FILL only in lobby/idle — NEVER while playing (grid freeze) */
   _fillTimer = setInterval(function () {
     try {
+      if (_playBusy || _playFrozen || window.__mgWebgridPlayBusy) return;
       hideMgChrome();
-      kickCanvasResize();
+      kickCanvasResize(false);
     } catch (eH) {}
-  }, 1500);
+  }, 5000);
+
+  /* Expose for console / board */
+  window.__mgWebgridFill = {
+    kick: kickCanvasResize,
+    report: function () {
+      return window.__mgWebgridCanvasFill || null;
+    },
+  };
 
   window.__mgWebgridPlayTeardown = function () {
     try {
@@ -1244,12 +1834,15 @@
   };
   var zoomResizeT = 0;
   window.addEventListener("resize", function () {
+    /* Ignore synthetic resize storms + freeze mid-run */
+    if (_playBusy || _playFrozen || window.__mgWebgridPlayBusy) return;
     clearTimeout(zoomResizeT);
     zoomResizeT = setTimeout(function () {
+      if (_playBusy || _playFrozen) return;
       hideMgChrome();
       applyWebgridZoomOut(false);
-      kickCanvasResize();
-    }, 120);
+      kickCanvasResize(false);
+    }, 200);
   });
 
   log(VER + " · ⌘+ bigger · ⌘− smaller · ⌘0 reset");
@@ -1477,10 +2070,22 @@
   document.addEventListener("pointerdown", onPtr, true);
   document.addEventListener("mousedown", onPtr, true);
 
-  setInterval(function () {
-    sample(false);
-  }, 350);
+  /* Watch sample: ~400ms lobby; ~1Hz while playing (IPC thrash was laggy) */
+  (function watchLoop() {
+    var lastBusy = !!window.__mgWebgridPlayBusy;
+    var tid = setInterval(function () {
+      sample(false);
+      var busy = !!window.__mgWebgridPlayBusy;
+      if (busy !== lastBusy) {
+        lastBusy = busy;
+        clearInterval(tid);
+        tid = setInterval(function () {
+          sample(false);
+        }, busy ? 1000 : 400);
+      }
+    }, lastBusy ? 1000 : 400);
+  })();
   sample(true);
-  log(VER + " · watching playthrough → :9880");
+  log(VER + " · playperf · watching playthrough → :9880");
 })();
 

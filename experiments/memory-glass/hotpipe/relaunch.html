@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Memory Glass · Relaunch · live chat + dev</title>
+  <meta name="theme-color" content="#0a0c10" />
+  <style>
+    :root {
+      --bg: #080a0e; --line: rgba(255,255,255,0.12); --text: #e8f0ff; --muted: #9ab;
+      --ok: #6d6; --hot: #fc8; --acc: #8ecbff; --glass: rgba(12,14,18,0.72);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 13px/1.4 system-ui, -apple-system, sans-serif; overflow: hidden; }
+    #app {
+      display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 44px 1fr;
+      height: 100vh; height: 100dvh;
+    }
+    @media (max-width: 900px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: 44px 1fr 40vh; }
+      #side { border-left: 0; border-top: 1px solid var(--line); }
+    }
+    #top {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
+      padding: 0 12px; border-bottom: 1px solid var(--line);
+      background: rgba(10,12,16,0.85); backdrop-filter: blur(16px);
+    }
+    #top b { font: 700 10px/1 system-ui; letter-spacing: 0.16em; text-transform: uppercase; color: var(--hot); }
+    #top .sub { font: 500 10px/1 ui-monospace, Menlo, monospace; color: var(--muted); flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #top button, #top a {
+      appearance: none; border: 1px solid var(--line); background: rgba(255,255,255,0.07);
+      color: var(--text); font: 650 9px/1 system-ui; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 7px 9px; border-radius: 6px; cursor: pointer; text-decoration: none;
+    }
+    #top button.on { border-color: rgba(100,220,160,0.5); color: var(--ok); }
+    #top button.primary { background: rgba(10,132,255,0.28); border-color: rgba(10,132,255,0.45); }
+
+    #stage {
+      position: relative; overflow: hidden; background:
+        radial-gradient(ellipse at 30% 20%, rgba(40,70,110,0.25), transparent 50%),
+        #06080c;
+    }
+    #stage.dev { outline: 1px dashed rgba(160,210,255,0.25); outline-offset: -4px; }
+    .tile {
+      position: absolute; min-width: 140px; min-height: 90px;
+      border: 1px solid rgba(255,255,255,0.16); border-radius: 12px;
+      background: var(--glass); backdrop-filter: blur(18px) saturate(1.3);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .tile .th {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      padding: 6px 8px; border-bottom: 1px solid var(--line); cursor: grab;
+      font: 650 9px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--acc); user-select: none;
+    }
+    .tile.dragging .th { cursor: grabbing; }
+    .tile .th .ops { display: flex; gap: 4px; }
+    .tile .th button {
+      appearance: none; border: 0; background: rgba(255,255,255,0.08); color: var(--muted);
+      font: 700 10px/1 system-ui; width: 20px; height: 18px; border-radius: 4px; cursor: pointer;
+    }
+    .tile .tb { flex: 1; padding: 8px; font: 500 11px/1.35 ui-monospace, Menlo, monospace;
+      color: rgba(220,230,245,0.9); overflow: auto; min-height: 0; }
+    .tile .tb iframe { width: 100%; height: 100%; border: 0; border-radius: 6px; background: #000; min-height: 120px; }
+    .tile.sel { border-color: rgba(160,210,255,0.55); box-shadow: 0 0 0 1px rgba(120,190,255,0.25), 0 12px 32px rgba(0,0,0,0.3); }
+    .tile .rs {
+      position: absolute; right: 2px; bottom: 2px; width: 14px; height: 14px;
+      cursor: nwse-resize; opacity: 0.5;
+      background: linear-gradient(135deg, transparent 50%, rgba(160,210,255,0.7) 50%);
+      border-radius: 2px;
+    }
+
+    #side {
+      display: flex; flex-direction: column; border-left: 1px solid var(--line);
+      background: rgba(8,10,14,0.92); min-height: 0;
+    }
+    #side .sh {
+      padding: 8px 10px; border-bottom: 1px solid var(--line);
+      font: 650 9px/1 system-ui; letter-spacing: 0.12em; text-transform: uppercase; color: var(--acc);
+    }
+    #chat {
+      flex: 1; overflow: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
+      min-height: 0;
+    }
+    #chat .line {
+      padding: 7px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04); font: 500 11px/1.35 system-ui;
+    }
+    #chat .line.you { border-color: rgba(140,200,255,0.25); background: rgba(40,80,120,0.18); }
+    #chat .line.lab { border-color: rgba(100,220,160,0.22); background: rgba(30,80,50,0.16); }
+    #chat .line .who { font: 650 8px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); display: block; margin-bottom: 3px; }
+    #compose {
+      border-top: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 6px;
+    }
+    #compose textarea {
+      width: 100%; min-height: 56px; resize: vertical; border-radius: 8px;
+      border: 1px solid var(--line); background: rgba(0,0,0,0.35); color: var(--text);
+      padding: 8px; font: 500 13px/1.35 system-ui;
+    }
+    #compose .row { display: flex; gap: 6px; flex-wrap: wrap; }
+    #compose button {
+      flex: 1; appearance: none; border: 1px solid var(--line); background: rgba(255,255,255,0.08);
+      color: var(--text); font: 650 10px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 9px; border-radius: 8px; cursor: pointer;
+    }
+    #compose button.go { background: rgba(10,132,255,0.3); border-color: rgba(10,132,255,0.45); }
+    #palette {
+      display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line);
+    }
+    #palette button {
+      appearance: none; border: 1px solid var(--line); background: rgba(255,255,255,0.06);
+      color: var(--muted); font: 650 8px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+    }
+    #hint {
+      position: absolute; left: 12px; bottom: 10px; z-index: 2;
+      font: 500 10px/1.3 ui-monospace, Menlo, monospace; color: rgba(160,190,220,0.7);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="top">
+      <b>Relaunch</b>
+      <span class="sub" id="top-sub">live chat · dev tiles · still hub</span>
+      <button type="button" id="btn-dev" class="on">Dev on</button>
+      <button type="button" id="btn-save">Save layout</button>
+      <button type="button" id="btn-reset">Reset</button>
+      <a href="deploy.html">Deploy</a>
+      <a href="http://127.0.0.1:9877/fleet.html">Fleet</a>
+      <button type="button" class="primary" id="btn-speak">Speak last</button>
+    </div>
+
+    <div id="stage">
+      <div id="hint">Dev mode: drag tile headers · resize corner · add from palette · chat on the right stays live</div>
+    </div>
+
+    <aside id="side">
+      <div class="sh">Live chat · still hub</div>
+      <div id="palette">
+        <button type="button" data-add="live">+ Live</button>
+        <button type="button" data-add="wave">+ Wave</button>
+        <button type="button" data-add="fleet">+ Fleet</button>
+        <button type="button" data-add="deploy">+ Deploy</button>
+        <button type="button" data-add="note">+ Note</button>
+        <button type="button" data-add="agent">+ Agent</button>
+      </div>
+      <div id="chat"></div>
+      <div id="compose">
+        <textarea id="input" placeholder="Message hub / Grok… Enter to send"></textarea>
+        <div class="row">
+          <button type="button" class="go" id="btn-send">Send → hub</button>
+          <button type="button" id="btn-refresh">↻ chat</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+(function () {
+  "use strict";
+  var STILL = "http://127.0.0.1:9877";
+  var HUB = STILL;
+  try {
+    var savedHub = localStorage.getItem("mg.still.hub");
+    if (savedHub) HUB = savedHub.replace(/\/$/, "");
+  } catch (e) {}
+
+  var stage = document.getElementById("stage");
+  var chatEl = document.getElementById("chat");
+  var input = document.getElementById("input");
+  var devOn = true;
+  var tiles = [];
+  var zTop = 10;
+  var lastChatEpoch = 0;
+  var LS = "mg.relaunch.layout.v1";
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  }
+
+  var DEFAULTS = [
+    { id: "live", title: "Still live", kind: "live", x: 16, y: 16, w: 360, h: 260 },
+    { id: "wave", title: "Levels", kind: "wave", x: 390, y: 16, w: 280, h: 180 },
+    { id: "note", title: "Scratch", kind: "note", x: 16, y: 290, w: 320, h: 160,
+      text: "Dev rearrange while chatting.\nAdd tiles · drag · resize · Save layout." },
+  ];
+
+  function loadLayout() {
+    try {
+      var raw = localStorage.getItem(LS);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return DEFAULTS.map(function (t) { return Object.assign({}, t); });
+  }
+
+  function saveLayout() {
+    var data = tiles.map(function (t) {
+      return {
+        id: t.id, title: t.title, kind: t.kind,
+        x: t.x, y: t.y, w: t.w, h: t.h, text: t.text || "",
+      };
+    });
+    try { localStorage.setItem(LS, JSON.stringify(data)); } catch (e) {}
+    $("top-sub").textContent = "layout saved · " + data.length + " tiles · hub " + HUB;
+  }
+
+  function bodyFor(t) {
+    if (t.kind === "live") {
+      return '<img alt="live" style="width:100%;height:100%;object-fit:cover;display:block" src="' +
+        HUB + '/live.jpg?t=' + Date.now() + '" id="img-' + t.id + '"/>';
+    }
+    if (t.kind === "wave") {
+      return '<div id="wave-' + t.id + '" style="font:500 11px/1.5 ui-monospace,Menlo,monospace;color:#9ab">probing levels…</div>';
+    }
+    if (t.kind === "fleet") {
+      return '<iframe src="' + HUB + '/fleet.html" title="fleet"></iframe>';
+    }
+    if (t.kind === "deploy") {
+      return '<iframe src="deploy.html" title="deploy"></iframe>';
+    }
+    if (t.kind === "agent") {
+      return '<div style="color:#9ab">Post to hub with Send →. Agent/Grok replies land in chat + phone TTS.</div>';
+    }
+    return '<textarea style="width:100%;height:100%;border:0;background:transparent;color:#e8f0ff;resize:none;font:500 12px/1.4 system-ui" data-note="' +
+      t.id + '">' + esc(t.text || "") + "</textarea>";
+  }
+
+  function mountTile(spec) {
+    var el = document.createElement("div");
+    el.className = "tile";
+    el.dataset.id = spec.id;
+    el.style.left = spec.x + "px";
+    el.style.top = spec.y + "px";
+    el.style.width = spec.w + "px";
+    el.style.height = spec.h + "px";
+    el.style.zIndex = String(++zTop);
+    el.innerHTML =
+      '<div class="th"><span>' + esc(spec.title) + '</span><span class="ops">' +
+      '<button type="button" data-act="front" title="front">↑</button>' +
+      '<button type="button" data-act="rm" title="remove">×</button></span></div>' +
+      '<div class="tb">' + bodyFor(spec) + "</div><div class=\"rs\"></div>";
+    stage.appendChild(el);
+
+    var t = {
+      id: spec.id, title: spec.title, kind: spec.kind,
+      x: spec.x, y: spec.y, w: spec.w, h: spec.h,
+      text: spec.text || "", el: el,
+    };
+    tiles.push(t);
+
+    var th = el.querySelector(".th");
+    var rs = el.querySelector(".rs");
+    var drag = null;
+
+    el.addEventListener("pointerdown", function () {
+      el.style.zIndex = String(++zTop);
+      tiles.forEach(function (x) { x.el.classList.toggle("sel", x === t); });
+    });
+
+    th.addEventListener("pointerdown", function (e) {
+      if (!devOn) return;
+      if (e.target.closest("button")) return;
+      drag = { mode: "move", ox: e.clientX - t.x, oy: e.clientY - t.y };
+      el.classList.add("dragging");
+      th.setPointerCapture(e.pointerId);
+    });
+    th.addEventListener("pointermove", function (e) {
+      if (!drag || drag.mode !== "move") return;
+      t.x = Math.max(0, e.clientX - drag.ox);
+      t.y = Math.max(0, e.clientY - drag.oy);
+      el.style.left = t.x + "px";
+      el.style.top = t.y + "px";
+    });
+    th.addEventListener("pointerup", function () {
+      drag = null; el.classList.remove("dragging");
+    });
+
+    rs.addEventListener("pointerdown", function (e) {
+      if (!devOn) return;
+      e.stopPropagation();
+      drag = { mode: "resize", ox: e.clientX, oy: e.clientY, w: t.w, h: t.h };
+      rs.setPointerCapture(e.pointerId);
+    });
+    rs.addEventListener("pointermove", function (e) {
+      if (!drag || drag.mode !== "resize") return;
+      t.w = Math.max(140, drag.w + (e.clientX - drag.ox));
+      t.h = Math.max(90, drag.h + (e.clientY - drag.oy));
+      el.style.width = t.w + "px";
+      el.style.height = t.h + "px";
+    });
+    rs.addEventListener("pointerup", function () { drag = null; });
+
+    el.querySelector('[data-act="rm"]').onclick = function () {
+      el.remove();
+      tiles = tiles.filter(function (x) { return x !== t; });
+    };
+    el.querySelector('[data-act="front"]').onclick = function () {
+      el.style.zIndex = String(++zTop);
+    };
+
+    var ta = el.querySelector("textarea[data-note]");
+    if (ta) {
+      ta.addEventListener("input", function () { t.text = ta.value; });
+    }
+    return t;
+  }
+
+  function rebuild() {
+    stage.querySelectorAll(".tile").forEach(function (n) { n.remove(); });
+    tiles = [];
+    loadLayout().forEach(mountTile);
+    stage.classList.toggle("dev", devOn);
+  }
+
+  function addKind(kind) {
+    var titles = { live: "Still live", wave: "Levels", fleet: "Fleet", deploy: "Deploy", note: "Note", agent: "Agent" };
+    var id = kind + "-" + Math.random().toString(36).slice(2, 6);
+    mountTile({
+      id: id, title: titles[kind] || kind, kind: kind,
+      x: 40 + tiles.length * 18, y: 40 + tiles.length * 14,
+      w: kind === "live" ? 360 : 260, h: kind === "live" ? 240 : 160,
+      text: "",
+    });
+  }
+
+  function refreshTiles() {
+    tiles.forEach(function (t) {
+      if (t.kind === "live") {
+        var img = t.el.querySelector("img");
+        if (img) img.src = HUB + "/live.jpg?t=" + Date.now();
+      }
+      if (t.kind === "wave") {
+        var box = t.el.querySelector("#wave-" + t.id) || t.el.querySelector(".tb > div");
+        fetch(HUB + "/audio-levels?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!box) return;
+            box.innerHTML =
+              "src " + esc(d.src || "—") + "<br>" +
+              "L " + (d.L != null ? Number(d.L).toFixed(3) : "—") +
+              " · R " + (d.R != null ? Number(d.R).toFixed(3) : "—") +
+              " · M " + (d.M != null ? Number(d.M).toFixed(3) : "—") +
+              "<br>age " + (d.age_s != null ? Number(d.age_s).toFixed(2) + "s" : "—");
+          })
+          .catch(function () {});
+      }
+    });
+  }
+
+  function renderChat(messages) {
+    if (!messages) return;
+    chatEl.innerHTML = messages.slice(-60).map(function (m) {
+      var cls = m.role === "assistant" ? "lab" : "you";
+      return '<div class="line ' + cls + '"><span class="who">' +
+        esc(m.role || "?") + " · " + esc((m.ts || "").slice(11, 19)) +
+        "</span>" + esc(m.text || "") +
+        (m.tts ? ' <span style="color:#6d6">·tts</span>' : "") +
+        "</div>";
+    }).join("") || '<div class="line"><span class="who">empty</span>No messages yet — send one.</div>';
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function pollChat() {
+    fetch(HUB + "/conversation?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        renderChat(j.messages || []);
+        $("top-sub").textContent =
+          "hub " + HUB + " · n=" + (j.n || 0) + " · dev " + (devOn ? "on" : "off");
+      })
+      .catch(function (e) {
+        $("top-sub").textContent = "hub offline · " + HUB + " · " + e;
+      });
+  }
+
+  function send() {
+    var t = (input.value || "").trim();
+    if (!t) return;
+    fetch(HUB + "/transcript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: t, src: "relaunch-desk" }),
+    }).then(function () {
+      input.value = "";
+      pollChat();
+    }).catch(function (e) {
+      alert("send failed: " + e);
+    });
+  }
+
+  $("btn-dev").onclick = function () {
+    devOn = !devOn;
+    $("btn-dev").classList.toggle("on", devOn);
+    $("btn-dev").textContent = devOn ? "Dev on" : "Dev off";
+    stage.classList.toggle("dev", devOn);
+  };
+  $("btn-save").onclick = saveLayout;
+  $("btn-reset").onclick = function () {
+    try { localStorage.removeItem(LS); } catch (e) {}
+    rebuild();
+  };
+  $("btn-send").onclick = send;
+  $("btn-refresh").onclick = pollChat;
+  $("btn-speak").onclick = function () {
+    fetch(HUB + "/reply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: "Relaunch desk is live. Drag tiles in dev mode and keep chatting.",
+        src: "relaunch",
+        tts: true,
+      }),
+    }).then(pollChat);
+  };
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+  document.querySelectorAll("#palette [data-add]").forEach(function (b) {
+    b.onclick = function () { addKind(b.getAttribute("data-add")); };
+  });
+
+  /* fleet register as relaunch desk */
+  fetch(HUB + "/fleet", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: "relaunch-" + Math.random().toString(36).slice(2, 7),
+      role: "laptop",
+      name: "Relaunch desk",
+      caps: ["chat", "dev", "tiles"],
+    }),
+  }).catch(function () {});
+
+  rebuild();
+  pollChat();
+  setInterval(pollChat, 1500);
+  setInterval(refreshTiles, 1200);
+})();
+  </script>
+</body>
+</html>

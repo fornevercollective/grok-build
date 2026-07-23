@@ -549,7 +549,8 @@
     );
   }
 
-  setInterval(paintOrb, 400);
+  /* 500ms orb paint — lighter on laptop GPU than 400 */
+  setInterval(paintOrb, 500);
   setTimeout(paintOrb, 200);
 
   /* Manual open/close only — use TOOLS → BLOCH or orb click */

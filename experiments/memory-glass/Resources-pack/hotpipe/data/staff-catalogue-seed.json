@@ -1,0 +1,8448 @@
+{
+  "schema": "mg-staff-catalogue-seed-v2",
+  "source": "https://kbatch.ugrad.ai/data/music-staff/",
+  "page": "https://kbatch.ugrad.ai/labs/music-staff",
+  "generated": "2026-07-18T22:37:45.297Z",
+  "claim": "Staff notation catalogue = dictionary of music symbols, scales, intervals, PD motif seeds — geometry-linked, rights-clean.",
+  "count": 183,
+  "kinds": {
+    "articulation": 12,
+    "chord": 30,
+    "clef": 5,
+    "dynamic": 12,
+    "geometry-bridge": 1,
+    "interval": 17,
+    "key-signature": 13,
+    "motif": 12,
+    "rhythm": 10,
+    "scale": 47,
+    "solfege": 12,
+    "time-signature": 12
+  },
+  "families": {
+    "articulations": 12,
+    "chords": 30,
+    "clefs": 5,
+    "dynamics": 12,
+    "geometry": 1,
+    "intervals": 17,
+    "keys": 13,
+    "motifs-pd": 12,
+    "rhythms": 10,
+    "scales-modes": 47,
+    "solfege": 12,
+    "meter": 12
+  },
+  "rights": {
+    "theory": "Music-theoretic facts (scales, intervals, clefs) are not copyrightable as pure facts.",
+    "motifs": "Motif seeds are short PD phrases for education/geometry only — not full commercial scores.",
+    "noLyrics": "No commercial lyric text in this catalogue."
+  },
+  "mg": {
+    "api": "__mgKeyboardBeats.loadCatalogueId(id)",
+    "list": "__mgKeyboardBeats.listCatalogue({kind})",
+    "lab": "https://kbatch.ugrad.ai/labs/music-staff"
+  },
+  "entries": [
+    {
+      "id": "artic-accent",
+      "kind": "articulation",
+      "title": "Accent",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-arco",
+      "kind": "articulation",
+      "title": "Arco",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-fermata",
+      "kind": "articulation",
+      "title": "Fermata",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-glissando",
+      "kind": "articulation",
+      "title": "Glissando",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-legato",
+      "kind": "articulation",
+      "title": "Legato",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-marcato",
+      "kind": "articulation",
+      "title": "Marcato",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-mordent",
+      "kind": "articulation",
+      "title": "Mordent",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-pizzicato",
+      "kind": "articulation",
+      "title": "Pizzicato",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-staccato",
+      "kind": "articulation",
+      "title": "Staccato",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-tenuto",
+      "kind": "articulation",
+      "title": "Tenuto",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-trill",
+      "kind": "articulation",
+      "title": "Trill",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "artic-turn",
+      "kind": "articulation",
+      "title": "Turn",
+      "family": "articulations",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4
+      ],
+      "midi": [
+        60,
+        62,
+        64
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4",
+      "solfege": "Do Re Mi",
+      "abc": "C4 D4 E4",
+      "tags": [
+        "articulation",
+        "marking"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Performance marking; demo triad shows placement context"
+    },
+    {
+      "id": "chord-a-dom7",
+      "kind": "chord",
+      "title": "A Dominant 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "A",
+      "mode": null,
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        4,
+        7,
+        10
+      ],
+      "midi": [
+        57,
+        61,
+        64,
+        67
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 C#4 E4 G4",
+      "solfege": "Do Mi Sol Li",
+      "abc": "A3 C^4 E4 G4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-a-maj",
+      "kind": "chord",
+      "title": "A Major triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "A",
+      "mode": null,
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        57,
+        61,
+        64
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 C#4 E4",
+      "solfege": "Do Mi Sol",
+      "abc": "A3 C^4 E4",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-a-maj7",
+      "kind": "chord",
+      "title": "A Major 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "A",
+      "mode": null,
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        4,
+        7,
+        11
+      ],
+      "midi": [
+        57,
+        61,
+        64,
+        68
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 C#4 E4 G#4",
+      "solfege": "Do Mi Sol Ti",
+      "abc": "A3 C^4 E4 G^4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-a-min",
+      "kind": "chord",
+      "title": "A Minor triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "A",
+      "mode": null,
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        3,
+        7
+      ],
+      "midi": [
+        57,
+        60,
+        64
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 C4 E4",
+      "solfege": "Do Ri Sol",
+      "abc": "A3 C4 E4",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-6",
+      "kind": "chord",
+      "title": "C Major 6",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        9
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        69
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 A4",
+      "solfege": "Do Mi Sol La",
+      "abc": "C4 E4 G4 A4",
+      "tags": [
+        "chord",
+        "sixth"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-add9",
+      "kind": "chord",
+      "title": "C Add9",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        14
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        74
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 D5",
+      "solfege": "Do Mi Sol Re",
+      "abc": "C4 E4 G4 D5",
+      "tags": [
+        "chord",
+        "extension"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-aug",
+      "kind": "chord",
+      "title": "C Augmented triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        8
+      ],
+      "midi": [
+        60,
+        64,
+        68
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G#4",
+      "solfege": "Do Mi Si",
+      "abc": "C4 E4 G^4",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-dim",
+      "kind": "chord",
+      "title": "C Diminished triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        6
+      ],
+      "midi": [
+        60,
+        63,
+        66
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 F#4",
+      "solfege": "Do Ri Fi",
+      "abc": "C4 D^4 F^4",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-dim7",
+      "kind": "chord",
+      "title": "C Diminished 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "midi": [
+        60,
+        63,
+        66,
+        69
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 F#4 A4",
+      "solfege": "Do Ri Fi La",
+      "abc": "C4 D^4 F^4 A4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-dom7",
+      "kind": "chord",
+      "title": "C Dominant 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        10
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        70
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 A#4",
+      "solfege": "Do Mi Sol Li",
+      "abc": "C4 E4 G4 A^4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-m6",
+      "kind": "chord",
+      "title": "C Minor 6",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        7,
+        9
+      ],
+      "midi": [
+        60,
+        63,
+        67,
+        69
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 G4 A4",
+      "solfege": "Do Ri Sol La",
+      "abc": "C4 D^4 G4 A4",
+      "tags": [
+        "chord",
+        "sixth"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-m7b5",
+      "kind": "chord",
+      "title": "C Half-diminished",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        6,
+        10
+      ],
+      "midi": [
+        60,
+        63,
+        66,
+        70
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 F#4 A#4",
+      "solfege": "Do Ri Fi Li",
+      "abc": "C4 D^4 F^4 A^4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-maj",
+      "kind": "chord",
+      "title": "C Major triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-maj7",
+      "kind": "chord",
+      "title": "C Major 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        11
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        71
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 B4",
+      "solfege": "Do Mi Sol Ti",
+      "abc": "C4 E4 G4 B4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-maj9",
+      "kind": "chord",
+      "title": "C Major 9",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        11,
+        14
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        71,
+        74
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 B4 D5",
+      "solfege": "Do Mi Sol Ti Re",
+      "abc": "C4 E4 G4 B4 D5",
+      "tags": [
+        "chord",
+        "extension"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-min",
+      "kind": "chord",
+      "title": "C Minor triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        7
+      ],
+      "midi": [
+        60,
+        63,
+        67
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 G4",
+      "solfege": "Do Ri Sol",
+      "abc": "C4 D^4 G4",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-min7",
+      "kind": "chord",
+      "title": "C Minor 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        7,
+        10
+      ],
+      "midi": [
+        60,
+        63,
+        67,
+        70
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 G4 A#4",
+      "solfege": "Do Ri Sol Li",
+      "abc": "C4 D^4 G4 A^4",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-min9",
+      "kind": "chord",
+      "title": "C Minor 9",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        7,
+        10,
+        14
+      ],
+      "midi": [
+        60,
+        63,
+        67,
+        70,
+        74
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 G4 A#4 D5",
+      "solfege": "Do Ri Sol Li Re",
+      "abc": "C4 D^4 G4 A^4 D5",
+      "tags": [
+        "chord",
+        "extension"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-power",
+      "kind": "chord",
+      "title": "C Power chord",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        7
+      ],
+      "midi": [
+        60,
+        67
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 G4",
+      "solfege": "Do Sol",
+      "abc": "C4 G4",
+      "tags": [
+        "chord",
+        "rock"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-quartal",
+      "kind": "chord",
+      "title": "C Quartal stack",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        5,
+        10,
+        15
+      ],
+      "midi": [
+        60,
+        65,
+        70,
+        75
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 F4 A#4 D#5",
+      "solfege": "Do Fa Li Ri",
+      "abc": "C4 F4 A^4 D^5",
+      "tags": [
+        "chord",
+        "modern"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-sus2",
+      "kind": "chord",
+      "title": "C Sus2",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        7
+      ],
+      "midi": [
+        60,
+        62,
+        67
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 G4",
+      "solfege": "Do Re Sol",
+      "abc": "C4 D4 G4",
+      "tags": [
+        "chord",
+        "sus"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-c-sus4",
+      "kind": "chord",
+      "title": "C Sus4",
+      "family": "chords",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        5,
+        7
+      ],
+      "midi": [
+        60,
+        65,
+        67
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 F4 G4",
+      "solfege": "Do Fa Sol",
+      "abc": "C4 F4 G4",
+      "tags": [
+        "chord",
+        "sus"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-f-dom7",
+      "kind": "chord",
+      "title": "F Dominant 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "F",
+      "mode": null,
+      "tonicMidi": 65,
+      "degrees": [
+        0,
+        4,
+        7,
+        10
+      ],
+      "midi": [
+        65,
+        69,
+        72,
+        75
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F4 A4 C5 D#5",
+      "solfege": "Do Mi Sol Li",
+      "abc": "F4 A4 C5 D^5",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-f-maj",
+      "kind": "chord",
+      "title": "F Major triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "F",
+      "mode": null,
+      "tonicMidi": 65,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        65,
+        69,
+        72
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F4 A4 C5",
+      "solfege": "Do Mi Sol",
+      "abc": "F4 A4 C5",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-f-maj7",
+      "kind": "chord",
+      "title": "F Major 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "F",
+      "mode": null,
+      "tonicMidi": 65,
+      "degrees": [
+        0,
+        4,
+        7,
+        11
+      ],
+      "midi": [
+        65,
+        69,
+        72,
+        76
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F4 A4 C5 E5",
+      "solfege": "Do Mi Sol Ti",
+      "abc": "F4 A4 C5 E5",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-f-min",
+      "kind": "chord",
+      "title": "F Minor triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "F",
+      "mode": null,
+      "tonicMidi": 65,
+      "degrees": [
+        0,
+        3,
+        7
+      ],
+      "midi": [
+        65,
+        68,
+        72
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F4 G#4 C5",
+      "solfege": "Do Ri Sol",
+      "abc": "F4 G^4 C5",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-g-dom7",
+      "kind": "chord",
+      "title": "G Dominant 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "G",
+      "mode": null,
+      "tonicMidi": 67,
+      "degrees": [
+        0,
+        4,
+        7,
+        10
+      ],
+      "midi": [
+        67,
+        71,
+        74,
+        77
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G4 B4 D5 F5",
+      "solfege": "Do Mi Sol Li",
+      "abc": "G4 B4 D5 F5",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-g-maj",
+      "kind": "chord",
+      "title": "G Major triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "G",
+      "mode": null,
+      "tonicMidi": 67,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        67,
+        71,
+        74
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G4 B4 D5",
+      "solfege": "Do Mi Sol",
+      "abc": "G4 B4 D5",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-g-maj7",
+      "kind": "chord",
+      "title": "G Major 7",
+      "family": "chords",
+      "clef": "treble",
+      "key": "G",
+      "mode": null,
+      "tonicMidi": 67,
+      "degrees": [
+        0,
+        4,
+        7,
+        11
+      ],
+      "midi": [
+        67,
+        71,
+        74,
+        78
+      ],
+      "durations": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G4 B4 D5 F#5",
+      "solfege": "Do Mi Sol Ti",
+      "abc": "G4 B4 D5 F^5",
+      "tags": [
+        "chord",
+        "seventh"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "chord-g-min",
+      "kind": "chord",
+      "title": "G Minor triad",
+      "family": "chords",
+      "clef": "treble",
+      "key": "G",
+      "mode": null,
+      "tonicMidi": 67,
+      "degrees": [
+        0,
+        3,
+        7
+      ],
+      "midi": [
+        67,
+        70,
+        74
+      ],
+      "durations": [
+        2,
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G4 A#4 D5",
+      "solfege": "Do Ri Sol",
+      "abc": "G4 A^4 D5",
+      "tags": [
+        "chord",
+        "triad"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "clef-alto",
+      "kind": "clef",
+      "title": "Alto (C) clef",
+      "family": "clefs",
+      "clef": "alto",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        60
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "alto",
+      "solfege": "—",
+      "abc": "C4",
+      "tags": [
+        "clef",
+        "reference"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Staff positioning token; not a melody"
+    },
+    {
+      "id": "clef-bass",
+      "kind": "clef",
+      "title": "Bass (F) clef",
+      "family": "clefs",
+      "clef": "bass",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        60
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "bass",
+      "solfege": "—",
+      "abc": "C4",
+      "tags": [
+        "clef",
+        "reference"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Staff positioning token; not a melody"
+    },
+    {
+      "id": "clef-percussion",
+      "kind": "clef",
+      "title": "Percussion clef",
+      "family": "clefs",
+      "clef": "percussion",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        60
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "percussion",
+      "solfege": "—",
+      "abc": "C4",
+      "tags": [
+        "clef",
+        "reference"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Staff positioning token; not a melody"
+    },
+    {
+      "id": "clef-tenor",
+      "kind": "clef",
+      "title": "Tenor (C) clef",
+      "family": "clefs",
+      "clef": "tenor",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        60
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "tenor",
+      "solfege": "—",
+      "abc": "C4",
+      "tags": [
+        "clef",
+        "reference"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Staff positioning token; not a melody"
+    },
+    {
+      "id": "clef-treble",
+      "kind": "clef",
+      "title": "Treble (G) clef",
+      "family": "clefs",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        60
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "treble",
+      "solfege": "—",
+      "abc": "C4",
+      "tags": [
+        "clef",
+        "reference"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Staff positioning token; not a melody"
+    },
+    {
+      "id": "dyn-cresc",
+      "kind": "dynamic",
+      "title": "crescendo (cresc)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "cresc"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-dim",
+      "kind": "dynamic",
+      "title": "diminuendo (dim)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "dim"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-f",
+      "kind": "dynamic",
+      "title": "forte (f)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "f"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-ff",
+      "kind": "dynamic",
+      "title": "fortissimo (ff)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "ff"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-fff",
+      "kind": "dynamic",
+      "title": "fortississimo (fff)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "fff"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-fp",
+      "kind": "dynamic",
+      "title": "fortepiano (fp)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "fp"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-mf",
+      "kind": "dynamic",
+      "title": "mezzo-forte (mf)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "mf"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-mp",
+      "kind": "dynamic",
+      "title": "mezzo-piano (mp)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "mp"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-p",
+      "kind": "dynamic",
+      "title": "piano (p)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "p"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-pp",
+      "kind": "dynamic",
+      "title": "pianissimo (pp)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "pp"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-ppp",
+      "kind": "dynamic",
+      "title": "pianississimo (ppp)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "ppp"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "dyn-sfz",
+      "kind": "dynamic",
+      "title": "sforzando (sfz)",
+      "family": "dynamics",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7
+      ],
+      "midi": [
+        60,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4",
+      "solfege": "Do Mi Sol",
+      "abc": "C4 E4 G4",
+      "tags": [
+        "dynamic",
+        "sfz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "geo-bridge-c-major-white",
+      "kind": "geometry-bridge",
+      "title": "C major scale ↔ white-key piano path",
+      "family": "geometry",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        65,
+        67,
+        69,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F4 G4 A4 B4 C5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "C4 D4 E4 F4 G4 A4 B4 C5",
+      "tags": [
+        "geometry",
+        "bridge",
+        "keyboard"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "QWERTY home: a s d f g h j k maps roughly to C D E F G A B C on MG float-kb jam",
+      "world": null,
+      "note": "Links staff catalogue to MG Beats + KBatch path geometry"
+    },
+    {
+      "id": "int-a4",
+      "kind": "interval",
+      "title": "Tritone (A4/d5) (A4)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        6
+      ],
+      "midi": [
+        60,
+        66
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 F#4",
+      "solfege": "Do Fi",
+      "abc": "C4 F^4",
+      "tags": [
+        "interval",
+        "A4"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m10",
+      "kind": "interval",
+      "title": "Minor tenth (m10)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        15
+      ],
+      "midi": [
+        60,
+        75
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#5",
+      "solfege": "Do Ri",
+      "abc": "C4 D^5",
+      "tags": [
+        "interval",
+        "m10"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m10",
+      "kind": "interval",
+      "title": "Major tenth (M10)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        16
+      ],
+      "midi": [
+        60,
+        76
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E5",
+      "solfege": "Do Mi",
+      "abc": "C4 E5",
+      "tags": [
+        "interval",
+        "M10"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m2",
+      "kind": "interval",
+      "title": "Minor second (m2)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1
+      ],
+      "midi": [
+        60,
+        61
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4",
+      "solfege": "Do Di",
+      "abc": "C4 C^4",
+      "tags": [
+        "interval",
+        "m2"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m2",
+      "kind": "interval",
+      "title": "Major second (M2)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2
+      ],
+      "midi": [
+        60,
+        62
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4",
+      "solfege": "Do Re",
+      "abc": "C4 D4",
+      "tags": [
+        "interval",
+        "M2"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m3",
+      "kind": "interval",
+      "title": "Minor third (m3)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3
+      ],
+      "midi": [
+        60,
+        63
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4",
+      "solfege": "Do Ri",
+      "abc": "C4 D^4",
+      "tags": [
+        "interval",
+        "m3"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m3",
+      "kind": "interval",
+      "title": "Major third (M3)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4
+      ],
+      "midi": [
+        60,
+        64
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 E4",
+      "solfege": "Do Mi",
+      "abc": "C4 E4",
+      "tags": [
+        "interval",
+        "M3"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m6",
+      "kind": "interval",
+      "title": "Minor sixth (m6)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        8
+      ],
+      "midi": [
+        60,
+        68
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 G#4",
+      "solfege": "Do Si",
+      "abc": "C4 G^4",
+      "tags": [
+        "interval",
+        "m6"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m6",
+      "kind": "interval",
+      "title": "Major sixth (M6)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        9
+      ],
+      "midi": [
+        60,
+        69
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 A4",
+      "solfege": "Do La",
+      "abc": "C4 A4",
+      "tags": [
+        "interval",
+        "M6"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m7",
+      "kind": "interval",
+      "title": "Minor seventh (m7)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        10
+      ],
+      "midi": [
+        60,
+        70
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 A#4",
+      "solfege": "Do Li",
+      "abc": "C4 A^4",
+      "tags": [
+        "interval",
+        "m7"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m7",
+      "kind": "interval",
+      "title": "Major seventh (M7)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        11
+      ],
+      "midi": [
+        60,
+        71
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 B4",
+      "solfege": "Do Ti",
+      "abc": "C4 B4",
+      "tags": [
+        "interval",
+        "M7"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-m9",
+      "kind": "interval",
+      "title": "Major ninth (M9)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        14
+      ],
+      "midi": [
+        60,
+        74
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D5",
+      "solfege": "Do Re",
+      "abc": "C4 D5",
+      "tags": [
+        "interval",
+        "M9"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-p1",
+      "kind": "interval",
+      "title": "Unison / perfect prime (P1)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4",
+      "solfege": "Do Do",
+      "abc": "C4 C4",
+      "tags": [
+        "interval",
+        "P1"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-p12",
+      "kind": "interval",
+      "title": "Perfect twelfth (P12)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        19
+      ],
+      "midi": [
+        60,
+        79
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 G5",
+      "solfege": "Do Sol",
+      "abc": "C4 G5",
+      "tags": [
+        "interval",
+        "P12"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-p4",
+      "kind": "interval",
+      "title": "Perfect fourth (P4)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        5
+      ],
+      "midi": [
+        60,
+        65
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 F4",
+      "solfege": "Do Fa",
+      "abc": "C4 F4",
+      "tags": [
+        "interval",
+        "P4"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-p5",
+      "kind": "interval",
+      "title": "Perfect fifth (P5)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        7
+      ],
+      "midi": [
+        60,
+        67
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 G4",
+      "solfege": "Do Sol",
+      "abc": "C4 G4",
+      "tags": [
+        "interval",
+        "P5"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "int-p8",
+      "kind": "interval",
+      "title": "Perfect octave (P8)",
+      "family": "intervals",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        12
+      ],
+      "midi": [
+        60,
+        72
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C5",
+      "solfege": "Do Do",
+      "abc": "C4 C5",
+      "tags": [
+        "interval",
+        "P8"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "key-A",
+      "kind": "key-signature",
+      "title": "A major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "A",
+      "mode": "ionian",
+      "tonicMidi": 69,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        69,
+        71,
+        73,
+        74,
+        76,
+        78,
+        80,
+        81
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A4 B4 C#5 D5 E5 F#5 G#5 A5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "A4 B4 C^5 D5 E5 F^5 G^5 A5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "sharps-3"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "3 sharp(s)"
+    },
+    {
+      "id": "key-Ab",
+      "kind": "key-signature",
+      "title": "Ab major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "Ab",
+      "mode": "ionian",
+      "tonicMidi": 68,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        68,
+        70,
+        72,
+        73,
+        75,
+        77,
+        79,
+        80
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G#4 A#4 C5 C#5 D#5 F5 G5 G#5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "G^4 A^4 C5 C^5 D^5 F5 G5 G^5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-4"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "4 flat(s)"
+    },
+    {
+      "id": "key-B",
+      "kind": "key-signature",
+      "title": "B major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "B",
+      "mode": "ionian",
+      "tonicMidi": 71,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        71,
+        73,
+        75,
+        76,
+        78,
+        80,
+        82,
+        83
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "B4 C#5 D#5 E5 F#5 G#5 A#5 B5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "B4 C^5 D^5 E5 F^5 G^5 A^5 B5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "sharps-5"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "5 sharp(s)"
+    },
+    {
+      "id": "key-Bb",
+      "kind": "key-signature",
+      "title": "Bb major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "Bb",
+      "mode": "ionian",
+      "tonicMidi": 70,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        70,
+        72,
+        74,
+        75,
+        77,
+        79,
+        81,
+        82
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A#4 C5 D5 D#5 F5 G5 A5 A#5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "A^4 C5 D5 D^5 F5 G5 A5 A^5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-2"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "2 flat(s)"
+    },
+    {
+      "id": "key-C",
+      "kind": "key-signature",
+      "title": "C major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "C",
+      "mode": "ionian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        65,
+        67,
+        69,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F4 G4 A4 B4 C5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "C4 D4 E4 F4 G4 A4 B4 C5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-0"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "no accidentals"
+    },
+    {
+      "id": "key-D",
+      "kind": "key-signature",
+      "title": "D major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "D",
+      "mode": "ionian",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        62,
+        64,
+        66,
+        67,
+        69,
+        71,
+        73,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 E4 F#4 G4 A4 B4 C#5 D5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "D4 E4 F^4 G4 A4 B4 C^5 D5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "sharps-2"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "2 sharp(s)"
+    },
+    {
+      "id": "key-Db",
+      "kind": "key-signature",
+      "title": "Db major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "Db",
+      "mode": "ionian",
+      "tonicMidi": 61,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        61,
+        63,
+        65,
+        66,
+        68,
+        70,
+        72,
+        73
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C#4 D#4 F4 F#4 G#4 A#4 C5 C#5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "C^4 D^4 F4 F^4 G^4 A^4 C5 C^5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-5"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "5 flat(s)"
+    },
+    {
+      "id": "key-E",
+      "kind": "key-signature",
+      "title": "E major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "E",
+      "mode": "ionian",
+      "tonicMidi": 64,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        64,
+        66,
+        68,
+        69,
+        71,
+        73,
+        75,
+        76
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "E4 F#4 G#4 A4 B4 C#5 D#5 E5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "E4 F^4 G^4 A4 B4 C^5 D^5 E5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "sharps-4"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "4 sharp(s)"
+    },
+    {
+      "id": "key-Eb",
+      "kind": "key-signature",
+      "title": "Eb major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "Eb",
+      "mode": "ionian",
+      "tonicMidi": 63,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        63,
+        65,
+        67,
+        68,
+        70,
+        72,
+        74,
+        75
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D#4 F4 G4 G#4 A#4 C5 D5 D#5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "D^4 F4 G4 G^4 A^4 C5 D5 D^5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-3"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "3 flat(s)"
+    },
+    {
+      "id": "key-F",
+      "kind": "key-signature",
+      "title": "F major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "F",
+      "mode": "ionian",
+      "tonicMidi": 65,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        65,
+        67,
+        69,
+        70,
+        72,
+        74,
+        76,
+        77
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F4 G4 A4 A#4 C5 D5 E5 F5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "F4 G4 A4 A^4 C5 D5 E5 F5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-1"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "1 flat(s)"
+    },
+    {
+      "id": "key-Fs",
+      "kind": "key-signature",
+      "title": "F# major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "F#",
+      "mode": "ionian",
+      "tonicMidi": 66,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        66,
+        68,
+        70,
+        71,
+        73,
+        75,
+        77,
+        78
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F#4 G#4 A#4 B4 C#5 D#5 F5 F#5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "F^4 G^4 A^4 B4 C^5 D^5 F5 F^5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "sharps-6"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "6 sharp(s)"
+    },
+    {
+      "id": "key-G",
+      "kind": "key-signature",
+      "title": "G major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "G",
+      "mode": "ionian",
+      "tonicMidi": 67,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        67,
+        69,
+        71,
+        72,
+        74,
+        76,
+        78,
+        79
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G4 A4 B4 C5 D5 E5 F#5 G5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "G4 A4 B4 C5 D5 E5 F^5 G5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "sharps-1"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "1 sharp(s)"
+    },
+    {
+      "id": "key-Gb",
+      "kind": "key-signature",
+      "title": "Gb major key signature",
+      "family": "keys",
+      "clef": "treble",
+      "key": "Gb",
+      "mode": "ionian",
+      "tonicMidi": 66,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        66,
+        68,
+        70,
+        71,
+        73,
+        75,
+        77,
+        78
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F#4 G#4 A#4 B4 C#5 D#5 F5 F#5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "F^4 G^4 A^4 B4 C^5 D^5 F5 F^5",
+      "tags": [
+        "key",
+        "signature",
+        "major",
+        "flats-6"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "6 flat(s)"
+    },
+    {
+      "id": "motif-amazing",
+      "kind": "motif",
+      "title": "Amazing Grace (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        9,
+        7,
+        4,
+        0,
+        2,
+        4,
+        4,
+        2,
+        0
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        69,
+        67,
+        64,
+        60,
+        62,
+        64,
+        64,
+        62,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 A4 G4 E4 C4 D4 E4 E4 D4 C4",
+      "solfege": "Do Mi Sol La Sol Mi Do Re Mi Mi Re Do",
+      "abc": "C4 E4 G4 A4 G4 E4 C4 D4 E4 E4 D4 C4",
+      "tags": [
+        "motif",
+        "pd",
+        "hymn"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "Traditional / PD melody seed",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-bach-c-prelude",
+      "kind": "motif",
+      "title": "Bach C prelude arpeggio (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        4,
+        7,
+        12,
+        16,
+        7,
+        12,
+        16
+      ],
+      "midi": [
+        60,
+        64,
+        67,
+        72,
+        76,
+        67,
+        72,
+        76
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C4 E4 G4 C5 E5 G4 C5 E5",
+      "solfege": "Do Mi Sol Do Mi Sol Do Mi",
+      "abc": "C4 E4 G4 C5 E5 G4 C5 E5",
+      "tags": [
+        "motif",
+        "pd",
+        "baroque"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "JS Bach WTC / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-canon-pachelbel",
+      "kind": "motif",
+      "title": "Pachelbel Canon bass (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 48,
+      "degrees": [
+        0,
+        7,
+        5,
+        0,
+        2,
+        9,
+        7,
+        4
+      ],
+      "midi": [
+        48,
+        55,
+        53,
+        48,
+        50,
+        57,
+        55,
+        52
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C3 G3 F3 C3 D3 A3 G3 E3",
+      "solfege": "Do Sol Fa Do Re La Sol Mi",
+      "abc": "C3 G3 F3 C3 D3 A3 G3 E3",
+      "tags": [
+        "motif",
+        "pd",
+        "baroque"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "Pachelbel / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-frere",
+      "kind": "motif",
+      "title": "Frère Jacques (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        0,
+        0,
+        2,
+        4,
+        0,
+        4,
+        5,
+        7,
+        4,
+        5,
+        7
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        60,
+        60,
+        62,
+        64,
+        60,
+        64,
+        65,
+        67,
+        64,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4 E4 F4 G4",
+      "solfege": "Do Re Mi Do Do Re Mi Do Mi Fa Sol Mi Fa Sol",
+      "abc": "C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4 E4 F4 G4",
+      "tags": [
+        "motif",
+        "pd"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "French folk / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-greensleeves",
+      "kind": "motif",
+      "title": "Greensleeves (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 64,
+      "degrees": [
+        0,
+        3,
+        5,
+        7,
+        8,
+        7,
+        5,
+        3,
+        0,
+        -2,
+        0,
+        1,
+        3
+      ],
+      "midi": [
+        64,
+        67,
+        69,
+        71,
+        72,
+        71,
+        69,
+        67,
+        64,
+        62,
+        64,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "E4 G4 A4 B4 C5 B4 A4 G4 E4 D4 E4 F4 G4",
+      "solfege": "Do Ri Fa Sol Si Sol Fa Ri Do Li Do Di Ri",
+      "abc": "E4 G4 A4 B4 C5 B4 A4 G4 E4 D4 E4 F4 G4",
+      "tags": [
+        "motif",
+        "pd",
+        "renaissance"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "English / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-happy-birthday",
+      "kind": "motif",
+      "title": "Happy Birthday (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        2,
+        0,
+        5,
+        4,
+        0,
+        0,
+        2,
+        0,
+        7,
+        5
+      ],
+      "midi": [
+        60,
+        60,
+        62,
+        60,
+        65,
+        64,
+        60,
+        60,
+        62,
+        60,
+        67,
+        65
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C4 C4 D4 C4 F4 E4 C4 C4 D4 C4 G4 F4",
+      "solfege": "Do Do Re Do Fa Mi Do Do Re Do Sol Fa",
+      "abc": "C4 C4 D4 C4 F4 E4 C4 C4 D4 C4 G4 F4",
+      "tags": [
+        "motif",
+        "pd-check",
+        "song"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "PD in many jurisdictions (check local law)",
+      "geometryHint": null,
+      "world": null,
+      "note": "Rights status varies by country — seed only for geometry drill"
+    },
+    {
+      "id": "motif-mary-lamb",
+      "kind": "motif",
+      "title": "Mary Had a Little Lamb (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 64,
+      "degrees": [
+        0,
+        -2,
+        -4,
+        -2,
+        0,
+        0,
+        0,
+        -2,
+        -2,
+        -2,
+        0,
+        3,
+        3
+      ],
+      "midi": [
+        64,
+        62,
+        60,
+        62,
+        64,
+        64,
+        64,
+        62,
+        62,
+        62,
+        64,
+        67,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "E4 D4 C4 D4 E4 E4 E4 D4 D4 D4 E4 G4 G4",
+      "solfege": "Do Li Si Li Do Do Do Li Li Li Do Ri Ri",
+      "abc": "E4 D4 C4 D4 E4 E4 E4 D4 D4 D4 E4 G4 G4",
+      "tags": [
+        "motif",
+        "pd",
+        "nursery"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "US folk / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-ode-joy",
+      "kind": "motif",
+      "title": "Ode to Joy (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 64,
+      "degrees": [
+        0,
+        0,
+        1,
+        3,
+        3,
+        1,
+        0,
+        -2,
+        -4,
+        -4,
+        -2,
+        0,
+        0,
+        -2,
+        -2
+      ],
+      "midi": [
+        64,
+        64,
+        65,
+        67,
+        67,
+        65,
+        64,
+        62,
+        60,
+        60,
+        62,
+        64,
+        64,
+        62,
+        62
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4 D4 D4",
+      "solfege": "Do Do Di Ri Ri Di Do Li Si Si Li Do Do Li Li",
+      "abc": "E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4 D4 D4",
+      "tags": [
+        "motif",
+        "pd",
+        "classical"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "Beethoven / PD seed phrase",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-sakura",
+      "kind": "motif",
+      "title": "Sakura (seed approx)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 69,
+      "degrees": [
+        0,
+        -2,
+        0,
+        -2,
+        -5,
+        -2,
+        0,
+        3,
+        0,
+        -2
+      ],
+      "midi": [
+        69,
+        67,
+        69,
+        67,
+        64,
+        67,
+        69,
+        72,
+        69,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "A4 G4 A4 G4 E4 G4 A4 C5 A4 G4",
+      "solfege": "Do Li Do Li Sol Li Do Ri Do Li",
+      "abc": "A4 G4 A4 G4 E4 G4 A4 C5 A4 G4",
+      "tags": [
+        "motif",
+        "pd",
+        "japan"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "Japanese traditional / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-scarborough",
+      "kind": "motif",
+      "title": "Scarborough Fair (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 67,
+      "degrees": [
+        0,
+        0,
+        2,
+        4,
+        7,
+        4,
+        2,
+        0,
+        -3,
+        0,
+        2,
+        4,
+        2
+      ],
+      "midi": [
+        67,
+        67,
+        69,
+        71,
+        74,
+        71,
+        69,
+        67,
+        64,
+        67,
+        69,
+        71,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "G4 G4 A4 B4 D5 B4 A4 G4 E4 G4 A4 B4 A4",
+      "solfege": "Do Do Re Mi Sol Mi Re Do La Do Re Mi Re",
+      "abc": "G4 G4 A4 B4 D5 B4 A4 G4 E4 G4 A4 B4 A4",
+      "tags": [
+        "motif",
+        "pd",
+        "folk"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "English ballad / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-shaker",
+      "kind": "motif",
+      "title": "Simple Gifts (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        7,
+        9,
+        7,
+        5,
+        4,
+        2,
+        0
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        65,
+        67,
+        67,
+        69,
+        67,
+        65,
+        64,
+        62,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F4 G4 G4 A4 G4 F4 E4 D4 C4",
+      "solfege": "Do Re Mi Fa Sol Sol La Sol Fa Mi Re Do",
+      "abc": "C4 D4 E4 F4 G4 G4 A4 G4 F4 E4 D4 C4",
+      "tags": [
+        "motif",
+        "pd",
+        "folk"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "Shaker hymn / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "motif-twinkle",
+      "kind": "motif",
+      "title": "Twinkle Twinkle (seed)",
+      "family": "motifs-pd",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        7,
+        7,
+        9,
+        9,
+        7,
+        5,
+        5,
+        4,
+        4,
+        2,
+        2,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        67,
+        67,
+        69,
+        69,
+        67,
+        65,
+        65,
+        64,
+        64,
+        62,
+        62,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 96,
+      "timeSig": "4/4",
+      "modern": "C4 C4 G4 G4 A4 A4 G4 F4 F4 E4 E4 D4 D4 C4",
+      "solfege": "Do Do Sol Sol La La Sol Fa Fa Mi Mi Re Re Do",
+      "abc": "C4 C4 G4 G4 A4 A4 G4 F4 F4 E4 E4 D4 D4 C4",
+      "tags": [
+        "motif",
+        "pd",
+        "nursery"
+      ],
+      "rights": "pd-motif-seed",
+      "source": "French folk / PD",
+      "geometryHint": null,
+      "world": null,
+      "note": "Short educational seed — not a full score"
+    },
+    {
+      "id": "rhythm-6-8-lilt",
+      "kind": "rhythm",
+      "title": "6/8 lilt",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "bpm": 100,
+      "timeSig": "6/8",
+      "modern": "C4 C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-clave-3-2",
+      "kind": "rhythm",
+      "title": "Clave 3-2 feel",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1.5,
+        1,
+        1.5,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-dot-eighth",
+      "kind": "rhythm",
+      "title": "Dotted eighth + sixteenth",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.75,
+        0.25,
+        0.75,
+        0.25,
+        0.75,
+        0.25,
+        0.75,
+        0.25
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-eighth-run",
+      "kind": "rhythm",
+      "title": "Eight eighths",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-half-half",
+      "kind": "rhythm",
+      "title": "Two halves",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60
+      ],
+      "durations": [
+        2,
+        2
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4",
+      "solfege": "Do Do",
+      "abc": "C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-quarter-run",
+      "kind": "rhythm",
+      "title": "Four quarters",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-swing-approx",
+      "kind": "rhythm",
+      "title": "Swing approx",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.67,
+        0.33,
+        0.67,
+        0.33,
+        0.67,
+        0.33,
+        0.67,
+        0.33
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-syncopate",
+      "kind": "rhythm",
+      "title": "Syncopation cell",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.5,
+        1,
+        0.5,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-triplet",
+      "kind": "rhythm",
+      "title": "Eighth triplets",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4 C4 C4",
+      "solfege": "Do Do Do Do Do Do",
+      "abc": "C4 C4 C4 C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "rhythm-waltz",
+      "kind": "rhythm",
+      "title": "Waltz cell",
+      "family": "rhythms",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "3/4",
+      "modern": "C4 C4 C4",
+      "solfege": "Do Do Do",
+      "abc": "C4 C4 C4",
+      "tags": [
+        "rhythm",
+        "meter-cell"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-aeolian",
+      "kind": "scale",
+      "title": "A Natural minor (Aeolian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "aeolian",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        57,
+        59,
+        60,
+        62,
+        64,
+        65,
+        67,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 B3 C4 D4 E4 F4 G4 A4",
+      "solfege": "Do Re Ri Fa Sol Si Li Do",
+      "abc": "A3 B3 C4 D4 E4 F4 G4 A4",
+      "tags": [
+        "scale",
+        "minor",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-blues",
+      "kind": "scale",
+      "title": "A Blues scale",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "blues",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        3,
+        5,
+        6,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        57,
+        60,
+        62,
+        63,
+        64,
+        67,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 C4 D4 D#4 E4 G4 A4",
+      "solfege": "Do Ri Fa Fi Sol Li Do",
+      "abc": "A3 C4 D4 D^4 E4 G4 A4",
+      "tags": [
+        "scale",
+        "blues",
+        "jazz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-dorian",
+      "kind": "scale",
+      "title": "A Dorian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "dorian",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        57,
+        59,
+        60,
+        62,
+        64,
+        66,
+        67,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 B3 C4 D4 E4 F#4 G4 A4",
+      "solfege": "Do Re Ri Fa Sol La Li Do",
+      "abc": "A3 B3 C4 D4 E4 F^4 G4 A4",
+      "tags": [
+        "scale",
+        "mode",
+        "minor-ish"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-ionian",
+      "kind": "scale",
+      "title": "A Major (Ionian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "ionian",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        57,
+        59,
+        61,
+        62,
+        64,
+        66,
+        68,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 B3 C#4 D4 E4 F#4 G#4 A4",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "A3 B3 C^4 D4 E4 F^4 G^4 A4",
+      "tags": [
+        "scale",
+        "major",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-major-pent",
+      "kind": "scale",
+      "title": "A Major pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "major-pent",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        2,
+        4,
+        7,
+        9,
+        12
+      ],
+      "midi": [
+        57,
+        59,
+        61,
+        64,
+        66,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 B3 C#4 E4 F#4 A4",
+      "solfege": "Do Re Mi Sol La Do",
+      "abc": "A3 B3 C^4 E4 F^4 A4",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "world-shared"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-minor-pent",
+      "kind": "scale",
+      "title": "A Minor pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "minor-pent",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        3,
+        5,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        57,
+        60,
+        62,
+        64,
+        67,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 C4 D4 E4 G4 A4",
+      "solfege": "Do Ri Fa Sol Li Do",
+      "abc": "A3 C4 D4 E4 G4 A4",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "blues-root"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-a-mixolydian",
+      "kind": "scale",
+      "title": "A Mixolydian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "A",
+      "mode": "mixolydian",
+      "tonicMidi": 57,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        57,
+        59,
+        61,
+        62,
+        64,
+        66,
+        67,
+        69
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A3 B3 C#4 D4 E4 F#4 G4 A4",
+      "solfege": "Do Re Mi Fa Sol La Li Do",
+      "abc": "A3 B3 C^4 D4 E4 F^4 G4 A4",
+      "tags": [
+        "scale",
+        "mode",
+        "dominant"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-aeolian",
+      "kind": "scale",
+      "title": "C Natural minor (Aeolian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "aeolian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        65,
+        67,
+        68,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F4 G4 G#4 A#4 C5",
+      "solfege": "Do Re Ri Fa Sol Si Li Do",
+      "abc": "C4 D4 D^4 F4 G4 G^4 A^4 C5",
+      "tags": [
+        "scale",
+        "minor",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-blues",
+      "kind": "scale",
+      "title": "C Blues scale",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "blues",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        5,
+        6,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        63,
+        65,
+        66,
+        67,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 F4 F#4 G4 A#4 C5",
+      "solfege": "Do Ri Fa Fi Sol Li Do",
+      "abc": "C4 D^4 F4 F^4 G4 A^4 C5",
+      "tags": [
+        "scale",
+        "blues",
+        "jazz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-chinese-gong",
+      "kind": "scale",
+      "title": "C Chinese Gong pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "chinese-gong",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        7,
+        9,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        67,
+        69,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 G4 A4 C5",
+      "solfege": "Do Re Mi Sol La Do",
+      "abc": "C4 D4 E4 G4 A4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "china"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-chromatic",
+      "kind": "scale",
+      "title": "C Chromatic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "chromatic",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 D4 D#4 E4 F4 F#4 G4 G#4 A4 A#4 B4 C5",
+      "solfege": "Do Di Re Ri Mi Fa Fi Sol Si La Li Ti Do",
+      "abc": "C4 C^4 D4 D^4 E4 F4 F^4 G4 G^4 A4 A^4 B4 C5",
+      "tags": [
+        "scale",
+        "chromatic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-diminished-hw",
+      "kind": "scale",
+      "title": "C Octatonic H-W",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "diminished-hw",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        63,
+        64,
+        66,
+        67,
+        69,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 D#4 E4 F#4 G4 A4 A#4 C5",
+      "solfege": "Do Di Ri Mi Fi Sol La Li Do",
+      "abc": "C4 C^4 D^4 E4 F^4 G4 A4 A^4 C5",
+      "tags": [
+        "scale",
+        "symmetric",
+        "jazz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-diminished-wh",
+      "kind": "scale",
+      "title": "C Octatonic W-H",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "diminished-wh",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        8,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        65,
+        66,
+        68,
+        69,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F4 F#4 G#4 A4 B4 C5",
+      "solfege": "Do Re Ri Fa Fi Si La Ti Do",
+      "abc": "C4 D4 D^4 F4 F^4 G^4 A4 B4 C5",
+      "tags": [
+        "scale",
+        "symmetric",
+        "jazz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-dorian",
+      "kind": "scale",
+      "title": "C Dorian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "dorian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        65,
+        67,
+        69,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F4 G4 A4 A#4 C5",
+      "solfege": "Do Re Ri Fa Sol La Li Do",
+      "abc": "C4 D4 D^4 F4 G4 A4 A^4 C5",
+      "tags": [
+        "scale",
+        "mode",
+        "minor-ish"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-harmonic-minor",
+      "kind": "scale",
+      "title": "C Harmonic minor",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "harmonic-minor",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        65,
+        67,
+        68,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F4 G4 G#4 B4 C5",
+      "solfege": "Do Re Ri Fa Sol Si Ti Do",
+      "abc": "C4 D4 D^4 F4 G4 G^4 B4 C5",
+      "tags": [
+        "scale",
+        "minor"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-hijaz",
+      "kind": "scale",
+      "title": "C Hijaz (maqam-ish)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "hijaz",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        4,
+        5,
+        7,
+        8,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        64,
+        65,
+        67,
+        68,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 E4 F4 G4 G#4 B4 C5",
+      "solfege": "Do Di Mi Fa Sol Si Ti Do",
+      "abc": "C4 C^4 E4 F4 G4 G^4 B4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "maqam"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-hungarian-minor",
+      "kind": "scale",
+      "title": "C Hungarian minor",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "hungarian-minor",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        8,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        66,
+        67,
+        68,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F#4 G4 G#4 B4 C5",
+      "solfege": "Do Re Ri Fi Sol Si Ti Do",
+      "abc": "C4 D4 D^4 F^4 G4 G^4 B4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "eastern-europe"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-ionian",
+      "kind": "scale",
+      "title": "C Major (Ionian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "ionian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        65,
+        67,
+        69,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F4 G4 A4 B4 C5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "C4 D4 E4 F4 G4 A4 B4 C5",
+      "tags": [
+        "scale",
+        "major",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-japanese-in",
+      "kind": "scale",
+      "title": "C Japanese In",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "japanese-in",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        5,
+        7,
+        8,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        65,
+        67,
+        68,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 F4 G4 G#4 C5",
+      "solfege": "Do Di Fa Sol Si Do",
+      "abc": "C4 C^4 F4 G4 G^4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "japan",
+        "pentatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-japanese-yo",
+      "kind": "scale",
+      "title": "C Japanese Yo",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "japanese-yo",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        5,
+        7,
+        9,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        65,
+        67,
+        69,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 F4 G4 A4 C5",
+      "solfege": "Do Re Fa Sol La Do",
+      "abc": "C4 D4 F4 G4 A4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "japan",
+        "pentatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-locrian",
+      "kind": "scale",
+      "title": "C Locrian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "locrian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        63,
+        65,
+        66,
+        68,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 D#4 F4 F#4 G#4 A#4 C5",
+      "solfege": "Do Di Ri Fa Fi Si Li Do",
+      "abc": "C4 C^4 D^4 F4 F^4 G^4 A^4 C5",
+      "tags": [
+        "scale",
+        "mode",
+        "unstable"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-lydian",
+      "kind": "scale",
+      "title": "C Lydian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "lydian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        66,
+        67,
+        69,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F#4 G4 A4 B4 C5",
+      "solfege": "Do Re Mi Fi Sol La Ti Do",
+      "abc": "C4 D4 E4 F^4 G4 A4 B4 C5",
+      "tags": [
+        "scale",
+        "mode",
+        "bright"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-major-pent",
+      "kind": "scale",
+      "title": "C Major pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "major-pent",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        7,
+        9,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        67,
+        69,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 G4 A4 C5",
+      "solfege": "Do Re Mi Sol La Do",
+      "abc": "C4 D4 E4 G4 A4 C5",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "world-shared"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-melodic-minor",
+      "kind": "scale",
+      "title": "C Melodic minor ascending",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "melodic-minor",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        65,
+        67,
+        69,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F4 G4 A4 B4 C5",
+      "solfege": "Do Re Ri Fa Sol La Ti Do",
+      "abc": "C4 D4 D^4 F4 G4 A4 B4 C5",
+      "tags": [
+        "scale",
+        "minor"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-minor-pent",
+      "kind": "scale",
+      "title": "C Minor pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "minor-pent",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        3,
+        5,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        63,
+        65,
+        67,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D#4 F4 G4 A#4 C5",
+      "solfege": "Do Ri Fa Sol Li Do",
+      "abc": "C4 D^4 F4 G4 A^4 C5",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "blues-root"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-mixolydian",
+      "kind": "scale",
+      "title": "C Mixolydian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "mixolydian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        65,
+        67,
+        69,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F4 G4 A4 A#4 C5",
+      "solfege": "Do Re Mi Fa Sol La Li Do",
+      "abc": "C4 D4 E4 F4 G4 A4 A^4 C5",
+      "tags": [
+        "scale",
+        "mode",
+        "dominant"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-pelog-approx",
+      "kind": "scale",
+      "title": "C Pelog approx (equal-temp)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "pelog-approx",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        3,
+        7,
+        8,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        63,
+        67,
+        68,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 D#4 G4 G#4 C5",
+      "solfege": "Do Di Ri Sol Si Do",
+      "abc": "C4 C^4 D^4 G4 G^4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "indonesia",
+        "approx"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-persian",
+      "kind": "scale",
+      "title": "C Persian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "persian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        4,
+        5,
+        6,
+        8,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        64,
+        65,
+        66,
+        68,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 E4 F4 F#4 G#4 B4 C5",
+      "solfege": "Do Di Mi Fa Fi Si Ti Do",
+      "abc": "C4 C^4 E4 F4 F^4 G^4 B4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "middle-east"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-phrygian",
+      "kind": "scale",
+      "title": "C Phrygian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "phrygian",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        63,
+        65,
+        67,
+        68,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 D#4 F4 G4 G#4 A#4 C5",
+      "solfege": "Do Di Ri Fa Sol Si Li Do",
+      "abc": "C4 C^4 D^4 F4 G4 G^4 A^4 C5",
+      "tags": [
+        "scale",
+        "mode"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-raga-bhairav-ish",
+      "kind": "scale",
+      "title": "C Bhairav-like",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "raga-bhairav-ish",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        1,
+        4,
+        5,
+        7,
+        8,
+        11,
+        12
+      ],
+      "midi": [
+        60,
+        61,
+        64,
+        65,
+        67,
+        68,
+        71,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C#4 E4 F4 G4 G#4 B4 C5",
+      "solfege": "Do Di Mi Fa Sol Si Ti Do",
+      "abc": "C4 C^4 E4 F4 G4 G^4 B4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "india"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-raga-kafi-ish",
+      "kind": "scale",
+      "title": "C Kafi-like (Dorian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "raga-kafi-ish",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        63,
+        65,
+        67,
+        69,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 D#4 F4 G4 A4 A#4 C5",
+      "solfege": "Do Re Ri Fa Sol La Li Do",
+      "abc": "C4 D4 D^4 F4 G4 A4 A^4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "india"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-slendro-approx",
+      "kind": "scale",
+      "title": "C Slendro approx (equal-temp)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "slendro-approx",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        5,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        65,
+        67,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 F4 G4 A#4 C5",
+      "solfege": "Do Re Fa Sol Li Do",
+      "abc": "C4 D4 F4 G4 A^4 C5",
+      "tags": [
+        "scale",
+        "world",
+        "indonesia",
+        "approx"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-c-whole-tone",
+      "kind": "scale",
+      "title": "C Whole tone",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "C",
+      "mode": "whole-tone",
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        60,
+        62,
+        64,
+        66,
+        68,
+        70,
+        72
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 D4 E4 F#4 G#4 A#4 C5",
+      "solfege": "Do Re Mi Fi Si Li Do",
+      "abc": "C4 D4 E4 F^4 G^4 A^4 C5",
+      "tags": [
+        "scale",
+        "symmetric"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-aeolian",
+      "kind": "scale",
+      "title": "D Natural minor (Aeolian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "aeolian",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        62,
+        64,
+        65,
+        67,
+        69,
+        70,
+        72,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 E4 F4 G4 A4 A#4 C5 D5",
+      "solfege": "Do Re Ri Fa Sol Si Li Do",
+      "abc": "D4 E4 F4 G4 A4 A^4 C5 D5",
+      "tags": [
+        "scale",
+        "minor",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-blues",
+      "kind": "scale",
+      "title": "D Blues scale",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "blues",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        3,
+        5,
+        6,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        62,
+        65,
+        67,
+        68,
+        69,
+        72,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 F4 G4 G#4 A4 C5 D5",
+      "solfege": "Do Ri Fa Fi Sol Li Do",
+      "abc": "D4 F4 G4 G^4 A4 C5 D5",
+      "tags": [
+        "scale",
+        "blues",
+        "jazz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-dorian",
+      "kind": "scale",
+      "title": "D Dorian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "dorian",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        62,
+        64,
+        65,
+        67,
+        69,
+        71,
+        72,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 E4 F4 G4 A4 B4 C5 D5",
+      "solfege": "Do Re Ri Fa Sol La Li Do",
+      "abc": "D4 E4 F4 G4 A4 B4 C5 D5",
+      "tags": [
+        "scale",
+        "mode",
+        "minor-ish"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-ionian",
+      "kind": "scale",
+      "title": "D Major (Ionian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "ionian",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        62,
+        64,
+        66,
+        67,
+        69,
+        71,
+        73,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 E4 F#4 G4 A4 B4 C#5 D5",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "D4 E4 F^4 G4 A4 B4 C^5 D5",
+      "tags": [
+        "scale",
+        "major",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-major-pent",
+      "kind": "scale",
+      "title": "D Major pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "major-pent",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        2,
+        4,
+        7,
+        9,
+        12
+      ],
+      "midi": [
+        62,
+        64,
+        66,
+        69,
+        71,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 E4 F#4 A4 B4 D5",
+      "solfege": "Do Re Mi Sol La Do",
+      "abc": "D4 E4 F^4 A4 B4 D5",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "world-shared"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-minor-pent",
+      "kind": "scale",
+      "title": "D Minor pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "minor-pent",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        3,
+        5,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        62,
+        65,
+        67,
+        69,
+        72,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 F4 G4 A4 C5 D5",
+      "solfege": "Do Ri Fa Sol Li Do",
+      "abc": "D4 F4 G4 A4 C5 D5",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "blues-root"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-d-mixolydian",
+      "kind": "scale",
+      "title": "D Mixolydian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "D",
+      "mode": "mixolydian",
+      "tonicMidi": 62,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        62,
+        64,
+        66,
+        67,
+        69,
+        71,
+        72,
+        74
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4 E4 F#4 G4 A4 B4 C5 D5",
+      "solfege": "Do Re Mi Fa Sol La Li Do",
+      "abc": "D4 E4 F^4 G4 A4 B4 C5 D5",
+      "tags": [
+        "scale",
+        "mode",
+        "dominant"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-aeolian",
+      "kind": "scale",
+      "title": "G Natural minor (Aeolian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "aeolian",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10,
+        12
+      ],
+      "midi": [
+        55,
+        57,
+        58,
+        60,
+        62,
+        63,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A3 A#3 C4 D4 D#4 F4 G4",
+      "solfege": "Do Re Ri Fa Sol Si Li Do",
+      "abc": "G3 A3 A^3 C4 D4 D^4 F4 G4",
+      "tags": [
+        "scale",
+        "minor",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-blues",
+      "kind": "scale",
+      "title": "G Blues scale",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "blues",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        3,
+        5,
+        6,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        55,
+        58,
+        60,
+        61,
+        62,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A#3 C4 C#4 D4 F4 G4",
+      "solfege": "Do Ri Fa Fi Sol Li Do",
+      "abc": "G3 A^3 C4 C^4 D4 F4 G4",
+      "tags": [
+        "scale",
+        "blues",
+        "jazz"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-dorian",
+      "kind": "scale",
+      "title": "G Dorian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "dorian",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        55,
+        57,
+        58,
+        60,
+        62,
+        64,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A3 A#3 C4 D4 E4 F4 G4",
+      "solfege": "Do Re Ri Fa Sol La Li Do",
+      "abc": "G3 A3 A^3 C4 D4 E4 F4 G4",
+      "tags": [
+        "scale",
+        "mode",
+        "minor-ish"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-ionian",
+      "kind": "scale",
+      "title": "G Major (Ionian)",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "ionian",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11,
+        12
+      ],
+      "midi": [
+        55,
+        57,
+        59,
+        60,
+        62,
+        64,
+        66,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A3 B3 C4 D4 E4 F#4 G4",
+      "solfege": "Do Re Mi Fa Sol La Ti Do",
+      "abc": "G3 A3 B3 C4 D4 E4 F^4 G4",
+      "tags": [
+        "scale",
+        "major",
+        "diatonic"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-major-pent",
+      "kind": "scale",
+      "title": "G Major pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "major-pent",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        2,
+        4,
+        7,
+        9,
+        12
+      ],
+      "midi": [
+        55,
+        57,
+        59,
+        62,
+        64,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A3 B3 D4 E4 G4",
+      "solfege": "Do Re Mi Sol La Do",
+      "abc": "G3 A3 B3 D4 E4 G4",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "world-shared"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-minor-pent",
+      "kind": "scale",
+      "title": "G Minor pentatonic",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "minor-pent",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        3,
+        5,
+        7,
+        10,
+        12
+      ],
+      "midi": [
+        55,
+        58,
+        60,
+        62,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A#3 C4 D4 F4 G4",
+      "solfege": "Do Ri Fa Sol Li Do",
+      "abc": "G3 A^3 C4 D4 F4 G4",
+      "tags": [
+        "scale",
+        "pentatonic",
+        "blues-root"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "scale-g-mixolydian",
+      "kind": "scale",
+      "title": "G Mixolydian",
+      "family": "scales-modes",
+      "clef": "treble",
+      "key": "G",
+      "mode": "mixolydian",
+      "tonicMidi": 55,
+      "degrees": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10,
+        12
+      ],
+      "midi": [
+        55,
+        57,
+        59,
+        60,
+        62,
+        64,
+        65,
+        67
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G3 A3 B3 C4 D4 E4 F4 G4",
+      "solfege": "Do Re Mi Fa Sol La Li Do",
+      "abc": "G3 A3 B3 C4 D4 E4 F4 G4",
+      "tags": [
+        "scale",
+        "mode",
+        "dominant"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": "White-key friendly when root is C on piano; path strain varies by layout",
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-0",
+      "kind": "solfege",
+      "title": "C → Do (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        60
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4",
+      "solfege": "Do",
+      "abc": "C4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-1",
+      "kind": "solfege",
+      "title": "C# → Di (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 61,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        61
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C#4",
+      "solfege": "Di",
+      "abc": "C^4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-10",
+      "kind": "solfege",
+      "title": "A# → Li (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 70,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        70
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A#4",
+      "solfege": "Li",
+      "abc": "A^4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-11",
+      "kind": "solfege",
+      "title": "B → Ti (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 71,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        71
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "B4",
+      "solfege": "Ti",
+      "abc": "B4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-2",
+      "kind": "solfege",
+      "title": "D → Re (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 62,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        62
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D4",
+      "solfege": "Re",
+      "abc": "D4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-3",
+      "kind": "solfege",
+      "title": "D# → Ri (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 63,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        63
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "D#4",
+      "solfege": "Ri",
+      "abc": "D^4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-4",
+      "kind": "solfege",
+      "title": "E → Mi (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 64,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        64
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "E4",
+      "solfege": "Mi",
+      "abc": "E4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-5",
+      "kind": "solfege",
+      "title": "F → Fa (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 65,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        65
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F4",
+      "solfege": "Fa",
+      "abc": "F4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-6",
+      "kind": "solfege",
+      "title": "F# → Fi (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 66,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        66
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "F#4",
+      "solfege": "Fi",
+      "abc": "F^4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-7",
+      "kind": "solfege",
+      "title": "G → Sol (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 67,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        67
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G4",
+      "solfege": "Sol",
+      "abc": "G4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-8",
+      "kind": "solfege",
+      "title": "G# → Si (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 68,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        68
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "G#4",
+      "solfege": "Si",
+      "abc": "G^4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "solfege-pc-9",
+      "kind": "solfege",
+      "title": "A → La (chromatic movable)",
+      "family": "solfege",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 69,
+      "degrees": [
+        0
+      ],
+      "midi": [
+        69
+      ],
+      "durations": [
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "A4",
+      "solfege": "La",
+      "abc": "A4",
+      "tags": [
+        "solfege",
+        "pitch-class"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-11-8",
+      "kind": "time-signature",
+      "title": "Time 11/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "11/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-12-8",
+      "kind": "time-signature",
+      "title": "Time 12/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "bpm": 100,
+      "timeSig": "12/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-2-2",
+      "kind": "time-signature",
+      "title": "Time 2/2",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "2/2",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-2-4",
+      "kind": "time-signature",
+      "title": "Time 2/4",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "2/4",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-3-4",
+      "kind": "time-signature",
+      "title": "Time 3/4",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "3/4",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-3-8",
+      "kind": "time-signature",
+      "title": "Time 3/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "3/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-4-4",
+      "kind": "time-signature",
+      "title": "Time 4/4",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "4/4",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-5-4",
+      "kind": "time-signature",
+      "title": "Time 5/4",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "5/4",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-5-8",
+      "kind": "time-signature",
+      "title": "Time 5/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "5/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-6-8",
+      "kind": "time-signature",
+      "title": "Time 6/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "bpm": 100,
+      "timeSig": "6/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-7-8",
+      "kind": "time-signature",
+      "title": "Time 7/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "bpm": 100,
+      "timeSig": "7/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    },
+    {
+      "id": "ts-9-8",
+      "kind": "time-signature",
+      "title": "Time 9/8",
+      "family": "meter",
+      "clef": "treble",
+      "key": "C",
+      "mode": null,
+      "tonicMidi": 60,
+      "degrees": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "midi": [
+        60,
+        60,
+        60,
+        60
+      ],
+      "durations": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "bpm": 100,
+      "timeSig": "9/8",
+      "modern": "C4 C4 C4 C4",
+      "solfege": "Do Do Do Do",
+      "abc": "C4 C4 C4 C4",
+      "tags": [
+        "meter",
+        "time-sig"
+      ],
+      "rights": "theory-pd",
+      "source": "kbatch-staff-seed",
+      "geometryHint": null,
+      "world": null,
+      "note": null
+    }
+  ]
+}

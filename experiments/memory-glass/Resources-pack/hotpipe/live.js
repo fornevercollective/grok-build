@@ -2,11 +2,13 @@
  * H1 hands/air + bridge for hurdles.js (H2–H9)
  * Inspect-first · still-pipe only · no main PAGE thrash
  * v24: iPhone still-pipe camera flip — no double-mirror skeleton (inverted controller)
+ * v25: full-body IK hooks (body-pose.js MediaPipe Pose) + hand camflip
+ * v26: inspect audio waveform L/R/M under main video feed
  */
 (function () {
   "use strict";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
-  var VER = "live-v24-iphone-camflip";
+  var VER = "live-v27-wave-levels";
   var MAX_FACES = 4;
   var PATH_MAX = 96; /* fencing trail length (samples) */
   var PATH_MIN_DIST = 0.0018; /* ignore micro-jitter in norm space */
@@ -153,6 +155,12 @@
     pipCssMirror: true,
     handLandmarkMirror: false,
     handIpcFlipX: true,
+    /* full-body IK (body-pose.js) — same cam-flip rules as hands */
+    showBody: true,
+    bodyOpacity: 0.7,
+    bodyRigAuto: true,
+    bodyRigScale: 1.0,
+    showBodyAngles: true,
     poseFast: true,
     poseGainYaw: 1.75,
     poseGainPitch: 1.55,
@@ -173,6 +181,11 @@
   if (ui.pipCssMirror == null) ui.pipCssMirror = true;
   if (ui.handLandmarkMirror == null) ui.handLandmarkMirror = false;
   if (ui.handIpcFlipX == null) ui.handIpcFlipX = true;
+  if (ui.showBody == null) ui.showBody = true;
+  if (ui.bodyOpacity == null) ui.bodyOpacity = 0.7;
+  if (ui.bodyRigAuto == null) ui.bodyRigAuto = true;
+  if (ui.bodyRigScale == null) ui.bodyRigScale = 1.0;
+  if (ui.showBodyAngles == null) ui.showBodyAngles = true;
   if (ui.poseFast == null) ui.poseFast = true;
   if (ui.poseGainYaw == null) ui.poseGainYaw = 1.75;
   if (ui.poseGainPitch == null) ui.poseGainPitch = 1.55;
@@ -373,18 +386,37 @@
       "#mg-pick .g{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:6px}",
       "#mg-pick button{width:100%;text-align:left}",
       "#mg-pick .zones button{font-size:7px}",
-      "#mg-tri{order:2!important;display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:5px!important;height:128px!important;}",
+      "#mg-tri{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:5px!important;height:128px!important;}",
       "#mg-tri .tri-cell{position:relative!important;border-radius:3px!important;overflow:hidden!important;border:1px solid rgba(180,200,220,0.15)!important;background:#06080c!important;}",
       "#mg-tri .tri-cell img,#mg-tri .tri-cell canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;}",
       "#mg-tri .tri-lbl{position:absolute!important;left:5px!important;bottom:4px!important;z-index:3!important;font:600 7px/1 ui-monospace,Menlo,monospace!important;letter-spacing:0.1em!important;text-transform:uppercase!important;color:rgba(150,180,210,0.8)!important;}",
       "#mg-tri .tri-meta{position:absolute!important;left:5px!important;top:4px!important;z-index:3!important;font:600 7px/1.2 ui-monospace,Menlo,monospace!important;color:rgba(140,180,210,0.75)!important;}",
-      "#cf{order:3!important;height:48px!important;overflow:hidden!important;perspective:none!important;}",
+      /* Audio rock wave — right of main video feed */
+      "#mg-feed-row{order:1!important;display:flex!important;flex-direction:row!important;gap:8px!important;width:100%!important;align-items:stretch!important}",
+      "#mg-wave{display:flex!important;flex-direction:column!important;gap:4px!important;",
+      "  width:min(168px,32%)!important;min-width:120px!important;flex:0 0 min(168px,32%)!important;padding:8px 6px!important;",
+      "  border:1px solid rgba(255,122,217,0.28)!important;border-radius:10px!important;",
+      "  background:linear-gradient(165deg,rgba(12,8,18,0.96),rgba(4,10,16,0.98))!important;box-sizing:border-box!important}",
+      "#mg-wave .wave-hd{display:flex!important;flex-direction:column!important;gap:2px!important;",
+      "  padding:0 2px 4px!important;font:750 8px/1.15 ui-monospace,Menlo,monospace!important;",
+      "  letter-spacing:0.14em!important;text-transform:uppercase!important;color:rgba(255,180,230,0.9)!important}",
+      "#mg-wave .wave-hd .brand{color:rgba(120,220,255,0.95)!important;font-weight:800}",
+      "#mg-wave .wave-hd .src{color:rgba(120,230,180,0.9)!important;font-weight:600;font-size:7px}",
+      "#mg-wave .wave-hd .src.off{color:rgba(255,150,120,0.8)!important}",
+      "#mg-wave .lane{display:grid!important;grid-template-columns:14px 1fr!important;gap:3px!important;align-items:center!important;flex:1!important}",
+      "#mg-wave .lane.L .ch{color:#6ec8ff!important}",
+      "#mg-wave .lane.R .ch{color:#ff7ad9!important}",
+      "#mg-wave .lane.M .ch{color:#7aebb0!important}",
+      "#mg-wave canvas{width:100%!important;height:100%!important;min-height:52px!important;display:block!important;border-radius:6px!important}",
+      "#mg-wave .db{display:none!important}",
+      "#mg-tri{order:3!important}",
+      "#cf{order:4!important;height:48px!important;overflow:hidden!important;perspective:none!important;}",
       "#cf-stage{position:absolute!important;inset:0!important;transform:none!important;display:flex!important;flex-direction:column!important;gap:2px!important;padding:5px!important;overflow-y:auto!important;}",
       "#cf-stage .cf-card{position:relative!important;left:auto!important;top:auto!important;margin:0!important;width:100%!important;height:18px!important;flex:0 0 18px!important;transform:none!important;}",
-      "#log{order:4!important;max-height:10vh!important;}",
+      "#log{order:5!important;max-height:10vh!important;}",
       "#log .row{animation:none!important;}",
       "#log .row.mg-log-hide{display:none!important;}",
-      "#mg-sys{order:5!important;}",
+      "#mg-sys{order:6!important;}",
     ].join("");
     (document.head || document.documentElement).appendChild(st);
 
@@ -421,6 +453,543 @@
     window.__mgInspectSetAxis = function () {};
   }
 
+  /* ── Audio waveform L/R/M under main video feed ── */
+  function ensureAudioWave() {
+    var WVER = "mg-wave-v3-rock";
+    if (HP._waveVer === WVER && document.getElementById("mg-wave") && window.__mgAudioWave) {
+      try {
+        if (window.__mgAudioWave.kick) window.__mgAudioWave.kick();
+      } catch (eK) {}
+      return;
+    }
+    HP._waveVer = WVER;
+
+    var stage = document.getElementById("stage");
+    var wrap = document.getElementById("pip-wrap");
+    if (!stage || !wrap) return;
+
+    /* CSS always (works even if layout style already frozen) */
+    if (!document.getElementById("mg-wave-css")) {
+      var wst = document.createElement("style");
+      wst.id = "mg-wave-css";
+      wst.textContent = [
+        "#mg-feed-row{order:1!important;display:flex!important;flex-direction:row!important;gap:8px!important;",
+        "  width:100%!important;align-items:stretch!important;flex-shrink:0!important}",
+        "#mg-feed-row #pip-wrap{flex:1 1 auto!important;order:0!important;width:auto!important;min-width:0!important;",
+        "  max-height:42vh!important;aspect-ratio:16/10!important}",
+        "#mg-wave{order:0!important;display:flex!important;flex-direction:column!important;gap:4px!important;",
+        "  width:min(168px,32%)!important;min-width:120px!important;flex:0 0 min(168px,32%)!important;",
+        "  padding:8px 6px!important;margin:0!important;box-sizing:border-box!important;",
+        "  border:1px solid rgba(255,122,217,0.28)!important;border-radius:10px!important;",
+        "  background:linear-gradient(165deg,rgba(12,8,18,0.96),rgba(4,10,16,0.98) 55%,rgba(8,6,14,0.96))!important;",
+        "  box-shadow:0 0 0 1px rgba(80,200,255,0.08),0 8px 28px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.06)!important}",
+        "#mg-wave .wave-hd{display:flex!important;flex-direction:column!important;gap:2px!important;",
+        "  padding:0 2px 4px!important;font:750 8px/1.15 ui-monospace,Menlo,monospace!important;",
+        "  letter-spacing:0.14em!important;text-transform:uppercase!important;color:rgba(255,180,230,0.9)!important}",
+        "#mg-wave .wave-hd .brand{color:rgba(120,220,255,0.95)!important;font-weight:800;letter-spacing:0.16em}",
+        "#mg-wave .wave-hd .src{color:rgba(120,230,180,0.9)!important;font-weight:600;letter-spacing:0.08em;font-size:7px}",
+        "#mg-wave .wave-hd .src.off{color:rgba(255,150,120,0.8)!important}",
+        "#mg-wave .lane{display:grid!important;grid-template-columns:14px 1fr!important;gap:3px!important;",
+        "  align-items:center!important;padding:0!important;flex:1 1 0!important;min-height:0!important}",
+        "#mg-wave .lane .ch{font:800 9px/1 ui-monospace,Menlo,monospace!important;letter-spacing:0.1em!important;",
+        "  text-align:center!important}",
+        "#mg-wave .lane.L .ch{color:#6ec8ff!important;text-shadow:0 0 8px rgba(110,200,255,0.55)}",
+        "#mg-wave .lane.R .ch{color:#ff7ad9!important;text-shadow:0 0 8px rgba(255,122,217,0.5)}",
+        "#mg-wave .lane.M .ch{color:#7aebb0!important;text-shadow:0 0 8px rgba(122,235,176,0.45)}",
+        "#mg-wave canvas{width:100%!important;height:100%!important;min-height:52px!important;display:block!important;",
+        "  background:radial-gradient(ellipse at 50% 100%,rgba(255,122,217,0.08),transparent 55%),rgba(0,0,0,0.45)!important;",
+        "  border-radius:6px!important;border:1px solid rgba(255,255,255,0.06)!important}",
+        "#mg-wave .db{display:none!important}",
+        "#mg-tri{order:3!important}",
+        "#cf{order:4!important}",
+      ].join("");
+      (document.head || document.documentElement).appendChild(wst);
+    }
+
+    var old = document.getElementById("mg-wave");
+    if (old && old.parentNode) {
+      try {
+        old.parentNode.removeChild(old);
+      } catch (eO) {}
+    }
+
+    var box = document.createElement("div");
+    box.id = "mg-wave";
+    box.innerHTML =
+      '<div class="wave-hd"><span class="brand">AGENT · ROCK</span><span class="src off" id="mg-wave-src">idle</span></div>' +
+      '<div class="lane L"><span class="ch">L</span><canvas id="mg-wave-L" width="200" height="120"></canvas><span class="db" id="mg-wave-db-L">—</span></div>' +
+      '<div class="lane R"><span class="ch">R</span><canvas id="mg-wave-R" width="200" height="120"></canvas><span class="db" id="mg-wave-db-R">—</span></div>' +
+      '<div class="lane M"><span class="ch">M</span><canvas id="mg-wave-M" width="200" height="120"></canvas><span class="db" id="mg-wave-db-M">—</span></div>';
+    /* sit to the RIGHT of main video feed */
+    var row = document.getElementById("mg-feed-row");
+    if (!row) {
+      row = document.createElement("div");
+      row.id = "mg-feed-row";
+      if (wrap.parentNode) {
+        wrap.parentNode.insertBefore(row, wrap);
+        row.appendChild(wrap);
+      } else {
+        stage.appendChild(row);
+        row.appendChild(wrap);
+      }
+    }
+    row.appendChild(box);
+
+    var cvs = {
+      L: document.getElementById("mg-wave-L"),
+      R: document.getElementById("mg-wave-R"),
+      M: document.getElementById("mg-wave-M"),
+    };
+    var dbs = {
+      L: document.getElementById("mg-wave-db-L"),
+      R: document.getElementById("mg-wave-db-R"),
+      M: document.getElementById("mg-wave-db-M"),
+    };
+    var srcEl = document.getElementById("mg-wave-src");
+    var ACTX = window.AudioContext || window.webkitAudioContext;
+    var ctx = null;
+    var analysers = { L: null, R: null, M: null };
+    var timeData = { L: null, R: null, M: null };
+    var micStream = null;
+    var phoneAudio = null;
+    var phoneSrc = null;
+    var lastPhoneStamp = "";
+    var raf = 0;
+    var srcLabel = "idle";
+    var COLORS = {
+      L: "rgba(110,200,255,0.98)",
+      R: "rgba(255,122,217,0.98)",
+      M: "rgba(122,235,176,0.98)",
+    };
+    var FILL = {
+      L: "rgba(60,160,255,0.28)",
+      R: "rgba(255,90,200,0.26)",
+      M: "rgba(70,210,150,0.26)",
+    };
+
+    function setSrc(lab, okOn) {
+      srcLabel = lab || "idle";
+      if (srcEl) {
+        srcEl.textContent = srcLabel;
+        srcEl.classList.toggle("off", !okOn);
+      }
+    }
+
+    function ensureCtx() {
+      if (!ACTX) return null;
+      if (!ctx) {
+        try {
+          ctx = new ACTX();
+        } catch (e) {
+          return null;
+        }
+      }
+      if (ctx.state === "suspended") {
+        try {
+          ctx.resume();
+        } catch (e2) {}
+      }
+      return ctx;
+    }
+
+    function makeAnalyser() {
+      var a = ctx.createAnalyser();
+      a.fftSize = 2048;
+      a.smoothingTimeConstant = 0.72;
+      a.minDecibels = -90;
+      a.maxDecibels = -10;
+      return a;
+    }
+
+    function wireGraph(sourceNode, label) {
+      if (!ctx || !sourceNode) return false;
+      try {
+        /* tear prior graph loosely — recreate analysers */
+        analysers.L = makeAnalyser();
+        analysers.R = makeAnalyser();
+        analysers.M = makeAnalyser();
+        timeData.L = new Uint8Array(analysers.L.fftSize);
+        timeData.R = new Uint8Array(analysers.R.fftSize);
+        timeData.M = new Uint8Array(analysers.M.fftSize);
+
+        var splitter = null;
+        try {
+          splitter = ctx.createChannelSplitter(2);
+          sourceNode.connect(splitter);
+          splitter.connect(analysers.L, 0);
+          splitter.connect(analysers.R, 1);
+        } catch (eSp) {
+          sourceNode.connect(analysers.L);
+          sourceNode.connect(analysers.R);
+        }
+        /* Mid = mono sum of L+R via gain merge */
+        try {
+          var gL = ctx.createGain();
+          var gR = ctx.createGain();
+          gL.gain.value = 0.5;
+          gR.gain.value = 0.5;
+          if (splitter) {
+            splitter.connect(gL, 0);
+            splitter.connect(gR, 1);
+          } else {
+            sourceNode.connect(gL);
+            sourceNode.connect(gR);
+          }
+          gL.connect(analysers.M);
+          gR.connect(analysers.M);
+        } catch (eM) {
+          sourceNode.connect(analysers.M);
+        }
+        /* keep silent monitor (no feedback to speakers) */
+        var mute = ctx.createGain();
+        mute.gain.value = 0;
+        analysers.M.connect(mute);
+        mute.connect(ctx.destination);
+        setSrc(label || "live", true);
+        return true;
+      } catch (eW) {
+        setSrc("wire fail", false);
+        return false;
+      }
+    }
+
+    function rmsDb(arr) {
+      if (!arr || !arr.length) return -90;
+      var s = 0;
+      for (var i = 0; i < arr.length; i++) {
+        var v = (arr[i] - 128) / 128;
+        s += v * v;
+      }
+      var rms = Math.sqrt(s / arr.length);
+      if (rms < 1e-6) return -90;
+      return 20 * Math.log10(rms);
+    }
+
+    var remoteLevels = null;
+    var remoteAge = 999;
+    function pollRemoteLevels() {
+      try {
+        fetch("http://127.0.0.1:9877/audio-levels?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (!j || !j.ok) return;
+            remoteLevels = j;
+            remoteAge = typeof j.age_s === "number" ? j.age_s : 0;
+            if (remoteAge < 1.5 && j.src && j.src !== "none") {
+              setSrc("phone · " + j.src, true);
+            }
+          })
+          .catch(function () {});
+      } catch (e) {}
+    }
+    setInterval(pollRemoteLevels, 120);
+    pollRemoteLevels();
+
+
+    /** Rock / branded waveform: mirror bars + glow mountain (AI agent rail) */
+    function paintRockWave(g, w, h, samples, color, fill, amp) {
+      amp = Math.max(0, Math.min(1.4, Number(amp) || 0));
+      g.clearRect(0, 0, w, h);
+      /* vignette floor */
+      var bg = g.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, "rgba(8,6,14,0.2)");
+      bg.addColorStop(1, "rgba(0,0,0,0.55)");
+      g.fillStyle = bg;
+      g.fillRect(0, 0, w, h);
+      /* baseline */
+      g.strokeStyle = "rgba(255,255,255,0.07)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(0, h * 0.5);
+      g.lineTo(w, h * 0.5);
+      g.stroke();
+
+      var n = 28;
+      var arr = samples && samples.length ? samples : null;
+      var bars = [];
+      for (var i = 0; i < n; i++) {
+        var v;
+        if (arr && arr.length) {
+          var ix = Math.floor((i / (n - 1)) * (arr.length - 1));
+          v = Math.abs(Number(arr[ix]) || 0);
+        } else {
+          var t = performance.now() / 180;
+          v = (0.12 + 0.1 * Math.sin(t + i * 0.55) + 0.06 * Math.sin(t * 1.7 + i * 0.2)) * (0.35 + amp);
+        }
+        v = Math.min(1, v * (0.55 + amp * 0.9));
+        bars.push(v);
+      }
+      var gap = 1.5;
+      var bw = (w - gap * (n - 1)) / n;
+      for (var b = 0; b < n; b++) {
+        var bh = Math.max(2, bars[b] * (h * 0.46));
+        var x = b * (bw + gap);
+        var y0 = h * 0.5 - bh;
+        var y1 = h * 0.5 + bh;
+        var grd = g.createLinearGradient(x, y0, x, y1);
+        grd.addColorStop(0, color);
+        grd.addColorStop(0.5, fill);
+        grd.addColorStop(1, color);
+        g.fillStyle = grd;
+        g.shadowColor = color;
+        g.shadowBlur = 6 + amp * 10;
+        g.fillRect(x, y0, Math.max(1.5, bw - 0.5), bh * 2);
+      }
+      g.shadowBlur = 0;
+      /* mountain outline over bars */
+      g.beginPath();
+      for (var j = 0; j < n; j++) {
+        var xj = j * (bw + gap) + bw * 0.5;
+        var yj = h * 0.5 - bars[j] * (h * 0.46);
+        if (j === 0) g.moveTo(xj, yj);
+        else g.lineTo(xj, yj);
+      }
+      for (var k = n - 1; k >= 0; k--) {
+        var xk = k * (bw + gap) + bw * 0.5;
+        var yk = h * 0.5 + bars[k] * (h * 0.46);
+        g.lineTo(xk, yk);
+      }
+      g.closePath();
+      g.fillStyle = fill;
+      g.globalAlpha = 0.22;
+      g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = color;
+      g.lineWidth = 1.6;
+      g.stroke();
+    }
+
+    function drawRemoteLane(ch) {
+      var c = cvs[ch];
+      if (!c) return false;
+      if (!remoteLevels || remoteAge > 2.5) return false;
+      var g = c.getContext("2d");
+      var w = c.width;
+      var h = c.height;
+      var wave = (remoteLevels.wave && remoteLevels.wave[ch]) || [];
+      var amp = Number(remoteLevels[ch] || 0);
+      paintRockWave(g, w, h, wave, COLORS[ch], FILL[ch], amp);
+      var db = amp < 1e-4 ? -90 : 20 * Math.log10(Math.max(1e-4, amp));
+      if (dbs[ch]) dbs[ch].textContent = db <= -89 ? "—∞" : db.toFixed(0) + "dB";
+      return true;
+    }
+
+    function drawLane(ch) {
+      if (drawRemoteLane(ch)) return;
+
+      var c = cvs[ch];
+      var a = analysers[ch];
+      var td = timeData[ch];
+      if (!c) return;
+      var g = c.getContext("2d");
+      var w = c.width;
+      var h = c.height;
+      g.clearRect(0, 0, w, h);
+      /* grid */
+      g.strokeStyle = "rgba(255,255,255,0.06)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(0, h / 2);
+      g.lineTo(w, h / 2);
+      g.stroke();
+
+      if (a && td) {
+        a.getByteTimeDomainData(td);
+        var samples = [];
+        var step = Math.max(1, Math.floor(td.length / 48));
+        var peak = 0;
+        for (var si = 0; si < td.length; si += step) {
+          var nv = (td[si] - 128) / 128;
+          samples.push(nv);
+          peak = Math.max(peak, Math.abs(nv));
+        }
+        paintRockWave(g, w, h, samples, COLORS[ch], FILL[ch], peak);
+        var db = rmsDb(td);
+        if (dbs[ch]) dbs[ch].textContent = (db <= -89 ? "—∞" : db.toFixed(0) + "dB");
+      } else {
+        paintRockWave(g, w, h, null, COLORS[ch], FILL[ch], 0.2);
+        if (dbs[ch]) dbs[ch].textContent = "—";
+      }
+    }
+
+    function tick() {
+      drawLane("L");
+      drawLane("R");
+      drawLane("M");
+      raf = requestAnimationFrame(tick);
+    }
+
+    function startMic() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setSrc("no media", false);
+        return Promise.resolve(false);
+      }
+      if (!ensureCtx()) {
+        setSrc("no AudioContext", false);
+        return Promise.resolve(false);
+      }
+      return navigator.mediaDevices
+        .getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            channelCount: 2,
+          },
+          video: false,
+        })
+        .then(function (stream) {
+          micStream = stream;
+          var src = ctx.createMediaStreamSource(stream);
+          wireGraph(src, "mic · stereo");
+          return true;
+        })
+        .catch(function (err) {
+          setSrc("mic " + (err && err.name ? err.name : "deny"), false);
+          return false;
+        });
+    }
+
+    function startPhoneAudio() {
+      if (!ensureCtx()) return Promise.resolve(false);
+      var base = "http://127.0.0.1:9877/";
+      return fetch(base + "phone-live.stamp?t=" + Date.now(), { cache: "no-store" })
+        .then(function (r) {
+          return r.ok ? r.text() : "";
+        })
+        .then(function (stamp) {
+          stamp = String(stamp || "").trim();
+          if (!stamp) {
+            setSrc("phone · no audio", false);
+            return false;
+          }
+          if (stamp === lastPhoneStamp && phoneSrc) return true;
+          lastPhoneStamp = stamp;
+          try {
+            if (phoneAudio) {
+              phoneAudio.pause();
+              phoneAudio.removeAttribute("src");
+            }
+          } catch (eP) {}
+          phoneAudio = new Audio();
+          phoneAudio.crossOrigin = "anonymous";
+          phoneAudio.loop = true;
+          phoneAudio.muted = false;
+          phoneAudio.volume = 0.001; /* near silent — levels only */
+          /* try m4a then audio blob */
+          var urls = [
+            base + "phone-live.m4a?t=" + encodeURIComponent(stamp),
+            base + "phone-live.audio?t=" + encodeURIComponent(stamp),
+          ];
+          phoneAudio.src = urls[0];
+          return phoneAudio
+            .play()
+            .then(function () {
+              try {
+                if (phoneSrc) {
+                  try {
+                    phoneSrc.disconnect();
+                  } catch (eD) {}
+                }
+                phoneSrc = ctx.createMediaElementSource(phoneAudio);
+                wireGraph(phoneSrc, "phone · still");
+                return true;
+              } catch (eS) {
+                /* MediaElementSource once-per-element; recreate audio */
+                setSrc("phone graph", false);
+                return false;
+              }
+            })
+            .catch(function () {
+              phoneAudio.src = urls[1];
+              return phoneAudio
+                .play()
+                .then(function () {
+                  try {
+                    phoneSrc = ctx.createMediaElementSource(phoneAudio);
+                    wireGraph(phoneSrc, "phone · raw");
+                    return true;
+                  } catch (e2) {
+                    setSrc("phone play", false);
+                    return false;
+                  }
+                })
+                .catch(function () {
+                  setSrc("phone silent", false);
+                  return false;
+                });
+            });
+        })
+        .catch(function () {
+          setSrc("phone offline", false);
+          return false;
+        });
+    }
+
+    function kick() {
+      ensureCtx();
+      if (!raf) raf = requestAnimationFrame(tick);
+      pollRemoteLevels();
+      /* phone levels first (PWA posts them); then local mic; then phone file */
+      if (remoteLevels && remoteAge < 2) {
+        setSrc("phone · levels", true);
+      }
+      if (micStream && micStream.getAudioTracks().some(function (t) {
+        return t.readyState === "live";
+      })) {
+        setSrc("mic · live", true);
+        return;
+      }
+      startMic().then(function (okMic) {
+        if (!okMic) startPhoneAudio();
+      });
+    }
+
+    /* poll phone stamp for refreshes when on phone source */
+    setInterval(function () {
+      if (srcLabel.indexOf("phone") >= 0 || srcLabel.indexOf("idle") >= 0 || srcLabel.indexOf("silent") >= 0 || srcLabel.indexOf("offline") >= 0) {
+        startPhoneAudio();
+      }
+    }, 2500);
+
+    window.__mgAudioWave = {
+      ver: WVER,
+      kick: kick,
+      startMic: startMic,
+      startPhone: startPhoneAudio,
+      report: function () {
+        return WVER + " src=" + srcLabel + " ctx=" + !!(ctx && ctx.state);
+      },
+    };
+
+    /* unlock AudioContext + mic on first user gesture in inspect */
+    box.addEventListener(
+      "pointerdown",
+      function () {
+        kick();
+      },
+      { once: false }
+    );
+    document.addEventListener(
+      "pointerdown",
+      function onceUnlock() {
+        kick();
+        document.removeEventListener("pointerdown", onceUnlock, true);
+      },
+      true
+    );
+
+    kick();
+    ok("audio wave L/R/M · " + WVER);
+  }
+
+  try {
+    ensureAudioWave();
+  } catch (eWave) {
+    try {
+      warn("wave " + eWave);
+    } catch (e2) {}
+  }
+
   if (HP._run15) {
     /* Hot Reload: cannot rebind closed-over loops, but CAN fix cam-flip on live ui */
     try {
@@ -429,6 +998,9 @@
       if (lblR) lblR.textContent = "SPATIAL · " + VER + " · camflip";
       ok("hot patch camflip · " + VER + " · handLandmarkMirror=false");
     } catch (eHR) {}
+    try {
+      ensureAudioWave();
+    } catch (eW2) {}
     return;
   }
   HP._run15 = true;
@@ -857,6 +1429,15 @@
       ov.width = w;
       ov.height = h;
     }
+    /* keep lens cover measure in sync with PIP layout each frame */
+    try {
+      if (window.__mgLens && window.__mgLens.setSourceSize && lastSrcW > 2) {
+        window.__mgLens.setSourceSize(lastSrcW, lastSrcH);
+      }
+      if (typeof window.__mgMeasurePip === "function") {
+        window.__mgMeasurePip(w, h);
+      }
+    } catch (eMz) {}
     return { W: ov ? ov.width : w, H: ov ? ov.height : h, ov: ov };
   }
 
@@ -1470,9 +2051,19 @@
         return { x: m.x, y: m.y };
       }
     } catch (eM) {}
-    /* fallback: same rule as cover map */
+    /* fallback: live cover measure if available */
+    try {
+      if (typeof window.__mgMeasurePip === "function") {
+        var cm = window.__mgMeasurePip(W, H);
+        var ux = mirrorDraw ? 1 - nx : nx;
+        return { x: cm.ox + ux * cm.dw, y: cm.oy + uySafe(ny) * cm.dh };
+      }
+    } catch (e2) {}
     var x = mirrorDraw ? (1 - nx) * W : nx * W;
     return { x: x, y: ny * H };
+  }
+  function uySafe(ny) {
+    return ny;
   }
 
   /** Inspect-only expansion hands (Ender / Ash-Thorp rings) — never touches main body */
@@ -1922,6 +2513,12 @@
 
     /* H1: hands + air pointer on inspect only (after face HUD) */
     drawHandsInspect(ctx, W, H);
+    /* full-body IK skeleton (body-pose.js) — same cam-flip as hands */
+    try {
+      if (typeof window.__mgDrawBodyAfterHands === "function") {
+        window.__mgDrawBodyAfterHands(ctx, W, H);
+      }
+    } catch (eBodyDraw) {}
   }
 
   function paintGsplat() {
@@ -2376,6 +2973,10 @@
           window.__mgLens.setSourceSize(vw, vh);
         }
       } catch (eLens) {}
+      /* full-body pose kit (throttled inside body-pose.js) */
+      try {
+        if (typeof window.__mgOnStillFrame === "function") window.__mgOnStillFrame(img);
+      } catch (eBody) {}
       /* H1: alternate / throttle hands send so face path stays primary */
       handTick++;
       if (ui.showHands && mpHands && !mpHandsBusy && handTick % 2 === 0) {
@@ -2455,7 +3056,7 @@
     img.src = FACE + "?t=" + Date.now();
   }
 
-  ok("H1 hands/air · path contrails · spatial lock · " + VER);
+  ok("H1 hands/air · body IK hooks · path contrails · spatial lock · " + VER);
   tick();
 
   window.__mgRoster = roster;
@@ -2469,6 +3070,9 @@
   window.__mgGetLastHands = function () {
     return lastHands;
   };
+  try {
+    if (typeof window.__mgBodyPoseHotPatch === "function") window.__mgBodyPoseHotPatch();
+  } catch (eBp) {}
   window.__mgEditSubject = function (id, patch) {
     Object.assign(rosterById(id), patch || {});
     saveAll();

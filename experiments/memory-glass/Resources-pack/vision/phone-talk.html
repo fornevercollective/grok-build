@@ -4,69 +4,159 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>MG · phone talk</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Memory Glass" />
+  <meta name="application-name" content="Memory Glass" />
+  <meta name="theme-color" content="#0a0e14" />
+  <link rel="manifest" href="/manifest.webmanifest?v=icon7" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <title>Memory Glass · phone talk</title>
+  <link rel="stylesheet" href="phone-mg.css?v=wave-top1" />
   <style>
-    :root { color-scheme: dark; }
-    body {
-      margin: 0; min-height: 100dvh; padding: 14px;
-      padding-bottom: max(14px, env(safe-area-inset-bottom));
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0a0e14; color: #e8f0ff;
-      display: flex; flex-direction: column; gap: 10px;
+    body.mg-phone { overflow: auto; }
+    .talk-main {
+      flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+      gap: 8px; padding: 0 10px 8px; overflow: hidden;
     }
-    h1 { font-size: 1.05rem; color: #8ecbff; margin: 0; }
-    .sub { font-size: 0.85rem; color: #9ab; line-height: 1.35; }
-    .banner {
-      display: none; padding: 10px 12px; border-radius: 10px;
-      background: #2a1a10; border: 1px solid #a06030; color: #ffd0a0; font-size: 13px;
+    .talk-row { display: flex; gap: 8px; }
+    .talk-row button {
+      flex: 1; min-height: 48px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.07); color: #e8f0ff;
+      font: 700 14px/1 system-ui; letter-spacing: 0.04em;
     }
-    .banner.show { display: block; }
-    .row { display: flex; gap: 8px; }
-    button {
-      flex: 1; min-height: 52px; border-radius: 12px; border: 1px solid #2a3a50;
-      background: #152033; color: #e8f0ff; font-size: 16px; font-weight: 700;
+    .talk-row button.go {
+      background: rgba(30,90,60,0.45); border-color: rgba(100,220,160,0.45);
+      color: rgba(180,255,210,0.98);
     }
-    button.go { background: #1a5a3a; border-color: #3a9a5a; }
-    button.stop { background: #4a1a1a; border-color: #a04040; }
-    button:disabled { opacity: 0.4; }
+    .talk-row button.stop {
+      background: rgba(80,30,30,0.45); border-color: rgba(255,120,120,0.4);
+      color: rgba(255,180,180,0.95);
+    }
+    .talk-row button:disabled { opacity: 0.4; }
+    .talk-row button.live {
+      background: rgba(200,60,60,0.45); border-color: rgba(255,120,120,0.55);
+      animation: pulse 0.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
     #pulse {
-      height: 8px; border-radius: 4px; background: #1a2535; overflow: hidden;
+      height: 6px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden;
     }
     #pulse > i {
       display: block; height: 100%; width: 0%; background: #3d8; transition: width 0.15s;
     }
-    #log {
-      flex: 1; font: 12px/1.4 ui-monospace, Menlo, monospace; color: #9ab;
-      white-space: pre-wrap; overflow: auto; min-height: 6em;
+    .snaps-chat {
+      flex: 1 1 auto; min-height: 120px; overflow: auto;
+      border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8,10,14,0.88); padding: 8px;
+      display: flex; flex-direction: column; gap: 6px;
     }
-    .ok { color: #6d6; } .err { color: #f66; } .you { color: #8ecbff; }
+    .snaps-chat .line {
+      padding: 6px 8px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      font: 500 12px/1.35 system-ui;
+    }
+    .snaps-chat .line.you {
+      border-color: rgba(140,200,255,0.28);
+      background: rgba(40,80,120,0.18);
+    }
+    .snaps-chat .line.lab {
+      border-color: rgba(100,220,160,0.25);
+      background: rgba(30,80,50,0.16);
+    }
+    .snaps-chat .line.snap {
+      border-color: rgba(255,190,100,0.35);
+      background: rgba(60,40,12,0.22);
+    }
+    .snaps-chat .who {
+      display: block; font: 650 8px/1 system-ui; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(160,180,200,0.7); margin-bottom: 2px;
+    }
+    .snaps-chat .media {
+      display: block; margin: 6px 0 2px; max-width: min(100%, 220px);
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid rgba(255,190,100,0.35);
+    }
+    .snaps-chat .media img {
+      display: block; width: 100%; height: auto; max-height: 180px; object-fit: cover;
+    }
+    .snaps-chat .kind-tag {
+      font: 650 8px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,200,120,0.8); margin-left: 4px;
+    }
+    .sub {
+      font: 500 11px/1.35 system-ui; color: rgba(160,180,200,0.7);
+      margin: 0 2px;
+    }
   </style>
 </head>
-<body>
-  <h1>Phone mic → Mini → Grok → headphones</h1>
-  <p class="sub">
-    You speak on the phone. Mini hears the transcript, Grok answers,
-    audio plays on Mini <b>headphone jack</b> (not phone speaker).
-  </p>
-  <div id="insecure" class="banner"></div>
-  <div class="row">
-    <button class="go" id="start" type="button">Talk</button>
-    <button class="stop" id="stop" type="button">Stop</button>
+<body class="mg-phone">
+  <div class="mg-ambient" aria-hidden="true">
+    <div class="mg-ambient-aurora"></div>
+    <div class="mg-ambient-veil"></div>
+    <div class="mg-ambient-grid"></div>
   </div>
-  <div id="pulse"><i id="bar"></i></div>
-  <div id="log">…</div>
+  <div class="mg-app">
+    <header class="mg-top" id="mg-top">
+      <div class="mg-top-left">
+        <img class="mark" src="/icons/icon-192.png" width="22" height="22" alt="" />
+        <div class="mg-top-titles">
+          <div class="ttl"><span class="dot">.</span>inspect · phone · talk</div>
+          <div class="stamp on" id="ph-host">…</div>
+        </div>
+      </div>
+      <div class="acts">
+        <button type="button" class="ghost" id="btn-unlock">Speaker</button>
+        <button type="button" class="ghost" id="btn-fleet-hdr">Fleet</button>
+      </div>
+    </header>
+
+    <div id="mg-wave-slot"></div>
+
+    <div class="talk-main">
+      <p class="sub">Speak on phone · Mini hears transcript · replies play loud here (tap Speaker once)</p>
+      <div class="talk-row">
+        <button class="go" id="start" type="button">Talk</button>
+        <button class="stop" id="stop" type="button">Stop</button>
+      </div>
+      <div id="pulse"><i id="bar"></i></div>
+      <div class="snaps-chat" id="log" role="log" aria-label="Snaps chat">
+        <div class="line"><span class="who">snaps · chat</span>Talk or snaps land here under the wave</div>
+      </div>
+    </div>
+
+    <nav class="mg-nav" aria-label="Primary">
+      <a class="mg-nav-a" href="/phone-chat.html" id="nav-chat"><span class="ico">◎</span>Chat</a>
+      <a class="mg-nav-a" href="/phone.html" id="nav-cam"><span class="ico">◉</span>Cam</a>
+      <a class="mg-nav-a on" href="/phone-talk.html" id="nav-talk" aria-current="page"><span class="ico">◌</span>Talk</a>
+      <a class="mg-nav-a" href="/fleet.html" id="nav-fleet"><span class="ico">◈</span>Fleet</a>
+    </nav>
+  </div>
+
+  <script src="/phone-wave.js?v=1"></script>
+  <script src="/phone-speak.js?v=1"></script>
   <script>
     (function () {
       var logEl = document.getElementById("log");
       var bar = document.getElementById("bar");
-      var banner = document.getElementById("insecure");
+      var startBtn = document.getElementById("start");
+      var stopBtn = document.getElementById("stop");
       var BASE = location.origin;
-      var rec = null, stream = null, mr = null, running = false, n = 0;
+      var HOST = location.hostname;
+      var rec = null, running = false, n = 0;
+      var lastRender = "";
 
       var secure = window.isSecureContext === true
         || location.protocol === "https:"
-        || location.hostname === "localhost"
-        || location.hostname === "127.0.0.1";
+        || HOST === "localhost" || HOST === "127.0.0.1";
+
+      document.getElementById("ph-host").textContent =
+        "MG talk · " + HOST + (secure ? " · secure" : " · need https :9878");
 
       function errText(e) {
         if (e == null) return "unknown";
@@ -75,131 +165,188 @@
         if (e.message) return String(e.message);
         try { return String(e); } catch (_) { return "error"; }
       }
-      function log(msg, cls) {
-        logEl.textContent = (cls ? "[" + cls + "] " : "") + msg + "\n" + logEl.textContent.slice(0, 1600);
+      function esc(s) {
+        return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      }
+      function absMedia(path) {
+        if (!path) return "";
+        if (/^https?:\/\//i.test(path)) return path;
+        if (path.charAt(0) !== "/") path = "/" + path;
+        return BASE + path;
+      }
+
+      function appendLocal(who, text, cls) {
+        var row = document.createElement("div");
+        row.className = "line " + (cls || (who === "you" ? "you" : "lab"));
+        row.innerHTML = '<span class="who">' + esc(who) + "</span>" + esc(text);
+        logEl.appendChild(row);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function render(msgs) {
+        var last = msgs && msgs.length ? msgs[msgs.length - 1] : null;
+        var key = (msgs ? msgs.length : 0) + "|" + ((last && last.epoch) || "") + "|" + ((last && last.image) || "");
+        if (key === lastRender) return;
+        lastRender = key;
+        var stick = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 48;
+        logEl.innerHTML = (msgs || []).slice(-48).map(function (m) {
+          var you = m.role !== "assistant";
+          var kind = m.kind || (m.image ? "photo" : "text");
+          var isSnap = kind === "photo" || kind === "snapshot" || !!m.image;
+          var cls = (you ? "you" : "lab") + (isSnap ? " snap" : "");
+          var ts = m.ts ? String(m.ts).slice(11, 19) : "";
+          var tag = kind !== "text" ? '<span class="kind-tag">' + esc(kind) + "</span>" : "";
+          var media = "";
+          if (m.image) {
+            var src = absMedia(m.image);
+            media = '<a class="media" href="' + esc(src) + '" target="_blank" rel="noopener"><img src="' + esc(src) + '" alt="" loading="lazy"/></a>';
+          }
+          var t = m.text || "";
+          if (m.image && /^phone snap$/i.test(t.trim())) t = "";
+          return '<div class="line ' + cls + '"><span class="who">' +
+            (you ? "you" : "mini") + (ts ? " · " + ts : "") + "</span>" + tag +
+            (t ? " " + esc(t) : "") + media + "</div>";
+        }).join("") ||
+          '<div class="line"><span class="who">snaps · chat</span>Talk or snaps land here</div>';
+        if (stick) logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function poll() {
+        fetch(BASE + "/conversation?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            render((j && j.messages) || []);
+            try {
+              if (window.__mgPhoneSpeak) {
+                window.__mgPhoneSpeak.setBase(BASE);
+                window.__mgPhoneSpeak.onMessages((j && j.messages) || []);
+              }
+            } catch (e) {}
+          })
+          .catch(function () {});
       }
 
       if (!secure) {
-        banner.className = "banner show";
-        var h = location.hostname;
-        banner.innerHTML =
-          "Need HTTPS for mic. Open <a href=\"https://" + h + ":9878/phone-talk.html\">https://" +
-          h + ":9878/phone-talk.html</a> (cert trusted via setup page).";
-        document.getElementById("start").disabled = true;
-        log("insecure · use HTTPS :9878", "err");
+        startBtn.disabled = true;
+        appendLocal("sys", "Need HTTPS :9878 for mic · open phone-talk there", "lab");
       } else {
-        log("secure · " + BASE, "ok");
+        appendLocal("sys", "secure · tap Talk · snaps appear below", "lab");
       }
 
       function postTranscript(text) {
         text = (text || "").trim();
         if (text.length < 2) return;
         n += 1;
-        log("you: " + text, "you");
+        appendLocal("you", text, "you");
         fetch(BASE + "/transcript", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: text, src: "phone-talk" }),
           cache: "no-store"
-        }).then(function (r) { return r.json(); }).then(function (j) {
-          if (j && j.ok) log("→ Mini inbox", "ok");
-          else log("inbox fail " + JSON.stringify(j), "err");
-        }).catch(function (e) { log("transcript: " + errText(e), "err"); });
+        }).then(function (r) { return r.json(); }).then(function () {
+          lastRender = "";
+          poll();
+        }).catch(function (e) {
+          appendLocal("err", errText(e), "lab");
+        });
       }
 
-      function postAudioBlob(blob) {
-        if (!blob || blob.size < 200) return;
-        fetch(BASE + "/audio", {
-          method: "POST",
-          headers: { "Content-Type": blob.type || "audio/mp4" },
-          body: blob,
-          cache: "no-store"
-        }).catch(function () {});
+      function setLive(on) {
+        running = !!on;
+        startBtn.classList.toggle("live", running);
+        startBtn.textContent = running ? "Live" : "Talk";
       }
 
-      async function start() {
-        stop();
-        running = true;
-        bar.style.width = "30%";
-
-        // 1) Prefer on-device speech recognition → text to Mini (fast path, no whisper)
-        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR) {
-          rec = new SR();
-          rec.continuous = true;
-          rec.interimResults = true;
-          rec.lang = "en-US";
-          rec.onresult = function (ev) {
-            var i = ev.resultIndex;
-            for (; i < ev.results.length; i++) {
-              if (ev.results[i].isFinal) {
-                postTranscript(ev.results[i][0].transcript);
-                bar.style.width = "90%";
-                setTimeout(function () { if (running) bar.style.width = "40%"; }, 200);
-              } else {
-                bar.style.width = String(20 + Math.min(60, (ev.results[i][0].transcript || "").length)) + "%";
-              }
-            }
-          };
-          rec.onerror = function (e) {
-            log("speech: " + (e.error || errText(e)), "err");
-          };
-          rec.onend = function () {
-            if (running) {
-              try { rec.start(); } catch (_) {}
-            }
-          };
-          try {
-            rec.start();
-            log("speech recognition on (phone → transcript → Mini)", "ok");
-          } catch (e) {
-            log("speech start: " + errText(e), "err");
-          }
-        } else {
-          log("no SpeechRecognition — audio chunks only", "err");
-        }
-
-        // 2) Also stream audio blobs for optional whisper / archive
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-          var mime = "";
-          if (window.MediaRecorder) {
-            ["audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm"].forEach(function (m) {
-              if (!mime && MediaRecorder.isTypeSupported(m)) mime = m;
-            });
-            mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-            mr.ondataavailable = function (e) {
-              if (e.data && e.data.size) postAudioBlob(e.data);
-            };
-            mr.start(2500);
-            log("audio chunks → /audio (" + (mime || "default") + ")", "ok");
-          }
-        } catch (e) {
-          log("mic: " + errText(e), "err");
-        }
-      }
-
-      function stop() {
-        running = false;
-        bar.style.width = "0%";
-        try { if (rec) rec.stop(); } catch (_) {}
+      function stopRec() {
+        setLive(false);
+        try { if (rec) rec.stop(); } catch (e) {}
         rec = null;
-        try { if (mr && mr.state !== "inactive") mr.stop(); } catch (_) {}
-        mr = null;
-        if (stream) {
-          stream.getTracks().forEach(function (t) { try { t.stop(); } catch (_) {} });
-          stream = null;
+        if (bar) bar.style.width = "0%";
+      }
+
+      function startRec() {
+        if (!secure) return;
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          appendLocal("sys", "SpeechRecognition missing — use Chat", "lab");
+          return;
+        }
+        try {
+          if (window.__mgPhoneSpeak) {
+            window.__mgPhoneSpeak.setBase(BASE);
+            window.__mgPhoneSpeak.unlock();
+          }
+        } catch (eU) {}
+        stopRec();
+        rec = new SR();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = "en-US";
+        rec.onresult = function (ev) {
+          var i = ev.resultIndex;
+          for (; i < ev.results.length; i++) {
+            if (ev.results[i].isFinal) {
+              var t = (ev.results[i][0].transcript || "").trim();
+              if (t.length >= 2) postTranscript(t);
+            }
+            if (bar) {
+              var conf = ev.results[i][0].confidence || 0.4;
+              bar.style.width = Math.min(100, Math.round(conf * 100 + 20)) + "%";
+            }
+          }
+        };
+        rec.onerror = function (e) {
+          appendLocal("err", e.error || errText(e), "lab");
+          if (e.error === "not-allowed") stopRec();
+        };
+        rec.onend = function () {
+          if (running) {
+            try { rec.start(); } catch (e2) {}
+          }
+        };
+        try {
+          rec.start();
+          setLive(true);
+        } catch (e3) {
+          appendLocal("err", errText(e3), "lab");
+          stopRec();
         }
       }
 
-      document.getElementById("start").onclick = function () {
-        start().catch(function (e) { log(errText(e), "err"); });
+      startBtn.onclick = function () {
+        if (running) stopRec();
+        else startRec();
       };
-      document.getElementById("stop").onclick = function () {
-        stop();
-        log("stopped", "ok");
+      stopBtn.onclick = stopRec;
+      document.getElementById("btn-unlock").onclick = function () {
+        try {
+          if (window.__mgPhoneSpeak) {
+            window.__mgPhoneSpeak.setBase(BASE);
+            window.__mgPhoneSpeak.unlock();
+          }
+        } catch (e) {}
       };
+      document.getElementById("btn-fleet-hdr").onclick = function () {
+        location.href = "/fleet.html";
+      };
+
+      /* style nav links like buttons */
+      var style = document.createElement("style");
+      style.textContent =
+        ".mg-nav a.mg-nav-a{display:flex;flex-direction:column;align-items:center;gap:2px;" +
+        "padding:6px 4px;border-radius:8px;text-decoration:none;color:rgba(180,200,220,0.7);" +
+        "font:650 9px/1 system-ui;letter-spacing:0.06em;text-transform:uppercase;background:transparent;border:0}" +
+        ".mg-nav a.mg-nav-a .ico{width:22px;height:22px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);" +
+        "display:flex;align-items:center;justify-content:center;font-size:11px;background:rgba(255,255,255,0.04)}" +
+        ".mg-nav a.mg-nav-a.on,.mg-nav a.mg-nav-a[aria-current=page]{color:#8ecbff}" +
+        ".mg-nav a.mg-nav-a.on .ico,.mg-nav a.mg-nav-a[aria-current=page] .ico{" +
+        "border-color:rgba(110,203,255,0.4);background:rgba(110,203,255,0.12)}";
+      document.head.appendChild(style);
+
+      setInterval(poll, 1200);
+      poll();
     })();
   </script>
+  <script src="/phone-pwa.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,41 @@
+{
+  "name": "Memory Glass",
+  "short_name": "MG",
+  "description": "Memory Glass phone shell — DRAW, PICK, DESK collab. Install to Home Screen like Firefox PWA.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0e14",
+  "theme_color": "#0c0e14",
+  "lang": "en",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open DESK",
+      "short_name": "DESK",
+      "url": "./index.html?panel=desk",
+      "description": "Agent desk αβγδ"
+    },
+    {
+      "name": "DRAW",
+      "short_name": "DRAW",
+      "url": "./index.html?panel=draw",
+      "description": "Annotate / collab"
+    }
+  ]
+}

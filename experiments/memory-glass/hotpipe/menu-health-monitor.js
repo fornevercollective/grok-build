@@ -2,12 +2,14 @@
  * Probes every chrome surface, auto-heals hit-targets / product ghosts,
  * exposes window.__mgMenus for Grok open/close/use of all menus.
  * Streams MG_WATCH-style MENU_HEALTH lines via ipc + __mgDevLog.
- * VER: menu-health-v13-open-box
+ * VER: menu-health-v15-bot-chrome
  * During WebGrid play: no exercise, slow probe, no heal thrash.
+ * Product-core / lazy: only probe tools·data·search·dragon·rec chip.
+ * v15: rehome MENUS pill into bottom chrome footer.
  */
 (function () {
   "use strict";
-  var VER = "menu-health-v13-open-box";
+  var VER = "menu-health-v15-bot-chrome";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._menuHealthVer === VER) return;
   HP._menuHealthVer = VER;
@@ -40,6 +42,20 @@
     } catch (e) {}
     return false;
   }
+
+  /** Product-core browse: lab APIs intentionally missing — don't FAIL/spam */
+  function isProductCore() {
+    try {
+      if (document.documentElement.classList.contains("mg-lazy")) return true;
+      if (window.__mgSmokeProbe && window.__mgSmokeProbe.mode === "product-core")
+        return true;
+      if (window.__mgLazy && !/[?&]mg_lab_full=1\b/i.test(location.search || ""))
+        return true;
+    } catch (e) {}
+    return false;
+  }
+
+  var PRODUCT_CORE_IDS = ["tools", "data", "search", "dragon"];
 
   function isWebgridHost() {
     try {
@@ -728,7 +744,7 @@
       "  display:none!important;visibility:hidden!important;pointer-events:none!important;",
       "  opacity:0!important}",
       ".mg-menu-open.hidden{display:none!important}",
-      /* health pill */
+      /* health pill — free float fallback; bottom chrome rehomes into #mg-bot-health-host */
       "#mg-menu-health-pill{",
       "  position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));",
       "  z-index:" + Z + ";pointer-events:auto;cursor:pointer;",
@@ -738,6 +754,14 @@
       "  background:rgba(20,24,32,0.72);border:1px solid rgba(120,200,255,0.35);",
       "  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);",
       "  box-shadow:0 6px 20px rgba(0,0,0,0.28)}",
+      "html.mg-bot-chrome #mg-bot-health-host #mg-menu-health-pill{",
+      "  position:relative!important;right:auto!important;bottom:auto!important;",
+      "  left:auto!important;top:auto!important;border-radius:10px!important;",
+      "  padding:5px 9px!important;font-size:9px!important;z-index:1!important}",
+      "html.mg-bot-chrome body > #mg-menu-health-pill,",
+      "html.mg-bot-chrome html > #mg-menu-health-pill{",
+      "  display:none!important}",
+      "html.mg-bot-chrome #mg-bot-health-host #mg-menu-health-pill{display:block!important}",
       "#mg-menu-health-pill.bad{border-color:rgba(255,120,100,0.55);",
       "  background:rgba(48,18,16,0.78);color:rgba(255,210,200,0.98)}",
       "#mg-menu-health-pill.warn{border-color:rgba(255,200,80,0.5);",
@@ -769,13 +793,20 @@
         (r.healed ? " heal+" + r.healed : "");
       p.className = r.ok ? "ok" : r.pass / r.total > 0.6 ? "warn" : "bad";
     });
-    (document.body || document.documentElement).appendChild(p);
+    var host = document.getElementById("mg-bot-health-host");
+    if (host) host.appendChild(p);
+    else (document.body || document.documentElement).appendChild(p);
     return p;
   }
 
   function updatePill(r) {
     try {
       var p = ensurePill();
+      /* rehome into bottom chrome if it appeared after first mount */
+      try {
+        var host = document.getElementById("mg-bot-health-host");
+        if (host && p.parentNode !== host) host.insertBefore(p, host.firstChild);
+      } catch (eH) {}
       p.textContent =
         "MENUS " +
         r.pass +
@@ -793,6 +824,10 @@
         " · fail=" +
         (r.fails || []).join(",") +
         " · click re-probe";
+      try {
+        if (window.__mgBottomChrome && window.__mgBottomChrome.sync)
+          window.__mgBottomChrome.sync();
+      } catch (eS) {}
     } catch (e) {}
   }
 
@@ -981,12 +1016,18 @@
   function probe(opts) {
     opts = opts || {};
     ensureHitCss();
-    var items = CATALOG.map(probeOne);
+    var cat = CATALOG;
+    if (isProductCore() && !opts.full) {
+      cat = CATALOG.filter(function (c) {
+        return PRODUCT_CORE_IDS.indexOf(c.id) >= 0;
+      });
+    }
+    var items = cat.map(probeOne);
     var healed = 0;
     if (opts.heal) healed = healCommon(items);
     if (opts.heal) {
       /* re-probe critical chrome after heal */
-      items = CATALOG.map(probeOne);
+      items = cat.map(probeOne);
     }
     var fails = items.filter(function (x) {
       return !x.ok;
@@ -1002,7 +1043,8 @@
       items: items,
       healed: healed,
       thrash: thrashSnapshot(),
-      product: !!window.__mgProductMode,
+      product: !!window.__mgProductMode || isProductCore(),
+      productCore: isProductCore(),
       userChrome: !!window.__mgUserChromeTouch,
     };
     lastProbe = report;
@@ -1369,6 +1411,11 @@
       log("ok", VER + " · exercise skipped (webgrid host — use force)");
       return { started: false, skipped: "webgrid-host" };
     }
+    if (isProductCore() && !opts.force) {
+      /* Product browse: only core chrome — never parade lab kit */
+      opts.ids = opts.ids || PRODUCT_CORE_IDS.slice();
+      log("ok", VER + " · product-core exercise · " + opts.ids.join(","));
+    }
     opts = opts || {};
     var ids =
       opts.ids ||
@@ -1425,6 +1472,19 @@
           if (window.__mgActivityBoard)
             window.__mgActivityBoard.open({ collapsed: true });
         } catch (eB) {}
+        /* Session desk / lab floats: re-open maze+contrail after stack clear */
+        try {
+          if (document.documentElement.classList.contains("mg-lab-floats")) {
+            if (window.__mgMemoryMaze && window.__mgMemoryMaze.open)
+              window.__mgMemoryMaze.open();
+            if (window.__mgContrail) {
+              if (window.__mgContrail.setOverlay)
+                window.__mgContrail.setOverlay(true);
+              if (window.__mgContrail.setFlow) window.__mgContrail.setFlow(true);
+              if (window.__mgContrail.open) window.__mgContrail.open();
+            }
+          }
+        } catch (eLab) {}
         emit({
           kind: "menu_exercise_done",
           ok: p.ok && openOk === steps.length,
@@ -1529,6 +1589,14 @@
         if (/[?&]mg_cal=/i.test(location.search || "")) return;
         if (window.__mgCal && window.__mgCal.isRunning && window.__mgCal.isRunning())
           return;
+        if (isProductCore()) {
+          exercise({
+            delayMs: 200,
+            settleMs: 120,
+            ids: PRODUCT_CORE_IDS.slice(),
+          });
+          return;
+        }
         exercise({
           delayMs: 240,
           settleMs: 160,
@@ -1549,8 +1617,9 @@
         log("warn", "exercise err " + eEx);
       }
     }, 4500);
-    /* Probe: 25s on webgrid / play; 8s elsewhere — no re-arm storm */
-    var probeMs = isPlayHot() || isWebgridHost() ? 25000 : 8000;
+    /* Probe: 25s on webgrid / play; 15s product-core; 8s lab */
+    var probeMs =
+      isPlayHot() || isWebgridHost() ? 25000 : isProductCore() ? 15000 : 8000;
     probeTimer = setInterval(function () {
       if (isPlayHot()) {
         probe({ heal: false, emit: true }); /* no z-index storm mid-run */

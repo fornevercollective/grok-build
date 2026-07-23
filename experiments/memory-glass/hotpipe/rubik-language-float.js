@@ -1306,12 +1306,10 @@
     else openPanel();
   }
 
+  /* orb only ~4fps when closed; open panel uses rAF. Lighter on laptop. */
   setInterval(function () {
     paintOrb();
-    if (open && !dragging && autoSpin) {
-      /* loop handles main paint */
-    }
-  }, 100);
+  }, 250);
   setTimeout(function () {
     ensureOrb();
     paintOrb();

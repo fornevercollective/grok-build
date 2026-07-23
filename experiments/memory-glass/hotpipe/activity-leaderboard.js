@@ -6,14 +6,14 @@
  * Stays open during WebGrid play.
  * Mini WebGrid: always findable (chip + auto-open on 12×12).
  * Fleet: Mac mini M4 + laptop benches seeded with real gameplay metrics.
- * VER: activity-board-v14-inspect-pin
+ * VER: activity-board-v15-row1
  * LIVE RANK on inspect via board_live; throttled hard during WebGrid play.
  * Inspect: mount in #panel flow (under hdr) — never fixed overlay over PIP/dock.
  * Singleton + inline pin beats sx-rail / media-query fixed shells.
  */
 (function () {
   "use strict";
-  var VER = "activity-board-v14-inspect-pin";
+  var VER = "activity-board-v15-row1";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._activityBoardVer === VER) return;
   HP._activityBoardVer = VER;
@@ -1151,9 +1151,9 @@
        * flat word · uppercase · wide tracking · no pill chrome · sits in top-right band.
        */
       "#mg-activity-board.collapsed{",
-      "  top:var(--mg-shell-top,2px)!important;right:auto!important;",
       "  left:auto!important;",
-      /* sit left of INSPECT · PAGE; clamp so it never slides off small windows */
+      /* Row 1 metrics — INSPECT/PAGE sit on row 3 */
+      "  top:var(--mg-row1-top,var(--mg-shell-top,4px))!important;",
       "  right:max(8px, min(42vw, calc(8px + var(--mg-top-right-w, 168px))))!important;",
       "  max-height:none!important;min-height:28px!important;height:auto!important;",
       "  width:auto!important;max-width:min(46vw,360px)!important;",

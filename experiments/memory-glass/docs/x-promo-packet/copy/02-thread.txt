@@ -1,36 +1,15 @@
-1/4
-Memory Glass is a native dual-pane training lab — not another AI browser.
+1/4 · Memory Glass on WebGrid
+Real soak captures from the Mac mini (not AI stills). In-game frame: 98.12 BPS · 600 NTPM · 30×30.
 
-WebGrid in the center. Glass floats around it: maze, Bloch, Rubik, beats staff, GEO scavenger, live rank.
+2/4 · Fleet leaderboard (both seats)
+Mac mini M4 agent peak 483.58 BPS (30×30) · MINI 12×12 402 BPS
+Mac mini human cal 6.38 BPS / 39 NTPM
+MacBookPro16,1 Intel laptop 3.76 BPS / 23 NTPM — same board, labeled by machine
 
-[attach 01-hero]
+3/4 · What ships in the glass shell
+BOARD chip (always findable) · MINI / LAPTOP / 12×12 / 30×30 lanes · dual-space floats · you post X draft (no auto-post)
 
-2/4
-MINI WebGrid (12×12) leaderboard is impossible to miss:
-
-• top-right MINI BOARD chip
-• auto-open on WebGrid
-• lanes ALL · MINI · FULL 30×30
-• click BOARD in the SOLVE HUD
-
-[attach 02-mini-leaderboard]
-
-3/4
-Dual-space stack:
-
-• contrail / pattern flow (path geometry)
-• memory maze + rain packs
-• keyboard beats → music staff
-• USGS geo mag×t flow · Portland Maps–style hunts
-
-[attach 03-dual-space]
-
-4/4
-Bottom bar = navigate + talk:
-
-GO · CHAT · MESH · hunt · claim · day · grok brief · X draft (you post)
-
-Open: fornevercollective.github.io/grok-build
-Repo: fornevercollective/grok-build · experiments/memory-glass
-
-[attach 04-search-bar]
+4/4 · Lab links
+Open lab · fornevercollective.github.io/grok-build
+Repo · github.com/fornevercollective/grok-build → experiments/memory-glass
+WebGrid · neuralink.com/webgrid/

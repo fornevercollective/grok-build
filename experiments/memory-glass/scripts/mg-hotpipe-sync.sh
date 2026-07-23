@@ -66,9 +66,25 @@ bake_companion "qbit-codec.js" "qbit-adapters.js" "COMPANION_QBIT_ADAPTERS" "qbi
 bake_companion "qbit-codec.js" "qbit-native-bridge.js" "COMPANION_QBIT_NATIVE" "qbit-native"
 bake_companion "qbit-codec.js" "qbit-truss.js" "COMPANION_QBIT_TRUSS" "qbit-truss"
 bake_companion "qbit-codec.js" "qbit-term-plane.js" "COMPANION_QBIT_TERM" "qbit-term"
+# Keep spine companions for lab mode only (product-core injects desk/rec cleanly).
+# Do NOT bake annotate/desk/chrome into live/session-rec — that caused multi-MB parse lag.
 bake_companion "qbit-codec.js" "mg-agent-desk.js" "COMPANION_AGENT_DESK" "agent-desk"
 bake_companion "qbit-codec.js" "qbit-race-sitrep.js" "COMPANION_QBIT_RACE" "qbit-race"
 bake_companion "qbit-codec.js" "qbit-l1-pilot.js" "COMPANION_QBIT_L1" "qbit-l1"
+bake_companion "session-recorder.js" "mg-lazy-boot.js" "COMPANION_LAZY_BOOT" "lazy-boot→rec"
+# Live DRAW→DESK + element PICK (Cursor-style) without full rebuild
+bake_companion "session-recorder.js" "mg-live-collab.js" "COMPANION_LIVE_COLLAB" "live-collab→rec"
+bake_companion "mg-agent-desk.js" "mg-live-collab.js" "COMPANION_LIVE_COLLAB" "live-collab→desk"
+# 2019 MBP / low-power CSS + heuristics
+bake_companion "session-recorder.js" "mg-compat.js" "COMPANION_COMPAT" "compat→rec"
+# DATA drawer Bench (freya/hexbench/trades/pynote) hot-reload without rebuild
+bake_companion "mg-right-drawer.js" "mg-data-bench.js" "COMPANION_DATA_BENCH" "data-bench→right"
+# Bottom chrome: glass LAB strip + tabs readout (mirror top header)
+bake_companion "session-recorder.js" "mg-bottom-chrome.js" "COMPANION_BOTTOM_CHROME" "bottom-chrome→rec"
+bake_companion "mg-chrome-tokens.js" "mg-bottom-chrome.js" "COMPANION_BOTTOM_CHROME" "bottom-chrome→tokens"
+# Full kbatch.ugrad.ai site hub (local :8899 + live) for collab sessions
+bake_companion "mg-tools-drawer.js" "mg-kbatch-site.js" "COMPANION_KBATCH_SITE" "kbatch-site→tools"
+bake_companion "kbatch-fleet-bridge.js" "mg-kbatch-site.js" "COMPANION_KBATCH_SITE" "kbatch-site→fleet"
 bake_companion "search-comms.js" "site-atlas.js" "COMPANION_SITE_ATLAS" "site-atlas"
 # harvest seeds (keyboard matrix atlas already in keyboard-atlas-seed.js inject)
 bake_companion "float-keyboard.js" "key-popout-menus-seed.js" "COMPANION_KEY_POPOUT" "key-popout"

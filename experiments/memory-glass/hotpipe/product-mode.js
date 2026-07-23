@@ -77,7 +77,7 @@
       "  min-height:160px!important;max-height:min(28vh,240px)!important}",
       /* board collapsed = shell top word (INSPECT/PAGE language) */
       "html.mg-product #mg-activity-board.collapsed{",
-      "  top:var(--mg-shell-top,2px)!important;",
+      "  top:var(--mg-row1-top,var(--mg-shell-top,4px))!important;",
       "  right:max(8px, min(42vw, calc(8px + var(--mg-top-right-w,168px))))!important;",
       "  background:transparent!important;border:none!important;box-shadow:none!important;",
       "  border-radius:0!important;width:auto!important;",

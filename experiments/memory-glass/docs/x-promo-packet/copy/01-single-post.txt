@@ -1,10 +1,12 @@
-Memory Glass · dual-space lab on WebGrid
+Memory Glass · real WebGrid metrics (Mac mini + laptop)
 
-Mini BOARD always findable (top-right chip) · maze rain · Bloch + Rubik orbs · staff beats · GEO pattern flow · bottom bar GO / CHAT / MESH
+Mac mini M4 agent · 30×30 peak 483.58 BPS · MINI 12×12 peak 402 BPS · live frame 98.12 BPS / 600 NTPM
+Mac mini human calibration · 6.38 BPS / 39 NTPM
+MacBookPro16,1 Intel laptop · 3.76 BPS / 23 NTPM (same board — not Mini)
 
-Train · measure · share evidence · you post (no auto-X)
+Fleet BOARD: machine lanes + BPS / NTPM / clicks · you post (no auto-X)
 
 Open lab: fornevercollective.github.io/grok-build
-Native experiment: github.com/fornevercollective/grok-build → experiments/memory-glass
+Native: github.com/fornevercollective/grok-build → experiments/memory-glass
 
-#MemoryGlass #WebGrid #dualspace
+#MemoryGlass #WebGrid

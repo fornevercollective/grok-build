@@ -201,6 +201,11 @@
   }
 
   function ensureUi() {
+    /* parkLab / DOM thrash can detach panel while JS ref lives — remount */
+    if (panel && !panel.isConnected) {
+      panel = null;
+      cv = null;
+    }
     if (panel) return;
     if (!document.getElementById("mg-maze-css")) {
       var st = document.createElement("style");

@@ -3,15 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#05060a" />
+  <meta name="theme-color" content="#0a0c10" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Memory Glass" />
+  <meta name="application-name" content="Memory Glass" />
   <title>Memory Glass · phone</title>
   <meta name="description" content="Memory Glass phone — glass orb · live wallpaper · share photos & links" />
-  <link rel="icon" href="assets/brand/grok-logomark-light.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/brand/grok-logomark-dark.png" />
-  <link rel="stylesheet" href="assets/phone-mg.css?v=mg3" />
+  <link rel="manifest" href="/manifest.webmanifest?v=icon7" />
+  <!-- iOS home-screen: root path first (Safari probes /apple-touch-icon.png) -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" sizes="192x192" />
+  <link rel="icon" href="/favicon.png" type="image/png" />
+  <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="icon" href="/icons/icon-512.png" type="image/png" sizes="512x512" />
+  <link rel="stylesheet" href="phone-mg.css?v=wave-top1" />
 </head>
 <body class="mg-phone">
   <!-- Full-bleed ambient: live feed + voice-orb aurora (fills top/bottom, no white bars) -->
@@ -23,13 +31,25 @@
   </div>
 
   <div class="mg-app">
-    <header class="mg-top">
-      <img class="mark" src="assets/brand/grok-logomark-light.svg" width="22" height="22" alt="" />
-      <div class="title">Memory Glass · <span id="ph-mode">phone</span></div>
-      <div class="host on" id="ph-host">…</div>
-      <button type="button" class="ghost" id="btn-relay">Relay</button>
-      <button type="button" class="ghost" id="btn-lab">Lab</button>
+    <!-- Inspect-float style glass header -->
+    <header class="mg-top" id="mg-top">
+      <div class="mg-top-left">
+        <img class="mark" src="/icons/icon-192.png" width="22" height="22" alt="" />
+        <div class="mg-top-titles">
+          <div class="ttl"><span class="dot">.</span>inspect · phone · <span class="mode" id="ph-mode">chat</span></div>
+          <div class="stamp on" id="ph-host">…</div>
+        </div>
+      </div>
+      <div class="acts">
+        <button type="button" class="ghost primary" id="btn-speaker" title="Unlock phone loud speaker">🔊 Sound</button>
+        <button type="button" class="ghost primary" id="btn-hold-hdr" title="Hold to talk">Talk</button>
+        <button type="button" class="ghost" id="btn-cam">Cam</button>
+        <button type="button" class="ghost" id="btn-fleet-hdr">Fleet</button>
+      </div>
     </header>
+
+    <!-- Waveforms in former top-notification slot -->
+    <div id="mg-wave-slot"></div>
 
     <section class="mg-face">
       <div class="glass-orb" id="orb">
@@ -43,22 +63,20 @@
         <p class="status" id="status">boot…</p>
         <div class="mg-quick">
           <button type="button" class="mg-chip primary" id="btn-hold">Hold</button>
-          <button type="button" class="mg-chip" id="btn-cam">Cam</button>
+          <button type="button" class="mg-chip" id="btn-cam-quick">Cam</button>
           <button type="button" class="mg-chip" id="btn-wallpaper" title="Toggle live wallpaper">Live</button>
           <button type="button" class="mg-chip" id="btn-refresh">↻</button>
         </div>
       </div>
     </section>
 
-    <div id="insecure" class="mg-banner"></div>
-
     <main class="mg-panes">
       <div class="mg-peek mg-panel">
         <img id="peek" alt="" />
         <span class="lab" id="peek-lab">still-pipe · live.jpg</span>
       </div>
-      <div class="mg-log mg-panel" id="log" role="log">
-        <div class="empty">Hold to talk · share photo/link · Mini replies + snapshots</div>
+      <div class="mg-log mg-panel" id="log" role="log" aria-label="Snaps chat">
+        <div class="empty">Snaps · chat under the window · hold to talk · share photo</div>
       </div>
     </main>
 
@@ -86,11 +104,13 @@
       <button type="button" class="on" id="nav-chat"><span class="ico">◎</span>Chat</button>
       <button type="button" id="nav-cam"><span class="ico">◉</span>Cam</button>
       <button type="button" id="nav-talk"><span class="ico">◌</span>Talk</button>
-      <button type="button" id="nav-relay"><span class="ico">◈</span>Relay</button>
+      <button type="button" id="nav-fleet"><span class="ico">◈</span>Fleet</button>
     </nav>
   </div>
   <div class="mg-toast" id="toast" role="status"></div>
 
+  <script src="/phone-wave.js?v=1"></script>
+  <script src="/phone-speak.js?v=4"></script>
   <script>
     (function () {
       var BASE = location.origin;
@@ -117,7 +137,20 @@
         if (w === "0") wallpaperOn = false;
       } catch (e) {}
 
-      $("ph-host").textContent = HOST + (secure ? ":9878" : ":9877");
+      $("ph-host").textContent =
+        "MG phone · " + HOST + (secure ? ":9878" : ":9877") + (secure ? " · secure" : " · need https");
+      /* Header Talk mirrors Hold chip */
+      var holdHdr = $("btn-hold-hdr");
+      function syncHoldUi(on) {
+        if (holdBtn) {
+          holdBtn.classList.toggle("on", !!on);
+          holdBtn.textContent = on ? "Live" : "Hold";
+        }
+        if (holdHdr) {
+          holdHdr.classList.toggle("on", !!on);
+          holdHdr.textContent = on ? "Live" : "Talk";
+        }
+      }
 
       function toast(m) {
         toastEl.textContent = m;
@@ -148,24 +181,26 @@
         return null;
       }
 
+      /* No top HTTPS banner — stamp / status only */
       if (!secure) {
-        var b = $("insecure");
-        b.className = "mg-banner show";
-        b.innerHTML = "Mic / cam need HTTPS. Open <a href=\"" + httpsBase + "/phone-chat.html\">" + httpsBase + "/phone-chat.html</a>";
-        holdBtn.disabled = true;
+        if (holdBtn) holdBtn.disabled = true;
+        setStatus("<em>need HTTPS</em> · open :9878");
       }
 
       function render(messages) {
         if (!messages || !messages.length) {
-          logEl.innerHTML = '<div class="empty">Hold to talk · share photo/link · Mini replies + snapshots</div>';
+          logEl.innerHTML = '<div class="empty">Snaps · chat under the window · hold to talk · share photo</div>';
           return;
         }
-        var stick = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 80;
-        logEl.innerHTML = messages.map(function (m) {
+        /* newest first (top) · oldest last (bottom) */
+        var list = messages.slice().reverse();
+        logEl.innerHTML = list.map(function (m) {
           var you = m.role !== "assistant";
           var t = esc(m.text || "");
           var ts = m.ts ? m.ts.slice(11, 19) : "";
-          var kind = m.kind || "text";
+          var kind = m.kind || (m.image ? "photo" : "text");
+          var isSnap = kind === "photo" || kind === "snapshot" || !!m.image;
+          var cls = (you ? "you" : "lab") + (isSnap ? " snap" : "");
           var tag = kind !== "text" ? '<span class="kind-tag">' + esc(kind) + "</span>" : "";
           var media = "";
           if (m.image) {
@@ -178,11 +213,13 @@
             media += '<a class="link-chip" href="' + esc(link) + '" target="_blank" rel="noopener">' +
               esc(link.length > 48 ? link.slice(0, 45) + "…" : link) + "</a>";
           }
-          return '<div class="line ' + (you ? "you" : "lab") + '"><span class="who">' +
+          /* hide redundant caption when thumb present */
+          if (m.image && /^phone snap$/i.test((m.text || "").trim())) t = "";
+          return '<div class="line ' + cls + '"><span class="who">' +
             (you ? "you" : "mini") + (ts ? " " + ts : "") + "</span>" + tag +
             (t ? " " + t : "") + media + "</div>";
         }).join("");
-        if (stick) logEl.scrollTop = logEl.scrollHeight;
+        logEl.scrollTop = 0;
       }
 
       function tickLive() {
@@ -213,8 +250,18 @@
         fetch(stillHttp + "/conversation?t=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.json(); })
           .then(function (j) {
-            if (j && j.messages) render(j.messages);
-            if (!running) setStatus("<em>idle</em> · glass · n=" + (j.n || 0));
+            if (j && j.messages) {
+              render(j.messages);
+              /* Loud phone TTS for new assistant lines (m4a or Web Speech) */
+              try {
+                if (window.__mgPhoneSpeak) {
+                  window.__mgPhoneSpeak.setBase(stillHttp);
+                  window.__mgPhoneSpeak.onMessages(j.messages);
+                }
+              } catch (eSp) {}
+            }
+            if (!running) setStatus("<em>idle</em> · glass · n=" + (j.n || 0) + " · speaker " +
+              (window.__mgPhoneSpeak && window.__mgPhoneSpeak.speakOn() ? "on" : "off"));
           })
           .catch(function (e) { setStatus("poll · " + errText(e)); });
         tickLive();
@@ -227,6 +274,16 @@
               : "still-pipe · waiting · aurora on";
           })
           .catch(function () {});
+      }
+
+      /* Fleet: phone registers on Mini hub so laptop upstairs can see peer */
+      function fleetBeat() {
+        try {
+          if (window.__mgPhoneSpeak) {
+            window.__mgPhoneSpeak.setBase(stillHttp);
+            window.__mgPhoneSpeak.fleetRegister({ role: "phone", name: "Phone stream" });
+          }
+        } catch (e) {}
       }
 
       function postText(text) {
@@ -308,8 +365,7 @@
         if (!secure) { toast("Open HTTPS :9878"); return; }
         stopTalk();
         running = true;
-        holdBtn.classList.add("on");
-        holdBtn.textContent = "Live";
+        syncHoldUi(true);
         orb.classList.add("live");
         $("face-mode").textContent = "talk live";
         setStatus("<em>listening</em>");
@@ -340,8 +396,7 @@
       }
       function stopTalk() {
         running = false;
-        holdBtn.classList.remove("on");
-        holdBtn.textContent = "Hold";
+        syncHoldUi(false);
         orb.classList.remove("live");
         $("face-mode").textContent = "glass orb";
         try { if (rec) rec.stop(); } catch (_) {}
@@ -349,10 +404,12 @@
         try { orb.style.setProperty("--mg-voice", "0"); } catch (eV3) {}
       }
 
-      holdBtn.onclick = function () {
+      function toggleHold() {
         if (running) { stopTalk(); setStatus("<em>idle</em>"); toast("Talk off"); }
         else startTalk();
-      };
+      }
+      if (holdBtn) holdBtn.onclick = toggleHold;
+      if (holdHdr) holdHdr.onclick = toggleHold;
       $("send").onclick = function () { postText($("input").value); };
       $("input").addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -389,14 +446,24 @@
         location.href = proto + "//" + HOST + ":" + port + path;
       }
       $("btn-cam").onclick = function () { go("/phone.html", true); };
-      $("btn-relay").onclick = function () { go("/relay.html", false); };
-      $("btn-lab").onclick = function () {
-        location.href = "https://fornevercollective.github.io/grok-build/phone.html#/chat";
+      if ($("btn-cam-quick")) $("btn-cam-quick").onclick = function () { go("/phone.html", true); };
+      if ($("btn-fleet-hdr")) {
+        $("btn-fleet-hdr").onclick = function () { go("/fleet.html", true); };
+      }
+      $("btn-refresh").onclick = function () {
+        try { if (window.__mgPhoneSpeak) window.__mgPhoneSpeak.unlock(); } catch (e) {}
+        poll();
+        toast("↻");
       };
-      $("btn-refresh").onclick = function () { poll(); toast("↻"); };
+      /* Tap Hold also unlocks loud speaker for iOS */
+      if (holdBtn) {
+        holdBtn.addEventListener("pointerdown", function () {
+          try { if (window.__mgPhoneSpeak) window.__mgPhoneSpeak.unlock(); } catch (e) {}
+        }, { passive: true });
+      }
       $("nav-cam").onclick = function () { go("/phone.html", true); };
       $("nav-talk").onclick = function () { go("/phone-talk.html", true); };
-      $("nav-relay").onclick = function () { go("/relay.html", false); };
+      if ($("nav-fleet")) $("nav-fleet").onclick = function () { go("/fleet.html", true); };
 
       /* Drag/drop or paste image */
       document.addEventListener("paste", function (e) {
@@ -412,8 +479,11 @@
 
       poll();
       setInterval(poll, 900);
+      fleetBeat();
+      setInterval(fleetBeat, 25000);
       setStatus(secure ? "<em>ready</em> · glass · share photo/link" : "<em>open HTTPS</em> for mic");
     })();
   </script>
+  <script src="/phone-pwa.js" defer></script>
 </body>
 </html>

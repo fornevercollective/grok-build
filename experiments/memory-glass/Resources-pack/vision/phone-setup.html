@@ -3,6 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Memory Glass" />
+  <meta name="theme-color" content="#0a0e14" />
+  <link rel="manifest" href="/manifest.webmanifest?v=icon7" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="icon" type="image/png" href="/icons/icon-192.png" />
   <title>Memory Glass · phone cert setup</title>
   <style>
     :root { color-scheme: dark; }
@@ -51,9 +59,10 @@
   </ol>
   <p class="muted">If you skip Certificate Trust Settings, HTTPS still fails even after “install”.</p>
 
-  <h2>3 · Open live cam (HTTPS)</h2>
+  <h2>3 · Open live cam (HTTPS) · install PWA</h2>
   <a class="btn go" id="live" href="#">Open phone live cam →</a>
   <p class="muted">After trust is on, this should load without a dead-end cert wall.</p>
+  <p class="muted"><b>Install offline app:</b> Safari Share → <b>Add to Home Screen</b> → open <b>MG Phone</b>. Pull down to refresh when we iterate.</p>
 
   <h2>4 · Live chat (lab-ship style)</h2>
   <a class="btn go" id="chat" href="#">Open mg-ship chat →</a>
@@ -78,5 +87,6 @@
       document.getElementById("cfg").href = "/certs/MemoryGlass-Still.mobileconfig";
     })();
   </script>
+  <script src="/phone-pwa.js" defer></script>
 </body>
 </html>

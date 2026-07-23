@@ -2,11 +2,11 @@
  * Same row as version (#mg-build-stamp) + stoplights — ABOVE any CTRL / center strip.
  * Compact mono readout (not a floating center mega-pill).
  * Click → glass tray with full detail. Tools still in TOOLS drawer.
- * VER: live-solve-hud-v4-stamp-row
+ * VER: live-solve-hud-v6-laptop-room
  */
 (function () {
   "use strict";
-  var VER = "live-solve-hud-v5-stable-left";
+  var VER = "live-solve-hud-v6-laptop-room";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._liveSolveHudVer === VER) return;
   HP._liveSolveHudVer = VER;
@@ -29,12 +29,12 @@
       /* ── same row as #mg-build-stamp / stoplights (shell top band) ── */
       "#mg-solve-hud{",
       "  position:fixed!important;",
-      "  top:var(--mg-shell-top,2px)!important;",
+      "  top:var(--mg-row1-top,var(--mg-shell-top,4px))!important;",
       "  left:var(--mg-solve-left,220px)!important;",
       "  right:auto!important;",
       "  transform:none!important;",
-      "  z-index:2147483642!important;",
-      "  max-width:min(48vw,560px)!important;",
+      "  z-index:2147483641!important;",
+      "  max-width:min(32vw,300px)!important;",
       "  width:auto!important;",
       "  min-height:28px;",
       "  padding:var(--mg-hdr-pad-y,6px) 0!important;margin:0;",
@@ -70,12 +70,14 @@
       /* kill any legacy center-pill rules that reappear from old injects */
       "html.mg-product #mg-solve-hud,html.mg-drawer-mode #mg-solve-hud,",
       "html.mg-webgrid-play #mg-solve-hud{",
-      "  position:fixed!important;top:var(--mg-shell-top,2px)!important;",
+      "  position:fixed!important;top:var(--mg-row1-top,var(--mg-shell-top,4px))!important;",
       "  left:var(--mg-solve-left,220px)!important;",
       "  transform:none!important;border-radius:0!important;",
       "  background:transparent!important;border:none!important;",
-      "  box-shadow:none!important;max-width:min(48vw,560px)!important;",
+      "  box-shadow:none!important;max-width:min(32vw,300px)!important;",
       "  backdrop-filter:none!important;-webkit-backdrop-filter:none!important}",
+      "@media (max-width:1100px){#mg-solve-hud{max-width:min(26vw,220px)!important}}",
+      "@media (max-width:820px){#mg-solve-hud .sum{display:none!important}#mg-solve-hud{max-width:72px!important}}",
       /* tray drops just under stamp row */
       "#mg-solve-tray{",
       "  position:fixed;z-index:2147483643;",
@@ -133,9 +135,9 @@
           var lr = lights.getBoundingClientRect();
           left = Math.ceil(lr.right + 12);
         }
-        /* never sit under stoplights; keep room for LIVE / INSPECT on the right */
+        /* never sit under stoplights; hard stop before center CTRL / right INSPECT */
         left = Math.max(left, 96);
-        var maxL = Math.max(120, window.innerWidth * 0.52);
+        var maxL = Math.max(100, window.innerWidth * 0.34);
         if (left > maxL) left = maxL;
         if (!force && lastSolveLeft >= 0 && Math.abs(left - lastSolveLeft) < 8) return;
         lastSolveLeft = left;

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" class="mg-pwa mg-low-power">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0e14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <title>Memory Glass</title>
+  <style>
+    :root {
+      --bg: #0c0e14;
+      --fg: #e8eef8;
+      --muted: rgba(200, 210, 230, 0.65);
+      --line: rgba(255, 255, 255, 0.12);
+      --chip: rgba(16, 18, 28, 0.94);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-t: env(safe-area-inset-top, 0px);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: var(--bg); color: var(--fg);
+      font: 500 14px/1.4 -apple-system, system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+      padding: calc(8px + var(--safe-t)) 10px 8px;
+      display: flex; gap: 8px; align-items: center;
+      background: rgba(10, 12, 18, 0.96);
+      border-bottom: 1px solid var(--line);
+    }
+    #bar input {
+      flex: 1; min-width: 0;
+      appearance: none; border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,0.35); color: var(--fg);
+      padding: 10px 12px; font: 500 14px/1 system-ui;
+    }
+    #bar button {
+      appearance: none; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.06); color: var(--fg);
+      border-radius: 10px; padding: 10px 12px;
+      font: 650 11px/1 system-ui; letter-spacing: 0.06em;
+    }
+    #frame-wrap {
+      position: fixed;
+      top: calc(52px + var(--safe-t));
+      left: 0; right: 0;
+      bottom: calc(64px + var(--safe-b));
+      background: #000;
+    }
+    #frame {
+      width: 100%; height: 100%; border: 0; background: #111;
+    }
+    #frame.blocked {
+      display: none;
+    }
+    #fallback {
+      display: none; height: 100%; padding: 20px;
+      overflow: auto; color: var(--muted);
+    }
+    #fallback.show { display: block; }
+    #fallback h1 { color: var(--fg); font-size: 18px; }
+    #fallback a { color: #9fd0ff; }
+    #chip {
+      position: fixed; left: 14px;
+      bottom: calc(14px + var(--safe-b));
+      z-index: 30;
+      background: transparent; border: 0; box-shadow: none; padding: 0;
+    }
+    #c-menu { position: relative; }
+    #c-trigger {
+      appearance: none; border: 0; background: transparent; color: rgba(255,255,255,0.9);
+      font: 600 11px/1 system-ui; letter-spacing: 0.22em; text-transform: uppercase;
+      padding: 6px 2px; cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    }
+    #c-trigger .dot, #c-drop .dot { opacity: 0.5; margin-right: 8px; letter-spacing: 0; }
+    #c-trigger .chev { font-size: 9px; opacity: 0.65; margin-left: 6px; }
+    #c-menu.open #c-trigger .chev { display: inline-block; transform: rotate(180deg); }
+    #c-drop {
+      display: none; position: absolute; left: 0; bottom: calc(100% + 4px);
+      min-width: 168px; padding: 8px 0 6px; flex-direction: column;
+      background: rgba(8,10,14,0.88); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 2px; box-shadow: 0 -16px 48px rgba(0,0,0,0.28);
+    }
+    #c-menu.open #c-drop { display: flex; }
+    #c-drop button {
+      appearance: none; border: 0; background: transparent; color: rgba(255,255,255,0.5);
+      text-align: left; padding: 9px 14px; font: 600 11px/1 system-ui;
+      letter-spacing: 0.22em; text-transform: uppercase; cursor: pointer; width: 100%;
+    }
+    #c-drop button:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    #c-drop button.on { color: #fff; }
+    #toast {
+      position: fixed; left: 50%; bottom: calc(78px + var(--safe-b));
+      transform: translateX(-50%); z-index: 40;
+      padding: 8px 12px; border-radius: 10px;
+      background: rgba(12,16,28,0.95); border: 1px solid rgba(140,200,255,0.3);
+      color: #e8f0ff; font: 650 11px/1.3 system-ui;
+      opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    #toast.on { opacity: 1; }
+    #desk {
+      position: fixed; left: 10px; right: 10px;
+      bottom: calc(72px + var(--safe-b));
+      max-height: 42vh; z-index: 35;
+      display: none; flex-direction: column;
+      background: rgba(12,16,28,0.96); border: 1px solid var(--line);
+      border-radius: 16px; overflow: hidden;
+    }
+    #desk.open { display: flex; }
+    #desk .hd {
+      padding: 10px 12px; font: 650 10px/1 system-ui;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      border-bottom: 1px solid var(--line); color: #9fd0ff;
+      display: flex; justify-content: space-between;
+    }
+    #desk .log {
+      flex: 1; overflow: auto; padding: 10px 12px;
+      font: 500 12px/1.45 ui-monospace, Menlo, monospace;
+      white-space: pre-wrap;
+    }
+    #desk .row { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--line); }
+    #desk input {
+      flex: 1; appearance: none; border-radius: 10px;
+      border: 1px solid var(--line); background: rgba(0,0,0,0.35);
+      color: var(--fg); padding: 10px;
+    }
+    #install {
+      display: none; position: fixed; top: calc(58px + var(--safe-t));
+      left: 10px; right: 10px; z-index: 25;
+      padding: 10px 12px; border-radius: 12px;
+      background: rgba(40,80,140,0.9); color: #fff;
+      font: 600 12px/1.3 system-ui;
+    }
+    #install.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <button type="button" id="btn-back" title="Back">◀</button>
+    <button type="button" id="btn-fwd" title="Forward">▶</button>
+    <input id="url" type="url" inputmode="url" autocomplete="url"
+      placeholder="https://…" value="https://www.spacex.com/" />
+    <button type="button" id="btn-go">GO</button>
+  </div>
+  <div id="install">Install Memory Glass: Share → <b>Add to Home Screen</b> (iOS) or browser install icon (Android/desktop).</div>
+  <div id="frame-wrap">
+    <iframe id="frame" title="page" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div id="fallback">
+      <h1>Memory Glass · PWA shell</h1>
+      <p>Many sites block iframes (X-Frame-Options). Use <b>Open tab</b> for full browsing, then come back here for DRAW / PICK / DESK tools.</p>
+      <p><button type="button" id="btn-open-tab">Open current URL in tab</button></p>
+      <p class="muted">Native Mac app remains the full WKWebView browser. This PWA is the <b>phone / homescreen</b> companion (Firefox-style install).</p>
+      <p><a href="../hotpipe/plans/OS_FLIGHT_PATH.md">OS flight path</a> · product-core + low-power profile for 2019 MBP.</p>
+    </div>
+  </div>
+  <div id="desk">
+    <div class="hd"><span>MG · DESK (PWA)</span><span id="desk-x" style="cursor:pointer">✕</span></div>
+    <div class="log" id="desk-log"></div>
+    <div class="row">
+      <input id="desk-in" placeholder="/live · /pick · free text…" />
+      <button type="button" id="desk-send">SEND</button>
+    </div>
+  </div>
+  <div id="chip">
+    <div id="c-menu">
+      <button type="button" id="c-trigger" aria-expanded="false"><span class="dot">.</span>lab<span class="chev">▾</span></button>
+      <div id="c-drop">
+        <button type="button" id="c-rec"><span class="dot">.</span>rec</button>
+        <button type="button" id="c-snap"><span class="dot">.</span>snap</button>
+        <button type="button" id="c-draw"><span class="dot">.</span>draw</button>
+        <button type="button" id="c-share"><span class="dot">.</span>share</button>
+        <button type="button" id="c-dev"><span class="dot">.</span>dev</button>
+        <button type="button" id="c-agent"><span class="dot">.</span>agent</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script>
+  (function () {
+    "use strict";
+    var frame = document.getElementById("frame");
+    var fallback = document.getElementById("fallback");
+    var urlEl = document.getElementById("url");
+    var toast = document.getElementById("toast");
+    var desk = document.getElementById("desk");
+    var logEl = document.getElementById("desk-log");
+    var deferredInstall = null;
+
+    function tip(m) {
+      toast.textContent = m;
+      toast.classList.add("on");
+      clearTimeout(tip._t);
+      tip._t = setTimeout(function () { toast.classList.remove("on"); }, 2200);
+    }
+    function pushLog(role, text) {
+      var line = document.createElement("div");
+      line.textContent = (role || "sys") + " · " + text;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function navigate(u) {
+      u = (u || urlEl.value || "").trim();
+      if (!u) return;
+      if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+      urlEl.value = u;
+      fallback.classList.remove("show");
+      frame.classList.remove("blocked");
+      try {
+        frame.src = u;
+      } catch (e) {
+        frame.classList.add("blocked");
+        fallback.classList.add("show");
+      }
+      /* detect iframe block after load */
+      setTimeout(function () {
+        try {
+          var h = frame.contentWindow.location.href;
+          if (!h || h === "about:blank") throw 1;
+        } catch (e2) {
+          /* cross-origin is OK; only show fallback if load failed */
+        }
+      }, 1200);
+      pushLog("sys", "nav " + u);
+    }
+
+    document.getElementById("btn-go").onclick = function () { navigate(); };
+    urlEl.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") navigate();
+    });
+    document.getElementById("btn-back").onclick = function () {
+      try { history.back(); } catch (e) {}
+      tip("back");
+    };
+    document.getElementById("btn-fwd").onclick = function () {
+      try { history.forward(); } catch (e) {}
+    };
+    document.getElementById("btn-open-tab").onclick = function () {
+      window.open(urlEl.value, "_blank", "noopener");
+    };
+    document.getElementById("c-open").onclick = function () {
+      window.open(urlEl.value, "_blank", "noopener");
+      tip("opened tab");
+    };
+
+    document.getElementById("c-trigger").onclick = function (e) {
+      e.stopPropagation();
+      var m = document.getElementById("c-menu");
+      m.classList.toggle("open");
+      this.setAttribute("aria-expanded", m.classList.contains("open") ? "true" : "false");
+    };
+    document.addEventListener("click", function (e) {
+      var m = document.getElementById("c-menu");
+      if (m && !m.contains(e.target)) m.classList.remove("open");
+    });
+    document.getElementById("c-agent").onclick = function () {
+      desk.classList.toggle("open");
+      this.classList.toggle("on", desk.classList.contains("open"));
+      document.getElementById("c-menu").classList.remove("open");
+    };
+    document.getElementById("desk-x").onclick = function () {
+      desk.classList.remove("open");
+      document.getElementById("c-agent").classList.remove("on");
+    };
+    document.getElementById("desk-send").onclick = function () {
+      var v = document.getElementById("desk-in").value.trim();
+      if (!v) return;
+      document.getElementById("desk-in").value = "";
+      pushLog("you", v);
+      if (v === "/live") pushLog("ai", "PWA live · DRAW/PICK stream into this desk when running in native MG; here logs are local.");
+      else if (v === "/pick") pushLog("ai", "Use ◎ PICK in chip · full pick needs native WK inject or same-origin page.");
+      else pushLog("ai", "PWA shell · full collab in Memory Glass.app · this is homescreen companion.");
+    };
+
+    document.getElementById("c-draw").onclick = function () {
+      tip("draw · native MG overlay");
+      pushLog("sys", "draw");
+      this.classList.toggle("on");
+      document.getElementById("c-menu").classList.remove("open");
+    };
+    document.getElementById("c-dev").onclick = function () {
+      tip("dev · pick / inspect");
+      pushLog("sys", "dev");
+      this.classList.toggle("on");
+      document.getElementById("c-menu").classList.remove("open");
+    };
+    document.getElementById("c-share").onclick = function () {
+      tip("share · draft");
+      pushLog("sys", "share");
+    };
+    document.getElementById("c-snap").onclick = function () {
+      tip("snap");
+      pushLog("sys", "snap");
+    };
+    document.getElementById("c-rec").onclick = function () {
+      this.classList.toggle("on");
+      tip(this.classList.contains("on") ? "rec on" : "rec off");
+    };
+
+    /* Install prompt (Chrome/Android/desktop) */
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      deferredInstall = e;
+      document.getElementById("install").classList.add("show");
+      document.getElementById("install").onclick = function () {
+        if (!deferredInstall) return;
+        deferredInstall.prompt();
+        deferredInstall = null;
+        document.getElementById("install").classList.remove("show");
+      };
+    });
+    /* iOS: always show install hint once */
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && !window.navigator.standalone) {
+      document.getElementById("install").classList.add("show");
+    }
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    }
+
+    var q = new URLSearchParams(location.search);
+    if (q.get("panel") === "desk") desk.classList.add("open");
+    var start = q.get("url") || urlEl.value;
+    navigate(start);
+    pushLog("sys", "Memory Glass PWA · low-power shell · Add to Home Screen");
+    pushLog("ai", "Native app = full browser. PWA = phone homescreen tools + open tab.");
+  })();
+  </script>
+</body>
+</html>

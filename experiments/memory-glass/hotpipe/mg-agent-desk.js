@@ -2,11 +2,11 @@
  * Brand-new feel: multi-tier project command (Cursor-shaped) living INSIDE the browser OS.
  * Tiers: α plan · β build · γ verify · δ explore (curious / break-it / QA)
  * Every action rides __mgQbitBus + truss. Not a sidecar chat app.
- * VER: mg-agent-desk-v2
+ * VER: mg-agent-desk-v6-live-collab
  */
 (function () {
   "use strict";
-  var VER = "mg-agent-desk-v2";
+  var VER = "mg-agent-desk-v6-live-collab";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._agentDeskVer === VER) return;
   HP._agentDeskVer = VER;
@@ -91,7 +91,7 @@
     st.id = "mg-agent-desk-css";
     st.textContent = [
       "#mg-agent-desk{",
-      "  position:fixed;left:16px;bottom:16px;z-index:2147483020;",
+      "  position:fixed;left:16px;bottom:calc(58px + var(--mg-kb-h,0px));z-index:2147483646;",
       "  width:min(420px,94vw);max-height:min(70vh,620px);",
       "  display:flex;flex-direction:column;pointer-events:auto;",
       "  font:500 12px/1.4 -apple-system,system-ui,sans-serif;",
@@ -131,14 +131,19 @@
       "#mg-agent-desk .quick button{appearance:none;border:1px solid rgba(255,255,255,0.1);",
       "  background:rgba(255,255,255,0.04);color:rgba(200,215,235,0.8);",
       "  font:600 9px/1 system-ui;padding:5px 7px;border-radius:8px;cursor:pointer}",
-      "#mg-agent-desk-fab{",
-      "  position:fixed;left:16px;bottom:16px;z-index:2147483019;",
-      "  appearance:none;border:1px solid rgba(140,200,255,0.35);",
-      "  background:rgba(20,28,48,0.75);backdrop-filter:blur(20px);",
-      "  color:#9fd0ff;font:700 10px/1 system-ui;letter-spacing:0.12em;",
-      "  padding:10px 12px;border-radius:999px;cursor:pointer}",
+      /* FAB lives in #mg-rec-chip — hide orphan float */
+      "#mg-agent-desk-fab{display:none!important}",
+      "#mg-rec-chip #mg-rec-desk.on{border-color:rgba(140,200,255,0.6);color:#9fd0ff;",
+      "  background:rgba(40,80,140,0.35)}",
     ].join("");
     document.documentElement.appendChild(st);
+  }
+
+  function syncRecDeskChip() {
+    try {
+      var btn = document.getElementById("mg-rec-desk");
+      if (btn) btn.classList.toggle("on", !!state.open);
+    } catch (e) {}
   }
 
   function paintLog() {
@@ -188,8 +193,104 @@
       return (
         "Commands: /plan /build /verify /explore · /claim <product> · /climb · " +
         "/nav <url> · /tools · /qbit · /staff · /smoke · /curious · /break · /qa · " +
+        "/draw · /annotate · /fix · /pick · /assess · /live · /bench · " +
         "/kbatch · /race · /sitrep · /uterm · /hexterm · /nterm · /presence · /peer"
       );
+    },
+    bench: function (arg) {
+      try {
+        if (window.__mgRightDrawer) {
+          if (window.__mgRightDrawer.open) window.__mgRightDrawer.open();
+          if (window.__mgRightDrawer.setMode)
+            window.__mgRightDrawer.setMode("bench");
+        }
+        var sub = String(arg || "").trim().toLowerCase();
+        if (sub && window.__mgDataBench) {
+          if (sub === "electric" || sub === "signal" || sub === "construct" || sub === "data")
+            window.__mgDataBench.setTrade(sub);
+          else window.__mgDataBench.openTool(sub);
+          if (window.__mgRightDrawer && window.__mgRightDrawer.setMode)
+            window.__mgRightDrawer.setMode("bench");
+        }
+        return window.__mgDataBench
+          ? window.__mgDataBench.report()
+          : "bench open · inject mg-data-bench if empty";
+      } catch (e) {
+        return "bench err " + e;
+      }
+    },
+    pick: function (arg) {
+      var C = window.__mgLiveCollab;
+      if (!C) return "live collab missing — ⌘⇧R";
+      var sub = String(arg || "on").trim().toLowerCase();
+      if (sub === "off") {
+        C.pick(false);
+        return "PICK off";
+      }
+      if (sub === "toggle") {
+        C.togglePick();
+        return C.report();
+      }
+      C.pick(true);
+      return "PICK on · hover structure · click to pin · " + C.report();
+    },
+    probe: function (arg) {
+      return ACTIONS.pick(arg);
+    },
+    assess: function () {
+      var C = window.__mgLiveCollab;
+      if (!C || !C.lastAssess || !C.lastAssess())
+        return "no pick yet — /pick then click an element";
+      var a = C.lastAssess();
+      pushLog("sys", C.formatAssess(a));
+      pushLog("ai", C.diagnose(a));
+      return "assessed last pick";
+    },
+    live: function () {
+      pushLog(
+        "sys",
+        "Live link · DRAW strokes stream here · /pick for Cursor-style structure · FIX ships packet"
+      );
+      if (window.__mgLiveCollab) return window.__mgLiveCollab.report();
+      return "collab hub pending";
+    },
+    draw: function (arg) {
+      var A = window.__mgSiteAnnotate || window.screenAnnotate;
+      if (!A) return "draw missing — inject mg-site-annotate (⌘⇧R)";
+      var sub = String(arg || "on").trim().toLowerCase();
+      if (sub === "off") {
+        if (A.deactivate) A.deactivate();
+        return "DRAW off";
+      }
+      if (sub === "clear") {
+        if (A.clear) A.clear();
+        return "DRAW cleared";
+      }
+      if (sub === "fix" || sub.indexOf("fix") === 0) {
+        if (A.shipFix) {
+          A.shipFix(sub.replace(/^fix\s*/, "") || "");
+          return "FIX packet shipped from DRAW";
+        }
+        return "shipFix missing";
+      }
+      if (sub === "toggle") {
+        if (A.toggle) A.toggle();
+        else if (A.isActive && A.isActive()) A.deactivate();
+        else if (A.activate) A.activate();
+        return A.report ? A.report() : "DRAW toggled";
+      }
+      if (A.activate) A.activate();
+      return A.report ? A.report() : "DRAW on · ⌘⇧A";
+    },
+    annotate: function (arg) {
+      return ACTIONS.draw(arg);
+    },
+    fix: function (arg) {
+      var A = window.__mgSiteAnnotate || window.screenAnnotate;
+      if (!A || !A.shipFix) return "draw/FIX missing — open ✎ DRAW first (⌘⇧R if needed)";
+      var note = String(arg || "").trim();
+      A.shipFix(note);
+      return "FIX packet · clipboard + bus · " + (A.report ? A.report() : "ok");
     },
     claim: function (arg) {
       var product = (arg || state.project || "memory-glass").trim();
@@ -481,17 +582,9 @@
   function ensureUi() {
     ensureCss();
     if (root) return;
+    /* Entry lives on #mg-rec-desk (session-recorder chip). No second float FAB. */
     var fab = document.getElementById("mg-agent-desk-fab");
-    if (!fab) {
-      fab = document.createElement("button");
-      fab.id = "mg-agent-desk-fab";
-      fab.type = "button";
-      fab.textContent = "DESK αβγδ";
-      fab.onclick = function () {
-        toggle(true);
-      };
-      document.documentElement.appendChild(fab);
-    }
+    if (fab) fab.style.display = "none";
     root = document.createElement("div");
     root.id = "mg-agent-desk";
     root.className = "hidden";
@@ -535,6 +628,12 @@
       ["/presence", "presence"],
       ["/peer", "peer"],
       ["/kbatch", "kbatch"],
+      ["/draw", "draw"],
+      ["/fix", "fix"],
+      ["/pick", "pick"],
+      ["/assess", "assess"],
+      ["/live", "live"],
+      ["/bench", "bench"],
     ].forEach(function (pair) {
       var b = document.createElement("button");
       b.type = "button";
@@ -568,14 +667,18 @@
     state.open = !!on;
     root.classList.toggle("hidden", !on);
     var fab = document.getElementById("mg-agent-desk-fab");
-    if (fab) fab.style.display = on ? "none" : "block";
+    if (fab) fab.style.display = "none";
+    syncRecDeskChip();
     if (on && !state.log.length) {
       pushLog(
         "sys",
-        "New machine energy · multi-tier desk inside Memory Glass. " +
-          "α plan · β build · γ verify · δ explore. AI can claim, navigate, QA, break, get curious."
+        "Live desk · DRAW strokes stream here · /pick = Cursor-style hover structure · " +
+          "α plan · β build · γ verify · δ explore."
       );
       pushLog("ai", ACTIONS.help());
+      if (window.__mgLiveCollab) {
+        pushLog("sys", "collab · " + window.__mgLiveCollab.report());
+      }
       if (truss()) {
         truss().adoptPersona({
           name: "mg-desk",
@@ -613,6 +716,8 @@
     },
     toggle: toggle,
     run: runLine,
+    runLine: runLine,
+    pushLog: pushLog,
     setTier: setTier,
     state: state,
     report: report,

@@ -1,11 +1,11 @@
 /* Memory Glass · Core-Race SITREP (H5)
  * Maps IronLine + bus + truss + DAC → race-style fields (pkt / Q / DAC / gates).
  * Toward https://mueee.qbitos.ai/qbit-core-race.html — not a full port of the game.
- * VER: qbit-race-sitrep-v2
+ * VER: qbit-race-sitrep-v3
  */
 (function () {
   "use strict";
-  var VER = "qbit-race-sitrep-v2";
+  var VER = "qbit-race-sitrep-v4-row2";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._qbitRaceSitrepVer === VER) return;
   HP._qbitRaceSitrepVer = VER;
@@ -30,16 +30,22 @@
         var st = document.createElement("style");
         st.id = "mg-sitrep-chip-css";
         st.textContent = [
+          /* Row 2 of three-row header (controls on row 3) */
           "#mg-sitrep-chip{",
-          "  position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:2147483005;",
-          "  max-width:min(92vw,720px);padding:6px 12px;border-radius:999px;",
-          "  font:600 10px/1.3 ui-monospace,Menlo,monospace;letter-spacing:0.02em;",
-          "  color:rgba(200,230,255,0.92);",
-          "  background:rgba(12,18,32,0.72);backdrop-filter:blur(16px);",
-          "  border:1px solid rgba(120,180,255,0.28);",
-          "  box-shadow:0 8px 24px rgba(0,0,0,0.35);cursor:pointer;",
-          "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+          "  position:fixed;",
+          "  top:var(--mg-row2-top,34px);",
+          "  left:50%;transform:translateX(-50%);",
+          "  z-index:2147483000;",
+          "  max-width:min(70vw,520px);padding:4px 10px;border-radius:999px;",
+          "  font:600 9px/1.3 ui-monospace,Menlo,monospace;letter-spacing:0.02em;",
+          "  color:rgba(200,230,255,0.9);",
+          "  background:rgba(12,18,32,0.55);backdrop-filter:blur(14px);",
+          "  border:1px solid rgba(120,180,255,0.22);",
+          "  box-shadow:0 6px 18px rgba(0,0,0,0.28);cursor:pointer;",
+          "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;",
+          "  pointer-events:auto}",
           "#mg-sitrep-chip.bad{border-color:rgba(255,120,100,0.5);color:rgba(255,200,190,0.95)}",
+          "@media (max-width:820px){#mg-sitrep-chip{max-width:min(78vw,300px);font-size:8px}}",
         ].join("");
         document.documentElement.appendChild(st);
       }
@@ -334,11 +340,13 @@
     selfTest: selfTest,
   };
 
-  /* soft auto-start low duty after bus present */
+  /* soft auto-start low duty after bus present (slower on laptop = less lag) */
   setTimeout(function () {
     if (window.__mgQbitBus) {
       publish({});
-      start(12000);
+      var narrow =
+        typeof window.innerWidth === "number" && window.innerWidth < 1200;
+      start(narrow ? 20000 : 14000);
     }
   }, 2500);
 

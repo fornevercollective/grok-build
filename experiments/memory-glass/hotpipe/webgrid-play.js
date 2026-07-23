@@ -27,8 +27,10 @@
  * P-004 Canvas FILL: use full window (not cramped Neuralink max-height / min(96vw,96vh)).
  * P-005 Aggressive fill: ~88% of main view square; score column stays readable.
  * P-006 Keep Memory Glass chrome (dragon grabber, tools, tabs, stoplights) VISIBLE.
- * VER: webgrid-play-v31-grid-freeze
+ * VER: webgrid-play-v32-contrails-live
  * Play-safe: freeze canvas geometry mid-run (no resize storms → no grid shake).
+ * v32: force contrail overlay+flow + maze during play (was quietPlayChrome killing them);
+ *       elevate #mg-contrail-ov; tools-scrim never captures; openPlayFloats actually runs.
  */
 (function () {
   "use strict";
@@ -37,7 +39,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v31-grid-freeze";
+  var VER = "webgrid-play-v32-contrails-live";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -123,6 +125,16 @@
   var _playFrozen = false; /* true once canvas size locked for this run */
   var _frozenCanvasA = 0;
 
+  function wantsLabFull() {
+    try {
+      if (/[?&]mg_lab_full=1\b/i.test(location.search || "")) return true;
+      if (localStorage.getItem("mg.webgrid.lab_full") === "1") return true;
+      if (window.__mgForcePlayFloats) return true;
+    } catch (e) {}
+    /* Default ON for agent play — user expects maze+contrails visible */
+    return true;
+  }
+
   function setPlayBusy(on) {
     var was = _playBusy;
     _playBusy = !!on;
@@ -131,13 +143,13 @@
       document.documentElement.classList.toggle("mg-webgrid-play-busy", _playBusy);
       document.documentElement.classList.toggle("mg-webgrid-playing", _playBusy);
     } catch (e) {}
-    /* Play-safe: never open lab parade mid-run — that was the shake/lag source.
-       Keep LIVE RANK pill only; contrail off unless user already opened flow. */
+    /* Play-safe: collapse drawers/scrims that block hits, freeze grid.
+       NEVER kill contrail/maze — that was "no contrails" glitch. */
     try {
       if (_playBusy && !was) {
-        /* one quiet + lock canvas; do not re-fire every busy edge */
         quietPlayChrome();
         freezeGridGeometry();
+        ensurePlayContrails();
       }
       if (!_playBusy) {
         _playFrozen = false;
@@ -169,14 +181,9 @@
     }
   }
 
-  /** Collapse thrash chrome for smooth 30×30 paint — no layout storms */
+  /** Collapse thrash chrome for smooth paint — drawers/scrims only.
+   *  Does NOT kill contrail overlay/flow or maze (user wants them live). */
   function quietPlayChrome() {
-    try {
-      if (window.__mgContrail && window.__mgContrail.setOverlay)
-        window.__mgContrail.setOverlay(false);
-      if (window.__mgContrail && window.__mgContrail.setFlow)
-        window.__mgContrail.setFlow(false);
-    } catch (e0) {}
     try {
       /* collapse rank only if open — avoid open() reflow when already pill */
       if (window.__mgActivityBoard) {
@@ -186,16 +193,11 @@
           window.__mgActivityBoard.collapse
         )
           window.__mgActivityBoard.collapse();
-        else if (
-          window.__mgActivityBoard.isOpen &&
-          !window.__mgActivityBoard.isOpen()
-        ) {
-          /* leave closed chip — do not open mid-run */
-        }
       }
     } catch (e1) {}
     try {
-      if (window.__mgFloatLayout && window.__mgFloatLayout.closeHeavy)
+      /* closeHeavy kills maze — skip when lab floats wanted */
+      if (!wantsLabFull() && window.__mgFloatLayout && window.__mgFloatLayout.closeHeavy)
         window.__mgFloatLayout.closeHeavy({
           keepPlay: false,
           boardPill: true,
@@ -210,49 +212,74 @@
           window.__mgRightDrawer.isOpen() && window.__mgRightDrawer.close)
         window.__mgRightDrawer.close();
     } catch (e3) {}
+    try {
+      /* hard-kill tools/right scrims so they never eat maze/board clicks */
+      ["mg-tools-scrim", "mg-right-scrim", "mg-scrim"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.setProperty("pointer-events", "none", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("display", "none", "important");
+      });
+    } catch (e4) {}
   }
 
-  /** Opt-in only: ?mg_lab_full=1 or explicit FLOATS — not on normal play */
+  /** Force visible contrail trail + maze for the whole agent run */
+  function ensurePlayContrails() {
+    if (!wantsLabFull()) return;
+    try {
+      function arm() {
+        try {
+          if (window.__mgContrail) {
+            if (window.__mgContrail.setOverlay) window.__mgContrail.setOverlay(true);
+            if (window.__mgContrail.setFlow) window.__mgContrail.setFlow(true);
+          }
+          var ov = document.getElementById("mg-contrail-ov");
+          if (ov) {
+            ov.style.setProperty("z-index", "2147483646", "important");
+            ov.style.setProperty("pointer-events", "none", "important");
+            ov.style.setProperty("visibility", "visible", "important");
+            ov.style.setProperty("opacity", "1", "important");
+            ov.style.setProperty("display", "block", "important");
+          }
+          if (window.__mgMemoryMaze && window.__mgMemoryMaze.open)
+            window.__mgMemoryMaze.open();
+          if (window.__mgFloatLayout && window.__mgFloatLayout.openLabKit)
+            window.__mgFloatLayout.openLabKit();
+          log(VER + " · contrails+maze armed");
+        } catch (eA) {
+          log(VER + " · arm err " + eA);
+        }
+      }
+      arm();
+      /* lazy boot may land after first frame */
+      if (window.__mgLazy && window.__mgLazy.need) {
+        window.__mgLazy.need("contrail", function () {
+          arm();
+        });
+        window.__mgLazy.need("maze", function () {
+          arm();
+        });
+      }
+      setTimeout(arm, 400);
+      setTimeout(arm, 1200);
+    } catch (e) {
+      log(VER + " · ensurePlayContrails " + e);
+    }
+  }
+
+  /** Full lab parade (CTRL FLOATS / mg_lab_full) — lean: contrail + maze + board pill */
   function openPlayFloats() {
+    ensurePlayContrails();
     try {
-      if (window.__mgContrail) {
-        if (window.__mgContrail.setOverlay) window.__mgContrail.setOverlay(true);
-        /* flow optional — leave if user opened it */
+      if (window.__mgActivityBoard) {
+        if (window.__mgActivityBoard.mergeFleetSeed)
+          window.__mgActivityBoard.mergeFleetSeed();
+        if (window.__mgActivityBoard.open)
+          window.__mgActivityBoard.open({ collapsed: true });
       }
-    } catch (e) {}
-    try {
-      if (window.__mgMemoryMaze && window.__mgMemoryMaze.open) window.__mgMemoryMaze.open();
-    } catch (e2) {}
-    try {
-      if (window.__mgBlochSolve) {
-        if (window.__mgBlochSolve.setEnabled) window.__mgBlochSolve.setEnabled(true);
-        if (window.__mgBlochSolve.open) window.__mgBlochSolve.open();
-      }
-    } catch (e3) {}
-    try {
-      if (window.__mgRubikLang && window.__mgRubikLang.open) window.__mgRubikLang.open();
-    } catch (e4) {}
-    try {
-      /* Beats stay in TOOLS → Keys unless user pop-outs — never auto float on canvas */
-    } catch (e5) {}
-    try {
-      if (window.__mgActivityBoard && window.__mgActivityBoard.open)
-        window.__mgActivityBoard.open();
     } catch (e6) {}
-    try {
-      if (window.__mgSportsField && window.__mgSportsField.open)
-        window.__mgSportsField.open();
-    } catch (e6b) {}
-    try {
-      if (window.__mgGeoPattern && window.__mgGeoPattern.open)
-        window.__mgGeoPattern.open();
-    } catch (e6c) {}
-    try {
-      if (window.__mgFloatKb && window.__mgFloatKb.open) {
-        /* keyboard optional — open only if previously used; leave user control */
-      }
-    } catch (e7) {}
-    log(VER + " · play floats live (+geo pattern/hunt)");
+    log(VER + " · play floats live (contrail·maze·board pill)");
   }
 
   function adaptPace(hitsGuess, missGuess) {
@@ -808,12 +835,25 @@
       "html.mg-webgrid-play #mg-menu-health-pill," +
       "html.mg-webgrid-play #mg-tools-drawer," +
       "html.mg-webgrid-play #mg-tools-mode-rail," +
-      "html.mg-webgrid-play #mg-tools-scrim," +
       "html.mg-webgrid-play #mg-right-drawer," +
       "html.mg-webgrid-play #mg-right-tab," +
+      "html.mg-webgrid-play #mg-contrail-ov," +
+      "html.mg-webgrid-play #mg-contrail-flow{" +
+      "  z-index:2147483647!important;visibility:visible!important;}" +
+      "html.mg-webgrid-play #mg-tools-drawer," +
+      "html.mg-webgrid-play #mg-tools-mode-rail," +
+      "html.mg-webgrid-play #mg-right-drawer," +
+      "html.mg-webgrid-play #mg-right-tab," +
+      "html.mg-webgrid-play #mg-contrail-flow{" +
+      "  pointer-events:auto!important;}" +
+      /* trail canvas never steals clicks */ +
+      "html.mg-webgrid-play #mg-contrail-ov{" +
+      "  pointer-events:none!important;opacity:1!important;display:block!important;}" +
+      /* scrims NEVER capture during play (maze/board were blocked) */ +
+      "html.mg-webgrid-play #mg-tools-scrim," +
       "html.mg-webgrid-play #mg-right-scrim{" +
-      "  z-index:2147483647!important;pointer-events:auto!important;" +
-      "  visibility:visible!important;}" +
+      "  pointer-events:none!important;opacity:0!important;" +
+      "  visibility:hidden!important;display:none!important;}" +
       "html.mg-webgrid-play #mg-tools-mode-rail," +
       "html.mg-webgrid-play #mg-right-tab{" +
       "  display:flex!important;opacity:1!important;min-width:28px!important;}" +
@@ -1339,6 +1379,7 @@
 
     startPaceLoop();
     setPlayBusy(true);
+    openPlayFloats();
     log(
       "chase start N=" +
         N +
@@ -1350,7 +1391,8 @@
         _pace.wait_loops +
         " (" +
         (_pace.source || "?") +
-        ")"
+        ") contrails=" +
+        (wantsLabFull() ? "on" : "off")
     );
 
     try {
@@ -1407,12 +1449,8 @@
           }
         } catch (eOb) {}
         try {
-          /* contrail every 3rd agent hop when paced slow */
-          if (
-            window.__mgContrail &&
-            window.__mgContrail.observeAgent &&
-            (clicks % 3 === 0 || _pace.sleep_ms < 8)
-          ) {
+          /* every hop — dense visible trail (was every 3rd → looked empty) */
+          if (window.__mgContrail && window.__mgContrail.observeAgent) {
             window.__mgContrail.observeAgent(tgt.clientX, tgt.clientY, tgt.index, tgt.conf);
           }
         } catch (eCt) {}
@@ -1536,6 +1574,45 @@
         body: JSON.stringify(Object.assign({ kind: "agent_round_result", ver: VER }, result)),
       });
     } catch (eF) {}
+    /* After play: paint contrail path as on-screen DRAW ink */
+    try {
+      function runContrailDraw() {
+        try {
+          if (window.__mgContrailDraw && window.__mgContrailDraw.animate) {
+            window.__mgContrailDraw.animate();
+            log("contrail → DRAW ink");
+            return;
+          }
+        } catch (e0) {}
+        fetch("http://127.0.0.1:9877/contrail-to-draw.js?v=2", { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw 0;
+            return r.text();
+          })
+          .then(function (code) {
+            var el = document.createElement("script");
+            el.textContent = code;
+            (document.head || document.documentElement).appendChild(el);
+            setTimeout(function () {
+              try {
+                if (window.__mgContrailDraw) {
+                  if (window.__mgContrailDraw.openFloats)
+                    window.__mgContrailDraw.openFloats();
+                  if (window.__mgContrailDraw.animate)
+                    window.__mgContrailDraw.animate();
+                  else if (window.__mgContrailDraw.paint)
+                    window.__mgContrailDraw.paint();
+                  log("contrail → DRAW ink (loaded)");
+                }
+              } catch (e1) {}
+            }, 200);
+          })
+          .catch(function () {
+            log("contrail-to-draw load fail");
+          });
+      }
+      setTimeout(runContrailDraw, 800);
+    } catch (eD) {}
     return result;
   }
 
