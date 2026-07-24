@@ -343,5 +343,14 @@
     "personaPath": "docs/fornever-ledger/PERSONA_TENSOR_PATH.md",
     "mgGrowth": "experiments/memory-glass/docs/MEMORY-GLASS-GROWTH.md",
     "recheck": "docs/fornever-ledger/scripts/recheck-forks.sh"
+  },
+  "live": {
+    "letterGrid": "https://kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid",
+    "cageLitmus": "https://kbatch.ugrad.ai/labs/declaration-digital-edition/cage-litmus",
+    "quiz": "https://kbatch.ugrad.ai/data/declaration/cage-litmus-quiz.json",
+    "trial": "data/declaration/cage-litmus-grok-trial.json",
+    "git": "qbitOS/qbitos-kbatch@53e30cc",
+    "lastGrade": "cage",
+    "lastScore": 1.0
   }
 }
