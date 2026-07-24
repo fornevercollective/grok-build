@@ -1,13 +1,13 @@
 {
   "schema": "mg.persona-tensor-scaffold/v1",
-  "product": "Memory Glass × grok-build",
+  "product": "Memory Glass \u00d7 grok-build",
   "updated": "2026-07-24",
-  "northStar": "Memory Glass body + Grok Build harness: day-long terminal · open/close browser · qubos sandbox · persona cast · tensor model loop — not Dia/Comet, not implant claims, not Electron bloat.",
+  "northStar": "Memory Glass body + Grok Build harness: day-long terminal \u00b7 open/close browser \u00b7 qubos sandbox \u00b7 persona cast \u00b7 tensor model loop \u2014 not Dia/Comet, not implant claims, not Electron bloat.",
   "goal": {
-    "plan": "panda α plan → β build → γ verify",
+    "plan": "panda \u03b1 plan \u2192 \u03b2 build \u2192 \u03b3 verify",
     "goalLoop": "Grok /goal run-until-done + verifier skills",
     "body": "Memory Glass WKWebView + still-pipe + hotpipe",
-    "tensor": "WebGrid BPS/NTPM · contrail · KBatch · ugrad/tinygrad trials"
+    "tensor": "WebGrid BPS/NTPM \u00b7 contrail \u00b7 KBatch \u00b7 ugrad/tinygrad trials"
   },
   "serve": {
     "loopback": "http://127.0.0.1:8765/persona-tensor-scaffold.html",
@@ -21,109 +21,304 @@
       "id": "L0",
       "name": "Trust boundary",
       "metaphor": "Blade Runner",
-      "mgSurfaces": ["product-mode", "privacy", "worktree"],
+      "mgSurfaces": [
+        "product-mode",
+        "privacy",
+        "worktree"
+      ],
       "status": "scaffold",
       "items": [
-        {"id": "worktree", "title": "Git worktree isolation", "own": true, "source": "grok-build / agentbox patterns", "action": "One worktree per persona run"},
-        {"id": "privacy", "title": "Privacy hard-off patterns", "own": false, "source": "gork-build · wetlink · no-telemetry", "action": "Day-loop kill-switches"},
-        {"id": "exfil-literacy", "title": "Defensive exfil literacy", "own": false, "source": "cereblab/grok-build-exfil-repro", "action": "Study only"}
+        {
+          "id": "worktree",
+          "title": "Git worktree isolation",
+          "own": true,
+          "source": "grok-build / agentbox patterns",
+          "action": "One worktree per persona run"
+        },
+        {
+          "id": "privacy",
+          "title": "Privacy hard-off patterns",
+          "own": false,
+          "source": "gork-build \u00b7 wetlink \u00b7 no-telemetry",
+          "action": "Day-loop kill-switches"
+        },
+        {
+          "id": "exfil-literacy",
+          "title": "Defensive exfil literacy",
+          "own": false,
+          "source": "cereblab/grok-build-exfil-repro",
+          "action": "Study only"
+        }
       ]
     },
     {
       "id": "L1",
       "name": "Harness OS",
       "metaphor": "Iron Man OS",
-      "mgSurfaces": ["Grok TUI", "path-checkout", "SOURCE_REV"],
+      "mgSurfaces": [
+        "Grok TUI",
+        "path-checkout",
+        "SOURCE_REV"
+      ],
       "status": "live",
       "items": [
-        {"id": "path-checkout", "title": "xai-org path-checkout", "own": true, "source": "fornevercollective/grok-build", "action": "verify-upstream-sync green"},
-        {"id": "goal", "title": "/goal + doctor + workflows", "own": true, "source": "shell 0.2.111+", "action": "Day objective cards"},
-        {"id": "open-grok", "title": "open-grok dual binary", "own": false, "source": "mweinbach/open-grok", "action": "Optional Codex beside grok"}
+        {
+          "id": "path-checkout",
+          "title": "xai-org path-checkout",
+          "own": true,
+          "source": "fornevercollective/grok-build",
+          "action": "verify-upstream-sync green"
+        },
+        {
+          "id": "goal",
+          "title": "/goal + doctor + workflows",
+          "own": true,
+          "source": "shell 0.2.111+",
+          "action": "Day objective cards"
+        },
+        {
+          "id": "open-grok",
+          "title": "open-grok dual binary",
+          "own": false,
+          "source": "mweinbach/open-grok",
+          "action": "Optional Codex beside grok"
+        }
       ]
     },
     {
       "id": "L2",
       "name": "Day-long terminal",
       "metaphor": "JARVIS ops room",
-      "mgSurfaces": ["playpen", "Grok TUI session", "collab bus"],
+      "mgSurfaces": [
+        "playpen",
+        "Grok TUI session",
+        "collab bus"
+      ],
       "status": "scaffold",
       "items": [
-        {"id": "playpen", "title": "Lab playpen HTTP", "own": true, "source": "architecture-lab/30-playpen", "action": "manage/explore/mitigate/research/voice"},
-        {"id": "goal-eng", "title": "goal-engineering patterns", "own": false, "source": "cobusgreyling/goal-engineering", "action": "Verifier skill pack"},
-        {"id": "oh-my", "title": "oh-my loops", "own": false, "source": "mihazs/oh-my-grok", "action": "Skill gate · handoff · Stop chain"},
-        {"id": "tlbx", "title": "Persistent agent station", "own": false, "source": "tlbx-ai/tlbx", "action": "Long-session patterns"}
+        {
+          "id": "playpen",
+          "title": "Lab playpen HTTP",
+          "own": true,
+          "source": "architecture-lab/30-playpen",
+          "action": "manage/explore/mitigate/research/voice"
+        },
+        {
+          "id": "goal-eng",
+          "title": "goal-engineering patterns",
+          "own": false,
+          "source": "cobusgreyling/goal-engineering",
+          "action": "Verifier skill pack"
+        },
+        {
+          "id": "oh-my",
+          "title": "oh-my loops",
+          "own": false,
+          "source": "mihazs/oh-my-grok",
+          "action": "Skill gate \u00b7 handoff \u00b7 Stop chain"
+        },
+        {
+          "id": "tlbx",
+          "title": "Persistent agent station",
+          "own": false,
+          "source": "tlbx-ai/tlbx",
+          "action": "Long-session patterns"
+        }
       ]
     },
     {
       "id": "L3",
       "name": "Browser body",
       "metaphor": "Iron Man suit",
-      "mgSurfaces": ["Memory Glass", "hotpipe", "still-pipe", "WebGrid"],
+      "mgSurfaces": [
+        "Memory Glass",
+        "hotpipe",
+        "still-pipe",
+        "WebGrid"
+      ],
       "status": "live",
       "items": [
-        {"id": "mg", "title": "Memory Glass app", "own": true, "source": "experiments/memory-glass", "action": "Open/close WebGrid · SpaceX · deploy desk"},
-        {"id": "hotpipe-v32", "title": "hotpipe v32 contrails+maze", "own": true, "source": "webgrid-play-v32-contrails-live", "action": "Lab floats mid-play"},
-        {"id": "still", "title": "Still-pipe 9877", "own": true, "source": "~/.panda/vision", "action": "Hub warm · no multi-cam thrash"},
-        {"id": "xplorer", "title": "CDP browser patterns", "own": false, "source": "daniel-farina/xplorer", "action": "Only if wry path insufficient"}
+        {
+          "id": "mg",
+          "title": "Memory Glass app",
+          "own": true,
+          "source": "experiments/memory-glass",
+          "action": "Open/close WebGrid \u00b7 SpaceX \u00b7 deploy desk"
+        },
+        {
+          "id": "hotpipe-v32",
+          "title": "hotpipe v32 contrails+maze",
+          "own": true,
+          "source": "webgrid-play-v32-contrails-live",
+          "action": "Lab floats mid-play"
+        },
+        {
+          "id": "still",
+          "title": "Still-pipe 9877",
+          "own": true,
+          "source": "~/.panda/vision",
+          "action": "Hub warm \u00b7 no multi-cam thrash"
+        },
+        {
+          "id": "xplorer",
+          "title": "CDP browser patterns",
+          "own": false,
+          "source": "daniel-farina/xplorer",
+          "action": "Only if wry path insufficient"
+        }
       ]
     },
     {
       "id": "L4",
       "name": "Persona cast",
       "metaphor": "Ender command staff",
-      "mgSurfaces": ["subagents", "panda-loop", "collab day"],
+      "mgSurfaces": [
+        "subagents",
+        "panda-loop",
+        "collab day"
+      ],
       "status": "scaffold",
       "items": [
-        {"id": "panda", "title": "α plan · β build · γ verify", "own": true, "source": "panda-loop skill", "action": "Default triple shell"},
-        {"id": "roles", "title": "scout/critic/verifier", "own": false, "source": "fable-mythos patterns", "action": "Map to subagents"},
-        {"id": "deja", "title": "Cross-session memory", "own": false, "source": "vshulcz/deja-vu", "action": "Bridge to ~/.panda/mg-soak"}
+        {
+          "id": "panda",
+          "title": "\u03b1 plan \u00b7 \u03b2 build \u00b7 \u03b3 verify",
+          "own": true,
+          "source": "panda-loop skill",
+          "action": "Default triple shell"
+        },
+        {
+          "id": "roles",
+          "title": "scout/critic/verifier",
+          "own": false,
+          "source": "fable-mythos patterns",
+          "action": "Map to subagents"
+        },
+        {
+          "id": "deja",
+          "title": "Cross-session memory",
+          "own": false,
+          "source": "vshulcz/deja-vu",
+          "action": "Bridge to ~/.panda/mg-soak"
+        }
       ]
     },
     {
       "id": "L5",
       "name": "Tensor model loop",
       "metaphor": "Battle school score",
-      "mgSurfaces": ["WebGrid agent", "contrail", "KBatch", "ugrad"],
+      "mgSurfaces": [
+        "WebGrid agent",
+        "contrail",
+        "KBatch",
+        "ugrad"
+      ],
       "status": "live",
       "items": [
-        {"id": "webgrid", "title": "WebGrid BPS/NTPM truth", "own": true, "source": "MG agent play", "action": "Score-truth sidebar only"},
-        {"id": "contrail", "title": "Contrail → maze/DRAW", "own": true, "source": "webgrid-contrail-v10-live", "action": "Path phrase + ink"},
-        {"id": "kbatch", "title": "KBatch geometry/strain", "own": true, "source": "KBatch-dictionary · kbatch bus", "action": "World-language bus"},
-        {"id": "ugrad", "title": "ugrad / tinygrad trials", "own": true, "source": "ugrad · tinygrad · train-trial-bus", "action": "Offline train rows"}
+        {
+          "id": "webgrid",
+          "title": "WebGrid BPS/NTPM truth",
+          "own": true,
+          "source": "MG agent play",
+          "action": "Score-truth sidebar only"
+        },
+        {
+          "id": "contrail",
+          "title": "Contrail \u2192 maze/DRAW",
+          "own": true,
+          "source": "webgrid-contrail-v10-live",
+          "action": "Path phrase + ink"
+        },
+        {
+          "id": "kbatch",
+          "title": "KBatch geometry/strain",
+          "own": true,
+          "source": "KBatch-dictionary \u00b7 kbatch bus",
+          "action": "World-language bus"
+        },
+        {
+          "id": "ugrad",
+          "title": "ugrad / tinygrad trials",
+          "own": true,
+          "source": "ugrad \u00b7 tinygrad \u00b7 train-trial-bus",
+          "action": "Offline train rows"
+        },
+        {
+          "id": "decl-grid",
+          "title": "Declaration Letter-Grid litmus",
+          "own": true,
+          "source": "kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid.html",
+          "action": "Square-chunk WebGrid grammar \u00b7 letter cross-ref \u00b7 growth stair \u2192 documents"
+        }
       ]
     }
   ],
   "pageMap": {
     "Memory Glass.app": {
-      "role": "Native body · WKWebView · hotpipe",
-      "scaffold": "Primary surface for L3+L5 · open this hub via DATA → 8765"
+      "role": "Native body \u00b7 WKWebView \u00b7 hotpipe",
+      "scaffold": "Primary surface for L3+L5 \u00b7 open this hub via DATA \u2192 8765"
     },
     "Grok Build TUI": {
-      "role": "Harness · /goal · subagents",
+      "role": "Harness \u00b7 /goal \u00b7 subagents",
       "scaffold": "L1+L2+L4 day terminal"
     },
     "Grok Build Lab (architecture-lab)": {
       "role": "Docs + playpen",
-      "scaffold": "Page 33 persona-tensor · page 32 Memory Glass"
+      "scaffold": "Page 33 persona-tensor \u00b7 page 32 Memory Glass"
     },
     "uvspeed/web :8765": {
       "role": "Loopback tool host MG already iframes",
       "scaffold": "Serve persona-tensor-scaffold.html for in-glass open"
     },
-    "qbitos tools/apps/fleet…": {
+    "qbitos tools/apps/fleet\u2026": {
       "role": "Adjacent moniker shell (optional)",
-      "scaffold": "Thin persona nav chips only — not product owner"
+      "scaffold": "Thin persona nav chips only \u2014 not product owner"
+    },
+    "KBatch Declaration Letter-Grid": {
+      "role": "Litmus / growth stair gateway into Declaration archive",
+      "scaffold": "L5 tensor loop \u00b7 document lines as WebGrid variations \u00b7 letter cross-ref"
     }
   },
   "dayLoop": [
-    {"step": 1, "name": "Boot suit", "do": "still-server · verify-upstream · open Memory Glass · grok TUI worktree"},
-    {"step": 2, "name": "α Plan", "do": "panda plan or /plan · objective card"},
-    {"step": 3, "name": "Goal", "do": "Grok /goal run-until-done"},
-    {"step": 4, "name": "β Build", "do": "worktree only · experiments/memory-glass hotpipe first"},
-    {"step": 5, "name": "Body", "do": "MG open WebGrid mg_lab_full=1 · contrails on"},
-    {"step": 6, "name": "γ Verify", "do": "check-work · menu-health · resign if hotpipe sealed"},
-    {"step": 7, "name": "Tensor", "do": "BPS peak · contrail path · train-trial row"},
-    {"step": 8, "name": "Handoff", "do": "Stop chain · collab bus · soak brief"}
+    {
+      "step": 1,
+      "name": "Boot suit",
+      "do": "still-server \u00b7 verify-upstream \u00b7 open Memory Glass \u00b7 grok TUI worktree"
+    },
+    {
+      "step": 2,
+      "name": "\u03b1 Plan",
+      "do": "panda plan or /plan \u00b7 objective card"
+    },
+    {
+      "step": 3,
+      "name": "Goal",
+      "do": "Grok /goal run-until-done"
+    },
+    {
+      "step": 4,
+      "name": "\u03b2 Build",
+      "do": "worktree only \u00b7 experiments/memory-glass hotpipe first"
+    },
+    {
+      "step": 5,
+      "name": "Body",
+      "do": "MG open WebGrid mg_lab_full=1 \u00b7 contrails on"
+    },
+    {
+      "step": 6,
+      "name": "\u03b3 Verify",
+      "do": "check-work \u00b7 menu-health \u00b7 resign if hotpipe sealed"
+    },
+    {
+      "step": 7,
+      "name": "Tensor",
+      "do": "BPS peak \u00b7 contrail path \u00b7 train-trial row"
+    },
+    {
+      "step": 8,
+      "name": "Handoff",
+      "do": "Stop chain \u00b7 collab bus \u00b7 soak brief"
+    }
   ],
   "nogo": [
     "Mass-merge 4k grok-build mirror forks",
