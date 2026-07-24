@@ -33,3 +33,10 @@
 1. Document the pattern here.
 2. Implement **inside** `experiments/memory-glass` or a skill — not as a git subtree of a foreign fork.
 3. Keep Apache-2.0 attribution when copying substantial code snippets.
+
+## Full fork census (2026-07-24)
+
+- **4,150** forks classified → ~**97.5% NOGO never** · **104 MAYBE** · **1 GO** (us)
+- Data: `data/FORK_GONOGO.csv` · `scripts/recheck-forks.sh` · [FORK_CENSUS_GONOGO.md](./FORK_CENSUS_GONOGO.md)
+- Path: [PERSONA_TENSOR_PATH.md](./PERSONA_TENSOR_PATH.md) (Iron Man / Ender / tensor day loop)
+- Prefer ecosystem non-forks (goal-engineering, deja-vu, agentbox, tlbx, gork privacy, open-grok dual) over mirror forks

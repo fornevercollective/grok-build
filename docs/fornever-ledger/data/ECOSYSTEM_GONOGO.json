@@ -1,0 +1,298 @@
+[
+  {
+    "name": "xai-org/grok-build",
+    "stars": 22110,
+    "verdict": "GO",
+    "recheck": "week",
+    "use": "upstream harness path-checkout only",
+    "persona": "base Iron Man suit OS"
+  },
+  {
+    "name": "fornevercollective/grok-build",
+    "stars": 0,
+    "verdict": "GO",
+    "recheck": "week",
+    "use": "our Lab+MG experiments tree",
+    "persona": "home base"
+  },
+  {
+    "name": "thedavidweng/gork-build",
+    "stars": 39,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "privacy distro / telemetry hard-off patterns",
+    "persona": "blade runner silence"
+  },
+  {
+    "name": "rossnoah/grok-build-no-telemetry",
+    "stars": 3,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "patch-series telemetry strip",
+    "persona": "privacy"
+  },
+  {
+    "name": "wetlink/grok-build-privacy-hardening",
+    "stars": 3,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "kill switches silent upload",
+    "persona": "trust boundary"
+  },
+  {
+    "name": "cereblab/grok-build-exfil-repro",
+    "stars": 63,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "understand git-bundle exfil; sandbox design input",
+    "persona": "defensive literacy only"
+  },
+  {
+    "name": "mweinbach/open-grok",
+    "stars": 33,
+    "verdict": "GO-parallel",
+    "recheck": "month",
+    "use": "Codex path dual install open-grok beside grok",
+    "persona": "dual brain"
+  },
+  {
+    "name": "open-grok/open-grok",
+    "stars": 5,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "multi-provider design dossier",
+    "persona": "architecture"
+  },
+  {
+    "name": "DaviRain-Su/hyper-grok-build",
+    "stars": 18,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "multi-provider community build",
+    "persona": "provider mesh"
+  },
+  {
+    "name": "1parado/grok-build-switch",
+    "stars": 127,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "model vendor switch for soak",
+    "persona": "tensor router"
+  },
+  {
+    "name": "router-for-me/CLIProxyAPI",
+    "stars": 44508,
+    "verdict": "GO-infra",
+    "recheck": "month",
+    "use": "OpenAI-compat proxy multi CLI",
+    "persona": "API bus"
+  },
+  {
+    "name": "chenyme/grok2api",
+    "stars": 6652,
+    "verdict": "CAUTION",
+    "recheck": "never-default",
+    "use": "multi-account gateway \u2014 ToS/account risk; skip for product",
+    "persona": "no"
+  },
+  {
+    "name": "farion1231/cc-switch",
+    "stars": 120553,
+    "verdict": "GO-infra",
+    "recheck": "month",
+    "use": "all-in-one multi-agent desktop switch",
+    "persona": "mission control UI patterns"
+  },
+  {
+    "name": "cobusgreyling/goal-engineering",
+    "stars": 38,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "/goal run-until-done patterns + verifier",
+    "persona": "Ender's game objective"
+  },
+  {
+    "name": "heggria/taskflow",
+    "stars": 42,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "multi-agent DAGs resume/replay",
+    "persona": "battle plan DAG"
+  },
+  {
+    "name": "madarco/agentbox",
+    "stars": 308,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "parallel agents sandboxed VMs",
+    "persona": "qubos sandbox"
+  },
+  {
+    "name": "tlbx-ai/tlbx",
+    "stars": 96,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "terminal browser multiplexer persistent agents",
+    "persona": "day-long terminal"
+  },
+  {
+    "name": "xintaofei/codeg",
+    "stars": 2353,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "multi-agent session aggregate workspace",
+    "persona": "fleet board"
+  },
+  {
+    "name": "777genius/agent-teams-ai",
+    "stars": 1646,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "kanban multi-agent teams",
+    "persona": "command staff"
+  },
+  {
+    "name": "backnotprop/orchestrator",
+    "stars": 95,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "agents orchestrating agents",
+    "persona": "command"
+  },
+  {
+    "name": "sleep2agi/agent-network",
+    "stars": 53,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "multi-agent network + dashboard",
+    "persona": "mesh"
+  },
+  {
+    "name": "tuchg/Lucarne",
+    "stars": 317,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "mobile approve/resume bridge",
+    "persona": "remote HUD"
+  },
+  {
+    "name": "fable-mythos-grok / emco1234",
+    "stars": 0,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "scout/critic/verifier roles",
+    "persona": "persona cast"
+  },
+  {
+    "name": "vshulcz/deja-vu",
+    "stars": 462,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "cross-agent session memory",
+    "persona": "memory palace"
+  },
+  {
+    "name": "daniel-farina/xplorer",
+    "stars": 72,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "Chromium+Grok agent CDP gateway \u2014 browser drive",
+    "persona": "browser body"
+  },
+  {
+    "name": "phuryn/grok-build-vscode",
+    "stars": 100,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "IDE GUI only \u2014 not glass core",
+    "persona": "side desk"
+  },
+  {
+    "name": "Jane-o-O-o-O/grok-build-gui",
+    "stars": 7,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "Electron workbench patterns",
+    "persona": "no Electron for MG"
+  },
+  {
+    "name": "chriscase/GrokPtah",
+    "stars": 1,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "Tauri desktop agent patterns",
+    "persona": "native HUD"
+  },
+  {
+    "name": "RongleCat/grok-app",
+    "stars": 39,
+    "verdict": "MAYBE",
+    "recheck": "month",
+    "use": "Tauri workbench sessions/media",
+    "persona": "desk"
+  },
+  {
+    "name": "DominikTobureto/awesome-grok-build",
+    "stars": 37,
+    "verdict": "GO-list",
+    "recheck": "month",
+    "use": "awesome skills/hooks/templates",
+    "persona": "armory catalog"
+  },
+  {
+    "name": "xai-org/grok-build-plugin-cc",
+    "stars": 160,
+    "verdict": "GO-plugin",
+    "recheck": "month",
+    "use": "official CC plugin bridge",
+    "persona": "interop"
+  },
+  {
+    "name": "mihazs/oh-my-grok",
+    "stars": 0,
+    "verdict": "GO-pattern",
+    "recheck": "month",
+    "use": "skill gate Ralph loops handoff Stop chain",
+    "persona": "loop discipline"
+  },
+  {
+    "name": "fornevercollective GrokYtalkY/gy",
+    "stars": 0,
+    "verdict": "GO",
+    "recheck": "week",
+    "use": "mesh walkie glyph pins stream",
+    "persona": "comms"
+  },
+  {
+    "name": "experiments/memory-glass",
+    "stars": 0,
+    "verdict": "GO",
+    "recheck": "week",
+    "use": "WKWebView glass dual-space WebGrid tensor play",
+    "persona": "body + dojo"
+  },
+  {
+    "name": "KBatch-dictionary / ugrad",
+    "stars": 0,
+    "verdict": "GO",
+    "recheck": "week",
+    "use": "strain geometry world-language tensor loop",
+    "persona": "brain geometry"
+  },
+  {
+    "name": "tinygrad (local)",
+    "stars": 0,
+    "verdict": "GO",
+    "recheck": "month",
+    "use": "tensor training loop local",
+    "persona": "tensor core"
+  },
+  {
+    "name": "architecture-lab playpen",
+    "stars": 0,
+    "verdict": "GO",
+    "recheck": "week",
+    "use": "manage/explore/mitigate/research/voice day loop",
+    "persona": "ops room"
+  }
+]

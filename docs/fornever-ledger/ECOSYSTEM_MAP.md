@@ -2,6 +2,7 @@
 
 **Policy:** ENUMERATE · LEARN · DOCUMENT. **Never delete repos.**  
 **Saved:** 2026-07-18 · living inventory for agents + bug bounty work.  
+**Fork census GO/NOGO:** [`FORK_CENSUS_GONOGO.md`](./FORK_CENSUS_GONOGO.md) · persona path [`PERSONA_TENSOR_PATH.md`](./PERSONA_TENSOR_PATH.md)  
 **Upstream vs MG check:** 2026-07-23 → [`XAI-GROK-BUILD-VS-MG-TRAJECTORY.md`](./XAI-GROK-BUILD-VS-MG-TRAJECTORY.md) (product tree DRIFT · MG trajectory separate).
 
 ---

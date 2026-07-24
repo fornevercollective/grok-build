@@ -1,0 +1,22 @@
+{
+  "checked_at": "2026-07-24T02:13:48Z",
+  "upstream": "xai-org/grok-build",
+  "forks_classified": 4150,
+  "counts": {
+    "GO": 1,
+    "MAYBE": 104,
+    "NOGO": 4045
+  },
+  "method": "metadata heuristics tightened: unique_desc OR stars>=5 OR name-signal \u2192 MAYBE; pure star mirrors NOGO; our fork GO",
+  "files": [
+    "FORK_GONOGO.csv",
+    "FORK_GONOGO.jsonl",
+    "xai-grok-build-forks.json",
+    "ECOSYSTEM_GONOGO.json"
+  ],
+  "recheck_policy": {
+    "NOGO": "never (unless new stars>=5 or desc changes on monthly metadata rescan)",
+    "MAYBE": "monthly deep compare for top stars; quarterly rest",
+    "GO": "weekly"
+  }
+}
