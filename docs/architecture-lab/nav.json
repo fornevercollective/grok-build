@@ -47,7 +47,8 @@
         { "id": "29-grok-voice-spheres", "label": "Grok Voice · spheres · x.ai/voice" },
         { "id": "30-playpen", "label": "Dev playpen · mitigate · /voice · Automations" },
         { "id": "31-phone-gy-tether", "label": "Phone · GY tether · Pages" },
-        { "id": "32-memory-glass-browser", "label": "Memory Glass browser · SpaceX void" }
+        { "id": "32-memory-glass-browser", "label": "Memory Glass browser · SpaceX void" },
+        { "id": "33-persona-tensor", "label": "Persona · Tensor · MG day-loop" }
       ]
     },
     {

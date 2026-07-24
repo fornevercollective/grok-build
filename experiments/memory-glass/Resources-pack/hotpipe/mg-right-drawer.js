@@ -1459,7 +1459,7 @@
       label: "Data / Lab",
       glyph: "◈",
       hint: "Full local bench apps",
-      tools: ["hexbench", "freya", "grid", "feed", "qa", "notepad"],
+      tools: ["persona-tensor", "hexbench", "freya", "grid", "feed", "qa", "notepad"],
     },
   ];
 
@@ -1499,6 +1499,13 @@
       kind: "native",
       panel: "pynote",
       desc: "Construction list → desk",
+    },
+    "persona-tensor": {
+      id: "persona-tensor",
+      label: "Persona · Tensor",
+      kind: "local",
+      local: "persona-tensor-scaffold.html",
+      desc: "Memory Glass × grok-build day-loop scaffold (L0–L5)",
     },
     hexbench: {
       id: "hexbench",

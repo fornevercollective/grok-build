@@ -1,0 +1,168 @@
+<!-- Memory Glass × grok-build · Persona Tensor Scaffold
+     Canonical: experiments/memory-glass/docs/persona-tensor/
+     Loopback serve (MG DATA): copy/symlink → uvspeed/web · http://127.0.0.1:8765/persona-tensor-scaffold.html
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Persona · Tensor · Memory Glass × grok-build</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0a0c10;--panel:#12151c;--line:rgba(255,255,255,.1);--text:#e8eef6;--muted:#8b9bb0;--accent:#0a84ff;--ok:#30d158;--warn:#ff9f0a}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 ui-sans-serif,system-ui,-apple-system,sans-serif}
+    .shell{width:min(920px,calc(100vw - 24px));margin:14px auto 28px}
+    .brand{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:12px}
+    .brand h1{margin:0;font-size:18px;font-weight:650;letter-spacing:-.02em}
+    .pill{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+    .pill.live{color:var(--ok);border-color:rgba(48,209,88,.35)}
+    .pill.mg{color:#64d2ff;border-color:rgba(10,132,255,.4)}
+    .lead{margin:0 0 14px;color:var(--muted);font-size:12px}
+    .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+    .chip{font:500 11px/1.2 ui-monospace,Menlo,monospace;padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);text-decoration:none}
+    .chip:hover{border-color:rgba(10,132,255,.5)}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+    .panel h2{margin:0 0 8px;font-size:13px;font-weight:650}
+    .day{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+    .day article{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:rgba(0,0,0,.2)}
+    .day .n{font:700 10px/1 ui-monospace,Menlo,monospace;color:var(--accent);letter-spacing:.06em}
+    .day b{display:block;margin:4px 0 2px}
+    .day .src{font-size:11px;color:var(--muted)}
+    .layer{border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 10px;background:rgba(0,0,0,.18)}
+    .layer h3{margin:0 0 4px;font-size:13px}
+    .meta{margin:0 0 8px;font-size:11px;color:var(--muted)}
+    .item{display:grid;grid-template-columns:1fr auto;gap:6px;padding:7px 0;border-top:1px solid rgba(255,255,255,.06);font-size:12px}
+    .item:first-of-type{border-top:0}
+    .item .src{font-size:11px;color:var(--muted)}
+    .own,.pat{font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:999px;align-self:start}
+    .own{color:var(--ok);border:1px solid rgba(48,209,88,.35)}
+    .pat{color:var(--accent);border:1px solid rgba(10,132,255,.35)}
+    .badge{font:600 10px/1 ui-monospace,Menlo,monospace;padding:2px 6px;border-radius:999px;margin-left:6px}
+    .badge.live{color:var(--ok);border:1px solid rgba(48,209,88,.35)}
+    .badge.scaffold{color:var(--warn);border:1px solid rgba(255,159,10,.35)}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+    th{color:var(--muted);font-weight:600}
+    .nogo{margin:0;padding-left:18px;color:#ff8a80;font-size:12px}
+    .foot{font-size:11px;color:var(--muted);margin-top:8px}
+    code{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#c7d2e0}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="brand">
+      <h1>Persona · Tensor Scaffold</h1>
+      <span class="pill mg">Memory Glass</span>
+      <span class="pill live">grok-build</span>
+      <span class="pill" id="verPill">mg.persona-tensor/v1</span>
+    </div>
+    <p class="lead" id="northStar">Loading…</p>
+    <div class="chip-row" id="goalChips"></div>
+    <div class="chip-row">
+      <a class="chip" href="http://127.0.0.1:8765/persona-tensor-scaffold.html">loopback :8765</a>
+      <a class="chip" href="https://neuralink.com/webgrid/?mg_lab_full=1&mg_autoplay=1">WebGrid lab</a>
+      <span class="chip">still-pipe :9877</span>
+      <span class="chip">SOURCE_REV pin</span>
+    </div>
+
+    <section class="panel">
+      <h2>Day loop (MG + Grok)</h2>
+      <div class="day" id="dayLoop"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Layers L0–L5 (useful only)</h2>
+      <div id="layers"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Surfaces (Memory Glass × grok-build first)</h2>
+      <table id="pageMap"><thead><tr><th>Surface</th><th>Role</th><th>Scaffold</th></tr></thead><tbody></tbody></table>
+      <p class="foot" id="ledgerHint"></p>
+    </section>
+
+    <section class="panel">
+      <h2>NOGO</h2>
+      <ul class="nogo" id="nogo"></ul>
+    </section>
+  </div>
+  <script>
+  (function () {
+    function render(data) {
+      document.getElementById("northStar").textContent = data.northStar || "";
+      if (data.schema) document.getElementById("verPill").textContent = data.schema;
+      var gc = document.getElementById("goalChips");
+      gc.innerHTML = "";
+      Object.keys(data.goal || {}).forEach(function (k) {
+        var s = document.createElement("span");
+        s.className = "chip";
+        s.textContent = k + ": " + data.goal[k];
+        gc.appendChild(s);
+      });
+      var day = document.getElementById("dayLoop");
+      day.innerHTML = "";
+      (data.dayLoop || []).forEach(function (s) {
+        var a = document.createElement("article");
+        a.innerHTML = '<div class="n">STEP ' + s.step + '</div><b>' + s.name + '</b><div class="src">' + s.do + '</div>';
+        day.appendChild(a);
+      });
+      var layers = document.getElementById("layers");
+      layers.innerHTML = "";
+      (data.layers || []).forEach(function (L) {
+        var sec = document.createElement("div");
+        sec.className = "layer";
+        var surfaces = (L.mgSurfaces || L.qbitosPages || []).join(" · ");
+        var html = "<h3>" + L.id + " · " + L.name + ' <span class="badge ' + (L.status === "live" ? "live" : "scaffold") + '">' + L.status + "</span></h3>";
+        html += '<p class="meta">' + L.metaphor + " · " + surfaces + "</p>";
+        (L.items || []).forEach(function (it) {
+          html += '<div class="item"><div><b>' + it.title + '</b><div class="src">' + it.source + " — " + it.action + "</div></div>";
+          html += '<span class="' + (it.own ? "own" : "pat") + '">' + (it.own ? "own" : "pattern") + "</span></div>";
+        });
+        sec.innerHTML = html;
+        layers.appendChild(sec);
+      });
+      var tb = document.querySelector("#pageMap tbody");
+      tb.innerHTML = "";
+      var pm = data.pageMap || {};
+      Object.keys(pm).forEach(function (page) {
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + page + "</td><td>" + pm[page].role + "</td><td>" + pm[page].scaffold + "</td>";
+        tb.appendChild(tr);
+      });
+      var nogo = document.getElementById("nogo");
+      nogo.innerHTML = "";
+      (data.nogo || []).forEach(function (x) {
+        var li = document.createElement("li");
+        li.textContent = x;
+        nogo.appendChild(li);
+      });
+      document.getElementById("ledgerHint").textContent =
+        "Canonical: experiments/memory-glass/docs/persona-tensor/ · ledger PERSONA_TENSOR_PATH.md · fork census FORK_CENSUS_GONOGO.md";
+    }
+    var urls = [
+      "persona-tensor-scaffold.json",
+      "data/persona-tensor-scaffold.json",
+      "./persona-tensor-scaffold.json",
+    ];
+    function tryFetch(i) {
+      if (i >= urls.length) {
+        document.getElementById("northStar").textContent =
+          "Could not load persona-tensor-scaffold.json (serve this folder or uvspeed/web on :8765).";
+        return;
+      }
+      fetch(urls[i], { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw 0;
+          return r.json();
+        })
+        .then(render)
+        .catch(function () {
+          tryFetch(i + 1);
+        });
+    }
+    tryFetch(0);
+  })();
+  </script>
+</body>
+</html>

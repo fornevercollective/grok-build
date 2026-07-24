@@ -167,15 +167,24 @@ Best path is **harness pin + MG body + persona loop + tensor score + privacy san
 
 ---
 
-## qbitos / uvspeed web scaffold (2026-07-24)
+## Memory Glass × grok-build scaffold (canonical)
 
-Live shell pages under `/Volumes/qbitOS/00.dev/uvspeed/web/`:
+**Product owner:** Memory Glass + fornevercollective/grok-build — not qbitos marketing.
 
-| Surface | Scaffold |
-|---------|----------|
-| **Hub** | [`persona-tensor-scaffold.html`](file:///Volumes/qbitOS/00.dev/uvspeed/web/persona-tensor-scaffold.html) |
-| **Data** | `web/data/persona-tensor-scaffold.json` |
-| tools / apps / fleet / partners / research / corpus / roadmap / progress-hub / qbitos-main | nav **persona** + page section chips |
+| Surface | Path |
+|---------|------|
+| **Canonical hub** | `experiments/memory-glass/docs/persona-tensor/` |
+| **Lab page** | `docs/architecture-lab/content/33-persona-tensor.md` |
+| **Loopback (MG DATA)** | `http://127.0.0.1:8765/persona-tensor-scaffold.html` |
+| **Sync to serve host** | `experiments/memory-glass/docs/persona-tensor/sync-to-uvspeed-web.sh` |
+| **In-glass open** | DATA drawer · Data/Lab trade · **Persona · Tensor** tool |
 
-Open: `open /Volumes/qbitOS/00.dev/uvspeed/web/persona-tensor-scaffold.html`
+```bash
+# Push canonical → uvspeed/web for MG iframe host
+bash experiments/memory-glass/docs/persona-tensor/sync-to-uvspeed-web.sh
+cd /Volumes/qbitOS/00.dev/uvspeed/web && python3 -m http.server 8765 --bind 127.0.0.1
+# Memory Glass → DATA → Persona · Tensor
+```
+
+qbitos pages may keep thin **persona** nav chips as moniker shell only.
 
