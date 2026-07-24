@@ -164,3 +164,18 @@ Best path is **harness pin + MG body + persona loop + tensor score + privacy san
 
 **Stay path-checked to xAI harness, put the soul in Memory Glass + KBatch tensor scores, run personas as sandboxed goal-loops with verifiers, and only steal patterns from the ~2% of the ecosystem that is not a mirror.**
 )
+
+---
+
+## qbitos / uvspeed web scaffold (2026-07-24)
+
+Live shell pages under `/Volumes/qbitOS/00.dev/uvspeed/web/`:
+
+| Surface | Scaffold |
+|---------|----------|
+| **Hub** | [`persona-tensor-scaffold.html`](file:///Volumes/qbitOS/00.dev/uvspeed/web/persona-tensor-scaffold.html) |
+| **Data** | `web/data/persona-tensor-scaffold.json` |
+| tools / apps / fleet / partners / research / corpus / roadmap / progress-hub / qbitos-main | nav **persona** + page section chips |
+
+Open: `open /Volumes/qbitOS/00.dev/uvspeed/web/persona-tensor-scaffold.html`
+
