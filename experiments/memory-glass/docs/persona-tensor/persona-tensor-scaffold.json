@@ -248,6 +248,13 @@
           "own": true,
           "source": "kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid.html",
           "action": "Square-chunk WebGrid grammar \u00b7 letter cross-ref \u00b7 growth stair \u2192 documents"
+        },
+        {
+          "id": "cage-litmus",
+          "title": "Cage-grade National Treasure litmus",
+          "own": true,
+          "source": "kbatch \u2026/cage-litmus.html \u00b7 symbology-raw-vs-stone.json",
+          "action": "RAW+STONE pair \u00b7 FACT/FICTION/STONE_TRAP verify \u00b7 stone-only fails"
         }
       ]
     }
@@ -276,6 +283,10 @@
     "KBatch Declaration Letter-Grid": {
       "role": "Litmus / growth stair gateway into Declaration archive",
       "scaffold": "L5 tensor loop \u00b7 document lines as WebGrid variations \u00b7 letter cross-ref"
+    },
+    "KBatch Cage litmus": {
+      "role": "AI/human verification \u00b7 movie fiction labeled",
+      "scaffold": "L0 trust + L5 tensor \u00b7 dojo vs cage grade"
     }
   },
   "dayLoop": [
