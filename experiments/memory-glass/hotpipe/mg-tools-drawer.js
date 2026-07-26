@@ -1410,6 +1410,130 @@
       })
     );
 
+    /* Tensor stair · KBatch Letter-Grid + Cage + Rubik (persona grow S1–S3) */
+    into.appendChild(
+      collapsible("kbatch-stair", "Tensor · KBatch stair", true, function (box) {
+        var h = document.createElement("p");
+        h.className = "drw-hint";
+        h.textContent =
+          "Motor · epistemic · genealogy · one glass · Grok MCP offline";
+        box.appendChild(h);
+        var r = row();
+        r.appendChild(
+          act(
+            "L-Grid",
+            "primary",
+            function () {
+              nav(
+                "https://kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid.html?v=pipe8"
+              );
+              setStatus("Letter-Grid · 6235 glyphs · 70s BPS");
+            },
+            { ico: "▦", sub: "S1 motor path", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Pipe",
+            "hot",
+            function () {
+              nav(
+                "https://kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid-pipe.html?mode=smoke"
+              );
+              setStatus("Letter-Grid pipe smoke · agent");
+            },
+            { ico: "⇢", sub: "S1 smoke", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Cage",
+            "primary",
+            function () {
+              nav(
+                "https://kbatch.ugrad.ai/labs/declaration-digital-edition/cage-litmus.html"
+              );
+              setStatus("Cage litmus · FACT/FICTION/STONE_TRAP");
+            },
+            { ico: "◈", sub: "S2 epistemic", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Rubik",
+            "ok",
+            function () {
+              nav(
+                "https://kbatch.ugrad.ai/data/declaration/letter-grid-rubik.json"
+              );
+              setStatus("Rubik bind · pie-germanic-en · 13 cubes");
+            },
+            { ico: "⧉", sub: "S3 Focus pack", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "for-ai",
+            "muted",
+            function () {
+              nav("https://kbatch.ugrad.ai/for-ai.html#declaration-lab");
+              setStatus("Declaration lab · agent quickstart");
+            },
+            { ico: "✦", sub: "S6 demo map", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "PING",
+            "ok",
+            function () {
+              setStatus("MCP ping…");
+              fetch("https://kbatch.ugrad.ai/api/mcp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  tool: "kbatch_lettergrid_ping",
+                  args: {},
+                }),
+              })
+                .then(function (res) {
+                  return res.json();
+                })
+                .then(function (j) {
+                  setStatus(
+                    "ping " +
+                      (j.ok ? "ok" : "fail") +
+                      " · " +
+                      (j.masterGlyphs || "?") +
+                      " glyphs · " +
+                      (j.ver || "")
+                  );
+                  try {
+                    window.__mgLetterGridPing = j;
+                  } catch (e) {}
+                })
+                .catch(function (e) {
+                  setStatus("ping fail · " + (e && e.message ? e.message : e));
+                });
+            },
+            { ico: "◎", sub: "6235 health", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "Persona",
+            "muted",
+            function () {
+              nav("http://127.0.0.1:8765/persona-tensor-scaffold.html");
+              setStatus("persona-tensor scaffold · :8765");
+            },
+            { ico: "♟", sub: "L0–L5 map", keepStatus: true }
+          )
+        );
+        box.appendChild(r);
+      })
+    );
+
     /* Always-visible Bloch + data visualizer + gates (above/around Qbit) */
     into.appendChild(
       collapsible("qbit-stack", "Qbit · Bloch · data · gates", true, function (box) {
