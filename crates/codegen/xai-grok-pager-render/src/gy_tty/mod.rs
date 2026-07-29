@@ -114,7 +114,7 @@ impl Surface {
             Self::Chat => "Mesh walkie chat lines (stub; room stays in gy)",
             Self::Pins => "Pin tiles · Space opens external gy pins-dock when on PATH",
             Self::Tools => "PATH probe + install/run copy (mesh stays in gy)",
-            Self::Stream => "Binary .gyst / hexlum stream notes (stub)",
+            Self::Stream => "type:gyst notes · Space → gy stream-pub when GY_HUB set",
             Self::Help => "Keys + boundary rules",
         }
     }
@@ -122,9 +122,9 @@ impl Surface {
     pub fn status(self) -> SurfaceStatus {
         match self {
             Self::Status | Self::Help => SurfaceStatus::Shipped,
-            Self::Burst | Self::Wave | Self::Chat | Self::Pins | Self::Stream => {
-                SurfaceStatus::Placeholder
-            }
+            Self::Wave | Self::Chat => SurfaceStatus::Placeholder,
+            // Burst/pins/stream have external spawn hooks (still not mesh reimpl).
+            Self::Burst | Self::Pins | Self::Stream => SurfaceStatus::External,
             Self::Tools => SurfaceStatus::External,
         }
     }
@@ -234,6 +234,9 @@ impl GyTtyState {
                 if self.surface == Surface::Pins {
                     return GyTtyKeyOutcome::Toast(try_spawn_gy_pins());
                 }
+                if self.surface == Surface::Stream {
+                    return GyTtyKeyOutcome::Toast(try_spawn_gy_stream_pub());
+                }
             }
             // Tools surface: copy install (missing) or run lines (found).
             KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
@@ -252,6 +255,12 @@ impl GyTtyState {
                 if self.surface == Surface::Pins =>
             {
                 return GyTtyKeyOutcome::Copy(pins_clipboard_text());
+            }
+            // Stream: y/c copies GY_HUB + stream-pub recipe (type:gyst path).
+            KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
+                if self.surface == Surface::Stream =>
+            {
+                return GyTtyKeyOutcome::Copy(stream_clipboard_text());
             }
             _ => {}
         }
@@ -728,11 +737,43 @@ fn paint_tools(buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) {
 }
 
 fn paint_stream(buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) {
+    let probe = probe_gy_cli();
+    let hub = gy_hub_env();
+    let hook_on = gy_stream_hook_enabled();
+    let (status_line, status_fg) = match (probe.path.as_deref(), hub.as_deref(), hook_on) {
+        (Some(p), Some(h), true) => (
+            format!("Space → `{p} stream-pub` · GY_HUB={h}"),
+            Color::Rgb(126, 200, 96),
+        ),
+        (Some(_), None, true) => (
+            "Space blocked · set export GY_HUB=127.0.0.1:9876  ·  y/c recipe".into(),
+            Color::Rgb(235, 198, 82),
+        ),
+        (Some(_), _, false) => (
+            "Space → notes only  (GY_STREAM_HOOK=0)".into(),
+            Color::Rgb(235, 198, 82),
+        ),
+        (None, _, _) => (
+            "gy MISSING · /gy tools · y/c install".into(),
+            Color::Rgb(235, 120, 90),
+        ),
+    };
     let lines = vec![
         Line::from(Span::styled(
-            "stream / binary · placeholder",
+            "stream / type:gyst · fornevercollective",
             Style::default()
                 .fg(Color::Rgb(180, 220, 255))
+                .bg(bg)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "Grok catalogs + half-block paint · hub publish is external gy",
+            Style::default().fg(dim).bg(bg),
+        )),
+        Line::from(Span::styled(
+            status_line,
+            Style::default()
+                .fg(status_fg)
                 .bg(bg)
                 .add_modifier(Modifier::BOLD),
         )),
@@ -746,25 +787,29 @@ fn paint_stream(buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) 
             Style::default().fg(dim).bg(bg),
         )),
         Line::from(Span::styled(
-            "  .gyhex  text hex lines",
+            "  type:gyst   hub frame/meta lane (stream-pub → serve/hub)",
             Style::default().fg(dim).bg(bg),
         )),
         Line::from(Span::styled(
-            "  .pcap   Wireshark USER0 wrapping GYST",
+            "  .gyhex / .pcap   text hex · Wireshark USER0 wrap",
             Style::default().fg(dim).bg(bg),
         )),
         Line::from(""),
         Line::from(Span::styled(
-            "CLI:  gy encode · gy decode · gy watch · gy stream-pub · gy colossus",
-            Style::default().fg(Color::Rgb(80, 200, 220)).bg(bg),
-        )),
-        Line::from(Span::styled(
-            "In-Grok today: half-block video modal + /gboom (no mesh required)",
+            "In-Grok paint: /gboom + video half-block (no hub required)",
             Style::default().fg(Color::Rgb(126, 200, 96)).bg(bg),
         )),
         Line::from(Span::styled(
-            "Next: optional publish gboom/video frames → local hub type:gyst",
+            "Space: gy stream-pub when GY_HUB set · y/c copy recipe",
+            Style::default().fg(Color::Rgb(80, 200, 220)).bg(bg),
+        )),
+        Line::from(Span::styled(
+            "Opt-out: GY_STREAM_HOOK=0  ·  hub never inside Grok",
             Style::default().fg(dim).bg(bg),
+        )),
+        Line::from(Span::styled(
+            format!("FEATURE  {FEATURE_ID}"),
+            Style::default().fg(Color::Rgb(90, 100, 110)).bg(bg),
         )),
     ];
     Paragraph::new(lines).render(area, buf);
@@ -983,6 +1028,78 @@ pub fn try_spawn_gy_pins() -> String {
         Ok(_child) => format!("spawned {path} pins-dock · live rail in gy"),
         Err(e) => format!(
             "pins-dock spawn failed ({e}) · try: {path} pins-dock  or  {path} grok"
+        ),
+    }
+}
+
+/// Read optional hub address for type:gyst publish (`GY_HUB=host:port` or URL).
+pub fn gy_hub_env() -> Option<String> {
+    std::env::var("GY_HUB")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// `GY_STREAM_HOOK` — default **on**. Opt-out of Space → stream-pub spawn.
+pub fn gy_stream_hook_enabled() -> bool {
+    match std::env::var("GY_STREAM_HOOK") {
+        Ok(v) => {
+            let v = v.trim().to_ascii_lowercase();
+            !(v == "0" || v == "false" || v == "off" || v == "no")
+        }
+        Err(_) => true,
+    }
+}
+
+/// Clipboard for `/gy stream` — hub recipe + stream-pub (type:gyst path).
+pub fn stream_clipboard_text() -> String {
+    let hub = gy_hub_env().unwrap_or_else(|| "127.0.0.1:9876".into());
+    match which_gy() {
+        Some(p) => format!(
+            "# fornevercollective · type:gyst hub publish (external gy)\n\
+             # Grok does not host the hub — only paints half-block + catalogs\n\
+             export GY_HUB={hub}\n\
+             # start hub / serve in another terminal if needed, then:\n\
+             {p} stream-pub\n\
+             # or explicit:\n\
+             GY_HUB={hub} {p} stream-pub\n\
+             # paint-only in Grok (no hub): /gboom · video modal · /gy burst\n\
+             # disable spawn:  export GY_STREAM_HOOK=0\n"
+        ),
+        None => format!(
+            "# install gy first, then hub publish recipe\n\
+             {}\n\
+             export GY_HUB={hub}\n\
+             gy stream-pub\n",
+            GY_INSTALL_LINES.join("\n")
+        ),
+    }
+}
+
+/// Space on stream: spawn external `gy stream-pub` only when `GY_HUB` is set.
+/// Publishes type:gyst-class frames via GrokYtalkY — never a hub inside Grok.
+pub fn try_spawn_gy_stream_pub() -> String {
+    if !gy_stream_hook_enabled() {
+        return "stream · hook off (GY_STREAM_HOOK=0) · y/c copy recipe".into();
+    }
+    let Some(path) = which_gy() else {
+        return "gy MISSING · /gy tools · y/c install".into();
+    };
+    let Some(hub) = gy_hub_env() else {
+        return "set GY_HUB=host:port first · y/c copy recipe  ·  no hub inside Grok".into();
+    };
+    use std::process::{Command, Stdio};
+    match Command::new(&path)
+        .arg("stream-pub")
+        .env("GY_HUB", &hub)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(_child) => format!("spawned {path} stream-pub · GY_HUB={hub} · type:gyst in gy"),
+        Err(e) => format!(
+            "stream-pub spawn failed ({e}) · try: GY_HUB={hub} {path} stream-pub"
         ),
     }
 }
@@ -1277,5 +1394,31 @@ mod tests {
         assert!(
             t.contains("pins-dock") || t.contains("grok") || t.contains("GrokYtalkY") || t.contains("gy")
         );
+    }
+
+    #[test]
+    fn stream_space_returns_toast() {
+        let mut state = GyTtyState::new(Surface::Stream);
+        let space = KeyEvent::from(KeyCode::Char(' '));
+        match state.handle_key(&space) {
+            GyTtyKeyOutcome::Toast(msg) => {
+                assert!(
+                    msg.contains("GY_HUB")
+                        || msg.contains("stream")
+                        || msg.contains("gy")
+                        || msg.contains("MISSING")
+                        || msg.contains("hook")
+                        || msg.contains("gyst"),
+                    "unexpected toast: {msg}"
+                );
+            }
+            other => panic!("expected Toast, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn stream_clipboard_has_hub_recipe() {
+        let t = stream_clipboard_text();
+        assert!(t.contains("GY_HUB") || t.contains("stream-pub") || t.contains("gyst"));
     }
 }

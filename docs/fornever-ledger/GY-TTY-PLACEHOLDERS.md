@@ -14,87 +14,79 @@
 | In Grok Build | External `gy` (GrokYtalkY) |
 |---------------|----------------------------|
 | Half-block gboom + video (shipped) | Mesh hub, phone cast, multi-user pins |
-| Placeholder modals for burst/wave/chat/pins | Real PTT audio, vburst-frame, glyph hardware |
-| Tool map pointing at CLI | `gy serve` / `stream-pub` / `colossus` / SFU |
+| Catalog + demos + **spawn hooks** | Real PTT audio, vburst-frame, glyph hardware |
+| PATH probe · copy install/run | `gy serve` / `stream-pub` / `colossus` / SFU |
 
-**Grok agents do not reimplement the mesh.** These panels are discoverable stubs + animation demos so the fork has a home for the next iteration.
+**Grok agents do not reimplement the mesh.** Spawn + catalog only.
 
 ## Surfaces
 
 | `/gy …` | Status | What you see |
 |---------|--------|----------------|
 | `status` | shipped catalog | Index of all surfaces + half-block credit |
-| `burst` | **hook shipped** | Half-block orb · **Space/Enter** spawns external `gy burst` when on PATH · **y/c** copy · `GY_BURST_HOOK=0` opt-out |
+| `burst` | **hook** | Orb · Space → `gy burst` · y/c · `GY_BURST_HOOK=0` |
 | `wave` | placeholder | Animated waveform bars |
 | `chat` | placeholder | Mock multi-user feed |
-| `pins` | **hook shipped** | Catalog tiles · **Space** → external `gy pins-dock` · **y/c** copy · `GY_PINS_HOOK=0` opt-out · j/k select |
-| `tools` | **probe shipped** | PATH probe (`gy` / `~/.local/bin` / Homebrew) · **y/c** copy install *or* run lines · CLI map |
-| `stream` | placeholder | `.gyst` / hexlum notes · next-steps |
+| `pins` | **hook** | Tiles · Space → `gy pins-dock` · y/c · `GY_PINS_HOOK=0` |
+| `tools` | **probe** | PATH · y/c install\|run |
+| `stream` | **hook** | type:gyst notes · Space → `gy stream-pub` **if `GY_HUB` set** · y/c recipe · `GY_STREAM_HOOK=0` |
 | `help` | shipped | Keys + boundary |
 
-## Keys (panel open)
+## Keys
 
 | Key | Action |
 |-----|--------|
-| Tab / `[` `]` | Cycle surfaces |
-| `1`–`8` | Jump surface |
-| Space / Enter | Pulse · **burst:** `gy burst` · **pins:** `gy pins-dock` (if on PATH) |
+| Tab / `[` `]` | Cycle |
+| `1`–`8` | Jump |
+| Space / Enter | Pulse · **burst** / **pins** / **stream** external spawns |
 | j/k | Chat scroll / pin select |
-| **y / c** (tools) | Copy install snippet (if missing) or run lines (if found) |
-| **y / c** (burst) | Copy `gy burst` run line (or install if missing) |
-| **y / c** (pins) | Copy `gy pins-dock` + `gy grok` deep-links |
+| **y / c** | tools · burst · pins · **stream** copy snippets |
 | Esc / q | Close |
 
-### `/gy tools` — real hook (not stub)
+### Stream / type:gyst hub (opt-in)
 
-| `gy` on PATH | Behavior |
-|--------------|----------|
-| **OK** | Shows path · `gy doctor` / `--help` / `burst` · **y/c** copies run lines |
-| **MISSING** | Install lines for `fornevercollective/GrokYtalkY` · **y/c** copies clone + PATH hints |
+| Condition | Space |
+|-----------|--------|
+| `gy` + `GY_HUB=host:port` + hook on | Detached `gy stream-pub` with `GY_HUB` env |
+| `GY_HUB` unset | Toast: set hub first · y/c recipe |
+| `GY_STREAM_HOOK=0` | Notes only |
+| `gy` missing | → `/gy tools` |
 
-Toast on open: `gy OK · <path>` or `gy MISSING · y/c copy install`.  
-Still **zero mesh reimplementation** — detect + catalog + clipboard only.
+```bash
+export GY_HUB=127.0.0.1:9876
+# hub/serve in another terminal if needed
+/gy stream   # Space → stream-pub
+```
 
-### `/gy burst` — Space → external hook
-
-| Condition | Space / Enter |
-|-----------|----------------|
-| `gy` on PATH + hook on | Pulse orb **and** detached `gy burst` (stdio null) |
-| `GY_BURST_HOOK=0/false/off` | Pulse only |
-| `gy` missing | Pulse only · toast → `/gy tools` |
-
-Grok paints the orb; **mesh TX stays in `gy`**.
+Grok still does **not** host the hub or encode production GYST — it **spawns** the companion publisher.
 
 ## Try it
 
 ```bash
 cd /Volumes/qbitOS/00.dev/projects/grok-build
-./target/debug/xai-grok-pager
-# then:
-/gy tools          # PATH probe
-/gy burst          # Space → gy burst if installed
-# opt-out:  export GY_BURST_HOOK=0
+cargo build -p xai-grok-pager && ./target/debug/xai-grok-pager
+/gy tools
+/gy burst
+/gy pins
+export GY_HUB=127.0.0.1:9876
+/gy stream
 ```
 
-### `/gy pins` — Space → external pins-dock
+## Hook map (shipped)
 
-| Condition | Space / Enter |
-|-----------|----------------|
-| `gy` on PATH + hook on | Pulse tiles **and** detached `gy pins-dock` |
-| `GY_PINS_HOOK=0/false/off` | Pulse only |
-| `gy` missing | Pulse only · toast → `/gy tools` |
+| Surface | Real hook |
+|---------|-----------|
+| tools | PATH probe · y/c |
+| burst | Space → `gy burst` |
+| pins | Space → `gy pins-dock` |
+| stream | Space → `gy stream-pub` when `GY_HUB` set |
 
-Clipboard also lists `gy grok` (tmux pins-dock above Grok). Live unread / multi-user rail stays in **gy**.
+## Still open
 
-## Next (real work, not stubs)
-
-1. ~~`/gy tools` PATH probe + copy install/run~~ **done**  
-2. ~~Burst Space → external `gy burst`~~ **done**  
-3. ~~Pins Space → external `gy pins-dock`~~ **done** (`try_spawn_gy_pins` · `GY_PINS_HOOK`)  
-4. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
-5. Waveform: sample mic only if user opts in (never by default)
+1. Waveform: sample mic only if user opts in (never by default)  
+2. Optional: pipe actual gboom/video RGB into stream-pub stdin (deeper than spawn)
 
 ## Related
 
 - [GBOOM-HALFBLOCK-PATCH.md](./GBOOM-HALFBLOCK-PATCH.md)  
-- GrokYtalkY docs: burst · stream-binary · grokbuild-glyph-pins · companion  
+- GrokYtalkY: burst · stream-binary · grokbuild-glyph-pins · companion  

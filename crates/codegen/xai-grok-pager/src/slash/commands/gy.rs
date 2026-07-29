@@ -15,7 +15,7 @@ const SUBCOMMANDS: &[(&str, &str)] = &[
     ("chat", "Mesh chat rail placeholder"),
     ("pins", "Pin tiles · Space → external gy pins-dock when on PATH"),
     ("tools", "PATH probe · y/c copy install or run lines"),
-    ("stream", ".gyst / binary stream notes"),
+    ("stream", "type:gyst · Space → stream-pub when GY_HUB set"),
     ("help", "Keys + boundary rules"),
 ];
 
