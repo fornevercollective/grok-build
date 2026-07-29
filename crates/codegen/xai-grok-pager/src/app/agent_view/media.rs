@@ -637,6 +637,10 @@ impl AgentView {
                 self.gy_tty = None;
             }
             crate::gy_tty::GyTtyKeyOutcome::Changed => {}
+            crate::gy_tty::GyTtyKeyOutcome::Copy(text) => {
+                // Install or run snippet — external `gy` only; no mesh reimplementation.
+                self.copy_to_clipboard(&text);
+            }
         }
         InputOutcome::Changed
     }

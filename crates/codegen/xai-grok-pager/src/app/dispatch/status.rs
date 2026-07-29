@@ -428,7 +428,12 @@ pub(super) fn dispatch_open_gy_tty(app: &mut AppView, surface: &str) -> Vec<Effe
     agent.video_viewer = None;
     agent.gboom = None;
     agent.gy_tty = Some(crate::gy_tty::GyTtyState::new(surf));
-    agent.show_toast(crate::gy_tty::TOAST_OPEN);
+    // Tools surface: PATH probe toast (OK path or install hint). Others: catalog toast.
+    if surf == crate::gy_tty::Surface::Tools {
+        agent.show_toast(&crate::gy_tty::probe_gy_cli().toast());
+    } else {
+        agent.show_toast(crate::gy_tty::TOAST_OPEN);
+    }
     vec![]
 }
 

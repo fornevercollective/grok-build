@@ -28,7 +28,7 @@
 | `wave` | placeholder | Animated waveform bars |
 | `chat` | placeholder | Mock multi-user feed |
 | `pins` | placeholder | Mock pin tiles + roster |
-| `tools` | external map | `gy` CLI inventory · PATH probe |
+| `tools` | **probe shipped** | PATH probe (`gy` / `~/.local/bin` / Homebrew) · **y/c** copy install *or* run lines · CLI map |
 | `stream` | placeholder | `.gyst` / hexlum notes · next-steps |
 | `help` | shipped | Keys + boundary |
 
@@ -40,7 +40,18 @@
 | `1`–`8` | Jump surface |
 | Space / Enter | Mock PTT pulse |
 | j/k | Chat scroll / pin select |
+| **y / c** (tools) | Copy install snippet (if missing) or run lines (if found) |
 | Esc / q | Close |
+
+### `/gy tools` — real hook (not stub)
+
+| `gy` on PATH | Behavior |
+|--------------|----------|
+| **OK** | Shows path · `gy doctor` / `--help` / `burst` · **y/c** copies run lines |
+| **MISSING** | Install lines for `fornevercollective/GrokYtalkY` · **y/c** copies clone + PATH hints |
+
+Toast on open: `gy OK · <path>` or `gy MISSING · y/c copy install`.  
+Still **zero mesh reimplementation** — detect + catalog + clipboard only.
 
 ## Try it
 
@@ -56,10 +67,11 @@ cd /Volumes/qbitOS/00.dev/projects/grok-build
 
 ## Next (real work, not stubs)
 
-1. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
-2. Burst: wire Space hold → optional shell-out or plugin hook to `gy burst`  
-3. Pins: plugin `gy-glyph-pins` already exists — deep-link from `/gy pins`  
-4. Waveform: sample mic only if user opts in (never by default)
+1. ~~`/gy tools` PATH probe + copy install/run~~ **done** (`probe_gy_cli` · y/c)  
+2. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
+3. Burst: wire Space hold → optional shell-out or plugin hook to `gy burst`  
+4. Pins: plugin `gy-glyph-pins` already exists — deep-link from `/gy pins`  
+5. Waveform: sample mic only if user opts in (never by default)
 
 ## Related
 

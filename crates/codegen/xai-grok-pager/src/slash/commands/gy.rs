@@ -14,7 +14,7 @@ const SUBCOMMANDS: &[(&str, &str)] = &[
     ("wave", "Waveform / walkie level placeholder"),
     ("chat", "Mesh chat rail placeholder"),
     ("pins", "Glyph pins rail placeholder"),
-    ("tools", "Map of external `gy` CLI tools"),
+    ("tools", "PATH probe · y/c copy install or run lines"),
     ("stream", ".gyst / binary stream notes"),
     ("help", "Keys + boundary rules"),
 ];

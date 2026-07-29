@@ -113,7 +113,7 @@ impl Surface {
             Self::Wave => "Audio level / walkie waveform (stub)",
             Self::Chat => "Mesh walkie chat lines (stub; room stays in gy)",
             Self::Pins => "Multi-user pin rail (stub; gy pins-dock)",
-            Self::Tools => "Map of `gy` CLI tools — shell out, not reimplemented",
+            Self::Tools => "PATH probe + install/run copy (mesh stays in gy)",
             Self::Stream => "Binary .gyst / hexlum stream notes (stub)",
             Self::Help => "Keys + boundary rules",
         }
@@ -139,10 +139,12 @@ impl Surface {
 }
 
 /// Key outcome for the panel.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GyTtyKeyOutcome {
     Close,
     Changed,
+    /// Copy text to clipboard / backup file (install or run snippet).
+    Copy(String),
 }
 
 /// Modal panel state — tickable half-block demos + text stubs.
@@ -224,6 +226,12 @@ impl GyTtyState {
                 // Placeholder PTT pulse — just bump phase for visual.
                 self.phase += 0.35;
             }
+            // Tools surface: copy install (missing) or run lines (found).
+            KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
+                if self.surface == Surface::Tools =>
+            {
+                return GyTtyKeyOutcome::Copy(tools_clipboard_text());
+            }
             _ => {}
         }
         GyTtyKeyOutcome::Changed
@@ -272,10 +280,20 @@ impl GyTtyState {
                     .add_modifier(Modifier::BOLD),
             ))
             .title_bottom(Span::styled(
-                format!(
-                    " {} · tab cycle · 1-8 jump · space PTT · esc quit ",
-                    self.surface.status_label()
-                ),
+                {
+                    let base = format!(
+                        " {} · tab cycle · 1-8 jump · space PTT · esc quit ",
+                        self.surface.status_label()
+                    );
+                    if self.surface == Surface::Tools {
+                        format!(
+                            " {} · y/c copy install|run · tab cycle · esc ",
+                            self.surface.status_label()
+                        )
+                    } else {
+                        base
+                    }
+                },
                 Style::default().fg(dim).bg(bg),
             ))
             .render(popup, buf);
@@ -523,27 +541,88 @@ fn paint_status(buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) 
 }
 
 fn paint_tools(buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) {
-    let gy_path = which_gy();
+    let probe = probe_gy_cli();
+    let ok = probe.path.is_some();
+    let status_fg = if ok {
+        Color::Rgb(126, 200, 96)
+    } else {
+        Color::Rgb(235, 120, 90)
+    };
     let mut lines = vec![
         Line::from(Span::styled(
-            "terminal tools · external map",
+            "terminal tools · PATH probe + external map",
             Style::default()
                 .fg(Color::Rgb(255, 180, 80))
                 .bg(bg)
                 .add_modifier(Modifier::BOLD),
         )),
         Line::from(Span::styled(
-            format!(
-                "gy binary: {}",
-                gy_path
-                    .as_deref()
-                    .unwrap_or("not on PATH — install GrokYtalkY")
-            ),
+            format!("{ORIGIN} · {FEATURE_ID} · mesh stays in gy"),
             Style::default().fg(dim).bg(bg),
         )),
         Line::from(""),
+        Line::from(Span::styled(
+            if ok {
+                format!("STATUS  OK  ·  {}", probe.path.as_deref().unwrap_or(""))
+            } else {
+                "STATUS  MISSING  ·  `gy` not on PATH (or ~/.local/bin · ~/go/bin)".into()
+            },
+            Style::default()
+                .fg(status_fg)
+                .bg(bg)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
     ];
+
+    if ok {
+        let p = probe.path.as_deref().unwrap_or("gy");
+        lines.push(Line::from(Span::styled(
+            "Run (external — not inside Grok):",
+            Style::default().fg(fg).bg(bg),
+        )));
+        lines.push(Line::from(Span::styled(
+            format!("  {p} doctor"),
+            Style::default().fg(Color::Rgb(80, 200, 220)).bg(bg),
+        )));
+        lines.push(Line::from(Span::styled(
+            format!("  {p} --help"),
+            Style::default().fg(Color::Rgb(80, 200, 220)).bg(bg),
+        )));
+        lines.push(Line::from(Span::styled(
+            format!("  {p} burst          # real PTT / mesh burst"),
+            Style::default().fg(dim).bg(bg),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  y / c   copy run lines to clipboard",
+            Style::default().fg(Color::Rgb(126, 200, 96)).bg(bg),
+        )));
+    } else {
+        lines.push(Line::from(Span::styled(
+            "Install (fornevercollective/GrokYtalkY):",
+            Style::default().fg(fg).bg(bg),
+        )));
+        for line in GY_INSTALL_LINES {
+            lines.push(Line::from(Span::styled(
+                format!("  {line}"),
+                Style::default().fg(Color::Rgb(80, 200, 220)).bg(bg),
+            )));
+        }
+        lines.push(Line::from(Span::styled(
+            "  y / c   copy install snippet to clipboard",
+            Style::default().fg(Color::Rgb(235, 198, 82)).bg(bg),
+        )));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "CLI map (shell out — Grok does not reimplement mesh):",
+        Style::default().fg(dim).bg(bg),
+    )));
     for (cmd, desc) in GY_TOOLS {
+        if lines.len() as u16 >= area.height.saturating_sub(2) {
+            break;
+        }
         lines.push(Line::from(vec![
             Span::styled(
                 format!("  {cmd:22} "),
@@ -554,14 +633,13 @@ fn paint_tools(buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) {
             ),
             Span::styled(*desc, Style::default().fg(fg).bg(bg)),
         ]));
-        if lines.len() as u16 >= area.height.saturating_sub(2) {
-            break;
-        }
     }
-    lines.push(Line::from(Span::styled(
-        "Grok does not reimplement mesh — shell these out or use gy grok stack",
-        Style::default().fg(dim).bg(bg),
-    )));
+    if (lines.len() as u16) < area.height {
+        lines.push(Line::from(Span::styled(
+            "Boundary: phone cast · rooms · SFU = gy binary only",
+            Style::default().fg(dim).bg(bg),
+        )));
+    }
     Paragraph::new(lines).render(area, buf);
 }
 
@@ -667,18 +745,95 @@ fn status_color(s: SurfaceStatus) -> Color {
     }
 }
 
-fn which_gy() -> Option<String> {
-    std::env::var_os("PATH").and_then(|paths| {
-        for dir in std::env::split_paths(&paths) {
-            for name in ["gy", "grokytalky"] {
-                let p = dir.join(name);
-                if p.is_file() {
-                    return Some(p.display().to_string());
-                }
-            }
+/// Result of probing for the external GrokYtalkY CLI.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GyCliProbe {
+    /// Absolute path when found.
+    pub path: Option<String>,
+}
+
+impl GyCliProbe {
+    pub fn found(&self) -> bool {
+        self.path.is_some()
+    }
+
+    /// Short toast when opening `/gy tools`.
+    pub fn toast(&self) -> String {
+        match &self.path {
+            Some(p) => format!("gy OK · {p}  ·  y/c copy run lines"),
+            None => "gy MISSING · y/c copy install  ·  mesh stays in GrokYtalkY".into(),
         }
-        None
-    })
+    }
+}
+
+/// Install snippet for clipboard when `gy` is not on PATH.
+/// fornevercollective/GrokYtalkY — not reimplemented in Grok Build.
+pub const GY_INSTALL_LINES: &[&str] = &[
+    "git clone https://github.com/fornevercollective/GrokYtalkY.git",
+    "cd GrokYtalkY",
+    "# follow README build · then put `gy` on PATH",
+    "# e.g.  export PATH=\"$PWD/bin:$HOME/go/bin:$PATH\"",
+    "gy doctor",
+];
+
+/// Probe PATH + common user bin dirs for `gy` / `grokytalky`.
+/// Does not shell out to the mesh — detection only.
+pub fn probe_gy_cli() -> GyCliProbe {
+    GyCliProbe { path: which_gy() }
+}
+
+/// Clipboard payload for `/gy tools` · y/c key.
+/// Found → run lines; missing → install lines. Always external mesh boundary.
+pub fn tools_clipboard_text() -> String {
+    match which_gy() {
+        Some(p) => format!(
+            "# fornevercollective · gy on PATH\n\
+             # mesh runtime is external — Grok only paints/catalogs\n\
+             {p} doctor\n\
+             {p} --help\n\
+             {p} burst\n\
+             # companion stack\n\
+             {p} grok\n\
+             {p} serve\n"
+        ),
+        None => format!(
+            "# fornevercollective/GrokYtalkY — install `gy` (not inside Grok Build)\n\
+             # https://github.com/fornevercollective/GrokYtalkY\n\
+             {}\n\
+             # after install, verify:\n\
+             gy doctor\n\
+             # then from Grok: /gy tools  (should show STATUS OK)\n",
+            GY_INSTALL_LINES.join("\n")
+        ),
+    }
+}
+
+fn which_gy() -> Option<String> {
+    use std::path::PathBuf;
+
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(paths) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&paths) {
+            candidates.push(dir.join("gy"));
+            candidates.push(dir.join("grokytalky"));
+        }
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        let home = PathBuf::from(home);
+        candidates.push(home.join(".local/bin/gy"));
+        candidates.push(home.join("go/bin/gy"));
+        candidates.push(home.join("bin/gy"));
+    }
+    // macOS Homebrew common prefixes (even if not on PATH this session)
+    candidates.push(PathBuf::from("/opt/homebrew/bin/gy"));
+    candidates.push(PathBuf::from("/usr/local/bin/gy"));
+
+    for p in candidates {
+        if p.is_file() {
+            return Some(p.display().to_string());
+        }
+    }
+    None
 }
 
 // ── half-block generators ────────────────────────────────────────────────
@@ -861,5 +1016,36 @@ mod tests {
         assert_eq!(state.surface(), Surface::Burst);
         let esc = KeyEvent::from(KeyCode::Esc);
         assert_eq!(state.handle_key(&esc), GyTtyKeyOutcome::Close);
+    }
+
+    #[test]
+    fn tools_y_copies_snippet() {
+        let mut state = GyTtyState::new(Surface::Tools);
+        let y = KeyEvent::from(KeyCode::Char('y'));
+        match state.handle_key(&y) {
+            GyTtyKeyOutcome::Copy(s) => {
+                assert!(
+                    s.contains("fornevercollective")
+                        || s.contains("gy doctor")
+                        || s.contains("GrokYtalkY"),
+                    "unexpected clipboard: {s}"
+                );
+            }
+            other => panic!("expected Copy, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn tools_clipboard_has_boundary() {
+        let t = tools_clipboard_text();
+        assert!(t.contains("fornevercollective") || t.contains("GrokYtalkY") || t.contains("gy"));
+        // Always external mesh language when missing; run lines when present.
+        assert!(t.contains("gy") || t.contains("GrokYtalkY"));
+    }
+
+    #[test]
+    fn probe_toast_mentions_ok_or_missing() {
+        let t = probe_gy_cli().toast();
+        assert!(t.contains("OK") || t.contains("MISSING"));
     }
 }
