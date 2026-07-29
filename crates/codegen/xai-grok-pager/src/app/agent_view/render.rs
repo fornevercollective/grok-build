@@ -733,6 +733,7 @@ impl AgentView {
             && (self.image_viewer.is_some()
                 || self.video_viewer.is_some()
                 || self.gboom.is_some()
+                || self.gy_tty.is_some()
                 || self.block_viewer.is_some()
                 || self.extensions_modal.is_some()
                 || self.agents_modal.is_some()
@@ -3641,6 +3642,31 @@ impl AgentView {
                 HintItem::new(key!(' '), play_label),
                 HintItem::new(key!(Left), "back"),
                 HintItem::new(key!(Right), "fwd"),
+            ];
+            ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
+            self.pane_areas = layout.pane_areas();
+            return (None, prompt_post_flush);
+        }
+        if let Some(panel) = self.gy_tty.as_mut() {
+            use crate::views::shortcuts_bar::HintItem;
+            let overlay_area = Rect {
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: layout.shortcuts.y.saturating_sub(area.y),
+            };
+            panel.tick();
+            panel.paint(
+                buf,
+                overlay_area,
+                theme.bg_base,
+                theme.text_primary,
+                theme.gray_dim,
+            );
+            let hints = vec![
+                HintItem::new(key!(Esc), "quit"),
+                HintItem::new(key!(Tab), "cycle"),
+                HintItem::new(key!(' '), "ptt"),
             ];
             ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
             self.pane_areas = layout.pane_areas();

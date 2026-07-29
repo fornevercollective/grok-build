@@ -56,6 +56,11 @@ TOAST_GBOOM_FALLBACK = "GBOOM · fornevercollective half-block (any truecolor TT
 | Reach for non-Kitty terminals | Full-HD terminal video claim |
 | Fork differentiator for **fornevercollective/grok-build** | Upstream xAI default |
 
+## Next iteration
+
+**GY TTY placeholders** (`fc-gy-tty-placeholders`): `/gy [burst|wave|chat|pins|tools|stream|…]`  
+See [GY-TTY-PLACEHOLDERS.md](./GY-TTY-PLACEHOLDERS.md).
+
 ## Try it
 
 ```bash

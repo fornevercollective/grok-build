@@ -1153,6 +1153,8 @@ pub struct AgentView {
     pub(crate) video_viewer: Option<crate::prompt_images::VideoViewerState>,
     /// Active `/gboom` easter-egg game modal.
     pub(crate) gboom: Option<crate::gboom::GboomState>,
+    /// Active `/gy` GrokYtalkY TTY placeholder panel.
+    pub(crate) gy_tty: Option<crate::gy_tty::GyTtyState>,
     /// Protocol-prepared image bytes keyed by file path. Used for dimension
     /// decoding and iTerm2 re-sends. Kitty transmits once and re-places.
     pub(crate) inline_media_cache: std::collections::HashMap<std::path::PathBuf, Vec<u8>>,

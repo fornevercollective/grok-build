@@ -95,7 +95,8 @@ use super::settings::ui::{
     dispatch_toggle_vim_mode,
 };
 use super::status::{
-    dispatch_copy_session_id, dispatch_manage_billing, dispatch_open_gboom, dispatch_open_tutorial,
+    dispatch_copy_session_id, dispatch_manage_billing, dispatch_open_gboom, dispatch_open_gy_tty,
+    dispatch_open_tutorial,
     dispatch_privacy_banner_accept, dispatch_privacy_banner_customize, dispatch_share_session,
     dispatch_show_context_info, dispatch_show_privacy_info, dispatch_show_queue,
     dispatch_show_release_notes, dispatch_show_session_info, dispatch_show_tasks,
@@ -1212,6 +1213,7 @@ pub(crate) fn dispatch(action: Action, app: &mut AppView) -> Vec<Effect> {
             vec![]
         }
         Action::OpenGboom => dispatch_open_gboom(app),
+        Action::OpenGyTty { surface } => dispatch_open_gy_tty(app, &surface),
         Action::SuspendForEditor {
             path,
             refresh_agents_modal,

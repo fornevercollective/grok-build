@@ -163,6 +163,7 @@ impl AgentView {
             || self.block_viewer.is_some()
             // /gboom dims the same down-to-shortcuts region as the video viewer.
             || self.gboom.is_some()
+            || self.gy_tty.is_some()
             // Extensions/agents modals are centered popups (render_modal_window)
             // that capture all input and early-return out of draw; distinct
             // from active_modal. persona_detail only renders atop the agents

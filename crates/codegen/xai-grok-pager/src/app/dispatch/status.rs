@@ -402,11 +402,33 @@ pub(super) fn dispatch_open_gboom(app: &mut AppView) -> Vec<Effect> {
     agent.image_viewer = None;
     agent.image_load_rx = None;
     agent.video_viewer = None;
+    agent.gy_tty = None;
     agent.gboom = Some(crate::gboom::GboomState::new());
     if detect_graphics_protocol() == GraphicsProtocol::None {
         // Owned toast — operators can see this is FC portable graphics, not a broken Kitty path.
         agent.show_toast(halfblock::TOAST_GBOOM_FALLBACK);
     }
+    vec![]
+}
+
+/// Open fornevercollective GY TTY placeholder panel (`/gy [surface]`).
+///
+/// Stubs for burst / wave / chat / pins / tools / stream — mesh stays external.
+pub(super) fn dispatch_open_gy_tty(app: &mut AppView, surface: &str) -> Vec<Effect> {
+    let ActiveView::Agent(id) = app.active_view else {
+        return vec![];
+    };
+    let Some(agent) = app.agents.get_mut(&id) else {
+        return vec![];
+    };
+    let surf = crate::gy_tty::Surface::parse(surface).unwrap_or(crate::gy_tty::Surface::Help);
+    // Exclusive with media / gboom (shared interaction focus).
+    agent.image_viewer = None;
+    agent.image_load_rx = None;
+    agent.video_viewer = None;
+    agent.gboom = None;
+    agent.gy_tty = Some(crate::gy_tty::GyTtyState::new(surf));
+    agent.show_toast(crate::gy_tty::TOAST_OPEN);
     vec![]
 }
 

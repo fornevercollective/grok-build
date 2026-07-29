@@ -50,6 +50,7 @@ impl AgentView {
             || self.video_viewer.is_some()
             || self.block_viewer.is_some()
             || self.gboom.is_some()
+            || self.gy_tty.is_some()
             || self.show_goal_detail
             || self.btw_focused
             || !self.permission_queue.is_empty()
@@ -85,6 +86,7 @@ impl AgentView {
             && self.image_viewer.is_none()
             && self.video_viewer.is_none()
             && self.gboom.is_none()
+            && self.gy_tty.is_none()
             && self.extensions_modal.is_none()
             && self.btw_state.is_none()
             && self.scrollback_search.is_none()
@@ -122,6 +124,7 @@ impl AgentView {
         self.extensions_modal.is_some()
             || self.active_modal.is_some()
             || self.gboom.is_some()
+            || self.gy_tty.is_some()
             || self.video_viewer.is_some()
             || self.image_viewer.is_some()
     }
@@ -570,6 +573,17 @@ impl AgentView {
                     self.handle_gboom_key(key)
                 }
                 Event::Mouse(mouse) => self.handle_gboom_mouse(mouse),
+                _ => InputOutcome::Changed,
+            };
+        }
+        if self.gy_tty.is_some() {
+            return match ev {
+                Event::Key(key) if key.kind != KeyEventKind::Release => {
+                    if key!('q', CONTROL).matches(key) {
+                        return InputOutcome::Unchanged;
+                    }
+                    self.handle_gy_tty_key(key)
+                }
                 _ => InputOutcome::Changed,
             };
         }

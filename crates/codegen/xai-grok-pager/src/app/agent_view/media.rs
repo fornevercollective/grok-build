@@ -624,6 +624,22 @@ impl AgentView {
         }
         InputOutcome::Changed
     }
+
+    // -- /gy TTY placeholders ---------------------------------------------------
+
+    /// Handle a key event in the `/gy` placeholder panel.
+    pub(super) fn handle_gy_tty_key(&mut self, key: &KeyEvent) -> InputOutcome {
+        let Some(ref mut panel) = self.gy_tty else {
+            return InputOutcome::Unchanged;
+        };
+        match panel.handle_key(key) {
+            crate::gy_tty::GyTtyKeyOutcome::Close => {
+                self.gy_tty = None;
+            }
+            crate::gy_tty::GyTtyKeyOutcome::Changed => {}
+        }
+        InputOutcome::Changed
+    }
 }
 
 #[cfg(test)]

@@ -27,6 +27,7 @@ pub mod feedback;
 pub mod find;
 pub mod fork;
 pub mod gboom;
+pub mod gy;
 pub mod help;
 pub mod history;
 pub mod home;
@@ -146,6 +147,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(personas::PersonasCommand),
         // Hidden easter egg: never listed, runs on bare `/gboom`.
         Arc::new(gboom::GboomCommand),
+        // fornevercollective GY TTY placeholders (visible).
+        Arc::new(gy::GyCommand),
         // Hidden diagnostic: never listed, toggles the scroll-debug HUD.
         Arc::new(scroll_debug::ScrollDebugCommand),
         // Debug toggles: always registered, listed only on debug binaries.

@@ -214,6 +214,7 @@ impl AgentView {
             image_load_rx: None,
             video_viewer: None,
             gboom: None,
+            gy_tty: None,
             inline_media_cache: std::collections::HashMap::new(),
             inline_media_ids: std::collections::HashMap::new(),
             inline_media_iterm_emitted: std::collections::HashMap::new(),

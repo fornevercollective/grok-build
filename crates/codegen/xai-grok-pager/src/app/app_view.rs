@@ -5397,6 +5397,7 @@ impl AppView {
                     || agent.image_load_rx.is_some()
                     || agent.video_viewer.as_ref().is_some_and(|v| v.playing)
                     || agent.gboom.is_some()
+                    || agent.gy_tty.is_some()
                     || agent.inline_video.as_ref().is_some_and(|v| !v.finished)
                     || agent.video_load_rx.is_some()
                     || agent.mermaid_needs_tick()

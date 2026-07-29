@@ -970,6 +970,11 @@ pub enum Action {
     OpenMemoryModal,
     /// Open the hidden `/gboom` easter egg (DOOM-style raycaster modal).
     OpenGboom,
+    /// Open fornevercollective GY TTY placeholder panel (`/gy [surface]`).
+    OpenGyTty {
+        /// Surface id: status|burst|wave|chat|pins|tools|stream|help
+        surface: String,
+    },
     /// Suspend the TUI and open a configuration file in `$EDITOR`.
     SuspendForEditor {
         path: std::path::PathBuf,
