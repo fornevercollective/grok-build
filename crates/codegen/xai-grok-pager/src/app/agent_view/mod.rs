@@ -1155,6 +1155,12 @@ pub struct AgentView {
     pub(crate) gboom: Option<crate::gboom::GboomState>,
     /// Active `/gy` GrokYtalkY TTY placeholder panel.
     pub(crate) gy_tty: Option<crate::gy_tty::GyTtyState>,
+    /// Active `/watch` live demux player (yt-dlp + ffmpeg → half-block).
+    pub(crate) live_watch: Option<crate::live_demux::LiveWatchState>,
+    /// Active `/timesync` broadcast world clock modal.
+    pub(crate) timesync: Option<crate::timesync::TimesyncState>,
+    /// Active `/map` maptrace modal (ASCII world + traceroute).
+    pub(crate) maptrace: Option<crate::maptrace::MapState>,
     /// Protocol-prepared image bytes keyed by file path. Used for dimension
     /// decoding and iTerm2 re-sends. Kitty transmits once and re-places.
     pub(crate) inline_media_cache: std::collections::HashMap<std::path::PathBuf, Vec<u8>>,

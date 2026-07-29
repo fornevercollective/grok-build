@@ -5125,6 +5125,15 @@ impl AppView {
             if let Some(ref mut viewer) = agent.video_viewer {
                 needs_redraw |= viewer.tick();
             }
+            if let Some(ref mut watch) = agent.live_watch {
+                needs_redraw |= watch.tick();
+            }
+            if let Some(ref mut clock) = agent.timesync {
+                needs_redraw |= clock.tick();
+            }
+            if let Some(ref mut map) = agent.maptrace {
+                needs_redraw |= map.tick();
+            }
             if let Some(ref mut gboom) = agent.gboom {
                 gboom.tick();
                 needs_redraw = true;
@@ -5255,10 +5264,40 @@ impl AppView {
         if self.gboom_active() {
             return Some(std::time::Duration::from_millis(33));
         }
+        // Live demux paints ~12 fps half-block frames; keep the loop warm.
+        if self.live_watch_active() {
+            return Some(std::time::Duration::from_millis(50));
+        }
+        // Timesync clock ticks ~4 Hz for smooth second hand / drift.
+        if self.timesync_active() {
+            return Some(std::time::Duration::from_millis(250));
+        }
+        // Maptrace: hop pulse + timesync stamp refresh.
+        if self.maptrace_active() {
+            return Some(std::time::Duration::from_millis(200));
+        }
         if self.minimal_state.transcript.is_some() {
             return Some(std::time::Duration::from_millis(16));
         }
         None
+    }
+
+    /// Whether `/watch` live demux is open on the active agent view.
+    pub(crate) fn live_watch_active(&self) -> bool {
+        matches!(self.active_view, ActiveView::Agent(id)
+            if self.agents.get(&id).is_some_and(|a| a.live_watch.is_some()))
+    }
+
+    /// Whether `/timesync` world clock is open on the active agent view.
+    pub(crate) fn timesync_active(&self) -> bool {
+        matches!(self.active_view, ActiveView::Agent(id)
+            if self.agents.get(&id).is_some_and(|a| a.timesync.is_some()))
+    }
+
+    /// Whether `/map` maptrace is open on the active agent view.
+    pub(crate) fn maptrace_active(&self) -> bool {
+        matches!(self.active_view, ActiveView::Agent(id)
+            if self.agents.get(&id).is_some_and(|a| a.maptrace.is_some()))
     }
     /// Deferred image viewer load (background thread). Shared by parent agent
     /// and fullscreen subagent children so gate/tick stay symmetric.
@@ -5398,6 +5437,12 @@ impl AppView {
                     || agent.video_viewer.as_ref().is_some_and(|v| v.playing)
                     || agent.gboom.is_some()
                     || agent.gy_tty.is_some()
+                    || agent.timesync.is_some()
+                    || agent.maptrace.is_some()
+                    || agent
+                        .live_watch
+                        .as_ref()
+                        .is_some_and(|w| w.playing())
                     || agent.inline_video.as_ref().is_some_and(|v| !v.finished)
                     || agent.video_load_rx.is_some()
                     || agent.mermaid_needs_tick()

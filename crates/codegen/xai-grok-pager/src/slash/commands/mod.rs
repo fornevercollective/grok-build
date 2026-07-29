@@ -26,8 +26,13 @@ pub mod export;
 pub mod feedback;
 pub mod find;
 pub mod fork;
+pub mod cam;
 pub mod gboom;
 pub mod gy;
+pub mod map;
+pub mod monitor;
+pub mod timesync;
+pub mod watch;
 pub mod help;
 pub mod history;
 pub mod home;
@@ -149,6 +154,16 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(gboom::GboomCommand),
         // fornevercollective GY TTY placeholders (visible).
         Arc::new(gy::GyCommand),
+        // fornevercollective live demux → half-block inside Grok.
+        Arc::new(watch::WatchCommand),
+        // Large camera self-view (side tile) under short `/cam` name.
+        Arc::new(cam::CamCommand),
+        // fornevercollective broadcast timesync world clock inside Grok.
+        Arc::new(timesync::TimesyncCommand),
+        // fornevercollective maptrace · in-Grok + pop-out.
+        Arc::new(map::MapCommand),
+        // fornevercollective terminal fleet · active clock/map/watch/sessions.
+        Arc::new(monitor::MonitorCommand),
         // Hidden diagnostic: never listed, toggles the scroll-debug HUD.
         Arc::new(scroll_debug::ScrollDebugCommand),
         // Debug toggles: always registered, listed only on debug binaries.
@@ -278,8 +293,15 @@ mod tests {
             "fork",
             "full",
             "fullscreen",
+            "a-la-carte",
+            "allacarte",
+            "clock",
+            "epoch",
             "gboom",
+            "geomap",
+            "gmux",
             "guides",
+            "gy",
             "help",
             "history",
             "home",
@@ -289,16 +311,20 @@ mod tests {
             "imagine-video",
             "import-claude",
             "jump",
+            "live",
             "login",
             "logout",
             "log",
             "loop",
             "m",
+            "map",
+            "maptrace",
             "marketplace",
             "mcps",
             "minimal",
             "ml",
             "model",
+            "monitor",
             "multiline",
             "new",
             "onboarding",
@@ -329,22 +355,29 @@ mod tests {
             "terminal-check",
             "terminal-info",
             "terminal-setup",
+            "terminals",
             "theme",
             "timeline",
             "timestamps",
+            "timesync",
             "title",
             "toggle-mouse-reporting",
             "tour",
+            "trace-map",
             "transcript",
             "tutorial",
+            "tv",
             "t",
             "usage",
             "view-plan",
             "vim-mode",
             "voice",
+            "watch",
             "welcome",
             "workflows",
+            "worldclock",
             "yolo",
+            "zulu",
         ];
         for command in builtin_commands() {
             for key in std::iter::once(command.name()).chain(command.aliases().iter().copied()) {

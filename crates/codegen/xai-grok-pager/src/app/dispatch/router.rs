@@ -96,11 +96,13 @@ use super::settings::ui::{
 };
 use super::status::{
     dispatch_copy_session_id, dispatch_manage_billing, dispatch_open_gboom, dispatch_open_gy_tty,
+    dispatch_open_live_watch, dispatch_open_map, dispatch_open_timesync, dispatch_popout_live_watch,
+    dispatch_popout_map,
     dispatch_open_tutorial,
-    dispatch_privacy_banner_accept, dispatch_privacy_banner_customize, dispatch_share_session,
-    dispatch_show_context_info, dispatch_show_privacy_info, dispatch_show_queue,
-    dispatch_show_release_notes, dispatch_show_session_info, dispatch_show_tasks,
-    dispatch_show_usage, set_coding_data_sharing,
+    dispatch_privacy_banner_accept,
+    dispatch_privacy_banner_customize, dispatch_share_session, dispatch_show_context_info,
+    dispatch_show_privacy_info, dispatch_show_queue, dispatch_show_release_notes,
+    dispatch_show_session_info, dispatch_show_tasks, dispatch_show_usage, set_coding_data_sharing,
 };
 use super::task_result::{dispatch_task_result, unregister_all_active_sessions};
 use super::transcript::{
@@ -1214,6 +1216,11 @@ pub(crate) fn dispatch(action: Action, app: &mut AppView) -> Vec<Effect> {
         }
         Action::OpenGboom => dispatch_open_gboom(app),
         Action::OpenGyTty { surface } => dispatch_open_gy_tty(app, &surface),
+        Action::OpenLiveWatch { url } => dispatch_open_live_watch(app, &url),
+        Action::PopOutLiveWatch { url } => dispatch_popout_live_watch(app, &url),
+        Action::OpenTimesync => dispatch_open_timesync(app),
+        Action::OpenMap { target } => dispatch_open_map(app, &target),
+        Action::PopOutMap { target, web } => dispatch_popout_map(app, &target, web),
         Action::SuspendForEditor {
             path,
             refresh_agents_modal,

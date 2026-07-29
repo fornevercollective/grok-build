@@ -64,8 +64,8 @@ pub mod tool_usage;
 // `xai-grok-pager-render`. Re-exported at the crate root so existing
 // `crate::<module>::...` references throughout the pager keep resolving.
 pub use xai_grok_pager_render::{
-    appearance, clipboard, gboom, gy_tty, glyphs, host, link_opener, modal_window_state,
-    prompt_images, render, syntax, terminal, theme, util,
+    appearance, clipboard, gboom, gy_tty, glyphs, host, link_opener, live_demux, maptrace,
+    modal_window_state, prompt_images, render, syntax, terminal, theme, timesync, util,
 };
 pub mod trace_cmd;
 pub mod tracing;

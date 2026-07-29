@@ -55,6 +55,73 @@ TOAST_GBOOM_FALLBACK = "GBOOM · fornevercollective half-block (any truecolor TT
 | Portable in-TTY motion for demos + easter egg | Broadcast streaming / multi-user CDN |
 | Reach for non-Kitty terminals | Full-HD terminal video claim |
 | Fork differentiator for **fornevercollective/grok-build** | Upstream xAI default |
+| Feature identity + portability + boundary | A **performance number** without a paint stamp |
+
+**Public claims without timings:** identity + portability + boundary only.  
+**Public claims with timings:** only after a real [`halfblock` paint stamp](#paint-timings-fold-metrics) (p50/p95 over N frames).
+
+## Paint timings (fold metrics)
+
+Same spirit as KBatch fold metrics: instrument paint, fold ring, publish stamp.
+
+| Piece | Role |
+|-------|------|
+| `render/halfblock.rs` | `Instant` around `paint_rgb24`; ring of last N samples |
+| `GboomState::paint_half_blocks` | Records **raycast**, **halfblock_paint**, **frame_total** |
+| Stamp schema | `fc-halfblock-paint-timings-v1` JSON |
+
+### Env
+
+```bash
+export HALFBLOCK_PAINT_TIMINGS=1
+# optional:
+export HALFBLOCK_PAINT_STAMP_EVERY=60          # frames between writes
+export HALFBLOCK_PAINT_STAMP_PATH=~/.panda/packs/halfblock-paint-timings.json
+```
+
+### Stamp fields (honest publish unit)
+
+| Field | Meaning |
+|-------|---------|
+| `path` | `half-block` or `kitty` |
+| `phase` | `halfblock_paint` · `raycast` · `frame_total` |
+| `terminal` | `TERM` · `TERM_PROGRAM` · tmux · columns/lines env |
+| `cells` | cols · rows · cell_count |
+| `sample_px` | source w×h used for the last sample |
+| `frames` | N in ring for that phase |
+| `p50_ms` / `p95_ms` / `mean_ms` / `last_ms` | high-res fold |
+
+### API
+
+```rust
+use xai_grok_pager_render::render::halfblock::{
+    global_snapshot, write_global_stamp, paint_p50_p95_ms,
+    paint_stamp_snapshot, last_paint_timing, PaintPhase,
+};
+
+// After a /gboom session:
+let stamp = global_snapshot(PaintPhase::FrameTotal);
+let _path = write_global_stamp(PaintPhase::HalfblockPaint);
+
+// Sketch-compatible helpers (status line / ledger line):
+let last = last_paint_timing();                 // cells · path · micros
+let (p50, p95) = paint_p50_p95_ms().unwrap_or((0.0, 0.0));
+let json = paint_stamp_snapshot();              // feature_id · p50/p95 · honesty note
+```
+
+```bash
+# auto-write ~/.panda/packs/halfblock-paint-timings.json every 60 frames
+export HALFBLOCK_PAINT_TIMINGS=1
+# then play /gboom for a few seconds
+```
+
+Until a stamp file exists for a known terminal size, do **not** quote fps or ms/frame in public copy.
+Honest public line once stamped:
+
+```text
+half-block paint p50 ≈ X.X ms · p95 ≈ Y.Y ms
+(local truecolor TTY · feature fc-halfblock-tty-video)
+```
 
 ## Next iteration
 

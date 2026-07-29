@@ -387,10 +387,32 @@ impl GboomState {
             return false;
         }
         let (w, h) = crate::render::halfblock::sample_size_for_cells(area.width, area.height);
+        // Fold metrics: raycast → half-block paint → frame total (KBatch-style).
+        let t_frame = std::time::Instant::now();
+        let t_ray = std::time::Instant::now();
         if !self.render_rgb_frame(w as usize, h as usize) {
             return false;
         }
-        crate::render::halfblock::paint_rgb24(buf, area, &self.fb.pixels, w, h)
+        crate::render::halfblock::record_global(
+            crate::render::halfblock::PaintPhase::Raycast,
+            t_ray.elapsed(),
+            area.width,
+            area.height,
+            w,
+            h,
+        );
+        let ok = crate::render::halfblock::paint_rgb24(buf, area, &self.fb.pixels, w, h);
+        if ok {
+            crate::render::halfblock::record_global(
+                crate::render::halfblock::PaintPhase::FrameTotal,
+                t_frame.elapsed(),
+                area.width,
+                area.height,
+                w,
+                h,
+            );
+        }
+        ok
     }
 
     fn render_title_screen(&mut self) {

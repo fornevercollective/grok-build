@@ -44,6 +44,10 @@ pub struct DeferredStartupActions {
     pub prompt: Option<String>,
     pub open_dashboard: bool,
     pub pending_chat: bool,
+    /// After a session exists, open live demux (`/watch`) with this source
+    /// (channel name, URL, or empty string → VEVO default). Set by
+    /// `GROK_LIVE_WATCH` / launch-watch.sh so startup skips the welcome menu.
+    pub open_live_watch: Option<String>,
 }
 impl DeferredStartupActions {
     pub fn is_empty(&self) -> bool {

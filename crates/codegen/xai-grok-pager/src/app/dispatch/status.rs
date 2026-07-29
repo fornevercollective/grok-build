@@ -403,6 +403,9 @@ pub(super) fn dispatch_open_gboom(app: &mut AppView) -> Vec<Effect> {
     agent.image_load_rx = None;
     agent.video_viewer = None;
     agent.gy_tty = None;
+    agent.live_watch = None;
+    agent.timesync = None;
+    agent.maptrace = None;
     agent.gboom = Some(crate::gboom::GboomState::new());
     if detect_graphics_protocol() == GraphicsProtocol::None {
         // Owned toast — operators can see this is FC portable graphics, not a broken Kitty path.
@@ -427,12 +430,149 @@ pub(super) fn dispatch_open_gy_tty(app: &mut AppView, surface: &str) -> Vec<Effe
     agent.image_load_rx = None;
     agent.video_viewer = None;
     agent.gboom = None;
+    agent.live_watch = None;
+    agent.timesync = None;
+    agent.maptrace = None;
     agent.gy_tty = Some(crate::gy_tty::GyTtyState::new(surf));
     // Tools surface: PATH probe toast (OK path or install hint). Others: catalog toast.
     if surf == crate::gy_tty::Surface::Tools {
         agent.show_toast(&crate::gy_tty::probe_gy_cli().toast());
     } else {
         agent.show_toast(crate::gy_tty::TOAST_OPEN);
+    }
+    vec![]
+}
+
+/// Open fornevercollective live demux (`/watch [url]`) — yt-dlp + ffmpeg pipe
+/// painted via half-block (or Kitty) inside Grok.
+///
+/// Pop-out (external ffplay) is a separate action — see
+/// [`dispatch_popout_live_watch`] and the **`o`** key inside the modal.
+///
+/// If welcome/dashboard is active (no agent), creates a plain agent first
+/// (skips worktree Ask) so `/watch` never silently no-ops on the menu.
+pub(in crate::app::dispatch) fn dispatch_open_live_watch(
+    app: &mut AppView,
+    url: &str,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    if !matches!(app.active_view, ActiveView::Agent(_)) {
+        if !app.session_startup_allowed() {
+            app.deferred_startup.new_session = true;
+            app.deferred_startup.open_live_watch = Some(url.to_string());
+            return vec![];
+        }
+        // Skip worktree Ask modal — media wants the agent prompt immediately.
+        effects.extend(super::session::lifecycle::dispatch_new_session_inner(
+            app, None,
+        ));
+    }
+    let ActiveView::Agent(id) = app.active_view else {
+        return effects;
+    };
+    let Some(agent) = app.agents.get_mut(&id) else {
+        return effects;
+    };
+    // Exclusive with other media modals (shared focus + placement).
+    agent.image_viewer = None;
+    agent.image_load_rx = None;
+    agent.video_viewer = None;
+    agent.gboom = None;
+    agent.gy_tty = None;
+    agent.timesync = None;
+    agent.maptrace = None;
+    agent.live_watch = Some(crate::live_demux::LiveWatchState::open(url));
+    agent.show_toast(crate::live_demux::TOAST_OPEN);
+    effects
+}
+
+/// Pop `/watch` to an external `ffplay` OS window (first-class ability).
+///
+/// Does **not** open the half-block modal. Resolve + spawn run on a worker
+/// thread so the UI never blocks on yt-dlp. Window outlives the TUI session.
+///
+/// Slash: `/watch popout bloomberg` · `/watch out cnn` · `/watch vevo --popout`
+/// Camera (Zoom tiles): `/watch camout` · `/watch cameras` · `/watch mosaic`
+/// Modal: **`o`** stream · **`Y`** selfie cam · **`O`** all cams.
+pub(in crate::app::dispatch) fn dispatch_popout_live_watch(
+    app: &mut AppView,
+    url: &str,
+) -> Vec<Effect> {
+    // Smart route: camera tokens → local AVFoundation/v4l2 windows; else stream.
+    let toast = crate::live_demux::launch_popout_smart_async(url);
+    if let ActiveView::Agent(id) = app.active_view
+        && let Some(agent) = app.agents.get_mut(&id)
+    {
+        agent.show_toast(&toast);
+    } else {
+        // No agent yet — still launched; log for launch scripts / agents.
+        eprintln!("[live-demux] {toast}");
+    }
+    vec![]
+}
+
+/// Open fornevercollective timesync world clock (`/timesync`) — UTC/Zulu,
+/// unix/epoch/drift, USNO-style tiers, markets. Layout reflows every paint
+/// from the live terminal size (no stretch garbage).
+pub(super) fn dispatch_open_timesync(app: &mut AppView) -> Vec<Effect> {
+    let ActiveView::Agent(id) = app.active_view else {
+        return vec![];
+    };
+    let Some(agent) = app.agents.get_mut(&id) else {
+        return vec![];
+    };
+    agent.image_viewer = None;
+    agent.image_load_rx = None;
+    agent.video_viewer = None;
+    agent.gboom = None;
+    agent.gy_tty = None;
+    agent.live_watch = None;
+    agent.maptrace = None;
+    agent.timesync = Some(crate::timesync::TimesyncState::open());
+    agent.show_toast(crate::timesync::TOAST_OPEN);
+    vec![]
+}
+
+/// Open fornevercollective maptrace (`/map [target]`) — ASCII world map +
+/// traceroute hops inside Grok. Pop-out is a separate action.
+pub(in crate::app::dispatch) fn dispatch_open_map(
+    app: &mut AppView,
+    target: &str,
+) -> Vec<Effect> {
+    let ActiveView::Agent(id) = app.active_view else {
+        return vec![];
+    };
+    let Some(agent) = app.agents.get_mut(&id) else {
+        return vec![];
+    };
+    agent.image_viewer = None;
+    agent.image_load_rx = None;
+    agent.video_viewer = None;
+    agent.gboom = None;
+    agent.gy_tty = None;
+    agent.live_watch = None;
+    agent.timesync = None;
+    agent.maptrace = Some(crate::maptrace::MapState::open(target));
+    agent.show_toast(crate::maptrace::TOAST_OPEN);
+    vec![]
+}
+
+/// Pop `/map` to external maptrace TUI/web (first-class ability).
+///
+/// Slash: `/map popout 1.1.1.1` · `/map web example.com` · `/map out …`
+/// Modal: **`o`** (TUI) · **`w`** (web).
+pub(in crate::app::dispatch) fn dispatch_popout_map(
+    app: &mut AppView,
+    target: &str,
+    web: bool,
+) -> Vec<Effect> {
+    let toast = crate::maptrace::launch_popout_async(target, web);
+    if let ActiveView::Agent(id) = app.active_view
+        && let Some(agent) = app.agents.get_mut(&id)
+    {
+        agent.show_toast(&toast);
+    } else {
+        eprintln!("[maptrace] {toast}");
     }
     vec![]
 }

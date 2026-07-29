@@ -975,6 +975,32 @@ pub enum Action {
         /// Surface id: status|burst|wave|chat|pins|tools|stream|help
         surface: String,
     },
+    /// Open fornevercollective live demux player (`/watch [url]`).
+    OpenLiveWatch {
+        /// YouTube watch/playlist URL or other yt-dlp media URL.
+        url: String,
+    },
+    /// Pop `/watch` out to an external `ffplay` OS window (not TTY half-block).
+    ///
+    /// Triggered by `/watch popout …`, `/watch out …`, `/watch … --popout`.
+    /// Modal key **`o`** uses the same resolve path while the viewer is open.
+    PopOutLiveWatch {
+        /// Channel alias, free-text search, or yt-dlp URL (same as OpenLiveWatch).
+        url: String,
+    },
+    /// Open fornevercollective broadcast timesync world clock (`/timesync`).
+    OpenTimesync,
+    /// Open fornevercollective maptrace modal (`/map [target]`).
+    OpenMap {
+        /// Host or IP to traceroute (empty → default 1.1.1.1).
+        target: String,
+    },
+    /// Pop `/map` out to external maptrace TUI/web (first-class ability).
+    PopOutMap {
+        target: String,
+        /// Prefer web UI + browser over terminal maptrace.
+        web: bool,
+    },
     /// Suspend the TUI and open a configuration file in `$EDITOR`.
     SuspendForEditor {
         path: std::path::PathBuf,

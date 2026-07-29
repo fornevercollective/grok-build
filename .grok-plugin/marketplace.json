@@ -1,0 +1,57 @@
+{
+  "name": "fornevercollective",
+  "description": "fornevercollective Grok Build extensions — media suite (/watch /cam /clock /map), half-block TTY video, SpaceXAI-oriented ops surfaces. Third-party relative to xAI official marketplace.",
+  "owner": {
+    "name": "fornevercollective",
+    "url": "https://github.com/fornevercollective"
+  },
+  "homepage": "https://github.com/fornevercollective/grok-build",
+  "plugins": [
+    {
+      "name": "fc-media-suite",
+      "description": "Media wall: live demux /watch, /cam pop-out, /clock Zulu timesync, /map traceroute with Starbase honesty. Versioned install + doctor + update.",
+      "category": "media",
+      "version": "0.1.0",
+      "author": {
+        "name": "fornevercollective",
+        "url": "https://github.com/fornevercollective"
+      },
+      "homepage": "https://github.com/fornevercollective/grok-build/tree/main/plugins/fc-media-suite",
+      "keywords": [
+        "watch",
+        "clock",
+        "map",
+        "cam",
+        "half-block",
+        "live-demux",
+        "timesync",
+        "maptrace",
+        "starbase",
+        "sbx",
+        "spacex",
+        "spacexai",
+        "xai",
+        "grok",
+        "x.com",
+        "tesla",
+        "neuralink",
+        "fornevercollective"
+      ],
+      "domains": [
+        "x.com",
+        "twitter.com",
+        "youtube.com",
+        "spacex.com",
+        "x.ai",
+        "tesla.com",
+        "neuralink.com",
+        "github.com/fornevercollective"
+      ],
+      "tags": ["media", "ops", "tty", "fornevercollective"],
+      "source": {
+        "type": "local",
+        "path": "./plugins/fc-media-suite"
+      }
+    }
+  ]
+}

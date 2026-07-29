@@ -1717,6 +1717,70 @@ pub(crate) async fn run(
         }
     }
 
+    // Live-watch / media launch (`launch-watch.sh`, `GROK_LIVE_WATCH`,
+    // `GROK_NEW_SESSION_AT_STARTUP=1`): skip the welcome menu and land on an
+    // agent prompt (and optionally open `/watch` immediately). Without this,
+    // bare pager starts on Welcome where session-scoped `/watch`/`/gmux`
+    // either don't appear or silently no-op.
+    {
+        let live_watch = std::env::var("GROK_LIVE_WATCH").ok();
+        let live_popout = matches!(
+            std::env::var("GROK_LIVE_WATCH_POPOUT").as_deref(),
+            Ok("1") | Ok("true") | Ok("yes")
+        );
+        let force_session = std::env::var("GROK_NEW_SESSION_AT_STARTUP").as_deref() == Ok("1")
+            || live_watch.is_some()
+            || live_popout;
+        if force_session {
+            // SAFETY: pre-multithreaded app loop; one-shot consume like dashboard.
+            unsafe {
+                std::env::remove_var("GROK_NEW_SESSION_AT_STARTUP");
+                std::env::remove_var("GROK_LIVE_WATCH");
+                std::env::remove_var("GROK_LIVE_WATCH_POPOUT");
+            }
+            if !app.is_zdr_blocked() {
+                if app.session_startup_allowed() {
+                    // Always use plain agent (no welcome menu, no worktree Ask).
+                    let mut effs = if matches!(app.active_view, ActiveView::Welcome) {
+                        dispatch::startup_plain_session(&mut app)
+                    } else {
+                        vec![]
+                    };
+                    if let Some(src) = live_watch {
+                        if live_popout {
+                            // External ffplay — first-class pop-out ability.
+                            effs.extend(dispatch::dispatch(
+                                Action::PopOutLiveWatch { url: src },
+                                &mut app,
+                            ));
+                        } else {
+                            effs.extend(dispatch::dispatch(
+                                Action::OpenLiveWatch { url: src },
+                                &mut app,
+                            ));
+                        }
+                    } else if live_popout {
+                        effs.extend(dispatch::dispatch(
+                            Action::PopOutLiveWatch { url: String::new() },
+                            &mut app,
+                        ));
+                    }
+                    if process_effects(effs, &mut tasks, &mut app, &progress_tx) {
+                        return Ok(make_run_result(&app));
+                    }
+                    presenter.request_presentation(&mut app, terminal, false);
+                } else {
+                    // Auth / folder-trust still pending — drain after gate opens.
+                    app.deferred_startup.new_session = true;
+                    if let Some(src) = live_watch {
+                        // Pop-out is fire-and-forget; if still gated, fall back to TTY open.
+                        app.deferred_startup.open_live_watch = Some(src);
+                    }
+                }
+            }
+        }
+    }
+
     // Minimal (scrollback-native) mode has no welcome screen: the live region
     // only renders for an Agent view. If nothing above already started a
     // session (no resume / initial prompt / worktree / dashboard), open an

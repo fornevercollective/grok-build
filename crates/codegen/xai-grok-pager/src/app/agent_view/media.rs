@@ -648,6 +648,61 @@ impl AgentView {
         }
         InputOutcome::Changed
     }
+
+    // -- /watch live demux ------------------------------------------------------
+
+    /// Handle a key event in the `/watch` live demux modal.
+    pub(super) fn handle_live_watch_key(&mut self, key: &KeyEvent) -> InputOutcome {
+        let Some(ref mut watch) = self.live_watch else {
+            return InputOutcome::Unchanged;
+        };
+        match watch.handle_key(key) {
+            crate::live_demux::LiveWatchKeyOutcome::Close => {
+                xai_grok_shell::util::with_locked_stderr(|stderr| {
+                    let clear = PostFlush::from(overlay::clear_kitty());
+                    let _ = clear.write_to(stderr);
+                });
+                self.live_watch = None;
+            }
+            crate::live_demux::LiveWatchKeyOutcome::Changed => {}
+        }
+        InputOutcome::Changed
+    }
+
+    // -- /timesync world clock --------------------------------------------------
+
+    /// Handle a key event in the `/timesync` modal.
+    pub(super) fn handle_timesync_key(&mut self, key: &KeyEvent) -> InputOutcome {
+        let Some(ref mut clock) = self.timesync else {
+            return InputOutcome::Unchanged;
+        };
+        match clock.handle_key(key) {
+            crate::timesync::TimesyncKeyOutcome::Close => {
+                self.timesync = None;
+            }
+            crate::timesync::TimesyncKeyOutcome::Changed => {}
+        }
+        InputOutcome::Changed
+    }
+
+    // -- /map maptrace ----------------------------------------------------------
+
+    /// Handle a key event in the `/map` modal.
+    pub(super) fn handle_maptrace_key(&mut self, key: &KeyEvent) -> InputOutcome {
+        let Some(ref mut map) = self.maptrace else {
+            return InputOutcome::Unchanged;
+        };
+        match map.handle_key(key) {
+            crate::maptrace::MapKeyOutcome::Close => {
+                self.maptrace = None;
+            }
+            crate::maptrace::MapKeyOutcome::Changed => {}
+            crate::maptrace::MapKeyOutcome::Toast(msg) => {
+                self.show_toast(&msg);
+            }
+        }
+        InputOutcome::Changed
+    }
 }
 
 #[cfg(test)]

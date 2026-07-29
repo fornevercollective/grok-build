@@ -1,0 +1,43 @@
+{
+  "name": "fc-media-suite",
+  "version": "0.1.0",
+  "description": "fornevercollective media wall for Grok: /watch live demux, /cam PiP+pop-out, /clock Zulu timesync, /map traceroute (Starbase honesty). Half-block TTY first, external pop-out second. Requires fornevercollective grok-build binary with fc-* feature stamps.",
+  "author": {
+    "name": "fornevercollective",
+    "email": "dev@fornevercollective",
+    "url": "https://github.com/fornevercollective"
+  },
+  "homepage": "https://github.com/fornevercollective/grok-build/tree/main/plugins/fc-media-suite",
+  "repository": "https://github.com/fornevercollective/grok-build",
+  "license": "SEE LICENSE IN LICENSE (upstream xAI + fornevercollective contributions)",
+  "keywords": [
+    "watch",
+    "live-demux",
+    "half-block",
+    "camera",
+    "timesync",
+    "clock",
+    "map",
+    "maptrace",
+    "starbase",
+    "sbx",
+    "spacex",
+    "spacexai",
+    "xai",
+    "grok",
+    "x.com",
+    "twitter",
+    "tesla",
+    "neuralink",
+    "elon",
+    "fornevercollective",
+    "fc-live-demux-v1",
+    "fc-timesync-v1",
+    "fc-maptrace-v1",
+    "fc-halfblock-tty-video"
+  ],
+  "category": "media",
+  "skills": ["./skills"],
+  "commands": ["./commands"],
+  "hooks": "./hooks/hooks.json"
+}

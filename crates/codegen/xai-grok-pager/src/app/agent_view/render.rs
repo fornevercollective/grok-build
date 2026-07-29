@@ -734,6 +734,9 @@ impl AgentView {
                 || self.video_viewer.is_some()
                 || self.gboom.is_some()
                 || self.gy_tty.is_some()
+                || self.live_watch.is_some()
+                || self.timesync.is_some()
+                || self.maptrace.is_some()
                 || self.block_viewer.is_some()
                 || self.extensions_modal.is_some()
                 || self.agents_modal.is_some()
@@ -3667,6 +3670,129 @@ impl AgentView {
                 HintItem::new(key!(Esc), "quit"),
                 HintItem::new(key!(Tab), "cycle"),
                 HintItem::new(key!(' '), "ptt"),
+            ];
+            ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
+            self.pane_areas = layout.pane_areas();
+            return (None, prompt_post_flush);
+        }
+        if let Some(watch) = self.live_watch.as_mut() {
+            use crate::views::shortcuts_bar::HintItem;
+            let overlay_area = Rect {
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: layout.shortcuts.y.saturating_sub(area.y),
+            };
+            if let Some(popup_rect) = crate::live_demux::render_live_watch_overlay(
+                buf,
+                overlay_area,
+                watch,
+                theme.bg_base,
+                theme.text_primary,
+                theme.gray_dim,
+            ) {
+                let inner = ratatui::layout::Rect::new(
+                    popup_rect.x + 1,
+                    popup_rect.y + 1,
+                    popup_rect.width.saturating_sub(2),
+                    popup_rect.height.saturating_sub(3),
+                );
+                if inner.width >= 4 && inner.height >= 2 {
+                    // fornevercollective half-block (fc-live-demux-v1 + fc-halfblock-tty-video)
+                    let _ = watch.paint_half_blocks(buf, inner);
+                }
+            }
+            let play_label = if watch.playing() { "pause" } else { "play" };
+            let cam_label = if watch.camera_on() { "cam off" } else { "cam" };
+            let hints = if watch.search_focused() {
+                vec![
+                    HintItem::new(key!(Esc), "unfocus"),
+                    HintItem::new(key!(Enter), "load"),
+                    HintItem::new(key!(Tab), "complete"),
+                    HintItem::new(key!('/'), "search"),
+                    HintItem::new(key!('g'), "guide"),
+                ]
+            } else if watch.guide_open() {
+                vec![
+                    HintItem::new(key!(Esc), "close guide"),
+                    HintItem::new(key!(Up), "up"),
+                    HintItem::new(key!(Down), "down"),
+                    HintItem::new(key!(Enter), "tune"),
+                    HintItem::new(key!(Left), "filter−"),
+                    HintItem::new(key!(Right), "filter+"),
+                    HintItem::new(key!('1'), "news"),
+                    HintItem::new(key!('3'), "us"),
+                    HintItem::new(key!('a'), "a–z hop"),
+                ]
+            } else {
+                vec![
+                    HintItem::new(key!(Esc), "close"),
+                    HintItem::new(key!('/'), "search"),
+                    HintItem::new(key!('g'), "guide"),
+                    HintItem::new(key!(' '), play_label),
+                    HintItem::new(key!('n'), "next"),
+                    HintItem::new(key!('p'), "prev"),
+                    HintItem::new(key!('s'), "shuffle"),
+                    HintItem::new(key!('c'), cam_label),
+                    HintItem::new(key!('o'), "pop-out"),
+                    HintItem::new(key!('U'), "x-live"),
+                    HintItem::new(key!(Left), "−10s"),
+                    HintItem::new(key!(Right), "+10s"),
+                ]
+            };
+            ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
+            self.pane_areas = layout.pane_areas();
+            return (None, prompt_post_flush);
+        }
+        if let Some(clock) = self.timesync.as_mut() {
+            use crate::views::shortcuts_bar::HintItem;
+            let overlay_area = Rect {
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: layout.shortcuts.y.saturating_sub(area.y),
+            };
+            let _ = clock.tick();
+            clock.paint(
+                buf,
+                overlay_area,
+                theme.bg_base,
+                theme.text_primary,
+                theme.gray_dim,
+            );
+            let hints = vec![
+                HintItem::new(key!(Esc), "close"),
+                HintItem::new(key!('m'), "layout"),
+                HintItem::new(key!('r'), "reset Δ"),
+                HintItem::new(key!('n'), "ntp"),
+            ];
+            ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
+            self.pane_areas = layout.pane_areas();
+            return (None, prompt_post_flush);
+        }
+        if let Some(map) = self.maptrace.as_mut() {
+            use crate::views::shortcuts_bar::HintItem;
+            let overlay_area = Rect {
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: layout.shortcuts.y.saturating_sub(area.y),
+            };
+            let _ = map.tick();
+            let _ = crate::maptrace::render_map_overlay(
+                buf,
+                overlay_area,
+                map,
+                theme.bg_base,
+                theme.text_primary,
+                theme.gray_dim,
+            );
+            let hints = vec![
+                HintItem::new(key!(Esc), "close"),
+                HintItem::new(key!('o'), "pop-out"),
+                HintItem::new(key!('w'), "web"),
+                HintItem::new(key!('t'), "target"),
+                HintItem::new(key!('r'), "re-trace"),
             ];
             ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
             self.pane_areas = layout.pane_areas();
