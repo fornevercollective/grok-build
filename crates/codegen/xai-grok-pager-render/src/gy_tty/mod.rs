@@ -112,7 +112,7 @@ impl Surface {
             Self::Burst => "Orb demo · Space spawns external `gy burst` when on PATH",
             Self::Wave => "Audio level / walkie waveform (stub)",
             Self::Chat => "Mesh walkie chat lines (stub; room stays in gy)",
-            Self::Pins => "Multi-user pin rail (stub; gy pins-dock)",
+            Self::Pins => "Pin tiles · Space opens external gy pins-dock when on PATH",
             Self::Tools => "PATH probe + install/run copy (mesh stays in gy)",
             Self::Stream => "Binary .gyst / hexlum stream notes (stub)",
             Self::Help => "Keys + boundary rules",
@@ -225,11 +225,14 @@ impl GyTtyState {
                 }
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
-                // Always pulse the half-block demo.
+                // Always pulse half-block demos.
                 self.phase += 0.35;
-                // Burst surface: optional shell-out to external `gy burst` (mesh stays in gy).
+                // External mesh hooks (spawn only — never reimplement in Grok).
                 if self.surface == Surface::Burst {
                     return GyTtyKeyOutcome::Toast(try_spawn_gy_burst());
+                }
+                if self.surface == Surface::Pins {
+                    return GyTtyKeyOutcome::Toast(try_spawn_gy_pins());
                 }
             }
             // Tools surface: copy install (missing) or run lines (found).
@@ -238,11 +241,17 @@ impl GyTtyState {
             {
                 return GyTtyKeyOutcome::Copy(tools_clipboard_text());
             }
-            // Burst: y/c also copies `gy burst` run line (or install if missing).
+            // Burst: y/c copies `gy burst` run line (or install if missing).
             KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
                 if self.surface == Surface::Burst =>
             {
                 return GyTtyKeyOutcome::Copy(burst_clipboard_text());
+            }
+            // Pins: y/c copies pins-dock / grok deep-link lines.
+            KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
+                if self.surface == Surface::Pins =>
+            {
+                return GyTtyKeyOutcome::Copy(pins_clipboard_text());
             }
             _ => {}
         }
@@ -490,7 +499,7 @@ impl GyTtyState {
     }
 
     fn paint_pins(&self, buf: &mut Buffer, area: Rect, bg: Color, fg: Color, dim: Color) {
-        // Top: half-block pin tiles. Bottom: roster text.
+        // Top: half-block pin tiles. Bottom: roster + deep-link status.
         let tile_h = (area.height / 2).clamp(3, 8);
         let tiles = Rect::new(area.x, area.y, area.width, tile_h);
         paint_pins_rgb(buf, tiles, self.pin_ix, self.phase);
@@ -500,11 +509,47 @@ impl GyTtyState {
             area.width,
             area.height.saturating_sub(tile_h),
         );
-        let mut lines = vec![Line::from(Span::styled(
-            "glyph pins · placeholder  (live rail: gy pins-dock / gy grok)",
-            Style::default().fg(Color::Rgb(255, 200, 100)).bg(bg),
-        ))];
-        lines.push(Line::from(""));
+        let probe = probe_gy_cli();
+        let hook_on = gy_pins_hook_enabled();
+        let (status_line, status_fg) = match (probe.path.as_deref(), hook_on) {
+            (Some(p), true) => (
+                format!("Space → spawn `{p} pins-dock`  (external)"),
+                Color::Rgb(126, 200, 96),
+            ),
+            (Some(_), false) => (
+                "Space → visual only  (GY_PINS_HOOK=0)".into(),
+                Color::Rgb(235, 198, 82),
+            ),
+            (None, _) => (
+                "Space → visual · gy MISSING · /gy tools".into(),
+                Color::Rgb(235, 120, 90),
+            ),
+        };
+        let mut lines = vec![
+            Line::from(Span::styled(
+                "glyph pins · fornevercollective",
+                Style::default()
+                    .fg(Color::Rgb(255, 200, 100))
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::styled(
+                "catalog tiles in Grok · live rail in gy",
+                Style::default().fg(dim).bg(bg),
+            )),
+            Line::from(Span::styled(
+                status_line,
+                Style::default()
+                    .fg(status_fg)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::styled(
+                "y/c copy pins-dock · gy grok deep-link  ·  j/k select",
+                Style::default().fg(dim).bg(bg),
+            )),
+            Line::from(""),
+        ];
         for (i, (nick, note)) in MOCK_PINS.iter().enumerate() {
             let mark = if i == self.pin_ix { "▸" } else { " " };
             let style = if i == self.pin_ix {
@@ -893,6 +938,55 @@ pub fn try_spawn_gy_burst() -> String {
     }
 }
 
+/// Clipboard for `/gy pins` · y/c — pins-dock + gy grok deep-links.
+pub fn pins_clipboard_text() -> String {
+    match which_gy() {
+        Some(p) => format!(
+            "# fornevercollective · external glyph pins (mesh in gy)\n\
+             # Grok shows catalog tiles only — live rail is external\n\
+             {p} pins-dock\n\
+             {p} grok\n\
+             # disable Grok spawn:  export GY_PINS_HOOK=0\n"
+        ),
+        None => tools_clipboard_text(),
+    }
+}
+
+/// `GY_PINS_HOOK` — default **on**. Set `0` / `false` / `off` for visual-only pins.
+pub fn gy_pins_hook_enabled() -> bool {
+    match std::env::var("GY_PINS_HOOK") {
+        Ok(v) => {
+            let v = v.trim().to_ascii_lowercase();
+            !(v == "0" || v == "false" || v == "off" || v == "no")
+        }
+        Err(_) => true,
+    }
+}
+
+/// Space on pins: try spawn external `gy pins-dock` (fallback note for `gy grok`).
+/// Detached process only — no multi-user mesh inside Grok.
+pub fn try_spawn_gy_pins() -> String {
+    if !gy_pins_hook_enabled() {
+        return "pins pulse · hook off (GY_PINS_HOOK=0)".into();
+    }
+    let Some(path) = which_gy() else {
+        return "gy MISSING · /gy tools · y/c install  ·  tiles are visual only".into();
+    };
+    use std::process::{Command, Stdio};
+    match Command::new(&path)
+        .arg("pins-dock")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(_child) => format!("spawned {path} pins-dock · live rail in gy"),
+        Err(e) => format!(
+            "pins-dock spawn failed ({e}) · try: {path} pins-dock  or  {path} grok"
+        ),
+    }
+}
+
 fn which_gy() -> Option<String> {
     use std::path::PathBuf;
 
@@ -1157,5 +1251,31 @@ mod tests {
     fn burst_clipboard_mentions_burst_or_install() {
         let t = burst_clipboard_text();
         assert!(t.contains("burst") || t.contains("GrokYtalkY") || t.contains("gy"));
+    }
+
+    #[test]
+    fn pins_space_returns_toast() {
+        let mut state = GyTtyState::new(Surface::Pins);
+        let space = KeyEvent::from(KeyCode::Char(' '));
+        match state.handle_key(&space) {
+            GyTtyKeyOutcome::Toast(msg) => {
+                assert!(
+                    msg.contains("pins")
+                        || msg.contains("gy")
+                        || msg.contains("MISSING")
+                        || msg.contains("hook"),
+                    "unexpected toast: {msg}"
+                );
+            }
+            other => panic!("expected Toast, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pins_clipboard_mentions_dock_or_install() {
+        let t = pins_clipboard_text();
+        assert!(
+            t.contains("pins-dock") || t.contains("grok") || t.contains("GrokYtalkY") || t.contains("gy")
+        );
     }
 }

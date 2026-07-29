@@ -27,7 +27,7 @@
 | `burst` | **hook shipped** | Half-block orb · **Space/Enter** spawns external `gy burst` when on PATH · **y/c** copy · `GY_BURST_HOOK=0` opt-out |
 | `wave` | placeholder | Animated waveform bars |
 | `chat` | placeholder | Mock multi-user feed |
-| `pins` | placeholder | Mock pin tiles + roster |
+| `pins` | **hook shipped** | Catalog tiles · **Space** → external `gy pins-dock` · **y/c** copy · `GY_PINS_HOOK=0` opt-out · j/k select |
 | `tools` | **probe shipped** | PATH probe (`gy` / `~/.local/bin` / Homebrew) · **y/c** copy install *or* run lines · CLI map |
 | `stream` | placeholder | `.gyst` / hexlum notes · next-steps |
 | `help` | shipped | Keys + boundary |
@@ -38,10 +38,11 @@
 |-----|--------|
 | Tab / `[` `]` | Cycle surfaces |
 | `1`–`8` | Jump surface |
-| Space / Enter | Mock PTT pulse · **on burst:** also spawn external `gy burst` if on PATH |
+| Space / Enter | Pulse · **burst:** `gy burst` · **pins:** `gy pins-dock` (if on PATH) |
 | j/k | Chat scroll / pin select |
 | **y / c** (tools) | Copy install snippet (if missing) or run lines (if found) |
 | **y / c** (burst) | Copy `gy burst` run line (or install if missing) |
+| **y / c** (pins) | Copy `gy pins-dock` + `gy grok` deep-links |
 | Esc / q | Close |
 
 ### `/gy tools` — real hook (not stub)
@@ -75,12 +76,22 @@ cd /Volumes/qbitOS/00.dev/projects/grok-build
 # opt-out:  export GY_BURST_HOOK=0
 ```
 
+### `/gy pins` — Space → external pins-dock
+
+| Condition | Space / Enter |
+|-----------|----------------|
+| `gy` on PATH + hook on | Pulse tiles **and** detached `gy pins-dock` |
+| `GY_PINS_HOOK=0/false/off` | Pulse only |
+| `gy` missing | Pulse only · toast → `/gy tools` |
+
+Clipboard also lists `gy grok` (tmux pins-dock above Grok). Live unread / multi-user rail stays in **gy**.
+
 ## Next (real work, not stubs)
 
 1. ~~`/gy tools` PATH probe + copy install/run~~ **done**  
-2. ~~Burst Space → external `gy burst`~~ **done** (`try_spawn_gy_burst` · `GY_BURST_HOOK`)  
-3. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
-4. Pins: deep-link / open external `gy pins-dock` or plugin path  
+2. ~~Burst Space → external `gy burst`~~ **done**  
+3. ~~Pins Space → external `gy pins-dock`~~ **done** (`try_spawn_gy_pins` · `GY_PINS_HOOK`)  
+4. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
 5. Waveform: sample mic only if user opts in (never by default)
 
 ## Related

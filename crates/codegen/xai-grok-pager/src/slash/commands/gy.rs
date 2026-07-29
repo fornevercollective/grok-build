@@ -13,7 +13,7 @@ const SUBCOMMANDS: &[(&str, &str)] = &[
     ("burst", "Orb demo · Space → external gy burst when on PATH"),
     ("wave", "Waveform / walkie level placeholder"),
     ("chat", "Mesh chat rail placeholder"),
-    ("pins", "Glyph pins rail placeholder"),
+    ("pins", "Pin tiles · Space → external gy pins-dock when on PATH"),
     ("tools", "PATH probe · y/c copy install or run lines"),
     ("stream", ".gyst / binary stream notes"),
     ("help", "Keys + boundary rules"),
