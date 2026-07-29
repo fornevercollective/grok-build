@@ -238,9 +238,10 @@ const VIDEO_MAX_WIDTH: u32 = 640;
 /// Modal video viewer state.
 ///
 /// Holds pre-extracted frames and playback position. The rendering path
-/// reuses the same `post_flush_escapes` pipeline as the image viewer.
+/// reuses the same `post_flush_escapes` pipeline as the image viewer when
+/// Kitty/iTerm is available; otherwise frames paint as half-block cells.
 pub struct VideoViewerState {
-    /// Pre-extracted frames (PNG for Kitty, JPEG for iTerm2).
+    /// Pre-extracted frames (PNG for Kitty/half-block, JPEG for iTerm2).
     pub frames: Vec<Vec<u8>>,
     /// Current frame index.
     current_frame: usize,
@@ -257,13 +258,15 @@ pub struct VideoViewerState {
     pub duration_secs: f64,
     /// Display title (file name).
     pub title: Option<String>,
+    /// Decoded RGB24 cache for the half-block paint path: `(frame_idx, rgb, w, h)`.
+    rgb_cache: Option<(usize, Vec<u8>, u32, u32)>,
 }
 
 impl VideoViewerState {
     /// Minimal viewer for tests (pager and render unit tests); the real
-    /// `open_from_path` needs ffmpeg and a graphics-capable terminal, neither
-    /// available under `cargo test`. Public so dependent crates can construct
-    /// a viewer without pulling in decode/graphics.
+    /// `open_from_path` needs ffmpeg. Public so dependent crates can construct
+    /// a viewer without pulling in decode/graphics. Works with half-block
+    /// paint when the terminal has no image protocol.
     pub fn test_stub() -> Self {
         Self {
             frames: vec![Vec::new()],
@@ -275,6 +278,7 @@ impl VideoViewerState {
             video_height: 1,
             duration_secs: 0.0,
             title: None,
+            rgb_cache: None,
         }
     }
 
@@ -283,22 +287,21 @@ impl VideoViewerState {
     ///
     /// Extracts all frames upfront — for short videos (5–15s at 10fps)
     /// this is 50–150 frames and takes ~1–3 seconds.
+    ///
+    /// On terminals without Kitty/iTerm image protocols, frames are still
+    /// extracted as PNG and painted via half-block cells in the TUI.
     pub fn open_from_path(path: &std::path::Path) -> Option<Self> {
         use crate::terminal::image::{GraphicsProtocol, detect_graphics_protocol};
 
         let protocol = detect_graphics_protocol();
-        if protocol == GraphicsProtocol::None {
-            return None;
-        }
 
         let (width, height, duration, fps) = ffprobe_metadata(path)?;
         let target_fps = VIDEO_FPS.min(fps);
 
-        // PNG for Kitty (required), JPEG for iTerm2 (smaller).
+        // PNG for Kitty and half-block (decodeable RGB); JPEG for iTerm2 when enabled.
         let ext = match protocol {
-            GraphicsProtocol::Kitty => "png",
             GraphicsProtocol::ITerm2 => "jpg",
-            GraphicsProtocol::None => return None,
+            GraphicsProtocol::Kitty | GraphicsProtocol::None => "png",
         };
 
         let vf = if width > VIDEO_MAX_WIDTH {
@@ -349,6 +352,7 @@ impl VideoViewerState {
             duration_secs: duration,
             title: path.file_name().map(|n| n.to_string_lossy().into_owned()),
             frames,
+            rgb_cache: None,
         })
     }
 
@@ -396,6 +400,46 @@ impl VideoViewerState {
         &self.frames[self.current_frame]
     }
 
+    /// Decode the current frame to RGB24 for half-block paint. Cached per
+    /// frame index so 10 fps playback does not re-decode every draw.
+    pub fn current_frame_rgb(&mut self) -> Option<(&[u8], u32, u32)> {
+        if self.frames.is_empty() {
+            return None;
+        }
+        if let Some((idx, _, _, _)) = self.rgb_cache.as_ref()
+            && *idx == self.current_frame
+        {
+            let (_, rgb, w, h) = self.rgb_cache.as_ref()?;
+            return Some((rgb.as_slice(), *w, *h));
+        }
+        let data = self.current_frame_data();
+        if data.is_empty() {
+            return None;
+        }
+        let img = image::load_from_memory(data).ok()?.to_rgb8();
+        let (w, h) = img.dimensions();
+        let rgb = img.into_raw();
+        self.rgb_cache = Some((self.current_frame, rgb, w, h));
+        let (_, rgb, w, h) = self.rgb_cache.as_ref()?;
+        Some((rgb.as_slice(), *w, *h))
+    }
+
+    /// Paint the current frame into `area` as half-block cells (no image protocol).
+    pub fn paint_half_blocks(
+        &mut self,
+        buf: &mut ratatui::buffer::Buffer,
+        area: ratatui::layout::Rect,
+    ) -> bool {
+        // Warm RGB cache for the current frame index.
+        if self.current_frame_rgb().is_none() {
+            return false;
+        }
+        let Some((_, rgb, w, h)) = self.rgb_cache.as_ref() else {
+            return false;
+        };
+        crate::render::halfblock::paint_rgb24(buf, area, rgb, *w, *h)
+    }
+
     /// Current playback position in seconds.
     pub fn position_secs(&self) -> f64 {
         if self.fps <= 0.0 {
@@ -415,15 +459,14 @@ impl VideoViewerState {
 
 /// Extract a single poster frame from a video file via ffmpeg.
 /// Returns `(image_bytes, width, height)`. The image format depends on
-/// the active terminal protocol (PNG for Kitty, JPEG for iTerm2).
+/// the active terminal protocol (PNG for Kitty/half-block, JPEG for iTerm2).
 pub fn extract_poster_frame(path: &std::path::Path) -> Option<(Vec<u8>, u32, u32)> {
     use crate::terminal::image::{GraphicsProtocol, detect_graphics_protocol};
 
     let protocol = detect_graphics_protocol();
     let ext = match protocol {
-        GraphicsProtocol::Kitty => "png",
         GraphicsProtocol::ITerm2 => "jpg",
-        GraphicsProtocol::None => return None,
+        GraphicsProtocol::Kitty | GraphicsProtocol::None => "png",
     };
 
     // Try seeking to 1s for a representative frame; fall back to first frame.

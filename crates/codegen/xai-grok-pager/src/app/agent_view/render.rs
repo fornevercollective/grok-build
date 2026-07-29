@@ -3592,7 +3592,7 @@ impl AgentView {
             self.pane_areas = layout.pane_areas();
             return (None, prompt_post_flush);
         }
-        if let Some(ref viewer) = self.video_viewer {
+        if let Some(viewer) = self.video_viewer.as_mut() {
             use crate::terminal::image::{GraphicsProtocol, detect_graphics_protocol};
             use crate::views::shortcuts_bar::HintItem;
             let overlay_area = Rect {
@@ -3618,6 +3618,17 @@ impl AgentView {
                 ) {
                     prompt_post_flush = Some(esc.into());
                     video_escape_emitted = true;
+                } else {
+                    // Half-block fallback: any truecolor terminal, no Kitty needed.
+                    let inner = ratatui::layout::Rect::new(
+                        popup_rect.x + 1,
+                        popup_rect.y + 1,
+                        popup_rect.width.saturating_sub(2),
+                        popup_rect.height.saturating_sub(2),
+                    );
+                    if inner.width >= 4 && inner.height >= 2 {
+                        let _ = viewer.paint_half_blocks(buf, inner);
+                    }
                 }
                 if !video_escape_emitted && detect_graphics_protocol() == GraphicsProtocol::Kitty {
                     let clear = crate::terminal::overlay::clear_kitty();
@@ -3676,6 +3687,15 @@ impl AgentView {
                     {
                         prompt_post_flush = Some(esc.into());
                         gboom_escape_emitted = true;
+                    } else {
+                        // Half-block fallback when Kitty placement is unavailable.
+                        let inner = ratatui::layout::Rect::new(
+                            popup_rect.x + 1,
+                            popup_rect.y + 1,
+                            inner_cols,
+                            inner_rows,
+                        );
+                        let _ = gboom.paint_half_blocks(buf, inner);
                     }
                 }
             } else {

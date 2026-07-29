@@ -1,11 +1,13 @@
 //! `/gboom` easter egg: a tiny single-level raycaster shooter rendered in
-//! the terminal via the kitty graphics protocol.
+//! the terminal.
 //!
 //! Typing `/gboom` (and nothing else) opens a modal overlay — the same
-//! surface the imagine-video player uses — and streams PNG frames via
-//! per-frame kitty `a=T` retransmission at the ~30 fps animation tick. The
-//! simulation steps with wall-clock `dt`, so gameplay speed is independent
-//! of the achieved frame rate.
+//! surface the imagine-video player uses. Preferred paint path is Kitty
+//! graphics (PNG via post-flush `a=T` at ~30 fps). When the terminal has no
+//! image protocol, frames paint as truecolor half-block cells (`▀`) so the
+//! game still runs in Terminal.app / iTerm2 / plain tmux. The simulation
+//! steps with wall-clock `dt`, so gameplay speed is independent of the
+//! achieved frame rate.
 //!
 //! Controls: `W`/`↑` forward, `S`/`↓` back, `A`/`D` strafe, `←`/`→` turn,
 //! mouse move/drag aim (in-modal, Playing only), click or `Space`/`Enter`
@@ -88,6 +90,8 @@ pub struct GboomState {
     sim_gen: u64,
     fb: FrameBuffer,
     png: Vec<u8>,
+    /// `(sim_gen, w, h)` of the RGB currently in `fb`.
+    rgb_cached: Option<(u64, usize, usize)>,
     /// `(sim_gen, w, h)` of the cached PNG in `png`.
     cached: Option<(u64, usize, usize)>,
     /// Wall-clock time inside the current phase.
@@ -113,6 +117,7 @@ impl GboomState {
             sim_gen: 0,
             fb: FrameBuffer::new(),
             png: Vec::new(),
+            rgb_cached: None,
             cached: None,
             phase_time: 0.0,
             last_mouse_col: None,
@@ -304,6 +309,30 @@ impl GboomState {
         (w, h)
     }
 
+    /// Render the current scene into the internal RGB framebuffer at `(w, h)`.
+    /// Returns `false` if the size is unusable.
+    fn render_rgb_frame(&mut self, w: usize, h: usize) -> bool {
+        if w < 8 || h < 8 {
+            return false;
+        }
+        if self.rgb_cached == Some((self.sim_gen, w, h)) {
+            return true;
+        }
+        self.fb.resize(w, h);
+        match self.phase {
+            Phase::Title => self.render_title_screen(),
+            Phase::Playing => self.renderer.render_game(&mut self.fb, &self.game),
+            Phase::Won => self.render_end_screen("VICTORY!", [255, 214, 80]),
+            Phase::Dead => self.render_end_screen("YOU DIED", assets::GBOOM_RED),
+        }
+        self.rgb_cached = Some((self.sim_gen, w, h));
+        // Size/gen changed — drop any PNG that no longer matches the buffer.
+        if self.cached != Some((self.sim_gen, w, h)) {
+            self.cached = None;
+        }
+        true
+    }
+
     /// Render the current frame at `(w, h)` and return it PNG-encoded.
     /// Cached per `(sim_gen, w, h)` so extra draws between ticks are free.
     pub fn frame_png(&mut self, w: usize, h: usize) -> Option<&[u8]> {
@@ -314,12 +343,8 @@ impl GboomState {
             return Some(&self.png);
         }
 
-        self.fb.resize(w, h);
-        match self.phase {
-            Phase::Title => self.render_title_screen(),
-            Phase::Playing => self.renderer.render_game(&mut self.fb, &self.game),
-            Phase::Won => self.render_end_screen("VICTORY!", [255, 214, 80]),
-            Phase::Dead => self.render_end_screen("YOU DIED", assets::GBOOM_RED),
+        if !self.render_rgb_frame(w, h) {
+            return None;
         }
 
         self.png.clear();
@@ -341,6 +366,25 @@ impl GboomState {
         }
         self.cached = Some((self.sim_gen, w, h));
         Some(&self.png)
+    }
+
+    /// Paint the current frame into `area` as truecolor half-block cells.
+    ///
+    /// Used when the terminal has no Kitty/iTerm image protocol. Samples at
+    /// one pixel per column and two per cell-row for clean `▀` pairing.
+    pub fn paint_half_blocks(
+        &mut self,
+        buf: &mut ratatui::buffer::Buffer,
+        area: ratatui::layout::Rect,
+    ) -> bool {
+        if area.width < 4 || area.height < 2 {
+            return false;
+        }
+        let (w, h) = crate::render::halfblock::sample_size_for_cells(area.width, area.height);
+        if !self.render_rgb_frame(w as usize, h as usize) {
+            return false;
+        }
+        crate::render::halfblock::paint_rgb24(buf, area, &self.fb.pixels, w, h)
     }
 
     fn render_title_screen(&mut self) {
@@ -464,6 +508,21 @@ mod tests {
         assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
         let dims = crate::prompt_images::decode_image_dimensions(&png).expect("decodable");
         assert_eq!(dims, (320, 200));
+    }
+
+    #[test]
+    fn paint_half_blocks_fills_cells() {
+        use ratatui::buffer::Buffer;
+        use ratatui::layout::Rect;
+        let mut state = GboomState::new();
+        state.tick();
+        let area = Rect::new(0, 0, 40, 12);
+        let mut buf = Buffer::empty(area);
+        assert!(state.paint_half_blocks(&mut buf, area));
+        assert_eq!(
+            buf[(0, 0)].symbol(),
+            crate::render::halfblock::HALF_BLOCK
+        );
     }
 
     #[test]

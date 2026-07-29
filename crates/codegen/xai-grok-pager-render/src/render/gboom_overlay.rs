@@ -1,7 +1,7 @@
 //! `/gboom` easter-egg overlay chrome (border, title, HUD bar).
 //!
-//! The game frame itself is rendered via post-flush kitty escape sequences
-//! by the caller, matching the image/video viewer pattern.
+//! The game frame itself is painted by the caller: Kitty post-flush escapes
+//! when available, otherwise truecolor half-block cells in this buffer.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
