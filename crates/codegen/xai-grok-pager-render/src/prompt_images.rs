@@ -239,7 +239,8 @@ const VIDEO_MAX_WIDTH: u32 = 640;
 ///
 /// Holds pre-extracted frames and playback position. The rendering path
 /// reuses the same `post_flush_escapes` pipeline as the image viewer when
-/// Kitty/iTerm is available; otherwise frames paint as half-block cells.
+/// Kitty/iTerm is available; otherwise frames paint via
+/// **fornevercollective** [`crate::render::halfblock`] (`fc-halfblock-tty-video`).
 pub struct VideoViewerState {
     /// Pre-extracted frames (PNG for Kitty/half-block, JPEG for iTerm2).
     pub frames: Vec<Vec<u8>>,
@@ -289,7 +290,8 @@ impl VideoViewerState {
     /// this is 50–150 frames and takes ~1–3 seconds.
     ///
     /// On terminals without Kitty/iTerm image protocols, frames are still
-    /// extracted as PNG and painted via half-block cells in the TUI.
+    /// extracted as PNG and painted via **fornevercollective** half-block
+    /// cells ([`crate::render::halfblock`]) — portable TTY video, our design.
     pub fn open_from_path(path: &std::path::Path) -> Option<Self> {
         use crate::terminal::image::{GraphicsProtocol, detect_graphics_protocol};
 
@@ -425,6 +427,8 @@ impl VideoViewerState {
     }
 
     /// Paint the current frame into `area` as half-block cells (no image protocol).
+    ///
+    /// **fornevercollective** [`crate::render::halfblock`] portable path.
     pub fn paint_half_blocks(
         &mut self,
         buf: &mut ratatui::buffer::Buffer,

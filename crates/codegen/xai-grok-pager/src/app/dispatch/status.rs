@@ -376,14 +376,19 @@ pub(super) fn dispatch_show_tasks(app: &mut AppView) -> Vec<Effect> {
 }
 
 /// Open the hidden `/gboom` easter egg as a modal over the active agent
-/// view. Kitty graphics when available; otherwise truecolor half-block
-/// cells so the game runs in any terminal (Terminal.app, iTerm2, tmux).
-/// On session-less surfaces (dashboard, welcome) this is a silent no-op.
+/// view.
 ///
+/// **Paint ladder (fornevercollective):**
+/// 1. Kitty / iTerm2 image protocol when the terminal supports it  
+/// 2. [`crate::render::halfblock`] portable `▀` cells otherwise  
+///    (`fc-halfblock-tty-video` — designed & implemented on this fork)
+///
+/// On session-less surfaces (dashboard, welcome) this is a silent no-op.
 /// Targets the top-level agent view (where the prompt lives), not a
 /// focused subagent view: the modal's tick/draw plumbing runs on the
 /// top-level view, mirroring the video viewer.
 pub(super) fn dispatch_open_gboom(app: &mut AppView) -> Vec<Effect> {
+    use crate::render::halfblock;
     use crate::terminal::image::{GraphicsProtocol, detect_graphics_protocol};
     let ActiveView::Agent(id) = app.active_view else {
         return vec![];
@@ -399,7 +404,8 @@ pub(super) fn dispatch_open_gboom(app: &mut AppView) -> Vec<Effect> {
     agent.video_viewer = None;
     agent.gboom = Some(crate::gboom::GboomState::new());
     if detect_graphics_protocol() == GraphicsProtocol::None {
-        agent.show_toast("GBOOM \u{2014} half-block mode (no Kitty graphics)");
+        // Owned toast — operators can see this is FC portable graphics, not a broken Kitty path.
+        agent.show_toast(halfblock::TOAST_GBOOM_FALLBACK);
     }
     vec![]
 }

@@ -1,11 +1,37 @@
-//! Half-block (`▀`) terminal graphics — pixel frames without Kitty/iTerm protocols.
+//! # fornevercollective · portable half-block TTY graphics
 //!
-//! Each terminal cell maps to **two vertical source pixels**: upper → foreground,
-//! lower → background, glyph U+2580 (`▀`). Works in Terminal.app, iTerm2, tmux,
-//! and any truecolor terminal — the same idea GrokYtalkY uses for in-TTY video.
+//! **Owner:** [fornevercollective](https://github.com/fornevercollective)  
+//! **Repo:** `fornevercollective/grok-build` (not upstream xAI)  
+//! **Feature id:** [`FEATURE_ID`]  
 //!
-//! Used by `/gboom` and the video modal when `detect_graphics_protocol()` is
-//! [`GraphicsProtocol::None`](crate::terminal::image::GraphicsProtocol::None).
+//! Paint RGB (or encoded PNG/JPEG) frames into a ratatui buffer using the
+//! upper half-block glyph `▀` (U+2580): **foreground = top pixel**,
+//! **background = bottom pixel** per cell. Two vertical source samples → one
+//! terminal row. Works in **any truecolor** terminal — Terminal.app, iTerm2,
+//! tmux, SSH — **without** Kitty or iTerm2 image protocols.
+//!
+//! ## Design lineage (ours)
+//!
+//! Same *class* of in-TTY media as **GrokYtalkY** half-block / hexlum video
+//! (`fornevercollective/GrokYtalkY`), implemented here for:
+//!
+//! - `/gboom` easter-egg raycaster frames  
+//! - inline agent **video modal** frames  
+//!
+//! This is a **fornevercollective** design + implementation on the grok-build
+//! fork. Upstream xAI grok-build does not define this portable tier.
+//!
+//! ## Quality ladder (honest)
+//!
+//! 1. **Kitty / iTerm2** image protocol — high quality (preferred when present)  
+//! 2. **This module** — portable half-block fallback (CPU-capped sample size)  
+//!
+//! Half-block is not a claim of full-HD terminal video; it is **reach**.
+//!
+//! ## Identity constants
+//!
+//! Call sites and toasts should use [`FEATURE_LABEL`] / [`FEATURE_ID`] so
+//! operators can see the path is **ours**, not a silent Kitty failure.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -13,6 +39,27 @@ use ratatui::style::{Color, Style};
 use ratatui::text::Span;
 
 use crate::render::safe_buf::SafeBuf;
+
+// ── fornevercollective identity ──────────────────────────────────────────
+
+/// Org that designs and ships this portable graphics tier.
+pub const ORIGIN: &str = "fornevercollective";
+
+/// Stable feature id (logs, docs, support).
+pub const FEATURE_ID: &str = "fc-halfblock-tty-video";
+
+/// Short human label for toasts / HUD.
+pub const FEATURE_LABEL: &str = "fornevercollective half-block";
+
+/// Toast when `/gboom` opens without Kitty-class graphics.
+pub const TOAST_GBOOM_FALLBACK: &str =
+    "GBOOM · fornevercollective half-block (any truecolor TTY)";
+
+/// One-line design credit for docs / `--version` style surfaces.
+pub const DESIGN_CREDIT: &str =
+    "fornevercollective · half-block ▀ TTY frames · gboom + inline video · grok-build fork";
+
+// ── glyph / caps ─────────────────────────────────────────────────────────
 
 /// Upper half-block character (FG = top pixel, BG = bottom pixel).
 pub const HALF_BLOCK: &str = "\u{2580}";
@@ -26,6 +73,9 @@ pub const MAX_SAMPLE_H: u32 = 160;
 ///
 /// `rgb` is row-major `width * height * 3`. Returns `false` if dimensions or
 /// buffer length are unusable.
+///
+/// # fornevercollective
+/// Portable paint path for [`FEATURE_ID`].
 pub fn paint_rgb24(buf: &mut Buffer, area: Rect, rgb: &[u8], width: u32, height: u32) -> bool {
     if area.width == 0 || area.height == 0 || width == 0 || height == 0 {
         return false;
@@ -100,6 +150,14 @@ mod tests {
     use super::*;
     use ratatui::buffer::Buffer;
     use ratatui::layout::Rect;
+
+    #[test]
+    fn identity_is_fornevercollective() {
+        assert_eq!(ORIGIN, "fornevercollective");
+        assert!(FEATURE_ID.starts_with("fc-"));
+        assert!(FEATURE_LABEL.contains("fornevercollective"));
+        assert!(TOAST_GBOOM_FALLBACK.contains("fornevercollective"));
+    }
 
     #[test]
     fn paints_two_scanlines_into_one_cell() {

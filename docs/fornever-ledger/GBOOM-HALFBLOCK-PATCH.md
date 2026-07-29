@@ -1,27 +1,60 @@
-# GBOOM + video half-block patch
+# fornevercollective · GBOOM + TTY video half-block
 
-**Branch:** `patch/gboom-halfblock-video`  
-**Goal:** Run `/gboom` and in-terminal video on **any** truecolor terminal — not only Kitty/Ghostty/WezTerm — without opening a second window.
+| | |
+|--|--|
+| **Owner** | **fornevercollective** |
+| **Repo** | https://github.com/fornevercollective/grok-build |
+| **Branch** | `patch/gboom-halfblock-video` |
+| **Feature id** | `fc-halfblock-tty-video` |
+| **Module** | `xai-grok-pager-render::render::halfblock` |
+| **Not** | Upstream xAI-only Kitty path · not a cloud stream product |
 
-## What changed
+## Design credit
+
+**Designed and implemented by fornevercollective** on the grok-build fork so that:
+
+1. **`/gboom`** runs on **any truecolor terminal** (Terminal.app, iTerm2, tmux, SSH).  
+2. **Inline video** (agent media modal) plays the same way when Kitty/iTerm image protocol is missing.  
+3. Kitty/iTerm remains the **high-quality tier** when present — half-block is the **portable fallback**, not a downgrade of the protocol path.
+
+**Lineage:** same *class* of in-TTY graphics as **GrokYtalkY** half-block / hexlum video  
+(`fornevercollective/GrokYtalkY`). GY mesh cast is **not** required to play.
+
+**Identity constants (code):**
+
+```text
+ORIGIN          = "fornevercollective"
+FEATURE_ID      = "fc-halfblock-tty-video"
+FEATURE_LABEL   = "fornevercollective half-block"
+TOAST_GBOOM_FALLBACK = "GBOOM · fornevercollective half-block (any truecolor TTY)"
+```
+
+## What ships
 
 | Area | Behavior |
 |------|----------|
-| **`/gboom` open** | Always opens on the agent view. Kitty when available; else half-block (`▀`) + toast *“half-block mode”*. |
-| **GBOOM paint** | Prefer Kitty PNG post-flush; on failure → RGB raycast → half-block cells in the popup. |
-| **Video modal** | `open_from_path` no longer requires a graphics protocol. Frames extract as PNG; Kitty placement if possible, else half-block decode+paint. |
-| **Poster frames** | PNG extract works with `GraphicsProtocol::None` (for half-block / future use). |
+| **`/gboom` open** | Always opens on the agent view. Kitty when available; else half-block + **owned** toast. |
+| **GBOOM paint** | Prefer Kitty PNG post-flush; on failure → RGB raycast → half-block cells. |
+| **Video modal** | `open_from_path` does not require a graphics protocol. Frames extract as PNG; Kitty if possible, else half-block. |
+| **Poster frames** | PNG extract works with `GraphicsProtocol::None`. |
 
-## Modules
+## Modules (ours)
 
-- `crates/codegen/xai-grok-pager-render/src/render/halfblock.rs` — RGB24 / encoded → `▀` cells  
-- `gboom::GboomState::paint_half_blocks`  
-- `prompt_images::VideoViewerState::paint_half_blocks` / `current_frame_rgb`  
-- Wire-up in `xai-grok-pager` agent render + `dispatch_open_gboom`
+| Path | Role |
+|------|------|
+| `crates/.../render/halfblock.rs` | **FC** RGB24 / encoded → `▀` cells + identity constants |
+| `gboom::GboomState::paint_half_blocks` | Game frames → half-block |
+| `prompt_images::VideoViewerState::paint_half_blocks` | Video frames → half-block |
+| `dispatch_open_gboom` | Toast uses `halfblock::TOAST_GBOOM_FALLBACK` |
+| agent_view render | Fallback paint when protocol placement fails |
 
-## Relation to GrokYtalkY
+## Honesty
 
-Same **in-TTY graphics idea** as GY half-block / hexlum (no Kitty). Mesh / `gy grok` / phone cast is **not** required to play. Optional future: publish gboom frames as `.gyst` to a local hub for spectators.
+| Is | Is not |
+|----|--------|
+| Portable in-TTY motion for demos + easter egg | Broadcast streaming / multi-user CDN |
+| Reach for non-Kitty terminals | Full-HD terminal video claim |
+| Fork differentiator for **fornevercollective/grok-build** | Upstream xAI default |
 
 ## Try it
 
@@ -30,16 +63,25 @@ cd /Volumes/qbitOS/00.dev/projects/grok-build
 cargo run -p xai-grok-pager-bin   # or your usual binary package
 # in the TUI:
 /gboom
+# Expect toast if no Kitty: "GBOOM · fornevercollective half-block …"
 ```
 
-Video: open a media path that already uses the inline video viewer (Play control) — works without Kitty once frames decode.
+Video: open a media path that uses the inline video viewer (Play) — works without Kitty once frames decode.
 
 ## Tests
 
 ```bash
-cargo test -p xai-grok-pager-render --lib -- halfblock paint_half_blocks
+cargo test -p xai-grok-pager-render --lib -- halfblock
 cargo test -p xai-grok-pager-render --lib gboom::
 cargo check -p xai-grok-pager
+```
+
+## Publish (our remote only)
+
+```bash
+git push -u origin patch/gboom-halfblock-video
+# PR into fornevercollective/grok-build main when ready
+# Do not present as upstream xAI work
 ```
 
 ## Controls (unchanged)

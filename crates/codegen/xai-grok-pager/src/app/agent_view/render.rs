@@ -3619,7 +3619,7 @@ impl AgentView {
                     prompt_post_flush = Some(esc.into());
                     video_escape_emitted = true;
                 } else {
-                    // Half-block fallback: any truecolor terminal, no Kitty needed.
+                    // fornevercollective half-block (fc-halfblock-tty-video): any truecolor TTY.
                     let inner = ratatui::layout::Rect::new(
                         popup_rect.x + 1,
                         popup_rect.y + 1,
@@ -3688,7 +3688,7 @@ impl AgentView {
                         prompt_post_flush = Some(esc.into());
                         gboom_escape_emitted = true;
                     } else {
-                        // Half-block fallback when Kitty placement is unavailable.
+                        // fornevercollective half-block when Kitty placement is unavailable.
                         let inner = ratatui::layout::Rect::new(
                             popup_rect.x + 1,
                             popup_rect.y + 1,

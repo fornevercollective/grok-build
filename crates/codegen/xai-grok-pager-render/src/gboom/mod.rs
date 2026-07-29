@@ -2,12 +2,17 @@
 //! the terminal.
 //!
 //! Typing `/gboom` (and nothing else) opens a modal overlay — the same
-//! surface the imagine-video player uses. Preferred paint path is Kitty
-//! graphics (PNG via post-flush `a=T` at ~30 fps). When the terminal has no
-//! image protocol, frames paint as truecolor half-block cells (`▀`) so the
-//! game still runs in Terminal.app / iTerm2 / plain tmux. The simulation
-//! steps with wall-clock `dt`, so gameplay speed is independent of the
-//! achieved frame rate.
+//! surface the imagine-video player uses.
+//!
+//! ## Paint ladder (fornevercollective)
+//!
+//! 1. **Kitty** graphics (PNG via post-flush `a=T` at ~30 fps) when available  
+//! 2. **Portable half-block** [`crate::render::halfblock`] (`▀` cells) —
+//!    **fornevercollective** design + impl (`fc-halfblock-tty-video`) so the
+//!    game runs in Terminal.app / iTerm2 / plain tmux without image protocols  
+//!
+//! Simulation steps with wall-clock `dt`, so gameplay speed is independent of
+//! the achieved frame rate.
 //!
 //! Controls: `W`/`↑` forward, `S`/`↓` back, `A`/`D` strafe, `←`/`→` turn,
 //! mouse move/drag aim (in-modal, Playing only), click or `Space`/`Enter`
@@ -370,8 +375,9 @@ impl GboomState {
 
     /// Paint the current frame into `area` as truecolor half-block cells.
     ///
-    /// Used when the terminal has no Kitty/iTerm image protocol. Samples at
-    /// one pixel per column and two per cell-row for clean `▀` pairing.
+    /// **fornevercollective** portable path ([`crate::render::halfblock`]) when
+    /// Kitty/iTerm image protocol is unavailable. Samples at one pixel per
+    /// column and two per cell-row for clean `▀` pairing.
     pub fn paint_half_blocks(
         &mut self,
         buf: &mut ratatui::buffer::Buffer,

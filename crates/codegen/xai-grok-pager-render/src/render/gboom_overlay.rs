@@ -1,7 +1,8 @@
 //! `/gboom` easter-egg overlay chrome (border, title, HUD bar).
 //!
-//! The game frame itself is painted by the caller: Kitty post-flush escapes
-//! when available, otherwise truecolor half-block cells in this buffer.
+//! The game frame itself is painted by the caller:
+//! - Kitty post-flush escapes when available  
+//! - else **fornevercollective** half-block cells (`render::halfblock`)
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -50,13 +51,14 @@ pub fn render_gboom_overlay(
         .render(popup_rect, buf);
 
     // Title centered in the top border, in the iconic logo red.
-    let title = " GBOOM ";
+    // "fc" marks fornevercollective portable path when operators screenshot HUD.
+    let title = " GBOOM \u{00b7} fc ";
     let [r, g, b] = crate::gboom::GBOOM_RED;
     let title_style = Style::default()
         .fg(Color::Rgb(r, g, b))
         .bg(bg)
         .add_modifier(Modifier::BOLD);
-    let tw = title.len() as u16;
+    let tw = title.chars().count() as u16;
     let tx = popup_rect.x + (popup_rect.width.saturating_sub(tw)) / 2;
     buf.set_span_safe(tx, popup_rect.y, &Span::styled(title, title_style), tw);
 
