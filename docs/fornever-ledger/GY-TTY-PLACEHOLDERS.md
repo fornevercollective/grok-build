@@ -24,7 +24,7 @@
 | `/gy …` | Status | What you see |
 |---------|--------|----------------|
 | `status` | shipped catalog | Index of all surfaces + half-block credit |
-| `burst` | placeholder | Animated half-block orb · mock PTT |
+| `burst` | **hook shipped** | Half-block orb · **Space/Enter** spawns external `gy burst` when on PATH · **y/c** copy · `GY_BURST_HOOK=0` opt-out |
 | `wave` | placeholder | Animated waveform bars |
 | `chat` | placeholder | Mock multi-user feed |
 | `pins` | placeholder | Mock pin tiles + roster |
@@ -38,9 +38,10 @@
 |-----|--------|
 | Tab / `[` `]` | Cycle surfaces |
 | `1`–`8` | Jump surface |
-| Space / Enter | Mock PTT pulse |
+| Space / Enter | Mock PTT pulse · **on burst:** also spawn external `gy burst` if on PATH |
 | j/k | Chat scroll / pin select |
 | **y / c** (tools) | Copy install snippet (if missing) or run lines (if found) |
+| **y / c** (burst) | Copy `gy burst` run line (or install if missing) |
 | Esc / q | Close |
 
 ### `/gy tools` — real hook (not stub)
@@ -53,24 +54,33 @@
 Toast on open: `gy OK · <path>` or `gy MISSING · y/c copy install`.  
 Still **zero mesh reimplementation** — detect + catalog + clipboard only.
 
+### `/gy burst` — Space → external hook
+
+| Condition | Space / Enter |
+|-----------|----------------|
+| `gy` on PATH + hook on | Pulse orb **and** detached `gy burst` (stdio null) |
+| `GY_BURST_HOOK=0/false/off` | Pulse only |
+| `gy` missing | Pulse only · toast → `/gy tools` |
+
+Grok paints the orb; **mesh TX stays in `gy`**.
+
 ## Try it
 
 ```bash
 cd /Volumes/qbitOS/00.dev/projects/grok-build
 ./target/debug/xai-grok-pager
 # then:
-/gy
-/gy burst
-/gy wave
-/gy tools
+/gy tools          # PATH probe
+/gy burst          # Space → gy burst if installed
+# opt-out:  export GY_BURST_HOOK=0
 ```
 
 ## Next (real work, not stubs)
 
-1. ~~`/gy tools` PATH probe + copy install/run~~ **done** (`probe_gy_cli` · y/c)  
-2. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
-3. Burst: wire Space hold → optional shell-out or plugin hook to `gy burst`  
-4. Pins: plugin `gy-glyph-pins` already exists — deep-link from `/gy pins`  
+1. ~~`/gy tools` PATH probe + copy install/run~~ **done**  
+2. ~~Burst Space → external `gy burst`~~ **done** (`try_spawn_gy_burst` · `GY_BURST_HOOK`)  
+3. Optional: publish gboom/video frames as `type:gyst` to local hub when `GY_HUB` set  
+4. Pins: deep-link / open external `gy pins-dock` or plugin path  
 5. Waveform: sample mic only if user opts in (never by default)
 
 ## Related

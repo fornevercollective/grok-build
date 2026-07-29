@@ -10,7 +10,7 @@ use crate::slash::command::{AppCtx, ArgItem, CommandExecCtx, CommandResult, Slas
 /// Subcommand name/description pairs (single source for run + suggestions).
 const SUBCOMMANDS: &[(&str, &str)] = &[
     ("status", "Catalog of GY TTY surfaces + shipped half-block tier"),
-    ("burst", "Burst orb placeholder (PTT visual)"),
+    ("burst", "Orb demo · Space → external gy burst when on PATH"),
     ("wave", "Waveform / walkie level placeholder"),
     ("chat", "Mesh chat rail placeholder"),
     ("pins", "Glyph pins rail placeholder"),

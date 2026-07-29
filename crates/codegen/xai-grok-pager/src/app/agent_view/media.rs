@@ -641,6 +641,10 @@ impl AgentView {
                 // Install or run snippet — external `gy` only; no mesh reimplementation.
                 self.copy_to_clipboard(&text);
             }
+            crate::gy_tty::GyTtyKeyOutcome::Toast(msg) => {
+                // e.g. external `gy burst` spawn result
+                self.show_toast(&msg);
+            }
         }
         InputOutcome::Changed
     }

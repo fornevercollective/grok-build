@@ -109,7 +109,7 @@ impl Surface {
     pub fn blurb(self) -> &'static str {
         match self {
             Self::Status => "Placeholder index + shipped half-block tier",
-            Self::Burst => "Siri-sized PTT face orb (stub; mesh in gy burst)",
+            Self::Burst => "Orb demo · Space spawns external `gy burst` when on PATH",
             Self::Wave => "Audio level / walkie waveform (stub)",
             Self::Chat => "Mesh walkie chat lines (stub; room stays in gy)",
             Self::Pins => "Multi-user pin rail (stub; gy pins-dock)",
@@ -145,6 +145,8 @@ pub enum GyTtyKeyOutcome {
     Changed,
     /// Copy text to clipboard / backup file (install or run snippet).
     Copy(String),
+    /// Show a short toast (e.g. external `gy burst` spawn result).
+    Toast(String),
 }
 
 /// Modal panel state — tickable half-block demos + text stubs.
@@ -223,14 +225,24 @@ impl GyTtyState {
                 }
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
-                // Placeholder PTT pulse — just bump phase for visual.
+                // Always pulse the half-block demo.
                 self.phase += 0.35;
+                // Burst surface: optional shell-out to external `gy burst` (mesh stays in gy).
+                if self.surface == Surface::Burst {
+                    return GyTtyKeyOutcome::Toast(try_spawn_gy_burst());
+                }
             }
             // Tools surface: copy install (missing) or run lines (found).
             KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
                 if self.surface == Surface::Tools =>
             {
                 return GyTtyKeyOutcome::Copy(tools_clipboard_text());
+            }
+            // Burst: y/c also copies `gy burst` run line (or install if missing).
+            KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('c') | KeyCode::Char('C')
+                if self.surface == Surface::Burst =>
+            {
+                return GyTtyKeyOutcome::Copy(burst_clipboard_text());
             }
             _ => {}
         }
@@ -364,26 +376,53 @@ impl GyTtyState {
             area.height,
         );
         paint_burst_orb_rgb(buf, orb, self.phase);
+        let probe = probe_gy_cli();
+        let hook_on = gy_burst_hook_enabled();
+        let (status_line, status_fg) = match (probe.path.as_deref(), hook_on) {
+            (Some(p), true) => (
+                format!("Space → spawn `{p} burst`  (external)"),
+                Color::Rgb(126, 200, 96),
+            ),
+            (Some(_), false) => (
+                "Space → visual only  (GY_BURST_HOOK=0)".into(),
+                Color::Rgb(235, 198, 82),
+            ),
+            (None, _) => (
+                "Space → visual · gy MISSING · /gy tools".into(),
+                Color::Rgb(235, 120, 90),
+            ),
+        };
         let lines = vec![
             Line::from(Span::styled(
-                "burst · placeholder",
+                "burst · fornevercollective",
                 Style::default()
                     .fg(Color::Rgb(255, 180, 80))
                     .bg(bg)
                     .add_modifier(Modifier::BOLD),
             )),
+            Line::from(Span::styled(
+                "half-block orb in Grok · mesh TX in gy",
+                Style::default().fg(Color::Rgb(120, 140, 160)).bg(bg),
+            )),
             Line::from(""),
             Line::from(Span::styled(
-                "Hold Space = PTT (visual only)",
+                status_line,
+                Style::default()
+                    .fg(status_fg)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::styled(
+                "y/c copy run or install lines",
                 Style::default().fg(Color::Rgb(180, 180, 190)).bg(bg),
             )),
             Line::from(Span::styled(
-                "Real TX: gy burst · mesh vburst-frame",
+                "Real mesh: gy burst · vburst-frame · phone cast",
                 Style::default().fg(Color::Rgb(120, 140, 160)).bg(bg),
             )),
             Line::from(Span::styled(
-                "Glyph N: 13 / 25 / 37 / 49 (gy)",
-                Style::default().fg(Color::Rgb(120, 140, 160)).bg(bg),
+                "Opt-out: export GY_BURST_HOOK=0",
+                Style::default().fg(Color::Rgb(90, 100, 110)).bg(bg),
             )),
             Line::from(""),
             Line::from(Span::styled(
@@ -808,6 +847,52 @@ pub fn tools_clipboard_text() -> String {
     }
 }
 
+/// Clipboard for `/gy burst` · y/c — prefer `gy burst` run line.
+pub fn burst_clipboard_text() -> String {
+    match which_gy() {
+        Some(p) => format!(
+            "# fornevercollective · external burst (mesh in gy)\n\
+             # Grok paints the orb; this process owns PTT/mesh\n\
+             {p} burst\n\
+             # disable Grok spawn:  export GY_BURST_HOOK=0\n"
+        ),
+        None => tools_clipboard_text(),
+    }
+}
+
+/// `GY_BURST_HOOK` — default **on**. Set `0` / `false` / `off` to keep Space visual-only.
+pub fn gy_burst_hook_enabled() -> bool {
+    match std::env::var("GY_BURST_HOOK") {
+        Ok(v) => {
+            let v = v.trim().to_ascii_lowercase();
+            !(v == "0" || v == "false" || v == "off" || v == "no")
+        }
+        Err(_) => true,
+    }
+}
+
+/// Space on burst: visual pulse already applied; try spawn external `gy burst`.
+/// Never reimplements mesh — detached process only.
+pub fn try_spawn_gy_burst() -> String {
+    if !gy_burst_hook_enabled() {
+        return "burst pulse · hook off (GY_BURST_HOOK=0)".into();
+    }
+    let Some(path) = which_gy() else {
+        return "gy MISSING · /gy tools · y/c install  ·  pulse is visual only".into();
+    };
+    use std::process::{Command, Stdio};
+    match Command::new(&path)
+        .arg("burst")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(_child) => format!("spawned {path} burst · mesh stays in gy"),
+        Err(e) => format!("spawn failed ({e}) · try: {path} burst"),
+    }
+}
+
 fn which_gy() -> Option<String> {
     use std::path::PathBuf;
 
@@ -1047,5 +1132,30 @@ mod tests {
     fn probe_toast_mentions_ok_or_missing() {
         let t = probe_gy_cli().toast();
         assert!(t.contains("OK") || t.contains("MISSING"));
+    }
+
+    #[test]
+    fn burst_space_returns_toast() {
+        let mut state = GyTtyState::new(Surface::Burst);
+        // Ensure hook path runs (may spawn or report missing — both are Toast).
+        let space = KeyEvent::from(KeyCode::Char(' '));
+        match state.handle_key(&space) {
+            GyTtyKeyOutcome::Toast(msg) => {
+                assert!(
+                    msg.contains("burst")
+                        || msg.contains("gy")
+                        || msg.contains("MISSING")
+                        || msg.contains("hook"),
+                    "unexpected toast: {msg}"
+                );
+            }
+            other => panic!("expected Toast, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn burst_clipboard_mentions_burst_or_install() {
+        let t = burst_clipboard_text();
+        assert!(t.contains("burst") || t.contains("GrokYtalkY") || t.contains("gy"));
     }
 }
