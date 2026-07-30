@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#030208" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>GrokCast · True Depth · Imagine</title>
+  <title>GrokCast · Cube Webgrid · True Depth</title>
   <style>
     * { box-sizing: border-box; margin: 0; }
     html, body {
@@ -14,7 +14,6 @@
       font-family: "SF Pro Display", system-ui, sans-serif;
     }
     body.tv #bar { display: none; }
-    /* Locked 16:9 stage — kills Oculus-style non-widescreen stretch */
     #frame {
       position: absolute; inset: 0;
       display: grid; place-items: center;
@@ -27,9 +26,8 @@
       max-width: 100%; max-height: 100%;
       overflow: hidden;
       background: #030208;
-      /* REAL 3D camera frustum */
-      perspective: 900px;
-      perspective-origin: 50% 48%;
+      perspective: 1100px;
+      perspective-origin: 50% 46%;
     }
     body.tv #viewport {
       width: 100vw; height: 100vh;
@@ -39,7 +37,6 @@
       position: absolute; inset: 0; width: 100%; height: 100%;
       display: block; z-index: 0;
     }
-    /* World root: camera applies here as inverse look-at */
     #world {
       position: absolute; left: 50%; top: 50%;
       width: 0; height: 0;
@@ -48,140 +45,129 @@
       will-change: transform;
       z-index: 1;
     }
-    /* Depth layers at different Z (true parallax) */
-    .layer {
-      position: absolute; left: 50%; top: 50%;
-      transform-style: preserve-3d;
+    #floor {
+      position: absolute;
+      width: 2800px; height: 2800px;
+      left: -1400px; top: -1400px;
+      background:
+        linear-gradient(90deg, rgba(167,139,250,.18) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(96,165,250,.12) 1px, transparent 1px);
+      background-size: 70px 70px;
+      transform: rotateX(90deg) translateZ(-20px);
+      transform-origin: center center;
+      mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 15%, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 15%, transparent 72%);
       pointer-events: none;
     }
-    .layer .plate {
-      position: absolute; left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
-      border-radius: 4px;
-    }
-    /* Floor grid — recedes into depth */
-    #floor {
-      width: 2400px; height: 2400px;
-      left: -1200px; top: -1200px;
-      background:
-        linear-gradient(90deg, rgba(167,139,250,.22) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(96,165,250,.15) 1px, transparent 1px);
-      background-size: 80px 80px;
-      transform: rotateX(90deg) translateZ(-40px);
-      transform-origin: center center;
-      mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, #000 20%, transparent 70%);
-      -webkit-mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, #000 20%, transparent 70%);
-    }
-    /* Mid mist sheets */
-    .mist {
-      width: 1600px; height: 900px;
-      margin: -450px 0 0 -800px;
-      background: radial-gradient(ellipse at center, rgba(139,92,246,.2), transparent 65%);
-      filter: blur(2px);
-    }
-    /* TRUE 3D cube — faces = cube size, translateZ = half size */
-    #cube {
+    /* ── Cube WEBGRID ─────────────────────────────────── */
+    #grid {
       position: absolute;
-      width: 280px; height: 280px;
-      left: -140px; top: -140px;
-      transform-style: preserve-3d;
-      transform: translateZ(120px);
-    }
-    .cface {
-      position: absolute;
-      width: 280px; height: 280px;
       left: 0; top: 0;
-      border: 1.5px solid rgba(233,213,255,.55);
-      backface-visibility: hidden;
-      box-shadow:
-        inset 0 0 40px rgba(167,139,250,.25),
-        0 0 20px rgba(96,165,250,.15);
+      transform-style: preserve-3d;
+      transform: translateZ(40px);
     }
-    .cface .inner {
-      position: absolute; inset: 10%;
-      border: 1px solid rgba(255,255,255,.12);
-      background: inherit;
-      opacity: .9;
-    }
-    .cface.front {
-      transform: translateZ(140px);
-      background: linear-gradient(145deg, rgba(139,92,246,.45), rgba(14,10,30,.85) 55%, rgba(56,189,248,.25));
-    }
-    .cface.back {
-      transform: rotateY(180deg) translateZ(140px);
-      background: linear-gradient(145deg, rgba(30,20,60,.9), rgba(8,6,20,.95));
-      backface-visibility: visible; opacity: .55;
-    }
-    .cface.right {
-      transform: rotateY(90deg) translateZ(140px);
-      background: linear-gradient(160deg, rgba(56,189,248,.35), rgba(20,10,40,.9));
-    }
-    .cface.left {
-      transform: rotateY(-90deg) translateZ(140px);
-      background: linear-gradient(200deg, rgba(236,72,153,.3), rgba(20,10,40,.9));
-    }
-    .cface.top {
-      transform: rotateX(90deg) translateZ(140px);
-      background: linear-gradient(180deg, rgba(233,213,255,.35), rgba(40,20,80,.7));
-    }
-    .cface.bottom {
-      transform: rotateX(-90deg) translateZ(140px);
-      background: linear-gradient(0deg, rgba(30,20,50,.9), rgba(10,8,20,.95));
-      backface-visibility: visible; opacity: .7;
-    }
-    /* Floating "portal" card in front of cube — still in 3D space */
-    #card {
+    .cell {
       position: absolute;
-      width: 420px; height: 236px;
-      left: -210px; top: -118px;
-      transform: translateZ(320px);
-      border-radius: 8px;
+      transform-style: preserve-3d;
+      will-change: transform;
+      cursor: pointer;
+    }
+    .cube {
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transform-origin: center center;
+    }
+    .face {
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      /* WRAP: each face is a full tile of continuous pattern */
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      border: 1px solid rgba(233,213,255,.4);
+      backface-visibility: hidden;
       overflow: hidden;
-      border: 1px solid rgba(196,181,253,.45);
+      box-shadow: inset 0 0 24px rgba(0,0,0,.35);
+    }
+    .face .label {
+      position: absolute; left: 6px; bottom: 5px;
+      font: 700 9px ui-monospace, monospace;
+      color: rgba(255,255,255,.75);
+      text-shadow: 0 1px 3px #000;
+      letter-spacing: .04em;
+      pointer-events: none;
+    }
+    .face .wrap {
+      position: absolute; inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: .95;
+    }
+    /* Seam continuity: shared gradient families wrap around cube */
+    .cell.hot .face {
+      border-color: rgba(253,224,71,.85);
       box-shadow:
-        0 0 50px rgba(139,92,246,.4),
-        0 30px 80px rgba(0,0,0,.6);
-      background: #0a0614;
+        inset 0 0 30px rgba(251,191,36,.2),
+        0 0 28px rgba(251,191,36,.35);
     }
-    #card video {
-      width: 100%; height: 100%; object-fit: cover; display: block; opacity: .88;
+    .cell.near .face {
+      border-color: rgba(96,165,250,.75);
+      box-shadow: inset 0 0 20px rgba(56,189,248,.15), 0 0 18px rgba(56,189,248,.25);
     }
-    #card .cap {
-      position: absolute; left: 10px; top: 8px;
-      font: 700 11px ui-monospace, monospace; color: #e9d5ff;
-      text-shadow: 0 1px 4px #000;
+    .cell.focus {
+      z-index: 5;
     }
-    /* HUD */
+    .cell.focus .face {
+      border-color: #fff;
+      box-shadow:
+        inset 0 0 40px rgba(167,139,250,.35),
+        0 0 40px rgba(139,92,246,.55);
+    }
+    /* Connection beams between neighboring cells (2D overlay in 3D) */
+    .beam {
+      position: absolute;
+      height: 2px;
+      transform-origin: left center;
+      background: linear-gradient(90deg, rgba(167,139,250,.0), rgba(167,139,250,.55), rgba(56,189,248,.0));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .beam.on { opacity: 1; }
+
+    #title {
+      position: absolute; left: 50%; top: 6%; transform: translateX(-50%);
+      text-align: center; z-index: 20; pointer-events: none;
+      text-shadow: 0 0 40px rgba(167,139,250,.5), 0 4px 24px #000;
+    }
+    #title .g { font: 700 10px system-ui; letter-spacing: .26em; color: #a78bfa; text-transform: uppercase; }
+    #title .i { font: 300 32px/1.05 system-ui; color: #fff; letter-spacing: -.02em; margin-top: .1em; }
+    body.tv #title .i { font-size: 42px; }
+    #title .sub { font: 500 11px system-ui; color: rgba(220,210,255,.5); margin-top: .3em; }
+
     #bar {
       position: fixed; z-index: 50; inset: 0 0 auto 0;
       display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
       padding: .4rem .55rem; background: rgba(8,6,16,.94);
       border-bottom: 1px solid #3a2860; font-size: .7rem;
     }
-    #bar button {
+    #bar button, #bar select {
       background: #1a1430; color: #f0e8ff; border: 1px solid #4a3880;
       border-radius: 5px; padding: .28rem .5rem; font: inherit; cursor: pointer;
     }
     #bar button.primary { background: #2a1860; border-color: #8b5cf6; }
     #bar button.active { border-color: #fde68a; color: #fde68a; }
     #bar .meta { margin-left: auto; font: 600 10px ui-monospace, monospace; color: #a78bfa; }
-    #title {
-      position: absolute; left: 50%; top: 10%; transform: translateX(-50%);
-      text-align: center; z-index: 20; pointer-events: none;
-      text-shadow: 0 0 40px rgba(167,139,250,.55), 0 4px 24px #000;
-    }
-    #title .g { font: 700 11px system-ui; letter-spacing: .28em; color: #a78bfa; text-transform: uppercase; }
-    #title .i { font: 300 40px/1.05 system-ui; color: #fff; letter-spacing: -.02em; margin-top: .12em; }
-    body.tv #title .i { font-size: 52px; }
-    #title .sub { font: 500 12px system-ui; color: rgba(220,210,255,.5); margin-top: .35em; }
     #hud {
       position: absolute; left: 12px; bottom: 48px; z-index: 25;
       font: 600 11px ui-monospace, monospace; color: #c4b5fd;
       background: rgba(0,0,0,.5); padding: 7px 10px; border-radius: 6px;
       border: 1px solid rgba(167,139,250,.25); line-height: 1.45;
-      pointer-events: none; max-width: min(90%, 22rem);
+      pointer-events: none; max-width: min(92%, 24rem);
     }
-    body.tv #hud { font-size: 13px; bottom: 56px; }
+    body.tv #hud { font-size: 12px; bottom: 56px; opacity: .85; }
     #l3 {
       position: absolute; left: 0; right: 0; bottom: 0; z-index: 24;
       padding: 10px 16px 12px;
@@ -192,15 +178,10 @@
     body.tv #l3 { font-size: 14px; padding: 12px 22px 16px; }
     #l3 .zulu { color: #fde68a; }
     .reticle {
-      position: absolute; z-index: 30; width: 26px; height: 26px;
-      margin: -13px 0 0 -13px; border: 2px solid; border-radius: 50%;
-      pointer-events: none; box-shadow: 0 0 14px currentColor;
+      position: absolute; z-index: 30; width: 24px; height: 24px;
+      margin: -12px 0 0 -12px; border: 2px solid; border-radius: 50%;
+      pointer-events: none; box-shadow: 0 0 12px currentColor;
     }
-    .reticle::before, .reticle::after {
-      content: ""; position: absolute; background: currentColor;
-    }
-    .reticle::before { left: 50%; top: 3px; bottom: 3px; width: 1px; margin-left: -.5px; }
-    .reticle::after { top: 50%; left: 3px; right: 3px; height: 1px; margin-top: -.5px; }
     .reticle.you { color: #50c8ff; }
     .reticle.partner { color: #f472b6; }
     .reticle.quest { color: #34d399; }
@@ -208,53 +189,42 @@
 </head>
 <body>
   <div id="bar">
-    <strong>TRUE DEPTH · Imagine</strong>
+    <strong>CUBE WEBGRID</strong>
+    <select id="cols" title="Columns">
+      <option value="4">4 cols</option>
+      <option value="5" selected>5 cols</option>
+      <option value="6">6 cols</option>
+      <option value="7">7 cols</option>
+    </select>
+    <select id="rows" title="Rows">
+      <option value="2">2 rows</option>
+      <option value="3" selected>3 rows</option>
+      <option value="4">4 rows</option>
+    </select>
     <button type="button" id="btnGyro" class="primary">Phone gyro</button>
     <button type="button" id="btnZero" class="primary">Zero look</button>
-    <button type="button" id="btnUser" class="primary">You</button>
-    <button type="button" id="btnPartner">Partner phone</button>
-    <button type="button" id="btnQuest">Quest browser</button>
+    <button type="button" id="btnSpin" class="primary active">Auto spin</button>
     <button type="button" id="btnRecast" class="primary">Recast TV</button>
-    <button type="button" id="btnPlay">Play card</button>
+    <button type="button" id="btnUser">You</button>
     <span class="meta" id="meta">…</span>
   </div>
   <div id="frame">
     <div id="viewport">
       <canvas id="sky"></canvas>
       <div id="world">
-        <div class="layer" style="transform: translateZ(-900px)">
-          <div class="mist" style="transform: scale(1.8); opacity:.5"></div>
-        </div>
-        <div class="layer" style="transform: translateZ(-520px)">
-          <div class="mist" style="opacity:.65"></div>
-        </div>
-        <div class="layer" style="transform: translateZ(-280px)">
-          <div class="mist" style="transform: scale(.7); opacity:.4"></div>
-        </div>
         <div id="floor"></div>
-        <div id="cube">
-          <div class="cface front"><div class="inner"></div></div>
-          <div class="cface back"><div class="inner"></div></div>
-          <div class="cface left"><div class="inner"></div></div>
-          <div class="cface right"><div class="inner"></div></div>
-          <div class="cface top"><div class="inner"></div></div>
-          <div class="cface bottom"><div class="inner"></div></div>
-        </div>
-        <div id="card">
-          <div class="cap">PORTAL · live plate</div>
-          <video id="vid" playsinline webkit-playsinline muted loop autoplay></video>
-        </div>
+        <div id="grid"></div>
       </div>
       <div id="title">
-        <div class="g">Grok Imagine · true depth</div>
-        <div class="i">3D STAGE</div>
-        <div class="sub">camera look · not 2D stretch</div>
+        <div class="g">Grok Imagine · wrapped faces</div>
+        <div class="i">CUBE WEBGRID</div>
+        <div class="sub">columns of interacting 3D cubes · look to focus</div>
       </div>
-      <div class="reticle you" id="retYou"></div>
+      <div class="reticle you" id="retYou" style="display:none"></div>
       <div class="reticle partner" id="retPartner" style="display:none"></div>
       <div class="reticle quest" id="retQuest" style="display:none"></div>
-      <div id="hud">depth · booting</div>
-      <div id="l3">TIMESYNC · … · true depth</div>
+      <div id="hud">webgrid · building…</div>
+      <div id="l3">TIMESYNC · … · cube webgrid</div>
     </div>
   </div>
 <script>
@@ -266,90 +236,219 @@
   if (isTv) document.body.classList.add('tv');
   else document.body.classList.add('control');
 
-  // Look angles in degrees for CSS camera (NOT pixel pan)
-  var look = { yaw: 0, pitch: 0, roll: 0, dist: 0 }; // dist: dolly mm-ish
-  var target = { yaw: 0, pitch: 0, roll: 0, dist: 0 };
+  var COLS = parseInt(u.searchParams.get('cols') || '5', 10) || 5;
+  var ROWS = parseInt(u.searchParams.get('rows') || '3', 10) || 3;
+  COLS = Math.max(3, Math.min(8, COLS));
+  ROWS = Math.max(2, Math.min(5, ROWS));
+  document.getElementById('cols').value = String(COLS);
+  document.getElementById('rows').value = String(ROWS);
+
+  var CUBE = isTv ? 108 : 96;       // face size px
+  var GAP = isTv ? 28 : 22;         // space between cubes
+  var HALF = CUBE / 2;
+
+  // Continuous wrap palettes — each cube samples a tile of a shared atlas
+  // so patterns appear to wrap across the grid and around each cube.
+  var PALETTES = [
+    ['#2a1850', '#0c4a6e', '#7c3aed', '#38bdf8'],
+    ['#4c1d95', '#be185d', '#a78bfa', '#f472b6'],
+    ['#0f172a', '#1e3a5f', '#60a5fa', '#c4b5fd'],
+    ['#1a0a2e', '#3b0764', '#e879f9', '#22d3ee'],
+    ['#0c0a1a', '#312e81', '#818cf8', '#fde68a'],
+  ];
+
+  var look = { yaw: 0, pitch: 0, roll: 0, dist: 0 };
+  var target = { yaw: 0, pitch: 0, roll: 0, dist: 0, source: 'init' };
   var baseBeta = null, baseGamma = null;
   var peers = {};
   var lastReload = null;
+  var autoSpin = true;
+  var focusIdx = -1;
+  var cells = []; // { el, cube, col, row, rotY, rotX, spin, hot }
+  var t0 = performance.now();
   var users = ['you', 'partner', 'quest'];
   var userIdx = Math.max(0, users.indexOf(myUser));
-  var t0 = performance.now();
 
   var world = document.getElementById('world');
-  var cube = document.getElementById('cube');
-  var card = document.getElementById('card');
-  var vid = document.getElementById('vid');
+  var gridEl = document.getElementById('grid');
   var hud = document.getElementById('hud');
   var meta = document.getElementById('meta');
-  var sky = document.getElementById('sky');
   var viewport = document.getElementById('viewport');
+  var sky = document.getElementById('sky');
 
-  var src = u.searchParams.get('src') || '/media/zane-center.mp4';
-  try { vid.src = src; vid.play().catch(function () {}); } catch (e) {}
+  // ── Build webgrid of cubes ───────────────────────────────────
+  function faceStyle(col, row, face, pi) {
+    // Shared atlas UV so neighbors + faces wrap continuously
+    var u0 = col / COLS;
+    var v0 = row / ROWS;
+    var faceOff = { front: 0, back: 0.5, left: 0.25, right: 0.75, top: 0.12, bottom: 0.38 };
+    var fo = faceOff[face] || 0;
+    var p = PALETTES[pi % PALETTES.length];
+    var ang = (u0 + fo) * 360;
+    return 'linear-gradient(' + ang + 'deg,' +
+      p[0] + ' 0%,' + p[1] + ' 35%,' + p[2] + ' 70%,' + p[3] + ' 100%)';
+  }
 
-  // ── WebGL1 skybox (Imagine gold) — fixed loops only ─────────
-  var gl = sky.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'default' })
+  function buildGrid() {
+    gridEl.innerHTML = '';
+    cells = [];
+    var totalW = COLS * CUBE + (COLS - 1) * GAP;
+    var totalH = ROWS * CUBE + (ROWS - 1) * GAP;
+    var originX = -totalW / 2;
+    var originY = -totalH / 2;
+
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        var idx = r * COLS + c;
+        var cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.idx = String(idx);
+        cell.dataset.col = String(c);
+        cell.dataset.row = String(r);
+        cell.style.width = CUBE + 'px';
+        cell.style.height = CUBE + 'px';
+        var x = originX + c * (CUBE + GAP);
+        var y = originY + r * (CUBE + GAP);
+        // slight Z stagger for depth interest
+        var z = ((c + r) % 3) * 18 - 18;
+        cell.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px)';
+
+        var cube = document.createElement('div');
+        cube.className = 'cube';
+        var faces = [
+          ['front',  'translateZ(' + HALF + 'px)'],
+          ['back',   'rotateY(180deg) translateZ(' + HALF + 'px)'],
+          ['right',  'rotateY(90deg) translateZ(' + HALF + 'px)'],
+          ['left',   'rotateY(-90deg) translateZ(' + HALF + 'px)'],
+          ['top',    'rotateX(90deg) translateZ(' + HALF + 'px)'],
+          ['bottom', 'rotateX(-90deg) translateZ(' + HALF + 'px)'],
+        ];
+        var pi = (c * 3 + r * 5) % PALETTES.length;
+        for (var f = 0; f < faces.length; f++) {
+          var name = faces[f][0];
+          var xf = faces[f][1];
+          var face = document.createElement('div');
+          face.className = 'face ' + name;
+          face.style.transform = xf;
+          // WRAP: continuous gradient + secondary wrap layer offset by face
+          face.style.backgroundImage = faceStyle(c, r, name, pi);
+          var wrap = document.createElement('div');
+          wrap.className = 'wrap';
+          // second layer scrolls so pattern "wraps" around as cube spins
+          wrap.style.backgroundImage =
+            'repeating-linear-gradient(' + (45 + f * 30) + 'deg,' +
+            'transparent 0 12px, rgba(255,255,255,.06) 12px 13px,' +
+            'transparent 13px 26px)';
+          face.appendChild(wrap);
+          var lab = document.createElement('div');
+          lab.className = 'label';
+          lab.textContent = (c + 1) + '·' + (r + 1) + (f === 0 ? '' : '');
+          if (f === 0) face.appendChild(lab);
+          cube.appendChild(face);
+        }
+        cell.appendChild(cube);
+        gridEl.appendChild(cell);
+
+        // neighbor beams (horizontal + vertical)
+        if (c < COLS - 1) {
+          var bh = document.createElement('div');
+          bh.className = 'beam h';
+          bh.style.width = GAP + 'px';
+          bh.style.left = (CUBE) + 'px';
+          bh.style.top = (HALF - 1) + 'px';
+          cell.appendChild(bh);
+        }
+        if (r < ROWS - 1) {
+          var bv = document.createElement('div');
+          bv.className = 'beam v';
+          bv.style.width = GAP + 'px';
+          bv.style.left = (HALF - 1) + 'px';
+          bv.style.top = CUBE + 'px';
+          bv.style.transform = 'rotate(90deg)';
+          cell.appendChild(bv);
+        }
+
+        var entry = {
+          el: cell,
+          cube: cube,
+          col: c,
+          row: r,
+          idx: idx,
+          x: x, y: y, z: z,
+          rotY: (c - (COLS - 1) / 2) * 8,
+          rotX: (r - (ROWS - 1) / 2) * -6,
+          spin: 0,
+          phase: Math.random() * Math.PI * 2,
+          hot: false,
+        };
+        cells.push(entry);
+
+        (function (entry) {
+          cell.addEventListener('pointerenter', function () {
+            if (isTv) return;
+            setFocus(entry.idx);
+          });
+          cell.addEventListener('pointerdown', function (e) {
+            if (isTv) return;
+            e.stopPropagation();
+            setFocus(entry.idx);
+            entry.spin += 90;
+          });
+        })(entry);
+      }
+    }
+  }
+
+  function setFocus(idx) {
+    focusIdx = idx;
+    for (var i = 0; i < cells.length; i++) {
+      var ce = cells[i];
+      var fc = cells[idx];
+      var dist = Math.abs(ce.col - fc.col) + Math.abs(ce.row - fc.row);
+      ce.el.classList.toggle('focus', i === idx);
+      ce.el.classList.toggle('near', dist === 1);
+      ce.el.classList.toggle('hot', dist === 0);
+      // light neighbor beams
+      var beams = ce.el.querySelectorAll('.beam');
+      for (var b = 0; b < beams.length; b++) {
+        beams[b].classList.toggle('on', dist <= 1);
+      }
+    }
+  }
+
+  // ── Sky WebGL1 ───────────────────────────────────────────────
+  var gl = sky.getContext('webgl', { alpha: false, antialias: false })
         || sky.getContext('experimental-webgl', { alpha: false });
-  var skyOk = false;
-  var skyProg = null, skyBuf = null, uT, uRes, uLook;
+  var skyOk = false, skyProg, skyBuf, uT, uRes, uLook;
 
   function compile(type, src) {
     var s = gl.createShader(type);
     gl.shaderSource(s, src);
     gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      console.error(gl.getShaderInfoLog(s));
-      return null;
-    }
-    return s;
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
   }
-
   if (gl) {
     var vs = compile(gl.VERTEX_SHADER, 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}');
-    // Cinematic Imagine field — NO dynamic loops
-    var fsSrc = [
+    var fs = compile(gl.FRAGMENT_SHADER, [
       'precision mediump float;',
-      'uniform float u_t; uniform vec2 u_res; uniform vec3 u_look;',
+      'uniform float u_t;uniform vec2 u_res;uniform vec2 u_look;',
       'float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
-      'float noise(vec2 p){',
-      '  vec2 i=floor(p),f=fract(p);',
-      '  float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));',
-      '  vec2 u=f*f*(3.-2.*f);',
-      '  return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;',
-      '}',
-      'float fbm(vec2 p){',
-      '  float v=0.,a=.5;',
-      '  v+=a*noise(p); p=p*2.07+vec2(1.7,9.2); a*=.5;',
-      '  v+=a*noise(p); p=p*2.07+vec2(1.7,9.2); a*=.5;',
-      '  v+=a*noise(p); p=p*2.07+vec2(1.7,9.2); a*=.5;',
-      '  v+=a*noise(p); return v;',
-      '}',
+      'float noise(vec2 p){vec2 i=floor(p),f=fract(p);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));vec2 u=f*f*(3.-2.*f);return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;}',
+      'float fbm(vec2 p){float v=0.,a=.5;v+=a*noise(p);p=p*2.07+vec2(1.7,9.2);a*=.5;v+=a*noise(p);p=p*2.07+vec2(1.7,9.2);a*=.5;v+=a*noise(p);p=p*2.07+vec2(1.7,9.2);a*=.5;v+=a*noise(p);return v;}',
       'void main(){',
-      '  vec2 uv=(gl_FragCoord.xy-.5*u_res)/max(u_res.y,1.);',
-      // camera-linked parallax in sky only (subtle)
-      '  uv.x+=u_look.x*.15; uv.y+=u_look.y*.12;',
-      '  float t=u_t;',
-      '  vec2 q=uv;',
-      '  q+=.32*vec2(fbm(uv*1.1+t*.06),fbm(uv*1.1+vec2(5.2,1.3)-t*.05));',
-      '  float n1=fbm(q*1.3+t*.04);',
-      '  float n2=fbm(q*2.4-t*.07);',
-      '  float n3=fbm(q*.65+vec2(n1,n2));',
-      '  vec3 cA=mix(vec3(.06,.03,.14),vec3(.2,.45,.9),n1);',
-      '  vec3 cB=mix(vec3(.45,.15,.5),vec3(.85,.45,.7),n2);',
-      '  vec3 col=mix(cA,cB,smoothstep(.3,.75,n3));',
-      '  float r=length(uv);',
-      '  float aperture=exp(-r*r*2.4);',
-      '  col+=vec3(.7,.6,1.)*aperture*.45;',
-      '  col+=vec3(.35,.75,1.)*pow(aperture,2.2)*.35;',
-      '  float flare=exp(-abs(uv.y)*16.)*(.3+.7*n2)*smoothstep(1.3,.1,abs(uv.x));',
-      '  col+=vec3(.85,.75,1.)*flare*.3;',
-      '  col*=.55+.45*smoothstep(1.4,.2,r);',
-      '  col=pow(max(col,0.),vec3(.9));',
-      '  gl_FragColor=vec4(col,1.);',
-      '}',
-    ].join('\n');
-    var fs = compile(gl.FRAGMENT_SHADER, fsSrc);
+      'vec2 uv=(gl_FragCoord.xy-.5*u_res)/max(u_res.y,1.);',
+      'uv.x+=u_look.x*.12;uv.y+=u_look.y*.1;',
+      'float t=u_t;',
+      'vec2 q=uv+.3*vec2(fbm(uv*1.1+t*.05),fbm(uv*1.1+vec2(5.2,1.3)-t*.04));',
+      'float n1=fbm(q*1.2+t*.03),n2=fbm(q*2.2-t*.06);',
+      'vec3 col=mix(vec3(.05,.03,.12),vec3(.25,.15,.45),n1);',
+      'col=mix(col,vec3(.15,.4,.75),n2*.45);',
+      'float r=length(uv);',
+      'col+=vec3(.55,.45,.95)*exp(-r*r*2.2)*.4;',
+      'col*=.55+.45*smoothstep(1.35,.25,r);',
+      'col=pow(max(col,0.),vec3(.9));',
+      'gl_FragColor=vec4(col,1.);}',
+    ].join('\n'));
     if (vs && fs) {
       skyProg = gl.createProgram();
       gl.attachShader(skyProg, vs);
@@ -367,73 +466,92 @@
     }
   }
 
-  function resizeSky() {
+  function drawSky(t) {
     if (!gl || !skyOk) return;
-    var dpr = Math.min(window.devicePixelRatio || 1, isTv ? 1.2 : 1.5);
+    var dpr = Math.min(window.devicePixelRatio || 1, isTv ? 1.15 : 1.5);
     var w = Math.floor(viewport.clientWidth * dpr);
     var h = Math.floor(viewport.clientHeight * dpr);
     if (sky.width !== w || sky.height !== h) {
       sky.width = w; sky.height = h;
       gl.viewport(0, 0, w, h);
     }
-  }
-
-  function drawSky(t) {
-    if (!gl || !skyOk) return;
-    resizeSky();
     gl.useProgram(skyProg);
     gl.bindBuffer(gl.ARRAY_BUFFER, skyBuf);
     var a = gl.getAttribLocation(skyProg, 'a');
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
     gl.uniform1f(uT, t);
-    gl.uniform2f(uRes, sky.width, sky.height);
-    gl.uniform3f(uLook, look.yaw * 0.0174533, look.pitch * 0.0174533, look.dist);
+    gl.uniform2f(uRes, w, h);
+    gl.uniform2f(uLook, look.yaw * 0.01745, look.pitch * 0.01745);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  /**
-   * TRUE 3D camera:
-   * World is rotated by -pitch / -yaw so the cube orbits in depth.
-   * dolly = translateZ on the whole scene.
-   * This is NOT 2D translate of a flat plate.
-   */
-  function applyCamera() {
-    var yaw = look.yaw;     // degrees
-    var pitch = look.pitch;
-    var roll = look.roll;
-    var dolly = look.dist;  // px along view axis
-    // Camera looks into +Z of our CSS setup by rotating world opposite to look
+  // ── Camera + cube interaction ────────────────────────────────
+  function applyCamera(t) {
+    // True 3D camera on world
     world.style.transform =
       'translate(-50%,-50%)' +
-      ' translateZ(' + (dolly) + 'px)' +
-      ' rotateZ(' + (roll) + 'deg)' +
-      ' rotateX(' + (-pitch) + 'deg)' +
-      ' rotateY(' + (yaw) + 'deg)';
+      ' translateZ(' + look.dist + 'px)' +
+      ' rotateX(' + (-look.pitch) + 'deg)' +
+      ' rotateY(' + (look.yaw) + 'deg)';
 
-    // Subtle idle spin on cube itself for gold
-    var t = (performance.now() - t0) / 1000;
-    cube.style.transform =
-      'translateZ(80px) rotateY(' + (t * 12) + 'deg) rotateX(' + (Math.sin(t * 0.4) * 8) + 'deg)';
+    // Ray-ish focus: which cell is under look center?
+    // Map look angles to grid UV
+    var uLook = 0.5 + look.yaw / 70;
+    var vLook = 0.5 + look.pitch / 55;
+    var fc = Math.round(uLook * (COLS - 1));
+    var fr = Math.round(vLook * (ROWS - 1));
+    fc = Math.max(0, Math.min(COLS - 1, fc));
+    fr = Math.max(0, Math.min(ROWS - 1, fr));
+    var fIdx = fr * COLS + fc;
+    if (fIdx !== focusIdx && (isTv || target.source === 'gyro' || target.source === 'hub' || target.source === 'idle' || target.source === 'drag')) {
+      setFocus(fIdx);
+    }
 
-    // Card stays facing camera-ish: counter-rotate a bit so video readable
-    card.style.transform =
-      'translateZ(300px) rotateY(' + (-yaw * 0.15) + 'deg) rotateX(' + (pitch * 0.1) + 'deg)';
+    // Animate each cube: wrap spin + neighbor influence
+    for (var i = 0; i < cells.length; i++) {
+      var ce = cells[i];
+      var dist = focusIdx >= 0
+        ? Math.abs(ce.col - cells[focusIdx].col) + Math.abs(ce.row - cells[focusIdx].row)
+        : 3;
+      var influence = Math.max(0, 1 - dist * 0.35);
+      // continuous wrap spin on Y (content appears to wrap around)
+      if (autoSpin) {
+        ce.spin += (0.35 + influence * 1.2 + ce.col * 0.05) * (isTv ? 1 : 0.85);
+      }
+      // interaction: near cubes lean toward focus
+      var leanY = ce.rotY;
+      var leanX = ce.rotX;
+      if (focusIdx >= 0 && dist > 0 && dist < 3) {
+        var fc2 = cells[focusIdx];
+        leanY += (fc2.col - ce.col) * 12 * influence;
+        leanX += (fc2.row - ce.row) * -10 * influence;
+      }
+      // focus cube pulls forward in Z
+      var zBoost = dist === 0 ? 70 : (dist === 1 ? 28 : 0);
+      var bob = Math.sin(t * 1.1 + ce.phase) * (6 + influence * 10);
+      ce.el.style.transform =
+        'translate3d(' + ce.x + 'px,' + (ce.y + bob) + 'px,' + (ce.z + zBoost) + 'px)';
+      ce.cube.style.transform =
+        'rotateX(' + leanX + 'deg) rotateY(' + (leanY + ce.spin) + 'deg)';
+      // wrap layer scroll on faces for continuous wrap feel
+      var wraps = ce.cube.querySelectorAll('.wrap');
+      for (var w = 0; w < wraps.length; w++) {
+        wraps[w].style.backgroundPosition = (ce.spin * 0.4 + w * 20) + '% center';
+      }
+    }
 
-    // Reticles in screen space from each peer's look
-    placeReticle('retYou', peers.you || (myUser === 'you' ? target : null));
-    placeReticle('retPartner', peers.partner || (myUser === 'partner' ? target : null));
-    placeReticle('retQuest', peers.quest || (myUser === 'quest' ? target : null));
+    placeReticle('retYou', peers.you || (myUser === 'you' ? { yaw: target.yaw * 0.01745, pitch: target.pitch * 0.01745, source: target.source } : null));
+    placeReticle('retPartner', peers.partner);
+    placeReticle('retQuest', peers.quest);
 
-    var lines = [
-      'CAM look  yaw ' + yaw.toFixed(1) + '°  pitch ' + pitch.toFixed(1) + '°  dolly ' + dolly.toFixed(0),
-      'mode  true 3D (rotateX/Y) · not 2D pan',
-      'user  ' + myUser + ' · ' + (target.source || '—'),
-    ];
-    var pk = Object.keys(peers);
-    if (pk.length) lines.push('peers  ' + pk.join(', '));
-    hud.innerHTML = lines.join('<br/>');
-    meta.textContent = myUser + ' · y' + yaw.toFixed(1) + '° p' + pitch.toFixed(1) + '°';
+    var fi = focusIdx >= 0 ? cells[focusIdx] : null;
+    hud.innerHTML =
+      'WEBGRID  ' + COLS + '×' + ROWS + ' cubes · wrap-around faces<br/>' +
+      'CAM  yaw ' + look.yaw.toFixed(1) + '°  pitch ' + look.pitch.toFixed(1) + '°  dolly ' + look.dist.toFixed(0) + '<br/>' +
+      'FOCUS  ' + (fi ? 'col ' + (fi.col + 1) + ' · row ' + (fi.row + 1) + ' · neighbors lean in' : '—') + '<br/>' +
+      'user  ' + myUser + ' · ' + (target.source || '—') + (autoSpin ? ' · spin' : '');
+    meta.textContent = COLS + '×' + ROWS + ' · y' + look.yaw.toFixed(0) + '°';
   }
 
   function placeReticle(id, v) {
@@ -444,71 +562,50 @@
       return;
     }
     el.style.display = 'block';
-    // project look angles to viewport center offset
-    var yaw = (v.yaw || 0);
-    var pitch = (v.pitch || 0);
-    // if pose is radians from hub, convert
+    var yaw = v.yaw || 0, pitch = v.pitch || 0;
     if (Math.abs(yaw) < 3 && Math.abs(pitch) < 3) {
-      // likely radians
-      yaw = yaw * 57.2958;
-      pitch = pitch * 57.2958;
+      yaw *= 57.2958; pitch *= 57.2958;
     }
     var rect = viewport.getBoundingClientRect();
-    var cx = rect.width / 2 + (yaw / 45) * (rect.width * 0.28);
-    var cy = rect.height / 2 + (pitch / 35) * (rect.height * 0.28);
-    el.style.left = cx + 'px';
-    el.style.top = cy + 'px';
+    el.style.left = (rect.width / 2 + (yaw / 45) * rect.width * 0.26) + 'px';
+    el.style.top = (rect.height / 2 + (pitch / 35) * rect.height * 0.26) + 'px';
   }
 
   function setTargetFromRadians(yawR, pitchR, z, source) {
-    // Convert hub radians → degrees for camera (clamp to comfortable FOV)
-    target.yaw = Math.max(-55, Math.min(55, yawR * 57.2958));
-    target.pitch = Math.max(-40, Math.min(40, pitchR * 57.2958));
-    target.dist = Math.max(-180, Math.min(220, ((z || 1) - 1) * 280));
+    target.yaw = Math.max(-50, Math.min(50, yawR * 57.2958));
+    target.pitch = Math.max(-36, Math.min(36, pitchR * 57.2958));
+    target.dist = Math.max(-160, Math.min(200, ((z || 1) - 1) * 260));
     target.source = source || 'hub';
   }
 
   function onOrient(e) {
     if (isTv) return;
-    var beta = e.beta, gamma = e.gamma;
-    if (beta == null || gamma == null) return;
-    if (baseBeta == null) { baseBeta = beta; baseGamma = gamma; }
-    // deviceorientation degrees already — map to look degrees
-    var dyaw = (gamma - baseGamma) * 1.1;
-    var dpitch = (beta - baseBeta) * 0.9;
-    target.yaw = Math.max(-55, Math.min(55, dyaw));
-    target.pitch = Math.max(-40, Math.min(40, dpitch));
-    target.dist = 0;
+    if (e.beta == null || e.gamma == null) return;
+    if (baseBeta == null) { baseBeta = e.beta; baseGamma = e.gamma; }
+    target.yaw = Math.max(-50, Math.min(50, (e.gamma - baseGamma) * 1.15));
+    target.pitch = Math.max(-36, Math.min(36, (e.beta - baseBeta) * 0.95));
     target.source = 'gyro';
     pushPose();
   }
 
   function pushPose() {
     if (isTv) return;
-    // store radians on hub for gpu-pipe compatibility
-    var yawR = target.yaw * 0.0174533;
-    var pitchR = target.pitch * 0.0174533;
-    var z = 1 + target.dist / 280;
-    var body = {
-      surface: 'crazy',
-      controller: 'crazy-' + myUser,
-      viewer: {
-        yaw: yawR, pitch: pitchR, roll: 0, z: z,
-        source: target.source || 'gyro', user: myUser, t: Date.now() / 1000,
-      },
-      vantage: { user: myUser },
-      crazy_peers: {},
-    };
-    body.crazy_peers[myUser] = {
-      yaw: yawR, pitch: pitchR, z: z,
-      source: target.source || 'gyro', t: Date.now() / 1000,
-    };
     if (!pushPose._t || Date.now() - pushPose._t > 70) {
       pushPose._t = Date.now();
+      var yawR = target.yaw * 0.0174533;
+      var pitchR = target.pitch * 0.0174533;
+      var z = 1 + target.dist / 260;
+      var peersLocal = {};
+      peersLocal[myUser] = { yaw: yawR, pitch: pitchR, z: z, source: target.source, t: Date.now() / 1000 };
       fetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          surface: 'crazy',
+          controller: 'webgrid-' + myUser,
+          viewer: { yaw: yawR, pitch: pitchR, roll: 0, z: z, source: target.source, user: myUser, t: Date.now() / 1000 },
+          crazy_peers: peersLocal,
+        }),
       }).catch(function () {});
     }
   }
@@ -525,21 +622,11 @@
         lastReload = st.tv_cmd.reload_token;
       }
       if (st.crazy_peers) {
-        Object.keys(st.crazy_peers).forEach(function (k) {
-          peers[k] = st.crazy_peers[k];
-        });
+        Object.keys(st.crazy_peers).forEach(function (k) { peers[k] = st.crazy_peers[k]; });
       }
       if (isTv && st.viewer) {
-        setTargetFromRadians(
-          Number(st.viewer.yaw) || 0,
-          Number(st.viewer.pitch) || 0,
-          Number(st.viewer.z) || 1,
-          st.viewer.source || 'hub'
-        );
+        setTargetFromRadians(Number(st.viewer.yaw) || 0, Number(st.viewer.pitch) || 0, Number(st.viewer.z) || 1, st.viewer.source || 'hub');
         if (st.viewer.user) peers[st.viewer.user] = st.viewer;
-      }
-      if (!isTv && st.viewer && st.viewer.user && st.viewer.user !== myUser) {
-        peers[st.viewer.user] = st.viewer;
       }
     } catch (e) {}
   }
@@ -552,30 +639,41 @@
       var z = snap.zulu || '';
       var zp = z.length >= 7 ? z.slice(0, 2) + ':' + z.slice(2, 4) + ':' + z.slice(4, 6) + ' Z' : z;
       document.getElementById('l3').innerHTML =
-        'TIMESYNC · <span class="zulu">' + zp + '</span> · TRUE DEPTH · 3D camera · ' + myUser;
+        'TIMESYNC · <span class="zulu">' + zp + '</span> · CUBE WEBGRID ' + COLS + '×' + ROWS + ' · wrap faces';
     } catch (e) {}
   }
 
-  // smooth damp look → camera
+  var t0 = performance.now();
   function tick(now) {
     var t = (now - t0) / 1000;
-    // idle orbit only when no live control
     if (isTv && (!target.source || target.source === 'idle' || target.source === 'init')) {
-      target.yaw = Math.sin(t * 0.25) * 28;
-      target.pitch = Math.cos(t * 0.2) * 12;
-      target.dist = Math.sin(t * 0.15) * 40;
+      target.yaw = Math.sin(t * 0.22) * 26;
+      target.pitch = Math.cos(t * 0.17) * 12;
+      target.dist = Math.sin(t * 0.13) * 50;
       target.source = 'idle';
     }
-    var sm = 0.18;
+    var sm = 0.16;
     look.yaw += (target.yaw - look.yaw) * sm;
     look.pitch += (target.pitch - look.pitch) * sm;
-    look.roll += (target.roll - look.roll) * sm;
     look.dist += (target.dist - look.dist) * sm;
-    applyCamera();
+    applyCamera(t);
     drawSky(t);
     requestAnimationFrame(tick);
   }
 
+  // controls
+  document.getElementById('cols').onchange = function (e) {
+    COLS = parseInt(e.target.value, 10) || 5;
+    buildGrid();
+  };
+  document.getElementById('rows').onchange = function (e) {
+    ROWS = parseInt(e.target.value, 10) || 3;
+    buildGrid();
+  };
+  document.getElementById('btnSpin').onclick = function () {
+    autoSpin = !autoSpin;
+    document.getElementById('btnSpin').classList.toggle('active', autoSpin);
+  };
   document.getElementById('btnGyro').onclick = async function () {
     try {
       if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -591,7 +689,7 @@
   };
   document.getElementById('btnZero').onclick = function () {
     baseBeta = baseGamma = null;
-    target.yaw = target.pitch = target.roll = target.dist = 0;
+    target.yaw = target.pitch = target.dist = 0;
     target.source = 'zero';
     pushPose();
   };
@@ -599,29 +697,19 @@
     userIdx = (userIdx + 1) % users.length;
     myUser = users[userIdx];
     document.getElementById('btnUser').textContent = myUser;
-    var url = new URL(location.href);
-    url.searchParams.set('user', myUser);
-    history.replaceState({}, '', url);
-  };
-  document.getElementById('btnPartner').onclick = function () {
-    location.href = '/crazy?user=partner&pwa=1';
-  };
-  document.getElementById('btnQuest').onclick = function () {
-    location.href = '/crazy?user=quest&pwa=1';
   };
   document.getElementById('btnRecast').onclick = function () {
     fetch('/api/tv/recast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device: 'Smart TV', url: location.origin + '/crazy?tv=1' }),
+      body: JSON.stringify({
+        device: 'Smart TV',
+        url: location.origin + '/crazy?tv=1&cols=' + COLS + '&rows=' + ROWS,
+      }),
     }).catch(function () {});
   };
-  document.getElementById('btnPlay').onclick = function () {
-    vid.muted = false;
-    vid.play().catch(function () {});
-  };
 
-  // drag on desk = look (mouse orbit)
+  // desk drag / dolly
   var drag = null;
   viewport.addEventListener('pointerdown', function (e) {
     if (isTv) return;
@@ -630,10 +718,8 @@
   });
   viewport.addEventListener('pointermove', function (e) {
     if (!drag) return;
-    target.yaw = drag.yaw + (e.clientX - drag.x) * 0.15;
-    target.pitch = drag.pitch + (e.clientY - drag.y) * 0.12;
-    target.yaw = Math.max(-55, Math.min(55, target.yaw));
-    target.pitch = Math.max(-40, Math.min(40, target.pitch));
+    target.yaw = Math.max(-50, Math.min(50, drag.yaw + (e.clientX - drag.x) * 0.14));
+    target.pitch = Math.max(-36, Math.min(36, drag.pitch + (e.clientY - drag.y) * 0.11));
     target.source = 'drag';
     pushPose();
   });
@@ -641,25 +727,26 @@
   viewport.addEventListener('wheel', function (e) {
     if (isTv) return;
     e.preventDefault();
-    target.dist = Math.max(-180, Math.min(220, target.dist - e.deltaY * 0.35));
+    target.dist = Math.max(-160, Math.min(200, target.dist - e.deltaY * 0.35));
     target.source = 'dolly';
     pushPose();
   }, { passive: false });
 
+  buildGrid();
+  setFocus(Math.floor(COLS / 2) + Math.floor(ROWS / 2) * COLS);
   pullState();
-  setInterval(pullState, isTv ? 70 : 160);
+  setInterval(pullState, isTv ? 70 : 150);
   pullClock();
   setInterval(pullClock, 500);
   requestAnimationFrame(tick);
 
   if (!isTv && window.isSecureContext) {
-    setTimeout(function () { document.getElementById('btnGyro').click(); }, 400);
+    setTimeout(function () { document.getElementById('btnGyro').click(); }, 500);
   }
-
   fetch('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ surface: 'crazy', variation: 'true-depth-3d' }),
+    body: JSON.stringify({ surface: 'crazy', variation: 'cube-webgrid' }),
   }).catch(function () {});
 })();
 </script>
