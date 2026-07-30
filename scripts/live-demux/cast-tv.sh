@@ -16,7 +16,8 @@
 #   bash scripts/live-demux/cast-tv.sh align-mp4 [device]       # static MP4 chart (legacy)
 #   bash scripts/live-demux/cast-tv.sh align-ui                 # hub + phone control + TV surface
 #   bash scripts/live-demux/cast-tv.sh box [device]             # BOX depth + forest + center loop
-#   bash scripts/live-demux/cast-tv.sh gpu [device]             # WebGL GPU env TV stream test
+#   bash scripts/live-demux/cast-tv.sh gpu [device]             # WebGL on TV (DashCast; often low res/fps)
+#   bash scripts/live-demux/cast-tv.sh gpu-pipe [device]        # laptop VT H.264 pipe → cast (recommended)
 #   bash scripts/live-demux/cast-tv.sh news [device]            # news wall multi-feed
 #   bash scripts/live-demux/cast-tv.sh stop [device]
 #   bash scripts/live-demux/cast-tv.sh profile                  # print TCL profile
@@ -749,6 +750,38 @@ PY
     if [[ "${LIVE_DEMUX_CAST_ALIGN_BROWSER:-1}" == "1" ]] && command -v open >/dev/null 2>&1; then
       open "$phone_url" 2>/dev/null || true
     fi
+    echo "  tip: for 720p/1080p on TV use  $0 gpu-pipe  (laptop VT encode, not WebView)"
+    ;;
+  gpu-pipe|gpu-native|imagine-pipe)
+    # Laptop VideoToolbox H.264 pipe → catt cast (bypasses DashCast WebGL 960×540@12fps)
+    PIPE_DIR="$ROOT/scripts/live-demux/gpu-pipe"
+    PIPE_BIN="$PIPE_DIR/target/release/fc-gpu-pipe"
+    TIER="${LIVE_DEMUX_GPU_PIPE_TIER:-wow}"
+    SECS="${LIVE_DEMUX_GPU_PIPE_SECS:-14}"
+    MODE="${LIVE_DEMUX_GPU_PIPE_MODE:-imagine}"
+    device="$(resolve_device "${1:-}")"
+    echo "==> GPU PIPE · laptop VT encode → Cast media (not WebView)"
+    echo "  tier: $TIER · secs: $SECS · mode: $MODE · device: $device"
+    echo "  battery: LIVE_DEMUX_GPU_PIPE_TIER=battery"
+    if [[ ! -x "$PIPE_BIN" ]]; then
+      echo "  building fc-gpu-pipe (release)…"
+      need cargo
+      (cd "$PIPE_DIR" && cargo build --release) || {
+        echo "error: cargo build failed"
+        exit 1
+      }
+    fi
+    need ffmpeg
+    export LIVE_DEMUX_CAST_DEVICE="$device"
+    "$PIPE_BIN" \
+      --tier "$TIER" \
+      --power auto \
+      --secs "$SECS" \
+      --segments 1 \
+      --mode "$MODE" \
+      --cast-device "$device"
+    echo "  out:     $HOME/.panda/vision/cast/gpu-pipe.mp4"
+    echo "  status:  $HOME/.panda/vision/cast/gpu-pipe.jsonl"
     ;;
   box|depth|gmunk)
     # BOX-style: full grid + depth cube + forest plate + center video loop + cams + phone track
