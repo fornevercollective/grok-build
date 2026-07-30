@@ -3,92 +3,134 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#010205" />
-  <title>GrokCast · Impossible TV · GPU</title>
+  <meta name="theme-color" content="#050508" />
+  <title>Grok · Imagine · TV</title>
   <style>
     * { box-sizing: border-box; margin: 0; }
     html, body {
-      height: 100%; color: #e8f0f8; overflow: hidden;
-      font-family: ui-monospace, system-ui, sans-serif;
-      /* CSS fallback so cast never looks empty if WebGL dies */
+      height: 100%; color: #f4f0ff; overflow: hidden;
+      font-family: "SF Pro Display", system-ui, -apple-system, sans-serif;
       background:
-        radial-gradient(ellipse 80% 60% at 50% 45%, #0a2040 0%, #041018 45%, #010205 100%);
+        radial-gradient(ellipse 70% 55% at 50% 48%, #1a1030 0%, #0a0618 42%, #050508 100%);
     }
     body.tv #bar { display: none; }
+    body.promo #hud { opacity: 0.35; }
+    body.tv.promo #hud { opacity: 0.22; }
+    body.promo #titlebug .show { color: #a78bfa; letter-spacing: .22em; }
     #bar {
       position: fixed; z-index: 20; inset: 0 0 auto 0;
       display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
-      padding: .4rem .6rem; background: rgba(4,6,10,.94); border-bottom: 1px solid #1a2430;
-      font-size: .7rem;
+      padding: .4rem .6rem; background: rgba(8,6,14,.94); border-bottom: 1px solid #2a2040;
+      font-size: .7rem; font-family: ui-monospace, monospace;
     }
     #bar button, #bar select {
-      background: #142030; color: #e8f0f8; border: 1px solid #2a4058;
+      background: #1a1430; color: #f0e8ff; border: 1px solid #3a3060;
       border-radius: 5px; padding: .28rem .5rem; font: inherit; cursor: pointer;
     }
-    #bar button.primary { background: #1a3850; border-color: #3a80b0; }
-    #bar button.active { border-color: #ffdc50; color: #ffdc50; }
-    #bar .meta { margin-left: auto; color: #7a90a8; font-variant-numeric: tabular-nums; }
-    #gl {
-      position: absolute; inset: 0; width: 100%; height: 100%; display: block;
-    }
+    #bar button.primary { background: #2a1850; border-color: #7c5cbf; }
+    #bar button.active { border-color: #e9d5ff; color: #e9d5ff; }
+    #bar .meta { margin-left: auto; color: #8b7aa8; font-variant-numeric: tabular-nums; }
+    #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     #hud {
       position: fixed; left: 12px; top: 12px; z-index: 10;
       font: 600 11px ui-monospace, monospace;
-      padding: 8px 11px; border-radius: 6px;
-      background: rgba(0,0,0,.55); color: #9ad4ff;
+      padding: 8px 11px; border-radius: 8px;
+      background: rgba(0,0,0,.45); color: #c4b5fd;
       pointer-events: none; line-height: 1.4;
       text-shadow: 0 1px 4px #000; max-width: min(90vw, 28rem);
-      border: 1px solid rgba(80,200,255,.18);
+      border: 1px solid rgba(167,139,250,.2);
+      transition: opacity .4s;
     }
     body.control #hud { top: 48px; }
-    body.tv #hud { font-size: 13px; opacity: .9; }
+    body.tv #hud { font-size: 12px; }
     #hud .ok { color: #34d399; }
     #hud .warn { color: #fbbf24; }
     #hud .bad { color: #ff6b6b; }
-    #hud .tag { color: #a78bfa; }
+    #hud .tag { color: #e9d5ff; }
     #l3 {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 12;
-      padding: 12px 18px 16px;
-      background: linear-gradient(0deg, rgba(1,2,5,.95) 0%, rgba(1,2,5,.5) 55%, transparent);
-      font: 600 12px ui-monospace, monospace; color: #9ad4ff;
+      padding: 14px 22px 18px;
+      background: linear-gradient(0deg, rgba(5,5,8,.96) 0%, rgba(5,5,8,.45) 60%, transparent);
+      font: 500 12px ui-monospace, monospace; color: #c4b5fd;
       pointer-events: none;
     }
-    body.tv #l3 { font-size: 15px; padding: 16px 24px 20px; }
-    #l3 .zulu { color: #ffe65a; font-size: 1.1em; }
-    #l3 .wow { color: #c4b5fd; }
+    body.tv #l3 { font-size: 14px; padding: 18px 28px 22px; }
+    #l3 .zulu { color: #fde68a; font-weight: 700; }
+    #l3 .wow { color: #e9d5ff; font-weight: 700; letter-spacing: .04em; }
     #fail {
       display: none; position: fixed; left: 50%; top: 50%; z-index: 30;
       transform: translate(-50%, -50%);
       max-width: min(90vw, 36rem);
-      background: rgba(40,10,10,.92); color: #ffc0c0;
-      border: 1px solid #803030; border-radius: 10px;
+      background: rgba(40,10,20,.92); color: #ffc0d0;
+      border: 1px solid #803050; border-radius: 10px;
       font: 600 13px system-ui; text-align: left; padding: 1rem 1.2rem;
       white-space: pre-wrap; word-break: break-word;
     }
     #fail.show { display: block; }
     #titlebug {
-      position: fixed; right: 14px; top: 14px; z-index: 11;
+      position: fixed; right: 16px; top: 16px; z-index: 11;
       text-align: right; pointer-events: none;
-      text-shadow: 0 2px 12px #000a;
+      text-shadow: 0 2px 20px #000c;
     }
     body.control #titlebug { top: 52px; }
     #titlebug .show {
-      font: 800 11px system-ui; letter-spacing: .14em; color: #50c8ff;
+      font: 700 10px system-ui; letter-spacing: .2em; color: #a78bfa;
       text-transform: uppercase;
     }
     #titlebug .slug {
-      font: 700 18px system-ui, sans-serif; color: #fff; margin-top: 2px;
+      font: 700 20px system-ui, sans-serif; color: #fff; margin-top: 3px;
+      letter-spacing: -0.02em;
     }
-    body.tv #titlebug .slug { font-size: 22px; }
-    #titlebug .sub { font: 500 11px ui-monospace, monospace; color: #7a90a8; margin-top: 2px; }
+    body.tv #titlebug .slug { font-size: 24px; }
+    #titlebug .sub { font: 500 11px system-ui; color: #9b8ec4; margin-top: 3px; }
+    /* Center promo wordmark — Grok Imagine feel */
+    #imagine-mark {
+      position: fixed; left: 50%; top: 50%; z-index: 9;
+      transform: translate(-50%, -52%);
+      text-align: center; pointer-events: none;
+      opacity: 0; transition: opacity .8s ease;
+    }
+    body.promo #imagine-mark { opacity: 1; }
+    #imagine-mark .g {
+      font: 600 13px system-ui; letter-spacing: .35em; color: rgba(233,213,255,.75);
+      text-transform: uppercase; text-shadow: 0 0 24px rgba(167,139,250,.6);
+    }
+    #imagine-mark .i {
+      font: 300 64px/1.05 system-ui, "SF Pro Display", sans-serif;
+      letter-spacing: -0.03em; color: #fff;
+      text-shadow:
+        0 0 40px rgba(167,139,250,.55),
+        0 0 80px rgba(96,165,250,.35),
+        0 4px 30px #000a;
+      margin-top: .15em;
+    }
+    body.tv #imagine-mark .i { font-size: 78px; }
+    #imagine-mark .tagline {
+      margin-top: .55em;
+      font: 500 13px system-ui; color: rgba(220,210,255,.55);
+      letter-spacing: .06em;
+    }
+    body.tv #imagine-mark .tagline { font-size: 15px; }
+    #imagine-mark .pulse {
+      margin: 1.1em auto 0;
+      width: 48px; height: 2px; border-radius: 2px;
+      background: linear-gradient(90deg, transparent, #c4b5fd, #60a5fa, transparent);
+      box-shadow: 0 0 16px #a78bfa;
+      animation: pulseBar 2.4s ease-in-out infinite;
+    }
+    @keyframes pulseBar {
+      0%, 100% { opacity: .35; transform: scaleX(.7); }
+      50% { opacity: 1; transform: scaleX(1.15); }
+    }
   </style>
 </head>
 <body>
   <div id="bar">
-    <strong>IMPOSSIBLE TV</strong>
+    <strong>GROK · IMAGINE</strong>
     <select id="mode" title="Look">
+      <option value="4" selected>imagine promo</option>
       <option value="0">planet room</option>
-      <option value="1" selected>portal box</option>
+      <option value="1">portal box</option>
       <option value="2">glass forest</option>
       <option value="3">hyper tunnel</option>
     </select>
@@ -98,18 +140,25 @@
       <option value="2">insane</option>
     </select>
     <button type="button" id="btnDemo" class="primary active">Demo orbit</button>
+    <button type="button" id="btnPromo" class="primary active">Promo chrome</button>
     <button type="button" id="btnRecast" class="primary">Recast TV</button>
     <button type="button" id="btnRefresh">Refresh</button>
     <span class="meta" id="meta">…</span>
   </div>
   <canvas id="gl"></canvas>
+  <div id="imagine-mark" aria-hidden="true">
+    <div class="g">Grok</div>
+    <div class="i">Imagine</div>
+    <div class="tagline">what if the panel could dream</div>
+    <div class="pulse"></div>
+  </div>
   <div id="titlebug">
-    <div class="show">fornevercollective</div>
-    <div class="slug" id="slug">PORTAL BOX</div>
-    <div class="sub">things panels don’t do natively</div>
+    <div class="show">xAI · Grok</div>
+    <div class="slug" id="slug">IMAGINE</div>
+    <div class="sub" id="sub">promo · live WebGL · LAN cast</div>
   </div>
   <div id="hud">GPU · booting…</div>
-  <div id="l3">TIMESYNC · … · impossible tv</div>
+  <div id="l3">TIMESYNC · … · grok imagine</div>
   <div id="fail"></div>
 <script>
 (function () {
@@ -119,21 +168,26 @@
   if (isTv) document.body.classList.add('tv');
   else document.body.classList.add('control');
 
-  const MODE_NAMES = ['PLANET ROOM', 'PORTAL BOX', 'GLASS FOREST', 'HYPER TUNNEL'];
-  let mode = parseInt(u.searchParams.get('mode') || '1', 10);
-  if (isNaN(mode) || mode < 0 || mode > 3) mode = 1;
+  const MODE_NAMES = ['PLANET ROOM', 'PORTAL BOX', 'GLASS FOREST', 'HYPER TUNNEL', 'IMAGINE'];
+  // Default to Imagine promo on TV; desk can pick
+  let mode = parseInt(u.searchParams.get('mode') || (isTv ? '4' : '4'), 10);
+  if (isNaN(mode) || mode < 0 || mode > 4) mode = 4;
   let quality = parseInt(u.searchParams.get('q') || '1', 10);
   if (isNaN(quality) || quality < 0) quality = 1;
   if (quality > 2) quality = 2;
+  let promo = u.searchParams.get('promo') !== '0';
 
   const canvas = document.getElementById('gl');
   const hud = document.getElementById('hud');
   const meta = document.getElementById('meta');
   const slug = document.getElementById('slug');
+  const sub = document.getElementById('sub');
   const failEl = document.getElementById('fail');
   document.getElementById('mode').value = String(mode);
   document.getElementById('quality').value = String(quality);
   slug.textContent = MODE_NAMES[mode];
+  document.body.classList.toggle('promo', promo);
+  document.getElementById('btnPromo').classList.toggle('active', promo);
 
   let demo = true;
   let pose = { yaw: 0, pitch: 0, roll: 0, z: 1, source: 'demo' };
@@ -146,10 +200,8 @@
   function showFail(msg) {
     failEl.textContent = msg;
     failEl.classList.add('show');
-    hud.innerHTML = '<span class="bad">WebGL fail</span> · see banner';
-    meta.textContent = 'fail';
+    hud.innerHTML = '<span class="bad">WebGL fail</span>';
   }
-
   function paintHud() {
     const eng = glInfo.webgl2 ? 'WebGL2' : 'WebGL1';
     const fpsCls = fps >= 28 ? 'ok' : fps >= 18 ? 'warn' : (fps > 0 ? 'bad' : 'warn');
@@ -160,47 +212,31 @@
         : '<span class="warn">' + bootMsg + '</span> · ' + eng) +
       ' · <span class="tag">' + qn + '</span>' +
       (autoThrottle ? ' · <span class="warn">auto↓</span>' : '') + '<br/>' +
-      String(glInfo.renderer || '?').slice(0, 44) + '<br/>' +
-      canvas.width + '×' + canvas.height +
-      ' · ' + MODE_NAMES[mode] +
-      ' · ' + pose.source +
-      (isTv ? ' · TV' : ' · desk');
+      String(glInfo.renderer || '?').slice(0, 42) + '<br/>' +
+      canvas.width + '×' + canvas.height + ' · ' + MODE_NAMES[mode] +
+      ' · ' + pose.source + (isTv ? ' · TV' : ' · desk');
     meta.textContent = (fps || '—') + 'fps · ' + MODE_NAMES[mode].toLowerCase();
   }
-
-  // Early HUD so we never sit on silent black
   paintHud();
 
   const gl = canvas.getContext('webgl', {
-    antialias: false,
-    alpha: false,
-    depth: false,
-    stencil: false,
-    powerPreference: 'default',
-    failIfMajorPerformanceCaveat: false,
-  }) || canvas.getContext('experimental-webgl', {
-    antialias: false,
-    alpha: false,
-  });
+    antialias: false, alpha: false, depth: false, stencil: false,
+    powerPreference: 'default', failIfMajorPerformanceCaveat: false,
+  }) || canvas.getContext('experimental-webgl', { antialias: false, alpha: false });
 
   if (!gl) {
-    showFail('No WebGL on this WebView.\nCSS fallback background only.\nTry Chrome cast or BOX surface.');
+    showFail('No WebGL on this WebView.\nCSS fallback only.');
     return;
   }
-
-  glInfo.webgl2 = false;
   try {
     const dbg = gl.getExtension('WEBGL_debug_renderer_info');
     if (dbg) {
       glInfo.vendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '?';
       glInfo.renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '?';
     } else {
-      glInfo.vendor = gl.getParameter(gl.VENDOR) || '?';
       glInfo.renderer = gl.getParameter(gl.RENDERER) || '?';
     }
-  } catch (e) {
-    glInfo.renderer = 'unknown';
-  }
+  } catch (e) {}
   bootMsg = 'compiling';
   paintHud();
 
@@ -209,14 +245,11 @@
     gl.shaderSource(s, src);
     gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      const log = gl.getShaderInfoLog(s) || 'unknown';
-      console.error(label, log);
-      showFail(label + ' compile failed:\n' + log);
+      showFail(label + ' compile failed:\n' + (gl.getShaderInfoLog(s) || ''));
       return null;
     }
     return s;
   }
-
   function link(vsSrc, fsSrc) {
     const vs = compile(gl.VERTEX_SHADER, vsSrc, 'vertex');
     if (!vs) return null;
@@ -227,22 +260,18 @@
     gl.attachShader(p, fs);
     gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-      const log = gl.getProgramInfoLog(p) || 'unknown';
-      showFail('program link failed:\n' + log);
+      showFail('link failed:\n' + (gl.getProgramInfoLog(p) || ''));
       return null;
     }
     return p;
   }
 
-  // WebGL1-safe: fixed loop bounds only, no dynamic break on loop index vs uniform.
-  // Quality uses u_q to blend detail, not change loop counts.
   const VS = [
     'attribute vec2 a_pos;',
-    'void main() {',
-    '  gl_Position = vec4(a_pos, 0.0, 1.0);',
-    '}',
+    'void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }',
   ].join('\n');
 
+  // WebGL1-safe fixed loops. Mode 4 = Grok Imagine promo field.
   const FS = [
     'precision mediump float;',
     'uniform float u_t;',
@@ -264,10 +293,8 @@
     '  vec2 u = f * f * (3.0 - 2.0 * f);',
     '  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;',
     '}',
-    // Fixed 4 octaves — WebGL1 OK
     'float fbm(vec2 p) {',
-    '  float v = 0.0;',
-    '  float a = 0.5;',
+    '  float v = 0.0; float a = 0.5;',
     '  v += a * noise(p); p = p * 2.07 + vec2(1.7, 9.2); a *= 0.5;',
     '  v += a * noise(p); p = p * 2.07 + vec2(1.7, 9.2); a *= 0.5;',
     '  v += a * noise(p); p = p * 2.07 + vec2(1.7, 9.2); a *= 0.5;',
@@ -281,13 +308,75 @@
     'vec3 irid(float x) {',
     '  return 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + x));',
     '}',
+    // Grok Imagine promo palette: void black + lavender + soft cyan bloom
+    'vec3 imaginePalette(float x) {',
+    '  vec3 a = vec3(0.08, 0.04, 0.16);',
+    '  vec3 b = vec3(0.55, 0.35, 0.95);',
+    '  vec3 c = vec3(0.35, 0.75, 1.0);',
+    '  vec3 d = vec3(0.95, 0.55, 0.85);',
+    '  return a + b * cos(6.2831 * (c * x + d));',
+    '}',
+    '',
+    // ── GROK IMAGINE promo field ──────────────────────────────
+    'vec3 imagine(vec2 uv, float t, vec4 pose) {',
+    '  float yaw = pose.x * 0.55;',
+    '  float pitch = pose.y * 0.45;',
+    '  float z = max(0.65, pose.w);',
+    '  vec2 p = uv;',
+    '  p += vec2(yaw, pitch) * 0.4;',
+    '  p *= 1.05 / z;',
+    // slow domain warp = "latent morph"
+    '  vec2 q = p;',
+    '  q += 0.35 * vec2(fbm(p * 1.2 + t * 0.07), fbm(p * 1.2 + vec2(5.2, 1.3) - t * 0.06));',
+    '  q = rot(t * 0.04 + yaw * 0.2) * q;',
+    '  float n1 = fbm(q * 1.4 + t * 0.05);',
+    '  float n2 = fbm(q * 2.6 - t * 0.08 + 2.7);',
+    '  float n3 = fbm(q * 0.7 + vec2(n1, n2) + t * 0.03);',
+    // base void
+    '  vec3 col = vec3(0.03, 0.02, 0.06);',
+    // soft morphing color volumes (promo stills vibe)
+    '  vec3 cA = mix(vec3(0.12, 0.05, 0.28), vec3(0.25, 0.55, 0.95), n1);',
+    '  vec3 cB = mix(vec3(0.55, 0.2, 0.55), vec3(0.9, 0.5, 0.75), n2);',
+    '  vec3 cC = mix(vec3(0.05, 0.15, 0.35), vec3(0.45, 0.85, 1.0), n3);',
+    '  col = mix(cA, cB, smoothstep(0.3, 0.7, n3));',
+    '  col = mix(col, cC, n1 * n2 * 0.65);',
+    '  col += imaginePalette(n1 * 0.5 + n2 * 0.3 + t * 0.02) * 0.18;',
+    // center latent "eye" / aperture glow
+    '  float r = length(p);',
+    '  float aperture = exp(-r * r * (2.2 + 0.6 * sin(t * 0.5)));',
+    '  col += vec3(0.75, 0.65, 1.0) * aperture * 0.55;',
+    '  col += vec3(0.4, 0.8, 1.0) * pow(aperture, 2.5) * 0.4;',
+    // anamorphic horizontal flares (cinema promo)
+    '  float flare = exp(-abs(p.y) * 14.0) * (0.35 + 0.65 * n2);',
+    '  flare *= smoothstep(1.4, 0.1, abs(p.x));',
+    '  col += vec3(0.85, 0.75, 1.0) * flare * 0.35;',
+    '  col += vec3(0.5, 0.85, 1.0) * exp(-abs(p.y - 0.08 * sin(t)) * 40.0) * 0.12;',
+    // floating dream orbs
+    '  for (int k = 0; k < 5; k++) {',
+    '    float fk = float(k);',
+    '    vec2 c = vec2(',
+    '      sin(t * (0.15 + fk * 0.04) + fk * 1.7 + yaw),',
+    '      cos(t * (0.12 + fk * 0.03) + fk * 2.1 + pitch)',
+    '    ) * (0.35 + fk * 0.08);',
+    '    float d = length(p - c);',
+    '    float orb = exp(-d * d * (18.0 + fk * 3.0));',
+    '    vec3 oc = mix(vec3(0.6, 0.4, 1.0), vec3(0.4, 0.9, 1.0), fk / 5.0);',
+    '    col += oc * orb * 0.28;',
+    '  }',
+    // soft film grain + vignette
+    '  float vig = smoothstep(1.35, 0.25, r);',
+    '  col *= 0.55 + 0.45 * vig;',
+    '  // gentle "generate" shimmer',
+    '  col += vec3(0.9, 0.85, 1.0) * pow(n3, 4.0) * 0.12;',
+    '  return col;',
+    '}',
     '',
     'vec3 planet(vec2 uv, float t) {',
     '  float r = length(uv);',
     '  float mask = smoothstep(1.08, 0.90, r);',
     '  if (mask < 0.001) {',
     '    float stars = step(0.996, hash(floor(uv * 80.0 + t)));',
-    '    return vec3(0.01, 0.02, 0.05) + stars * 0.85;',
+    '    return vec3(0.02, 0.02, 0.06) + stars * 0.85;',
     '  }',
     '  float theta = atan(uv.y, uv.x);',
     '  float phi = 2.0 * atan(r * 1.4);',
@@ -297,20 +386,15 @@
     '  float land = fbm(sp + t * 0.04);',
     '  float cloud = fbm(sp * 1.7 - t * 0.1);',
     '  float sea = smoothstep(0.40, 0.58, land);',
-    '  vec3 ocean = vec3(0.02, 0.09, 0.2);',
-    '  vec3 deep = vec3(0.01, 0.04, 0.1);',
-    '  vec3 grass = vec3(0.05, 0.22, 0.1);',
-    '  vec3 rock = vec3(0.2, 0.15, 0.1);',
-    '  vec3 snow = vec3(0.8, 0.85, 0.95);',
+    '  vec3 ocean = vec3(0.05, 0.08, 0.22);',
+    '  vec3 deep = vec3(0.03, 0.04, 0.12);',
+    '  vec3 grass = vec3(0.12, 0.18, 0.28);',
+    '  vec3 rock = vec3(0.25, 0.18, 0.3);',
     '  vec3 ground = mix(grass, rock, smoothstep(0.55, 0.78, land));',
-    '  ground = mix(ground, snow, smoothstep(0.8, 0.95, land));',
     '  vec3 col = mix(mix(deep, ocean, sea), ground, sea);',
     '  float rim = pow(smoothstep(0.5, 1.0, r), 2.0);',
-    '  col += vec3(0.2, 0.5, 0.95) * rim * 0.55;',
-    '  float night = smoothstep(-0.15, 0.45, sin(lon * 2.5 + t * 0.15));',
-    '  float lights = step(0.84, hash(floor(sp * 36.0))) * night * sea;',
-    '  col += vec3(1.0, 0.75, 0.35) * lights * 0.5;',
-    '  col = mix(col, vec3(0.9, 0.95, 1.0), cloud * cloud * 0.4);',
+    '  col += vec3(0.4, 0.45, 0.95) * rim * 0.55;',
+    '  col = mix(col, vec3(0.85, 0.8, 1.0), cloud * cloud * 0.35);',
     '  return col * mask;',
     '}',
     '',
@@ -320,30 +404,24 @@
     '}',
     '',
     'vec3 portalBox(vec2 uv, float t, vec4 pose) {',
-    '  float yaw = pose.x;',
-    '  float pitch = pose.y;',
-    '  float z = max(0.55, pose.w);',
+    '  float yaw = pose.x, pitch = pose.y, z = max(0.55, pose.w);',
     '  vec3 ro = vec3(yaw * 0.3, pitch * 0.22, -2.1 * z);',
     '  vec3 rd = normalize(vec3(uv * (1.15 / z), 1.45));',
     '  rd.yz = rot(pitch * 0.45) * rd.yz;',
     '  rd.xz = rot(yaw * 0.6) * rd.xz;',
-    '  float hit = 0.0;',
-    '  vec3 p = ro;',
-    '  float d = 1.0;',
-    // Fixed 16 steps
+    '  float hit = 0.0; vec3 p = ro; float d = 1.0;',
     '  for (int i = 0; i < 16; i++) {',
     '    p = ro + rd * hit;',
     '    vec3 q = p;',
     '    q.xy = rot(t * 0.14 + pose.z * 0.4) * q.xy;',
     '    q.xz = rot(t * 0.1 - yaw) * q.xz;',
     '    d = sdBox(q, 0.52);',
-    '    vec3 q2 = q;',
-    '    q2.yz = rot(-t * 0.2) * q2.yz;',
+    '    vec3 q2 = q; q2.yz = rot(-t * 0.2) * q2.yz;',
     '    d = min(d, sdBox(q2, 0.26));',
     '    d = min(d, abs(sdBox(q, 0.7)) - 0.018);',
     '    hit += clamp(d, 0.002, 0.45) * 0.9;',
     '  }',
-    '  vec3 col = vec3(0.015, 0.02, 0.05);',
+    '  vec3 col = vec3(0.03, 0.02, 0.07);',
     '  if (hit < 7.0) {',
     '    vec3 q = p;',
     '    q.xy = rot(t * 0.14) * q.xy;',
@@ -352,31 +430,23 @@
     '    vec3 n = normalize(vec3(',
     '      sdBox(q + e.xyy, 0.52) - sdBox(q - e.xyy, 0.52),',
     '      sdBox(q + e.yxy, 0.52) - sdBox(q - e.yxy, 0.52),',
-    '      sdBox(q + e.yyx, 0.52) - sdBox(q - e.yyx, 0.52)',
-    '    ));',
+    '      sdBox(q + e.yyx, 0.52) - sdBox(q - e.yyx, 0.52)));',
     '    float fres = pow(1.0 - max(dot(n, -rd), 0.0), 2.8);',
     '    vec2 faceUv = vec2(dot(p, vec3(0.8, 0.0, 0.2)), dot(p, vec3(0.0, 0.9, 0.15)));',
-    '    vec3 portal = planet(faceUv * 1.15, t * 1.2);',
+    '    vec3 portal = imagine(faceUv * 0.9, t * 1.1, pose);',
     '    vec3 face = irid(n.x * 0.35 + n.y * 0.2 + t * 0.04);',
-    '    col = mix(face * 0.4, portal, 0.58);',
-    '    col += vec3(0.35, 0.8, 1.0) * fres * 0.9;',
+    '    col = mix(face * 0.35, portal, 0.62);',
+    '    col += vec3(0.55, 0.45, 1.0) * fres * 0.85;',
     '  } else {',
-    '    float stars = step(0.997, hash(floor(uv * 110.0 + t)));',
-    '    col += vec3(0.65, 0.8, 1.0) * stars;',
-    '    float neb = fbm(uv * 1.4 + t * 0.03);',
-    '    col += irid(neb + t * 0.02) * neb * neb * 0.22;',
+    '    col = imagine(uv * 0.85, t, pose) * 0.85;',
     '  }',
     '  return col;',
     '}',
     '',
     'vec3 forest(vec2 uv, float t, vec4 pose) {',
     '  float yaw = pose.x, pitch = pose.y, z = max(0.6, pose.w);',
-    '  vec2 p = uv;',
-    '  p.x += yaw * 0.65;',
-    '  p.y += pitch * 0.45;',
-    '  p *= 1.12 / z;',
-    '  vec3 col = vec3(0.02, 0.04, 0.06);',
-    // 3 fixed parallax layers
+    '  vec2 p = uv; p.x += yaw * 0.65; p.y += pitch * 0.45; p *= 1.12 / z;',
+    '  vec3 col = vec3(0.04, 0.03, 0.08);',
     '  for (int L = 0; L < 3; L++) {',
     '    float lf = float(L);',
     '    float par = 1.0 + lf * 0.5;',
@@ -384,16 +454,14 @@
     '    lp.x += sin(t * (0.12 + lf * 0.03) + lf) * 0.04;',
     '    float n = fbm(lp * (1.3 + lf * 0.45) + t * 0.035);',
     '    float canopy = smoothstep(0.42, 0.72, n);',
-    '    vec3 leaf = mix(vec3(0.02, 0.11, 0.05), vec3(0.08, 0.32, 0.14), n);',
+    '    vec3 leaf = mix(vec3(0.08, 0.05, 0.18), vec3(0.25, 0.35, 0.55), n);',
     '    float shaft = pow(max(0.0, 1.0 - abs(lp.x * 0.65 + sin(t * 0.18 + lf) * 0.18)), 7.0);',
-    '    leaf += vec3(0.55, 0.85, 1.0) * shaft * 0.4;',
+    '    leaf += vec3(0.6, 0.5, 1.0) * shaft * 0.4;',
     '    leaf += irid(n + t * 0.03 + lf * 0.12) * canopy * 0.14;',
     '    col = mix(col, leaf, canopy * (0.4 + 0.12 * lf));',
     '  }',
-    '  float fog = smoothstep(0.05, 0.95, p.y + 0.35 + pitch * 0.2);',
-    '  col = mix(col, vec3(0.04, 0.08, 0.1), fog * 0.45);',
     '  float ff = step(0.992, hash(floor(p * 32.0 + floor(t * 2.5))));',
-    '  col += vec3(1.0, 0.88, 0.4) * ff * 0.75;',
+    '  col += vec3(0.85, 0.75, 1.0) * ff * 0.7;',
     '  return col;',
     '}',
     '',
@@ -407,12 +475,10 @@
     '  vec2 tp = vec2(uu, vv * 3.0);',
     '  float grid = smoothstep(0.03, 0.0, min(abs(fract(tp.x) - 0.5), abs(fract(tp.y * 0.5) - 0.5)) - 0.45);',
     '  float n = fbm(tp * 1.4);',
-    '  vec3 col = irid(uu * 0.12 + n * 0.28 + t * 0.02);',
+    '  vec3 col = imaginePalette(uu * 0.1 + n * 0.25 + t * 0.02);',
     '  col *= 0.22 + 0.78 * smoothstep(1.15, 0.0, r);',
-    '  col += vec3(0.25, 0.75, 1.0) * grid * 0.7;',
-    '  col += vec3(0.85, 0.9, 1.0) * pow(smoothstep(0.45, 0.0, r), 3.0) * 0.5;',
-    '  float rings = sin(uu * 11.0 - t * 3.5) * 0.5 + 0.5;',
-    '  col += vec3(1.0, 0.35, 0.85) * rings * smoothstep(0.75, 0.0, r) * 0.22;',
+    '  col += vec3(0.55, 0.45, 1.0) * grid * 0.65;',
+    '  col += vec3(0.9, 0.85, 1.0) * pow(smoothstep(0.45, 0.0, r), 3.0) * 0.45;',
     '  return col;',
     '}',
     '',
@@ -421,7 +487,9 @@
     '  vec2 uv = (gl_FragCoord.xy - 0.5 * res) / max(res.y, 1.0);',
     '  float t = u_t;',
     '  vec3 col;',
-    '  if (u_mode < 0.5) {',
+    '  if (u_mode > 3.5) {',
+    '    col = imagine(uv, t, u_pose);',
+    '  } else if (u_mode < 0.5) {',
     '    vec2 puv = uv * (1.05 / max(0.55, u_pose.w));',
     '    puv = rot(u_pose.x * 0.35) * puv;',
     '    puv.y += u_pose.y * 0.12;',
@@ -433,20 +501,19 @@
     '  } else {',
     '    col = tunnel(uv, t, u_pose);',
     '  }',
-    // quality: boost saturation/glow when wow/insane
-    '  float boost = 0.85 + 0.2 * u_q;',
+    '  float boost = 0.88 + 0.18 * u_q;',
     '  col *= boost;',
-    '  col = pow(max(col, 0.0), vec3(0.9));',
+    // slightly softer grade for promo
+    '  col = pow(max(col, 0.0), vec3(0.88));',
     '  vec2 q = gl_FragCoord.xy / max(res, vec2(1.0));',
-    '  col *= 0.72 + 0.28 * smoothstep(1.15, 0.25, length(q - 0.5));',
-    '  col += (hash(q + fract(t)) - 0.5) * 0.025;',
+    '  col *= 0.7 + 0.3 * smoothstep(1.2, 0.2, length(q - 0.5));',
+    '  col += (hash(q + fract(t)) - 0.5) * 0.02;',
     '  gl_FragColor = vec4(col, 1.0);',
     '}',
   ].join('\n');
 
   const prog = link(VS, FS);
   if (!prog) return;
-
   bootMsg = 'linked';
   failEl.classList.remove('show');
   paintHud();
@@ -454,10 +521,8 @@
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    -1, -1, 1, -1, -1, 1,
-    -1, 1, 1, -1, 1, 1,
+    -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
   ]), gl.STATIC_DRAW);
-
   const aPos = gl.getAttribLocation(prog, 'a_pos');
   const uT = gl.getUniformLocation(prog, 'u_t');
   const uRes = gl.getUniformLocation(prog, 'u_res');
@@ -471,35 +536,31 @@
     if (quality === 1) return Math.min(raw, isTv ? 1.15 : 1.5);
     return Math.min(raw, isTv ? 1.35 : 2.0);
   }
-
   function resize() {
     const dpr = maxDpr();
     const w = Math.max(2, Math.floor((window.innerWidth || 320) * dpr));
     const h = Math.max(2, Math.floor((window.innerHeight || 180) * dpr));
     if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
+      canvas.width = w; canvas.height = h;
       gl.viewport(0, 0, w, h);
     }
   }
-
-  // Clear once so first frame isn't undefined
-  gl.clearColor(0.02, 0.04, 0.08, 1.0);
+  gl.clearColor(0.03, 0.02, 0.07, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   const t0 = performance.now();
   function frame(now) {
     resize();
     const t = (now - t0) / 1000;
-
     if (demo && (pose.source === 'demo' || pose.source === 'idle' || !pose.source)) {
-      pose.yaw = Math.sin(t * 0.22) * 0.7 + Math.sin(t * 0.07) * 0.18;
-      pose.pitch = Math.cos(t * 0.18) * 0.36;
-      pose.roll = Math.sin(t * 0.11) * 0.1;
-      pose.z = 1.0 + Math.sin(t * 0.15) * 0.16;
+      // slower, more cinematic for promo
+      const sp = mode === 4 ? 0.14 : 0.22;
+      pose.yaw = Math.sin(t * sp) * 0.55 + Math.sin(t * 0.05) * 0.12;
+      pose.pitch = Math.cos(t * sp * 0.85) * 0.28;
+      pose.roll = Math.sin(t * 0.08) * 0.06;
+      pose.z = 1.0 + Math.sin(t * 0.11) * 0.12;
       pose.source = 'demo';
     }
-
     gl.useProgram(prog);
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.enableVertexAttribArray(aPos);
@@ -514,8 +575,7 @@
     frames++;
     if (now - lastFpsT > 500) {
       fps = Math.round((frames * 1000) / (now - lastFpsT));
-      frames = 0;
-      lastFpsT = now;
+      frames = 0; lastFpsT = now;
       if (fps > 0 && fps < 16 && quality > 0 && !autoThrottle) {
         quality = Math.max(0, quality - 1);
         autoThrottle = true;
@@ -547,14 +607,12 @@
       }
       if (st.tv_cmd && st.tv_cmd.reload_token != null) {
         if (lastReload != null && st.tv_cmd.reload_token !== lastReload) {
-          location.reload();
-          return;
+          location.reload(); return;
         }
         lastReload = st.tv_cmd.reload_token;
       }
     } catch (e) {}
   }
-
   async function pullClock() {
     try {
       const r = await fetch('/api/clock?_=' + Date.now(), { cache: 'no-store' });
@@ -562,18 +620,26 @@
       const snap = await r.json();
       const z = snap.zulu || '';
       const zp = z.length >= 7
-        ? z.slice(0, 2) + ':' + z.slice(2, 4) + ':' + z.slice(4, 6) + ' Z'
-        : z;
+        ? z.slice(0, 2) + ':' + z.slice(2, 4) + ':' + z.slice(4, 6) + ' Z' : z;
       document.getElementById('l3').innerHTML =
         'TIMESYNC · <span class="zulu">' + zp + '</span> · ' +
-        '<span class="wow">' + MODE_NAMES[mode] + '</span> · impossible tv · ' +
+        '<span class="wow">' + (mode === 4 ? 'GROK · IMAGINE' : MODE_NAMES[mode]) + '</span> · ' +
         (fps || '…') + ' fps';
     } catch (e) {}
   }
 
-  document.getElementById('mode').onchange = function (e) {
-    mode = parseInt(e.target.value, 10) || 0;
+  function setMode(m) {
+    mode = m;
     slug.textContent = MODE_NAMES[mode];
+    sub.textContent = mode === 4
+      ? 'promo · latent field · LAN cast'
+      : 'things panels don’t do natively';
+    document.getElementById('mode').value = String(mode);
+    document.body.classList.toggle('promo', promo && mode === 4);
+  }
+
+  document.getElementById('mode').onchange = function (e) {
+    setMode(parseInt(e.target.value, 10) || 0);
   };
   document.getElementById('quality').onchange = function (e) {
     quality = parseInt(e.target.value, 10) || 0;
@@ -584,8 +650,13 @@
     document.getElementById('btnDemo').classList.toggle('active', demo);
     if (demo) pose.source = 'demo';
   };
+  document.getElementById('btnPromo').onclick = function () {
+    promo = !promo;
+    document.getElementById('btnPromo').classList.toggle('active', promo);
+    document.body.classList.toggle('promo', promo && mode === 4);
+  };
   document.getElementById('btnRecast').onclick = function () {
-    var url = location.origin + '/gpu?tv=1&mode=' + mode + '&q=' + quality;
+    var url = location.origin + '/gpu?tv=1&mode=' + mode + '&q=' + quality + (promo ? '&promo=1' : '&promo=0');
     fetch('/api/tv/recast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -596,15 +667,17 @@
     fetch('/api/tv/reload', { method: 'POST', body: '{}' }).catch(function () {});
   };
 
+  // TV: stay on Imagine mostly; occasional peek at other looks
   if (isTv) {
     setInterval(function () {
       if (!demo) return;
-      mode = (mode + 1) % 4;
-      slug.textContent = MODE_NAMES[mode];
-      document.getElementById('mode').value = String(mode);
-    }, 22000);
+      // 70% stay imagine, 30% cycle others
+      if (Math.random() < 0.7) setMode(4);
+      else setMode(Math.floor(Math.random() * 4));
+    }, 28000);
   }
 
+  setMode(mode);
   requestAnimationFrame(frame);
   pullPose();
   setInterval(pullPose, isTv ? 100 : 130);
@@ -613,7 +686,7 @@
   fetch('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ surface: 'gpu-env', variation: 'impossible-tv' }),
+    body: JSON.stringify({ surface: 'gpu-env', variation: 'grok-imagine' }),
   }).catch(function () {});
 })();
 </script>

@@ -712,16 +712,20 @@ case "$CMD" in
     # WebGL living environment — TV stream GPU test (no cam-relay)
     hub_start || exit 1
     lan="$(lan_ip)"
-    phone_url="http://${lan}:${PORT}/gpu"
-    tv_url="http://${lan}:${PORT}/gpu?tv=1"
-    echo "==> GPU ENV · WebGL living forest / depth / forced perspective"
-    echo "  phone:  $phone_url   (demo orbit · heavy particles)"
+    # Grok Imagine promo feel by default (mode=4); override LIVE_DEMUX_GPU_MODE / _Q
+    GPU_MODE="${LIVE_DEMUX_GPU_MODE:-4}"
+    GPU_Q="${LIVE_DEMUX_GPU_Q:-1}"
+    phone_url="http://${lan}:${PORT}/gpu?mode=${GPU_MODE}&q=${GPU_Q}&promo=1"
+    tv_url="http://${lan}:${PORT}/gpu?tv=1&mode=${GPU_MODE}&q=${GPU_Q}&promo=1"
+    echo "==> GPU ENV · Grok Imagine promo / impossible looks"
+    echo "  phone:  $phone_url"
     echo "  TV:     $tv_url"
+    echo "  modes:  4=imagine · 0=planet · 1=portal · 2=forest · 3=tunnel"
     echo "  no cam-relay (GPU-only stream test)"
     python3 - "$PORT" <<'PY' 2>/dev/null || true
 import json, urllib.request, sys
 port = sys.argv[1]
-payload = {"surface": "gpu-env", "variation": "gpu"}
+payload = {"surface": "gpu-env", "variation": "grok-imagine"}
 req = urllib.request.Request(
   f"http://127.0.0.1:{port}/api/state",
   data=json.dumps(payload).encode(),
@@ -729,7 +733,7 @@ req = urllib.request.Request(
   method="POST",
 )
 urllib.request.urlopen(req, timeout=2).read()
-print("  surface=gpu-env seeded")
+print("  surface=gpu-env · grok-imagine seeded")
 PY
     if [[ "${LIVE_DEMUX_CAST_ALIGN_NO_CAST:-0}" != "1" ]] && command -v catt >/dev/null 2>&1; then
       device="$(resolve_device "${1:-}")"
@@ -737,7 +741,7 @@ PY
       sleep 0.4
       echo "==> catt cast_site → $device"
       if catt -d "$device" cast_site "$tv_url" 2>>"$LOG"; then
-        echo "cast_site ok · GPU env on TV — watch FPS HUD + orbit"
+        echo "cast_site ok · Imagine promo on TV"
       else
         echo "cast_site failed — open: $tv_url"
       fi
