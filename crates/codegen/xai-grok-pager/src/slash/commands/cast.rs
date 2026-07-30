@@ -19,17 +19,36 @@ use crate::slash::command::{AppCtx, ArgItem, CommandExecCtx, CommandResult, Slas
 pub struct CastCommand;
 
 fn cast_script() -> Option<std::path::PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    let candidates = [
-        std::path::PathBuf::from(home.clone())
-            .join("Projects/grok-build/scripts/live-demux/cast-tv.sh"),
-        std::path::PathBuf::from(home).join("Projects/fornevercollective/grok-build/scripts/live-demux/cast-tv.sh"),
-    ];
+    // Prefer explicit roots (env / cwd) so lab machines with non-~/Projects layouts work.
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
     if let Ok(root) = std::env::var("FC_GROK_ROOT") {
-        let p = std::path::PathBuf::from(root).join("scripts/live-demux/cast-tv.sh");
-        if p.is_file() {
-            return Some(p);
+        candidates.push(std::path::PathBuf::from(root).join("scripts/live-demux/cast-tv.sh"));
+    }
+    if let Ok(root) = std::env::var("LAB_REPO") {
+        candidates.push(std::path::PathBuf::from(root).join("scripts/live-demux/cast-tv.sh"));
+    }
+    // Walk up from cwd for scripts/live-demux/cast-tv.sh (agent sessions often open the repo).
+    if let Ok(mut dir) = std::env::current_dir() {
+        for _ in 0..6 {
+            let p = dir.join("scripts/live-demux/cast-tv.sh");
+            if p.is_file() {
+                candidates.push(p);
+                break;
+            }
+            if !dir.pop() {
+                break;
+            }
         }
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        let home = std::path::PathBuf::from(home);
+        candidates.extend([
+            home.join("Projects/grok-build/scripts/live-demux/cast-tv.sh"),
+            home.join("Projects/fornevercollective/grok-build/scripts/live-demux/cast-tv.sh"),
+            home.join("dev/projects/grok-build/scripts/live-demux/cast-tv.sh"),
+            // fornevercollective lab root on qbitOS volume
+            std::path::PathBuf::from("/Volumes/qbitOS/00.dev/projects/grok-build/scripts/live-demux/cast-tv.sh"),
+        ]);
     }
     candidates.into_iter().find(|p| p.is_file())
 }
