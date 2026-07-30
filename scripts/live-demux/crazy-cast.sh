@@ -39,8 +39,8 @@ lan_ip() {
 LAN="$(lan_ip)"
 
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║  CRAZY CAST · multi-device augmented perspective             ║"
-echo "║  terminal → hub → phones/quest → TV                         ║"
+echo "║  TRUE DEPTH · 3D camera (not 2D stretch)                    ║"
+echo "║  cube + floor grid + Imagine sky · phone/quest look         ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 echo "  LAN:     $LAN"
