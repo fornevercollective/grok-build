@@ -29,6 +29,7 @@ pub mod fork;
 pub mod cam;
 pub mod phone;
 pub mod lens;
+pub mod cast;
 pub mod gboom;
 pub mod gy;
 pub mod map;
@@ -164,6 +165,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(phone::PhoneCommand),
         // Live HDRI / anamorphic / tiny-bug-world lens pop-out (360-capable).
         Arc::new(lens::LensCommand),
+        // Cast desk/stream/mosaic to TCL Google TV / Chromecast (explicit).
+        Arc::new(cast::CastCommand),
         // fornevercollective broadcast timesync world clock inside Grok.
         Arc::new(timesync::TimesyncCommand),
         // fornevercollective maptrace · in-Grok + pop-out.

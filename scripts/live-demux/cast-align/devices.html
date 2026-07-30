@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07090e" />
+  <title>GrokCast · devices lab</title>
+  <style>
+    :root {
+      --bg: #07090e; --ink: #e8eef6; --muted: #8b96a8; --line: #243044;
+      --accent: #50c8ff; --ok: #34d399; --warn: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100dvh; background: var(--bg); color: var(--ink);
+      font-family: system-ui, sans-serif; padding: 1rem 1.1rem 2rem; line-height: 1.4;
+    }
+    h1 { font-size: 1.15rem; margin-bottom: .25rem; }
+    .sub { color: var(--muted); font-size: .88rem; margin-bottom: 1rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .75rem; }
+    select, button {
+      background: #142030; color: var(--ink); border: 1px solid #2a4058;
+      border-radius: 6px; padding: .4rem .65rem; font: inherit; cursor: pointer;
+    }
+    button.primary { background: #163848; border-color: #2a6a96; }
+    .card {
+      background: #0e1420; border: 1px solid var(--line); border-radius: 10px;
+      padding: .85rem; margin-bottom: .75rem;
+    }
+    .card h2 { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: .45rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th, td { text-align: left; padding: .28rem .35rem; border-bottom: 1px solid #1a2430; }
+    th { color: var(--muted); font-weight: 600; }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .no { color: #ff6b6b; }
+    code { font-size: .75rem; color: #9ad4ff; }
+    #frame-wrap {
+      margin-top: .75rem; display: grid; place-items: center;
+      min-height: 280px; background: #05070c; border-radius: 10px; border: 1px dashed #2a4058;
+      padding: .75rem;
+    }
+    #fc-device-frame {
+      background: #0a1018; border: 2px solid #3a80b0; border-radius: 18px;
+      overflow: hidden; box-shadow: 0 12px 40px #000a;
+      transition: width .2s, height .2s;
+    }
+    #fc-device-frame iframe { width: 100%; height: 100%; border: 0; background: #000; }
+    a { color: var(--accent); }
+    pre { font-size: .72rem; color: #9ad4ff; white-space: pre-wrap; word-break: break-all; }
+  </style>
+  <script src="/device-kit.js"></script>
+</head>
+<body>
+  <h1>Devices lab · Chrome / Safari / Firefox</h1>
+  <p class="sub">
+    DevTools-style presets + live engine probe. Use Chrome device toolbar, Safari RDM, or Firefox RDM —
+    or pick a preset here. Cast profiles (TCL / Hisense) included.
+  </p>
+
+  <div class="row">
+    <label>Preset
+      <select id="preset"></select>
+    </label>
+    <button type="button" id="btnApply" class="primary">Apply emulate</button>
+    <button type="button" id="btnClear">Clear</button>
+    <button type="button" id="btnOpenBox">Open BOX</button>
+    <button type="button" id="btnOpenNews">Open News</button>
+    <a href="/setup.html">Setup / trust</a>
+  </div>
+
+  <div class="card">
+    <h2>This browser</h2>
+    <div id="live"></div>
+    <pre id="json"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Engine matrix</h2>
+    <div id="matrix"></div>
+  </div>
+
+  <div class="card">
+    <h2>Presets (DevTools / RDM / cast)</h2>
+    <div style="max-height: 220px; overflow: auto">
+      <table>
+        <thead><tr><th>id</th><th>label</th><th>size</th><th>dpr</th><th>source</th></tr></thead>
+        <tbody id="presetRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Emulation frame</h2>
+    <div id="frame-wrap">
+      <div id="fc-device-frame" style="width:390px;height:720px">
+        <iframe id="preview" title="preview" src="/news?control=1&emulate=1"></iframe>
+      </div>
+    </div>
+  </div>
+
+<script>
+(async function () {
+  'use strict';
+  const live = document.getElementById('live');
+  const jsonEl = document.getElementById('json');
+  const sel = document.getElementById('preset');
+  const rows = document.getElementById('presetRows');
+  const matrixEl = document.getElementById('matrix');
+  const frame = document.getElementById('fc-device-frame');
+  const preview = document.getElementById('preview');
+
+  const info = await FCDevice.bootFromQuery();
+  const pack = await FCDevice.loadPresets();
+  const matrix = await FCDevice.loadMatrix();
+
+  function featMark(v) {
+    if (v === true) return '<span class="ok">yes</span>';
+    if (v === false) return '<span class="no">no</span>';
+    if (v == null) return '—';
+    return '<span class="warn">' + String(v) + '</span>';
+  }
+
+  live.innerHTML =
+    '<strong>' + (info.browser_label || info.engine) + '</strong> · role <code>' + info.role + '</code><br/>' +
+    'viewport ' + info.viewport.w + '×' + info.viewport.h + ' @' + info.viewport.dpr + '<br/>' +
+    'secure ' + featMark(info.features.secure_context) +
+    ' · touch ' + featMark(info.features.touch) +
+    ' · gyro ' + featMark(info.features.deviceorientation) +
+    (info.features.gyro_needs_gesture ? ' <span class="warn">(gesture)</span>' : '') +
+    ' · geo ' + featMark(info.features.geolocation) +
+    ' · cam ' + featMark(info.features.getusermedia) +
+    ' · SW ' + featMark(info.features.serviceworker);
+  jsonEl.textContent = JSON.stringify(info, null, 2);
+
+  // matrix table
+  const engines = (matrix.engines) || {};
+  let mhtml = '<table><thead><tr><th>engine</th><th>gyro perm</th><th>getUserMedia</th><th>SW</th><th>notes</th></tr></thead><tbody>';
+  Object.keys(engines).forEach((k) => {
+    const e = engines[k];
+    const f = e.features || {};
+    mhtml += '<tr><td><strong>' + k + '</strong><br/><span style="color:#8b96a8;font-size:.72rem">' +
+      (e.label || '') + '</span></td><td>' + featMark(f.deviceorientation_permission) +
+      '</td><td>' + featMark(f.getusermedia) + '</td><td>' + featMark(f.serviceworker) +
+      '</td><td style="color:#8b96a8;font-size:.72rem">' + ((e.notes || [])[0] || '') + '</td></tr>';
+  });
+  mhtml += '</tbody></table>';
+  matrixEl.innerHTML = mhtml;
+
+  const presets = pack.presets || [];
+  sel.innerHTML = presets.map((p) =>
+    '<option value="' + p.id + '">' + p.label + ' (' + p.w + '×' + p.h + ')</option>'
+  ).join('');
+  rows.innerHTML = presets.map((p) =>
+    '<tr><td><code>' + p.id + '</code></td><td>' + p.label + '</td><td>' +
+    p.w + '×' + p.h + '</td><td>' + p.dpr + '</td><td>' + (p.source || '') + '</td></tr>'
+  ).join('');
+
+  function apply(id) {
+    const p = FCDevice.applyEmulation(id, pack);
+    if (!p) return;
+    preview.src = '/news?control=1&emulate=1&device=' + encodeURIComponent(id) + '&_=' + Date.now();
+    const url = new URL(location.href);
+    url.searchParams.set('device', id);
+    url.searchParams.set('emulate', '1');
+    history.replaceState({}, '', url);
+  }
+
+  document.getElementById('btnApply').onclick = () => apply(sel.value);
+  document.getElementById('btnClear').onclick = () => {
+    FCDevice.clearEmulation();
+    frame.style.width = '390px';
+    frame.style.height = '720px';
+    preview.src = '/news?control=1&_=' + Date.now();
+  };
+  document.getElementById('btnOpenBox').onclick = () => {
+    const id = sel.value;
+    location.href = '/box?pwa=1&emulate=1&device=' + encodeURIComponent(id);
+  };
+  document.getElementById('btnOpenNews').onclick = () => {
+    const id = sel.value;
+    location.href = '/news?pwa=1&emulate=1&device=' + encodeURIComponent(id);
+  };
+
+  // auto-apply from query
+  if (info.device_param) {
+    sel.value = info.device_param;
+    apply(info.device_param);
+  } else {
+    sel.value = 'iphone-14-pro';
+  }
+})();
+</script>
+</body>
+</html>

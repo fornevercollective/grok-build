@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#07090e" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <title>GrokCast · News wall</title>
+  <script src="/device-kit.js"></script>
+  <style>
+    :root {
+      --bg: #07090e;
+      --ink: #e8eef6;
+      --muted: #8b96a8;
+      --line: #243044;
+      --accent: #50c8ff;
+      --hot: #ffdc50;
+      --duck: #ff6b6b;
+      --lofi: #a78bfa;
+      --wave: #34d399;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif; overflow: hidden; }
+    body.tv #ctrl { display: none; }
+    /* Living parallax plate — phone gyro / geo drives forced perspective (no cam-relay) */
+    #living {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 90% 60% at 50% 40%, #0c1a28 0%, #07090e 55%, #030508 100%);
+      will-change: transform;
+    }
+    #living .layer {
+      position: absolute; inset: -12%;
+      will-change: transform;
+    }
+    #living .l0 {
+      background:
+        radial-gradient(ellipse 50% 40% at 20% 70%, rgba(20, 90, 50, .35), transparent 55%),
+        radial-gradient(ellipse 45% 35% at 85% 60%, rgba(30, 70, 110, .3), transparent 50%),
+        radial-gradient(ellipse 40% 30% at 50% 100%, rgba(10, 40, 30, .5), transparent 55%);
+    }
+    #living .l1 {
+      background-image:
+        radial-gradient(ellipse 14% 20% at 18% 22%, rgba(40, 140, 80, .22), transparent),
+        radial-gradient(ellipse 16% 18% at 72% 18%, rgba(40, 100, 160, .2), transparent),
+        radial-gradient(ellipse 12% 14% at 48% 12%, rgba(80, 180, 120, .15), transparent);
+      animation: canopyDrift 22s ease-in-out infinite alternate;
+    }
+    #living .l2 {
+      background:
+        repeating-linear-gradient(105deg, transparent 0 48px, rgba(80, 200, 255, .03) 48px 49px),
+        radial-gradient(ellipse at 50% 45%, rgba(80, 200, 255, .06), transparent 55%);
+      animation: gridPulse 16s linear infinite;
+    }
+    #living .fog {
+      background: linear-gradient(180deg, transparent 40%, rgba(3, 6, 10, .55) 100%);
+    }
+    @keyframes canopyDrift {
+      from { transform: translate3d(-1.5%, -1%, 0) scale(1.05); }
+      to   { transform: translate3d(1.5%, 1.2%, 0) scale(1.08); }
+    }
+    @keyframes gridPulse {
+      from { opacity: .55; }
+      to   { opacity: .9; }
+    }
+    #ctrl { z-index: 40; }
+    #l3 { z-index: 34; }
+    #audio { z-index: 35; }
+    #status { z-index: 36; }
+    #stage { z-index: 3; }
+    #ctrl {
+      position: fixed; z-index: 40; inset: 0 0 auto 0;
+      display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+      padding: .4rem .55rem; background: rgba(8,10,16,.94); border-bottom: 1px solid var(--line);
+      font-size: .72rem;
+    }
+    #ctrl button, #ctrl select {
+      background: #142030; color: var(--ink); border: 1px solid #2a4058;
+      border-radius: 5px; padding: .28rem .5rem; font: inherit; cursor: pointer;
+    }
+    #ctrl button.primary { background: #163848; border-color: #2a6a96; }
+    #ctrl button.active { border-color: var(--hot); color: var(--hot); }
+    #ctrl .meta { margin-left: auto; color: var(--muted); font-family: ui-monospace, monospace; }
+    #ctrl select.mode { max-width: 9.5rem; }
+    .tile .qbadge {
+      position: absolute; left: 6px; bottom: 5px; z-index: 2;
+      font: 600 9px ui-monospace, monospace;
+      background: rgba(0,0,0,.55); color: #8ec8ff;
+      padding: 1px 5px; border-radius: 3px;
+    }
+    .tile .qbadge.embed { color: #34d399; }
+    .tile .qbadge.lite { color: #fbbf24; }
+    .tile .qbadge.poster { color: #6b7a8a; }
+    .tile.paused .body { opacity: .45; }
+    .tile iframe {
+      /* CSS scale is visual only — real savings come from height-capped plan */
+      transform-origin: center center;
+    }
+    .tile.far .body { filter: saturate(.85); }
+    body.control #stage { top: 42px; }
+    body.tv #stage { top: 0; }
+    /* stage sits above L3 (64px) + audio strip (118px) */
+    #stage {
+      position: absolute; left: 0; right: 0; bottom: 182px; top: 0;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      will-change: transform;
+      transform-style: preserve-3d;
+      perspective: 1400px;
+    }
+    body.control #stage { bottom: 182px; }
+    /* L4 lower thirds — timesync + program bug + live transcript */
+    #l3 {
+      position: fixed; left: 0; right: 0; bottom: 118px; height: 64px; z-index: 34;
+      background: linear-gradient(0deg, #0a0e16 0%, rgba(8,12,20,.96) 70%, rgba(8,12,20,.85));
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid #1a2430;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 14px;
+      align-items: center;
+      padding: 6px 12px;
+      pointer-events: none;
+    }
+    body.tv #l3 { height: 72px; bottom: 118px; padding: 8px 18px; }
+    body.control #l3 { pointer-events: auto; }
+    body.tv #stage { bottom: 190px; }
+    #l3-bug {
+      padding: 4px 10px 5px;
+      border-radius: 3px 3px 3px 0;
+      background: linear-gradient(135deg, #0c2838, #081018);
+      border: 1px solid #2a6a96;
+      border-left: 3px solid var(--accent);
+      min-width: 6.5rem;
+    }
+    #l3-bug .show {
+      font: 800 10px system-ui, sans-serif;
+      letter-spacing: .08em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    #l3-bug .slug {
+      font: 600 12px ui-monospace, monospace;
+      color: var(--hot);
+      margin-top: 1px;
+    }
+    body.tv #l3-bug .show { font-size: 12px; }
+    body.tv #l3-bug .slug { font-size: 15px; }
+    #l3-main { min-width: 0; overflow: hidden; }
+    #l3-timesync {
+      font: 600 11px ui-monospace, monospace; color: #9ad4ff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-shadow: 0 1px 3px #000;
+    }
+    body.tv #l3-timesync { font-size: 14px; }
+    #l3-timesync .zulu { color: var(--hot); }
+    #l3-timesync .tier { color: #00ffc8; }
+    #l3-timesync .mute { color: var(--muted); font-weight: 500; }
+    #l3-transcript {
+      margin-top: 2px;
+      font: 500 12px system-ui, sans-serif;
+      color: var(--ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-height: 1.2em;
+    }
+    body.tv #l3-transcript { font-size: 15px; }
+    #l3-transcript time { color: #a78bfa; font: 600 0.85em ui-monospace, monospace; margin-right: .35em; }
+    #l3-transcript .spk { color: var(--accent); font-weight: 700; margin-right: .3em; }
+    #l3-transcript .empty { color: var(--muted); font: 500 11px ui-monospace, monospace; }
+    #l3-actions {
+      display: none; grid-column: 1 / -1; gap: 4px; flex-wrap: wrap; align-items: center;
+    }
+    body.control #l3-actions { display: flex; }
+    #l3-actions input {
+      flex: 1; min-width: 6rem; max-width: 18rem;
+      background: #0c141e; color: var(--ink); border: 1px solid var(--line);
+      border-radius: 4px; padding: .15rem .4rem; font: 500 11px system-ui;
+    }
+    #l3-actions button {
+      background: #142030; color: var(--ink); border: 1px solid #2a4058;
+      border-radius: 4px; padding: .15rem .4rem; font: 600 10px system-ui; cursor: pointer;
+    }
+    #l3-actions button.primary { background: #163848; border-color: #2a6a96; }
+    .tile {
+      position: relative; border-radius: 6px; overflow: hidden;
+      background: #0e1420; border: 1px solid var(--line);
+      min-height: 0;
+    }
+    .tile.program {
+      border-color: var(--hot);
+      box-shadow: 0 0 0 1px rgba(255,220,80,.35), 0 8px 28px #0008;
+    }
+    .tile.isolated { border-color: var(--accent); }
+    .tile .label {
+      position: absolute; left: 6px; top: 5px; z-index: 2;
+      font: 700 11px ui-monospace, monospace;
+      background: rgba(0,0,0,.55); padding: 2px 6px; border-radius: 4px;
+      color: #dff;
+    }
+    .tile .region {
+      position: absolute; right: 6px; top: 5px; z-index: 2;
+      font: 600 10px system-ui; color: var(--muted);
+      background: rgba(0,0,0,.4); padding: 2px 5px; border-radius: 3px;
+    }
+    .tile .body {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(80,160,255,.12), transparent 50%),
+        linear-gradient(160deg, #121a28, #0a0e16);
+      color: var(--muted); font: 600 13px system-ui; text-align: center; padding: 8px;
+    }
+    .tile iframe, .tile video {
+      position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+      background: #000;
+    }
+    .tile .mute-badge {
+      position: absolute; bottom: 5px; left: 6px; z-index: 2;
+      font: 600 10px ui-monospace, monospace; color: #fbbf24;
+      background: rgba(0,0,0,.5); padding: 1px 5px; border-radius: 3px;
+    }
+    /* audio strip */
+    #audio {
+      position: fixed; left: 0; right: 0; bottom: 0; height: 118px; z-index: 35;
+      background: #0a0e16; border-top: 1px solid var(--line);
+      display: grid; grid-template-rows: 36px 1fr 28px;
+      padding: 4px 8px 6px;
+    }
+    #wave-wrap { position: relative; height: 36px; }
+    #wave { width: 100%; height: 36px; display: block; }
+    #mix {
+      display: flex; flex-wrap: wrap; gap: .4rem .75rem; align-items: center;
+      font: 500 11px ui-monospace, monospace; color: var(--muted);
+    }
+    #mix label { display: inline-flex; align-items: center; gap: .3rem; }
+    #mix input[type=range] { width: 90px; accent-color: var(--accent); }
+    #mix .duck { color: var(--duck); }
+    #mix .lofi { color: var(--lofi); }
+    #ch-row {
+      display: flex; gap: 4px; overflow-x: auto; align-items: center;
+    }
+    #ch-row button {
+      flex: 0 0 auto; font: 600 10px system-ui;
+      background: #121a28; color: var(--ink); border: 1px solid var(--line);
+      border-radius: 4px; padding: 3px 7px; cursor: pointer;
+    }
+    #ch-row button.on { border-color: var(--accent); color: var(--accent); }
+    #ch-row button.iso { border-color: var(--hot); color: var(--hot); }
+    #ch-row button.duck-on { background: #3a1515; border-color: var(--duck); color: var(--duck); }
+    #status {
+      position: fixed; right: 8px; bottom: 124px; z-index: 36;
+      font: 600 10px ui-monospace, monospace; color: var(--muted);
+      background: rgba(0,0,0,.45); padding: 3px 7px; border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="ctrl">
+    <strong>NEWS WALL</strong>
+    <button type="button" id="btnGo" class="primary" data-action="news-start">Start wall</button>
+    <button type="button" id="btnLayout" data-action="news-layout">Layout 6×3</button>
+    <button type="button" id="btnRecast" class="primary" data-action="tv-recast">Recast TV</button>
+    <button type="button" id="btnRefresh" data-action="tv-refresh">Refresh TV</button>
+    <button type="button" id="btnTvNative" class="primary" data-action="tv-native" title="Cast TV PWA shell — decode on TV">TV native</button>
+    <button type="button" id="btnLofi" data-action="lofi-toggle">Lofi bed</button>
+    <button type="button" id="btnDuck" data-action="duck-toggle">Duck</button>
+    <button type="button" id="btnIso" data-action="iso-clear">Clear iso</button>
+    <button type="button" id="btnPauseFeeds" data-action="pause-feeds" title="Pause all live decodes">Pause feeds</button>
+    <button type="button" id="btnQDown" data-action="q-down" title="Drop quality one step">LQ</button>
+    <button type="button" id="btnQUp" data-action="q-up" title="Bump quality one step">HQ</button>
+    <select id="streamMode" class="mode" title="Stream budget mode">
+      <option value="economy">economy · Mac safe</option>
+      <option value="balanced">balanced</option>
+      <option value="tv-native">tv-native · offload</option>
+      <option value="studio">studio · heavy</option>
+    </select>
+    <select id="sortBy" title="Organization">
+      <option value="region">by region</option>
+      <option value="cell">by cell</option>
+      <option value="kind">by kind</option>
+      <option value="alpha">A–Z</option>
+    </select>
+    <span class="meta" id="meta">idle</span>
+  </div>
+  <div id="living" aria-hidden="true">
+    <div class="layer l0" id="liv0"></div>
+    <div class="layer l1" id="liv1"></div>
+    <div class="layer l2" id="liv2"></div>
+    <div class="layer fog"></div>
+  </div>
+  <div id="stage"></div>
+  <div id="l3" aria-label="Lower thirds broadcast info">
+    <div id="l3-bug">
+      <div class="show">NEWS WALL</div>
+      <div class="slug" id="l3-slug">PGM · —</div>
+    </div>
+    <div id="l3-main">
+      <div id="l3-timesync">TIMESYNC · …</div>
+      <div id="l3-transcript"><span class="empty">transcript · waiting</span></div>
+    </div>
+    <div id="l3-actions">
+      <input id="l3-inject" type="text" placeholder="Inject caption…" maxlength="400" autocomplete="off" />
+      <button type="button" id="btnL3Inject" class="primary">Send</button>
+      <button type="button" id="btnL3Demo">Demo</button>
+      <button type="button" id="btnL3Clear">Clear</button>
+    </div>
+  </div>
+  <div id="status">pipe …</div>
+  <div id="audio">
+    <div id="wave-wrap"><canvas id="wave"></canvas></div>
+    <div id="mix">
+      <label class="duck">pgm <input id="gPgm" type="range" min="0" max="100" value="85" /></label>
+      <label class="lofi">lofi <input id="gLofi" type="range" min="0" max="100" value="22" /></label>
+      <label>bed <input id="gBed" type="range" min="0" max="100" value="18" /></label>
+      <label>iso <input id="gIso" type="range" min="0" max="100" value="100" /></label>
+      <span id="mixReadout">pgm 85 · lofi 22 · bed 18</span>
+    </div>
+    <div id="ch-row"></div>
+  </div>
+<script>
+(function () {
+  'use strict';
+  const u = new URL(location.href);
+  const isTv = u.searchParams.get('tv') === '1' || u.searchParams.get('cast') === '1' || u.searchParams.get('role') === 'tv';
+  const isPwa = u.searchParams.get('pwa') === '1' || u.searchParams.get('install') === '1';
+  const role = isTv ? 'tv' : 'control';
+  if (isTv) document.body.classList.add('tv');
+  else document.body.classList.add('control');
+
+  let catalog = null;
+  let channels = [];
+  let programId = null;
+  let isolatedId = null;
+  let ducking = false;
+  let lofiOn = false;
+  let layout = { cols: 6, rows: 3 };
+  let sortBy = 'region';
+  // Scaled stream budget — Mac economy vs TV-native offload
+  let streamPlan = null;
+  let streamMode = isTv ? 'tv-native' : 'economy';
+  let feedsPaused = false;
+  let lastCmdSeq = 0;
+  let embedTimers = [];
+  // Phone-driven living parallax (gyro → hub → TV). No cam-relay / spool.
+  let pose = { yaw: 0, pitch: 0, roll: 0, z: 1, source: 'idle' };
+  let geo = { lat: null, lon: null, accuracy: null, dist_m: null };
+  // House / TV anchor (LAN room — refine with Zero walk later)
+  const TV_GEO = { lat: null, lon: null }; // filled from hub state if set
+  let smoothYaw = 0, smoothPitch = 0;
+  let lastPoseSeq = 0;
+
+  // Web Audio graph
+  let actx = null, master = null, lofiGain = null, pgmGain = null, bedGain = null, isoGain = null;
+  let analyser = null, lofiOsc = null, lofiFilter = null, bedOsc = null;
+  let raf = 0;
+
+  const stage = document.getElementById('stage');
+  const meta = document.getElementById('meta');
+  const wave = document.getElementById('wave');
+  const wctx = wave.getContext('2d');
+
+  function ensureAudio() {
+    if (actx) return actx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    actx = new AC();
+    master = actx.createGain();
+    master.gain.value = 1;
+    master.connect(actx.destination);
+
+    analyser = actx.createAnalyser();
+    analyser.fftSize = 256;
+    master.connect(analyser);
+
+    pgmGain = actx.createGain(); pgmGain.gain.value = 0.85; pgmGain.connect(master);
+    lofiGain = actx.createGain(); lofiGain.gain.value = 0; lofiGain.connect(master);
+    bedGain = actx.createGain(); bedGain.gain.value = 0.18; bedGain.connect(master);
+    isoGain = actx.createGain(); isoGain.gain.value = 1; isoGain.connect(master);
+
+    // procedural lofi bed (no external file required for test)
+    lofiFilter = actx.createBiquadFilter();
+    lofiFilter.type = 'lowpass';
+    lofiFilter.frequency.value = 900;
+    lofiOsc = actx.createOscillator();
+    lofiOsc.type = 'triangle';
+    lofiOsc.frequency.value = 110;
+    const lofiLfo = actx.createOscillator();
+    lofiLfo.frequency.value = 0.12;
+    const lfoGain = actx.createGain();
+    lfoGain.gain.value = 40;
+    lofiLfo.connect(lfoGain);
+    lfoGain.connect(lofiOsc.frequency);
+    lofiOsc.connect(lofiFilter);
+    lofiFilter.connect(lofiGain);
+    lofiOsc.start();
+    lofiLfo.start();
+
+    // soft news bed pulse
+    bedOsc = actx.createOscillator();
+    bedOsc.type = 'sine';
+    bedOsc.frequency.value = 55;
+    const bedGainNode = actx.createGain();
+    bedGainNode.gain.value = 0.04;
+    bedOsc.connect(bedGainNode);
+    bedGainNode.connect(bedGain);
+    bedOsc.start();
+
+    return actx;
+  }
+
+  function setMix() {
+    if (!actx) return;
+    const pgm = +document.getElementById('gPgm').value / 100;
+    const lofi = +document.getElementById('gLofi').value / 100;
+    const bed = +document.getElementById('gBed').value / 100;
+    const iso = +document.getElementById('gIso').value / 100;
+    const duckMul = ducking ? 0.22 : 1; // commercial / break duck
+    pgmGain.gain.setTargetAtTime(pgm * duckMul, actx.currentTime, 0.05);
+    lofiGain.gain.setTargetAtTime(lofiOn ? lofi : 0, actx.currentTime, 0.08);
+    // lofi rises when ducking (behind news)
+    if (ducking && lofiOn) {
+      lofiGain.gain.setTargetAtTime(Math.max(lofi, 0.35), actx.currentTime, 0.1);
+    }
+    bedGain.gain.setTargetAtTime(bed * (ducking ? 1.2 : 0.8), actx.currentTime, 0.08);
+    isoGain.gain.setTargetAtTime(iso, actx.currentTime, 0.05);
+    document.getElementById('mixReadout').textContent =
+      'pgm ' + Math.round(pgm * 100) +
+      ' · lofi ' + Math.round((lofiOn ? lofi : 0) * 100) +
+      ' · bed ' + Math.round(bed * 100) +
+      (ducking ? ' · DUCK' : '') +
+      (isolatedId ? ' · iso ' + isolatedId : '');
+    pushAudioState();
+  }
+
+  function drawWave() {
+    if (!analyser) return;
+    const w = wave.width = wave.clientWidth * (window.devicePixelRatio || 1);
+    const h = wave.height = 36 * (window.devicePixelRatio || 1);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteTimeDomainData(data);
+    wctx.fillStyle = '#0a0e16';
+    wctx.fillRect(0, 0, w, h);
+    wctx.strokeStyle = ducking ? '#ff6b6b' : '#34d399';
+    wctx.lineWidth = 2;
+    wctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+      const x = (i / (data.length - 1)) * w;
+      const y = (data[i] / 255) * h;
+      if (i === 0) wctx.moveTo(x, y); else wctx.lineTo(x, y);
+    }
+    wctx.stroke();
+    // simple level meter
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += Math.abs(data[i] - 128);
+    const lvl = sum / data.length / 128;
+    wctx.fillStyle = 'rgba(80,200,255,.35)';
+    wctx.fillRect(0, h - 3, w * Math.min(1, lvl * 4), 3);
+  }
+
+  function waveLoop() {
+    drawWave();
+    raf = requestAnimationFrame(waveLoop);
+  }
+
+  function sortChannels(list) {
+    const arr = list.slice();
+    if (sortBy === 'alpha') arr.sort((a, b) => a.label.localeCompare(b.label));
+    else if (sortBy === 'kind') arr.sort((a, b) => (a.kind || '').localeCompare(b.kind || '') || a.label.localeCompare(b.label));
+    else if (sortBy === 'cell') arr.sort((a, b) => (a.cell || 0) - (b.cell || 0));
+    else {
+      const order = (catalog && catalog.spacing && catalog.spacing.region_order) || ['us', 'uk', 'eu', 'me', 'asia'];
+      arr.sort((a, b) => {
+        const ra = order.indexOf(a.region); const rb = order.indexOf(b.region);
+        return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb) || a.label.localeCompare(b.label);
+      });
+    }
+    return arr;
+  }
+
+  function feedPlan(id) {
+    if (!streamPlan || !streamPlan.feeds) return null;
+    return streamPlan.feeds.find((f) => f.id === id) || null;
+  }
+
+  function ytEmbedUrl(ch, plan) {
+    // channel_id / video_id required for real play (catalog v2). Height is advisory for player quality.
+    if (!ch) return null;
+    if (plan && plan.decode === 'poster') return null;
+    const h = (plan && plan.height) || 360;
+    const q = h <= 180 ? 'small' : h <= 360 ? 'medium' : h <= 480 ? 'large' : 'hd720';
+    const common = 'autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=0&enablejsapi=0';
+    if (ch.video_id) {
+      return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(ch.video_id) +
+        '?' + common + '&vq=' + q;
+    }
+    if (ch.channel_id) {
+      return 'https://www.youtube-nocookie.com/embed/live_stream?channel=' +
+        encodeURIComponent(ch.channel_id) + '&' + common;
+    }
+    return null;
+  }
+
+  function clearEmbedTimers() {
+    embedTimers.forEach((t) => clearTimeout(t));
+    embedTimers = [];
+  }
+
+  function mountEmbed(tile, src, delay) {
+    const t = setTimeout(() => {
+      if (!tile.isConnected) return;
+      tile.querySelectorAll('iframe').forEach((el) => el.remove());
+      const fr = document.createElement('iframe');
+      fr.src = src;
+      fr.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+      fr.setAttribute('allowfullscreen', '');
+      fr.setAttribute('loading', 'lazy');
+      fr.referrerPolicy = 'strict-origin-when-cross-origin';
+      fr.title = tile.dataset.id || 'feed';
+      // Do NOT sandbox — YouTube player fails silently inside sandbox on Cast WebView
+      tile.appendChild(fr);
+      const body = tile.querySelector('.body');
+      if (body) body.style.opacity = '0.15';
+    }, delay || 0);
+    embedTimers.push(t);
+  }
+
+  function applyLivingParallax() {
+    const sm = 0.35;
+    smoothYaw = smoothYaw * sm + (pose.yaw || 0) * (1 - sm);
+    smoothPitch = smoothPitch * sm + (pose.pitch || 0) * (1 - sm);
+    // geo azimuth bias (phone lat/lon vs TV anchor) → subtle world-turn
+    let geoYaw = 0;
+    if (geo.lat != null && geo.lon != null && TV_GEO.lat != null && TV_GEO.lon != null) {
+      const dLon = (geo.lon - TV_GEO.lon) * Math.PI / 180;
+      const y = Math.sin(dLon) * Math.cos(geo.lat * Math.PI / 180);
+      const x = Math.cos(TV_GEO.lat * Math.PI / 180) * Math.sin(geo.lat * Math.PI / 180) -
+        Math.sin(TV_GEO.lat * Math.PI / 180) * Math.cos(geo.lat * Math.PI / 180) * Math.cos(dLon);
+      geoYaw = Math.atan2(y, x) * 0.15; // gentle
+    }
+    const dist = (pose.z || 1);
+    // seat distance from hub vantage if present
+    const k = 48 * dist;
+    const y = (smoothYaw + geoYaw) * k;
+    const p = smoothPitch * k;
+    const liv0 = document.getElementById('liv0');
+    const liv1 = document.getElementById('liv1');
+    const liv2 = document.getElementById('liv2');
+    if (liv0) liv0.style.transform = 'translate3d(' + (-y * 0.25) + 'px,' + (-p * 0.2) + 'px,0) scale(1.06)';
+    if (liv1) liv1.style.transform = 'translate3d(' + (-y * 0.55) + 'px,' + (-p * 0.45) + 'px,0) scale(1.08)';
+    if (liv2) liv2.style.transform = 'translate3d(' + (-y * 0.9) + 'px,' + (-p * 0.7) + 'px,0)';
+    // forced perspective on feed grid (closer phone → larger center scale)
+    const scale = Math.max(0.92, Math.min(1.08, 0.98 + (dist - 1) * 0.06));
+    stage.style.transform =
+      'translate3d(' + (-y * 0.12) + 'px,' + (-p * 0.1) + 'px,0) scale(' + scale + ')';
+  }
+
+  function renderWall() {
+    clearEmbedTimers();
+    const cols = layout.cols, rows = layout.rows;
+    stage.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+    stage.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)';
+    const list = sortChannels(channels).slice(0, cols * rows);
+    stage.innerHTML = '';
+    const chRow = document.getElementById('ch-row');
+    if (chRow) chRow.innerHTML = '';
+
+    const stagger = (streamPlan && streamPlan.budget && streamPlan.budget.stagger_ms) || 400;
+    let embedSlot = 0;
+
+    list.forEach((ch) => {
+      const plan = feedPlan(ch.id) || {
+        decode: (programId === ch.id ? 'embed' : 'poster'),
+        height: programId === ch.id ? (isTv ? 480 : 360) : 0,
+        role: programId === ch.id ? 'pgm' : 'far',
+        bitrate_kbps: 0,
+      };
+      const decode = feedsPaused ? 'poster' : (plan.decode || 'poster');
+      const tile = document.createElement('div');
+      tile.className = 'tile ' + (plan.role || '');
+      tile.dataset.id = ch.id;
+      tile.dataset.decode = decode;
+      if (programId === ch.id) tile.classList.add('program');
+      if (isolatedId === ch.id) tile.classList.add('isolated');
+      if (feedsPaused) tile.classList.add('paused');
+
+      const qLabel = decode === 'poster'
+        ? 'poster'
+        : (decode + ' · ' + (plan.height || '?') + 'p' + (plan.fps ? '@' + plan.fps : ''));
+      const qCls = decode === 'embed' ? 'embed' : decode === 'lite' ? 'lite' : 'poster';
+
+      tile.innerHTML =
+        '<div class="label">' + ch.label + '</div>' +
+        '<div class="region">' + (ch.region || '') + '</div>' +
+        '<div class="body">' +
+          '<div><strong style="color:#cde">' + ch.label + '</strong><br/>' +
+          '<span style="font-size:11px">' + (ch.kind || 'news') + ' · ' + (ch.tags || []).join(' ') + '</span><br/>' +
+          '<span style="font-size:10px;opacity:.7">' +
+            (isTv ? 'TV native tile' : 'tap = program · long = isolate') +
+          '</span></div>' +
+        '</div>' +
+        '<div class="qbadge ' + qCls + '">' + qLabel + '</div>' +
+        (programId === ch.id ? '<div class="mute-badge">PGM</div>' : '') +
+        (isolatedId === ch.id ? '<div class="mute-badge" style="left:auto;right:6px;color:#50c8ff">ISO</div>' : '');
+
+      // Mount scaled embeds when plan allows (needs channel_id in catalog)
+      if (decode === 'embed' || decode === 'lite') {
+        const emb = ytEmbedUrl(ch, plan);
+        if (emb) {
+          mountEmbed(tile, emb, embedSlot * stagger);
+          embedSlot += 1;
+        } else {
+          // no channel_id — living poster card (not a dead empty box)
+          const body = tile.querySelector('.body');
+          if (body) {
+            body.innerHTML =
+              '<div><strong style="color:#cde">' + ch.label + '</strong><br/>' +
+              '<span style="font-size:11px;color:#fbbf24">no channel_id · poster</span><br/>' +
+              '<span style="font-size:10px;opacity:.7">add UC… id to catalog</span></div>';
+          }
+        }
+      }
+
+      let hold = 0;
+      tile.addEventListener('pointerdown', () => { hold = Date.now(); });
+      tile.addEventListener('pointerup', () => {
+        if (Date.now() - hold > 450) {
+          isolatedId = isolatedId === ch.id ? null : ch.id;
+          streamCmd({ cmd: 'set_iso', id: isolatedId });
+        } else {
+          programId = ch.id;
+          streamCmd({ cmd: 'set_pgm', program: programId });
+        }
+        refreshPlanAndWall();
+        pushNewsState();
+        setMix();
+      });
+      stage.appendChild(tile);
+
+      if (chRow) {
+        const b = document.createElement('button');
+        b.textContent = ch.label;
+        if (programId === ch.id) b.classList.add('on');
+        if (isolatedId === ch.id) b.classList.add('iso');
+        b.onclick = () => {
+          programId = ch.id;
+          streamCmd({ cmd: 'set_pgm', program: programId });
+          refreshPlanAndWall();
+          pushNewsState();
+        };
+        chRow.appendChild(b);
+      }
+    });
+
+    const b = streamPlan && streamPlan.budget;
+    meta.textContent =
+      list.length + ' feeds · ' + cols + '×' + rows +
+      ' · ' + streamMode +
+      (b ? ' · live ' + b.live_used + '/' + b.max_live + ' · ~' + b.estimate_mbps + 'Mbps' : '') +
+      (programId ? ' · pgm ' + programId : '') +
+      (isolatedId ? ' · iso ' + isolatedId : '') +
+      (feedsPaused ? ' · PAUSED' : '') +
+      (ducking ? ' · DUCK' : '') +
+      (isTv ? ' · offload TV' : ' · control');
+  }
+
+  async function pullStreamPlan() {
+    try {
+      const q = new URLSearchParams({
+        role: role,
+        mode: streamMode,
+        _: String(Date.now()),
+      });
+      if (programId) q.set('pgm', programId);
+      if (isolatedId) q.set('iso', isolatedId);
+      if (layout.cols) q.set('cols', String(layout.cols));
+      if (layout.rows) q.set('rows', String(layout.rows));
+      const r = await fetch('/api/stream/plan?' + q.toString(), { cache: 'no-store' });
+      if (!r.ok) return;
+      streamPlan = await r.json();
+      if (streamPlan.mode) streamMode = streamPlan.mode;
+      const sel = document.getElementById('streamMode');
+      if (sel && sel.value !== streamMode) sel.value = streamMode;
+      if (streamPlan.budget) feedsPaused = !!streamPlan.budget.paused;
+    } catch (_) {}
+  }
+
+  async function refreshPlanAndWall() {
+    await pullStreamPlan();
+    renderWall();
+  }
+
+  async function streamCmd(body) {
+    try {
+      const r = await fetch('/api/stream/cmd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function pushStreamMode() {
+    const key = isTv ? 'mode_tv' : 'mode_control';
+    const body = { mode: streamMode, role: role };
+    body[key] = streamMode;
+    try {
+      await fetch('/api/stream/policy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (_) {}
+    // also cmd for TV listeners
+    await streamCmd({ cmd: 'set_mode', mode: streamMode, role: role });
+  }
+
+  // TV listens for light control tweaks from desk (no recast)
+  async function pullTvCmds() {
+    if (!isTv) return;
+    try {
+      const r = await fetch('/api/stream/cmd?_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json();
+      const tc = data.tv_cmd || {};
+      const sp = data.stream_policy || {};
+      const seq = tc.cmd_seq || 0;
+      if (seq && seq !== lastCmdSeq) {
+        lastCmdSeq = seq;
+        if (tc.reload_token != null && window.__lastReloadToken != null &&
+            tc.reload_token !== window.__lastReloadToken) {
+          window.__lastReloadToken = tc.reload_token;
+          location.reload();
+          return;
+        }
+        window.__lastReloadToken = tc.reload_token;
+        if (sp.mode_tv) streamMode = sp.mode_tv;
+        else if (tc.stream_mode) streamMode = tc.stream_mode;
+        feedsPaused = !!(sp.paused || tc.pause_feeds);
+        if (data.news) {
+          if (data.news.program) programId = data.news.program;
+          if (data.news.isolated !== undefined) isolatedId = data.news.isolated;
+          if (data.news.ducking !== undefined) ducking = !!data.news.ducking;
+          if (data.news.layout) layout = Object.assign({}, layout, data.news.layout);
+        }
+        await refreshPlanAndWall();
+        setMix();
+      }
+    } catch (_) {}
+  }
+
+  // Phone pose → living parallax on TV (viewer from BOX control / phone gyro)
+  async function pullPose() {
+    try {
+      const r = await fetch('/api/viewer?_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const st = await r.json();
+      const seq = st.pose_seq || 0;
+      if (st.viewer) {
+        pose.yaw = Number(st.viewer.yaw) || 0;
+        pose.pitch = Number(st.viewer.pitch) || 0;
+        pose.roll = Number(st.viewer.roll) || 0;
+        pose.z = Number(st.viewer.z) || 1;
+        pose.source = st.viewer.source || 'hub';
+        if (st.viewer.lat != null) geo.lat = st.viewer.lat;
+        if (st.viewer.lon != null) geo.lon = st.viewer.lon;
+      }
+      if (st.vantage) {
+        if (st.vantage.seat_distance_cm) {
+          // map seat distance → z scale (closer → larger)
+          const d = Number(st.vantage.seat_distance_cm) || 274;
+          pose.z = Math.max(0.7, Math.min(1.5, 280 / d));
+        }
+        if (st.vantage.tv_lat != null) TV_GEO.lat = st.vantage.tv_lat;
+        if (st.vantage.tv_lon != null) TV_GEO.lon = st.vantage.tv_lon;
+      }
+      lastPoseSeq = seq;
+      applyLivingParallax();
+    } catch (_) {}
+  }
+
+  function onOrient(e) {
+    if (isTv) return;
+    // phone control: push gyro into hub so TV parallax follows
+    const beta = e.beta;   // x
+    const gamma = e.gamma; // y
+    if (beta == null || gamma == null) return;
+    pose.yaw = (gamma || 0) / 45;
+    pose.pitch = ((beta || 45) - 45) / 45;
+    pose.source = 'gyro';
+    applyLivingParallax();
+    // throttle push
+    if (!onOrient._t || Date.now() - onOrient._t > 80) {
+      onOrient._t = Date.now();
+      fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'news',
+          viewer: {
+            yaw: pose.yaw,
+            pitch: pose.pitch,
+            roll: 0,
+            z: pose.z,
+            source: 'news-gyro',
+            lat: geo.lat,
+            lon: geo.lon,
+            t: Date.now() / 1000,
+          },
+        }),
+      }).catch(() => {});
+    }
+  }
+
+  async function enableGyro() {
+    if (isTv) return;
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const p = await DeviceOrientationEvent.requestPermission();
+        if (p !== 'granted') return;
+      }
+      window.addEventListener('deviceorientation', onOrient, true);
+    } catch (_) {}
+  }
+
+  function enableGeo() {
+    if (isTv || !navigator.geolocation) return;
+    try {
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          geo.lat = pos.coords.latitude;
+          geo.lon = pos.coords.longitude;
+          geo.accuracy = pos.coords.accuracy;
+          // rough distance if TV anchor known
+          if (TV_GEO.lat != null && TV_GEO.lon != null) {
+            const R = 6371000;
+            const dLat = (geo.lat - TV_GEO.lat) * Math.PI / 180;
+            const dLon = (geo.lon - TV_GEO.lon) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(TV_GEO.lat * Math.PI / 180) * Math.cos(geo.lat * Math.PI / 180) *
+              Math.sin(dLon / 2) ** 2;
+            geo.dist_m = 2 * R * Math.asin(Math.sqrt(a));
+            // indoor GPS is noisy — only bias z gently when accuracy is ok
+            if (geo.accuracy && geo.accuracy < 40 && geo.dist_m < 40) {
+              pose.z = Math.max(0.75, Math.min(1.4, 1.15 - geo.dist_m / 80));
+            }
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 4000, timeout: 8000 }
+      );
+    } catch (_) {}
+  }
+
+  async function loadCatalog() {
+    const r = await fetch('/api/news/catalog?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('catalog ' + r.status);
+    catalog = await r.json();
+    channels = catalog.channels || [];
+    if (catalog.layout) {
+      layout.cols = catalog.layout.cols || 6;
+      layout.rows = catalog.layout.rows || 3;
+    }
+    if (!programId && channels[0]) programId = channels[0].id;
+    // sync mode from hub live policy
+    try {
+      const pr = await fetch('/api/stream/policy?_=' + Date.now(), { cache: 'no-store' });
+      if (pr.ok) {
+        const pol = await pr.json();
+        const live = pol.live || {};
+        streamMode = isTv
+          ? (live.mode_tv || pol.defaults && pol.defaults.tv || 'tv-native')
+          : (live.mode_control || pol.defaults && pol.defaults.control || 'economy');
+        const sel = document.getElementById('streamMode');
+        if (sel) sel.value = streamMode;
+        feedsPaused = !!live.paused;
+      }
+    } catch (_) {}
+    await refreshPlanAndWall();
+    pushStatusPipe();
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  async function pullClock() {
+    try {
+      const r = await fetch('/api/clock?_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const snap = await r.json();
+      const z = snap.zulu || '';
+      const zp = z.length >= 7 ? z.slice(0, 2) + ':' + z.slice(2, 4) + ':' + z.slice(4, 6) + ' Z' : z;
+      let tier = 'L?';
+      if (snap.tier && typeof snap.tier === 'object') tier = snap.tier.label || ('L' + snap.tier.level);
+      else if (snap.tier_label) tier = snap.tier_label;
+      const unix = snap.unix_frac || snap.unix || '';
+      const el = document.getElementById('l3-timesync');
+      if (el) {
+        el.innerHTML =
+          '<span class="mute">TIMESYNC</span> · <span class="zulu">' + zp + '</span> · ' +
+          '<span class="tier">' + tier + '</span> · <span class="mute">unix ' + unix +
+          '</span> · <span class="mute">news · fc-timesync-v1 · L3</span>';
+      }
+      // keep program bug in sync with PGM channel
+      const slug = document.getElementById('l3-slug');
+      if (slug && programId) {
+        const ch = channels.find((c) => c.id === programId);
+        slug.textContent = 'PGM · ' + (ch ? (ch.label || ch.id) : programId).slice(0, 22);
+      }
+    } catch (_) {}
+  }
+
+  // Live transcript bus (blank captions · train themes · overview compare scaffold)
+  let lastTranscriptSeq = 0;
+  let transcriptLines = [];
+
+  function renderTranscript(payload) {
+    const el = document.getElementById('l3-transcript');
+    if (!el) return;
+    if (payload && Array.isArray(payload.lines)) {
+      const bySeq = new Map(transcriptLines.map((ln) => [ln.seq, ln]));
+      for (const ln of payload.lines) {
+        if (ln && ln.seq != null) bySeq.set(ln.seq, ln);
+      }
+      transcriptLines = Array.from(bySeq.values())
+        .sort((a, b) => (a.seq || 0) - (b.seq || 0))
+        .slice(-24);
+      if (payload.seq != null) lastTranscriptSeq = Math.max(lastTranscriptSeq, payload.seq);
+    }
+    const last = transcriptLines[transcriptLines.length - 1];
+    if (!last) {
+      el.innerHTML = '<span class="empty">transcript · idle · POST /api/transcript</span>';
+      return;
+    }
+    el.innerHTML =
+      (last.time ? '<time>' + escapeHtml(last.time) + '</time>' : '') +
+      (last.speaker ? '<span class="spk">' + escapeHtml(last.speaker) + '</span>' : '') +
+      escapeHtml(last.text || '');
+  }
+
+  async function pullTranscript() {
+    try {
+      const q = lastTranscriptSeq
+        ? '/api/transcript?limit=12&since=' + lastTranscriptSeq + '&_=' + Date.now()
+        : '/api/transcript?limit=6&_=' + Date.now();
+      const r = await fetch(q, { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data.lines && data.lines.length) renderTranscript(data);
+      else if (!lastTranscriptSeq) renderTranscript(data);
+      else if (data.seq != null) lastTranscriptSeq = Math.max(lastTranscriptSeq, data.seq);
+    } catch (_) {}
+  }
+
+  function wireL3Controls() {
+    if (isTv) return;
+    const inp = document.getElementById('l3-inject');
+    const send = document.getElementById('btnL3Inject');
+    const demo = document.getElementById('btnL3Demo');
+    const clear = document.getElementById('btnL3Clear');
+    if (send && inp) {
+      const go = async () => {
+        const t = (inp.value || '').trim();
+        if (!t) return;
+        try {
+          const r = await fetch('/api/transcript', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: t,
+              speaker: 'NEWS',
+              source: 'inject',
+              program: programId || 'news',
+              project: 'blank',
+            }),
+          });
+          if (r.ok) {
+            const data = await r.json();
+            renderTranscript({ seq: data.seq, lines: data.lines || [] });
+            inp.value = '';
+          }
+        } catch (_) {}
+      };
+      send.onclick = go;
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); go(); }
+      });
+    }
+    if (demo) {
+      demo.onclick = async () => {
+        try {
+          const r = await fetch('/api/transcript/demo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ program: programId || 'news', project: 'blank' }),
+          });
+          if (r.ok) {
+            const data = await r.json();
+            lastTranscriptSeq = 0;
+            transcriptLines = [];
+            renderTranscript({ seq: data.seq, lines: data.lines || [] });
+          }
+        } catch (_) {}
+      };
+    }
+    if (clear) {
+      clear.onclick = async () => {
+        try {
+          await fetch('/api/transcript/clear', { method: 'POST' });
+          transcriptLines = [];
+          lastTranscriptSeq = 0;
+          renderTranscript({ seq: 0, lines: [] });
+        } catch (_) {}
+      };
+    }
+  }
+
+  async function pushNewsState() {
+    try {
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'news',
+          news: {
+            program: programId,
+            isolated: isolatedId,
+            ducking: ducking,
+            lofi: lofiOn,
+            sort: sortBy,
+            layout: layout,
+          },
+        }),
+      });
+    } catch (_) {}
+  }
+
+  async function pushAudioState() {
+    try {
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audio: {
+            pgm: +document.getElementById('gPgm').value,
+            lofi: +document.getElementById('gLofi').value,
+            bed: +document.getElementById('gBed').value,
+            iso: +document.getElementById('gIso').value,
+            ducking: ducking,
+            lofi_on: lofiOn,
+            program: programId,
+            isolated: isolatedId,
+          },
+        }),
+      });
+    } catch (_) {}
+  }
+
+  async function pushStatusPipe() {
+    try {
+      await fetch('/api/status/pipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'news',
+          channels: channels.length,
+          program: programId,
+          layout: layout,
+        }),
+      });
+      document.getElementById('status').textContent = 'pipe ok · ' + channels.length + ' ch';
+    } catch (_) {
+      document.getElementById('status').textContent = 'pipe —';
+    }
+  }
+
+  // remote state for TV (follow control phone)
+  async function pullNews() {
+    if (!isTv) return;
+    try {
+      const r = await fetch('/api/state?_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const st = await r.json();
+      if (st.news) {
+        let dirty = false;
+        if (st.news.program && st.news.program !== programId) { programId = st.news.program; dirty = true; }
+        if (st.news.isolated !== undefined && st.news.isolated !== isolatedId) { isolatedId = st.news.isolated; dirty = true; }
+        if (st.news.ducking !== undefined && st.news.ducking !== ducking) { ducking = !!st.news.ducking; dirty = true; }
+        if (st.news.lofi !== undefined && st.news.lofi !== lofiOn) { lofiOn = !!st.news.lofi; dirty = true; }
+        if (st.news.sort && st.news.sort !== sortBy) { sortBy = st.news.sort; dirty = true; }
+        if (dirty) {
+          document.getElementById('btnLofi').classList.toggle('active', lofiOn);
+          document.getElementById('btnDuck').classList.toggle('active', ducking);
+          document.getElementById('sortBy').value = sortBy;
+          renderWall();
+          setMix();
+        }
+      }
+      if (st.audio) {
+        if (st.audio.pgm != null) document.getElementById('gPgm').value = st.audio.pgm;
+        if (st.audio.lofi != null) document.getElementById('gLofi').value = st.audio.lofi;
+        if (st.audio.bed != null) document.getElementById('gBed').value = st.audio.bed;
+        setMix();
+      }
+    } catch (_) {}
+    setTimeout(pullNews, 200);
+  }
+
+  document.getElementById('btnGo').onclick = async () => {
+    ensureAudio();
+    if (actx && actx.state === 'suspended') await actx.resume();
+    await loadCatalog();
+    setMix();
+    if (!raf) waveLoop();
+  };
+  document.getElementById('btnLayout').onclick = async () => {
+    if (layout.cols === 6) { layout = { cols: 4, rows: 3 }; document.getElementById('btnLayout').textContent = 'Layout 4×3'; }
+    else if (layout.cols === 4) { layout = { cols: 3, rows: 3 }; document.getElementById('btnLayout').textContent = 'Layout 3×3'; }
+    else { layout = { cols: 6, rows: 3 }; document.getElementById('btnLayout').textContent = 'Layout 6×3'; }
+    // denser grids → smaller tiles → lower height caps in stream plan
+    await streamCmd({ cmd: 'layout', cols: layout.cols, rows: layout.rows });
+    pushNewsState();
+    await refreshPlanAndWall();
+  };
+  document.getElementById('sortBy').onchange = (e) => {
+    sortBy = e.target.value;
+    renderWall();
+    pushNewsState();
+  };
+  document.getElementById('btnLofi').onclick = async () => {
+    ensureAudio();
+    if (actx && actx.state === 'suspended') await actx.resume();
+    lofiOn = !lofiOn;
+    document.getElementById('btnLofi').classList.toggle('active', lofiOn);
+    setMix();
+    if (!raf) waveLoop();
+  };
+  document.getElementById('btnDuck').onclick = () => {
+    ducking = !ducking;
+    document.getElementById('btnDuck').classList.toggle('active', ducking);
+    setMix();
+  };
+  document.getElementById('btnIso').onclick = () => {
+    isolatedId = null;
+    renderWall();
+    pushNewsState();
+  };
+  ['gPgm', 'gLofi', 'gBed', 'gIso'].forEach((id) => {
+    document.getElementById(id).oninput = () => {
+      ensureAudio();
+      setMix();
+    };
+  });
+  document.getElementById('btnRecast').onclick = async () => {
+    await fetch('/api/tv/recast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device: 'Smart TV', url: location.origin + '/news?tv=1' }),
+    });
+  };
+  document.getElementById('btnRefresh').onclick = async () => {
+    await fetch('/api/tv/reload', { method: 'POST', body: '{}' });
+    await streamCmd({ cmd: 'reload' });
+  };
+  const btnTvNative = document.getElementById('btnTvNative');
+  if (btnTvNative) {
+    btnTvNative.onclick = async () => {
+      streamMode = 'tv-native';
+      const sel = document.getElementById('streamMode');
+      if (sel) sel.value = 'tv-native';
+      await pushStreamMode();
+      // Cast TV PWA shell — decode on Google TV, desk only tweaks
+      await fetch('/api/tv/recast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device: 'Smart TV',
+          url: location.origin + '/tv?tv=1&pwa=1',
+        }),
+      });
+      meta.textContent = 'TV native cast · decode on panel · control via cmds';
+    };
+  }
+  const streamModeEl = document.getElementById('streamMode');
+  if (streamModeEl) {
+    streamModeEl.value = streamMode;
+    streamModeEl.onchange = async (e) => {
+      streamMode = e.target.value;
+      await pushStreamMode();
+      await refreshPlanAndWall();
+    };
+  }
+  const btnPause = document.getElementById('btnPauseFeeds');
+  if (btnPause) {
+    btnPause.onclick = async () => {
+      feedsPaused = !feedsPaused;
+      await streamCmd({ cmd: feedsPaused ? 'pause_all' : 'resume' });
+      btnPause.classList.toggle('active', feedsPaused);
+      btnPause.textContent = feedsPaused ? 'Resume feeds' : 'Pause feeds';
+      await refreshPlanAndWall();
+    };
+  }
+  const btnQDown = document.getElementById('btnQDown');
+  const btnQUp = document.getElementById('btnQUp');
+  if (btnQDown) {
+    btnQDown.onclick = async () => {
+      await streamCmd({ cmd: 'drop_quality' });
+      await refreshPlanAndWall();
+    };
+  }
+  if (btnQUp) {
+    btnQUp.onclick = async () => {
+      await streamCmd({ cmd: 'bump_quality' });
+      await refreshPlanAndWall();
+    };
+  }
+
+  // PWA shell on secure context
+  if (isPwa && window.isSecureContext && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+  }
+
+  // Chrome / Safari / Firefox + DevTools device presets
+  if (window.FCDevice) {
+    FCDevice.bootFromQuery().catch(function () {});
+  }
+
+  // boot
+  loadCatalog().catch((e) => { meta.textContent = 'catalog: ' + e.message; });
+  pullClock();
+  setInterval(pullClock, 500);
+  wireL3Controls();
+  pullTranscript();
+  setInterval(pullTranscript, 700);
+  pullPose();
+  setInterval(pullPose, isTv ? 100 : 250);
+  // idle living drift when no phone pose
+  setInterval(() => {
+    if (!pose.source || pose.source === 'idle' ||
+        (isTv && (!lastPoseSeq))) {
+      const t = Date.now() / 1000;
+      pose.yaw = Math.sin(t * 0.15) * 0.08;
+      pose.pitch = Math.cos(t * 0.11) * 0.05;
+      pose.source = 'idle';
+      applyLivingParallax();
+    }
+  }, 80);
+  if (isTv) {
+    pullNews();
+    pullTvCmds();
+    setInterval(pullTvCmds, 800);
+    // TV: light audio optional after gesture — skip auto
+  } else {
+    // control can start audio on first interaction + gyro/geo for TV parallax
+    window.addEventListener('pointerdown', function once() {
+      window.removeEventListener('pointerdown', once);
+      ensureAudio();
+      enableGyro();
+      enableGeo();
+    }, { once: true });
+    // auto-try gyro on PWA / HTTPS without wait
+    if (isPwa || window.isSecureContext) {
+      enableGyro();
+      enableGeo();
+    }
+    setInterval(async () => {
+      await pullStreamPlan();
+    }, 5000);
+  }
+})();
+</script>
+</body>
+</html>

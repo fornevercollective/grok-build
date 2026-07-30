@@ -1,0 +1,64 @@
+{
+  "id": "hisense-google-uhd",
+  "label": "Hisense Google Smart TV 4K (FFM)",
+  "os": "Google TV",
+  "manufacturer": "Hisense",
+  "discovered": {
+    "friendly_name": "GoogleTV3065",
+    "catt_model": "Hisense SmartTV 4K FFM",
+    "mdns_model": "SmartTV 4K FFM",
+    "ip": "192.168.0.61",
+    "cast_port": 8009,
+    "eureka_port": 8008,
+    "ssdp_udn": "8f8e617c-2b9b-c135-f8fb-66e2bf663acc",
+    "cast_protocol_version": 12,
+    "cast_build_revision": "3.72.446070",
+    "cast_build_version": "446070",
+    "capabilities_ca": 264709
+  },
+  "cast": {
+    "protocol": "chromecast-builtin",
+    "discovery": "_googlecast._tcp",
+    "default_receiver": true,
+    "catt_device": "GoogleTV3065"
+  },
+  "panel": {
+    "resolution_class": "3840x2160",
+    "refresh_hz_typical": [60, 120],
+    "refresh_hz_cast_path": [24, 30, 60],
+    "viewing_angle_note": "VA common on Hisense UHD; center seating for mosaics",
+    "hdr_typical": ["HDR10", "HLG"],
+    "lut_support_on_tv": false
+  },
+  "cast_encode": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "video_codec": "libx264",
+    "pixel_format": "yuv420p",
+    "audio_codec": "aac",
+    "audio_bitrate": "128k",
+    "container": "mp4",
+    "color": "bt709",
+    "hdr_cast": false,
+    "uhd_opt_in_env": "LIVE_DEMUX_CAST_UHD",
+    "uhd_width": 3840,
+    "uhd_height": 2160,
+    "uhd_fps": 30
+  },
+  "error_handling": {
+    "offline": "retry discovery; same LAN",
+    "codec": "H.264+AAC re-encode",
+    "localhost": "use LAN IP not 127.0.0.1",
+    "session_stolen": "re-run /cast",
+    "wrong_device": "primary wall target may be TCL Smart TV — set LIVE_DEMUX_CAST_DEVICE"
+  },
+  "layouts": {
+    "single": "full 16:9",
+    "desk": "you|phone hstack",
+    "mosaic": "2x2 xstack"
+  },
+  "notes": [
+    "Sibling of TCL Smart TV on same LAN; use when targeting Hisense wall"
+  ]
+}

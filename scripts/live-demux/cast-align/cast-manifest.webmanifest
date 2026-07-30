@@ -1,0 +1,73 @@
+{
+  "name": "Grok Cast Remote",
+  "short_name": "GrokCast",
+  "description": "Grok remote · TV-native stream offload · news wall · pose · timesync · L3",
+  "id": "/box?pwa=1",
+  "start_url": "/box?pwa=1",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "lang": "en",
+  "categories": ["utilities", "entertainment", "photo"],
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cast control",
+      "short_name": "Control",
+      "url": "/box?pwa=1",
+      "description": "Pose · recast · vantage · stream budget"
+    },
+    {
+      "name": "News wall (desk)",
+      "short_name": "News",
+      "url": "/news?pwa=1",
+      "description": "Economy multi-feed control · audio mix"
+    },
+    {
+      "name": "TV native wall",
+      "short_name": "TV",
+      "url": "/tv?tv=1&pwa=1",
+      "description": "Panel-side decode · light control cmds"
+    },
+    {
+      "name": "Setup / trust",
+      "short_name": "Setup",
+      "url": "/setup.html",
+      "description": "Trust cert once"
+    },
+    {
+      "name": "Devices lab",
+      "short_name": "Devices",
+      "url": "/devices",
+      "description": "Chrome · Safari · Firefox DevTools presets"
+    }
+  ]
+}

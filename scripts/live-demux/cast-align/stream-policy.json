@@ -1,0 +1,123 @@
+{
+  "schema": "fc-stream-policy-v1",
+  "version": 1,
+  "note": "Scaled-resolution feed budget so control Mac is not multi-decoding 18×1080p. TV-native mode offloads decode to Google TV WebView; desk only sends tweak commands.",
+  "defaults": {
+    "control": "economy",
+    "tv": "tv-native"
+  },
+  "modes": {
+    "economy": {
+      "label": "Economy · Mac safe",
+      "role_hint": "control",
+      "max_live": 1,
+      "max_audio": 1,
+      "max_decode_mbps": 3,
+      "stagger_ms": 400,
+      "poster_refresh_s": 120,
+      "tiers": {
+        "pgm":  { "height": 360, "fps": 24, "bitrate_kbps": 800,  "decode": "embed" },
+        "iso":  { "height": 240, "fps": 15, "bitrate_kbps": 400,  "decode": "poster" },
+        "near": { "height": 0,   "fps": 0,  "bitrate_kbps": 0,    "decode": "poster" },
+        "far":  { "height": 0,   "fps": 0,  "bitrate_kbps": 0,    "decode": "poster" }
+      }
+    },
+    "balanced": {
+      "label": "Balanced",
+      "role_hint": "either",
+      "max_live": 3,
+      "max_audio": 1,
+      "max_decode_mbps": 8,
+      "stagger_ms": 350,
+      "poster_refresh_s": 90,
+      "tiers": {
+        "pgm":  { "height": 480, "fps": 30, "bitrate_kbps": 1500, "decode": "embed" },
+        "iso":  { "height": 360, "fps": 24, "bitrate_kbps": 900,  "decode": "embed" },
+        "near": { "height": 180, "fps": 15, "bitrate_kbps": 350,  "decode": "lite" },
+        "far":  { "height": 0,   "fps": 0,  "bitrate_kbps": 0,    "decode": "poster" }
+      }
+    },
+    "tv-native": {
+      "label": "TV native · offload decode",
+      "role_hint": "tv",
+      "offload": "tv",
+      "max_live": 4,
+      "max_audio": 1,
+      "max_decode_mbps": 12,
+      "stagger_ms": 600,
+      "poster_refresh_s": 60,
+      "tiers": {
+        "pgm":  { "height": 480, "fps": 30, "bitrate_kbps": 1800, "decode": "embed" },
+        "iso":  { "height": 360, "fps": 24, "bitrate_kbps": 900,  "decode": "embed" },
+        "near": { "height": 240, "fps": 15, "bitrate_kbps": 450,  "decode": "lite" },
+        "far":  { "height": 0,   "fps": 0,  "bitrate_kbps": 0,    "decode": "poster" }
+      },
+      "note": "Google TV WebView decodes up to 4 scaled lives (PGM+ISO+2 near). Rest living posters. No cam-relay."
+    },
+    "studio": {
+      "label": "Studio · desk heavy (explicit)",
+      "role_hint": "control",
+      "max_live": 9,
+      "max_audio": 2,
+      "max_decode_mbps": 28,
+      "stagger_ms": 250,
+      "poster_refresh_s": 45,
+      "tiers": {
+        "pgm":  { "height": 720, "fps": 30, "bitrate_kbps": 3500, "decode": "embed" },
+        "iso":  { "height": 480, "fps": 30, "bitrate_kbps": 1800, "decode": "embed" },
+        "near": { "height": 360, "fps": 24, "bitrate_kbps": 900,  "decode": "embed" },
+        "far":  { "height": 180, "fps": 15, "bitrate_kbps": 400,  "decode": "lite" }
+      },
+      "warn": "Can overtax the Mac — prefer tv-native for full walls."
+    }
+  },
+  "tile_scale": {
+    "note": "Cap requested height by on-screen tile size so tiny mosaic cells never pull 720p.",
+    "panel_width": 1920,
+    "panel_height": 1080,
+    "scale_factor": 1.0,
+    "min_height_for_embed": 120,
+    "height_steps": [0, 144, 180, 240, 360, 480, 720]
+  },
+  "priority": {
+    "roles": ["pgm", "iso", "near", "far"],
+    "tag_boost": ["breaking", "markets", "world"],
+    "region_boost": []
+  },
+  "devices": {
+    "control-mac": {
+      "default_mode": "economy",
+      "max_live_hard": 3,
+      "note": "Hub machine — posters + single PGM embed by default; hard cap 3 even if studio selected"
+    },
+    "tcl-google-uhd": {
+      "default_mode": "tv-native",
+      "max_live_hard": 8,
+      "panel": { "w": 1920, "h": 1080, "cast_path": true },
+      "note": "DashCast WebView on TCL — native multi-embed at scaled tile heights"
+    },
+    "hisense-google-uhd": {
+      "default_mode": "tv-native",
+      "max_live_hard": 6,
+      "panel": { "w": 1920, "h": 1080 }
+    }
+  },
+  "control_commands": [
+    "set_mode",
+    "set_pgm",
+    "set_iso",
+    "set_budget",
+    "pause_all",
+    "resume",
+    "bump_quality",
+    "drop_quality",
+    "reload",
+    "duck",
+    "layout"
+  ],
+  "future": {
+    "hls_proxy": "yt-dlp → ffmpeg ladder (144/240/360/480) served from hub only for PGM",
+    "tv_pwa_install": "Add to Home / sideload on Google TV for persistent shell without DashCast recast",
+    "vendor_decode": "use TV hardware decoder limits from devices/*.json"
+  }
+}

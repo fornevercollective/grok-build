@@ -1,0 +1,219 @@
+{
+  "schema": "fc-devtools-presets-v1",
+  "version": 1,
+  "note": "Mirrors common Chrome DevTools / Safari RDM / Firefox RDM device presets for cast surface testing. Query: ?device=iphone-14-pro&emulate=1",
+  "defaults": {
+    "dpr_steps": [1, 1.5, 2, 2.5, 3],
+    "touch": true
+  },
+  "presets": [
+    {
+      "id": "responsive",
+      "label": "Responsive",
+      "source": "chrome-devtools",
+      "w": 1280,
+      "h": 800,
+      "dpr": 1,
+      "touch": false,
+      "mobile": false,
+      "user_agent_type": "desktop"
+    },
+    {
+      "id": "iphone-se",
+      "label": "iPhone SE",
+      "source": "chrome-devtools",
+      "w": 375,
+      "h": 667,
+      "dpr": 2,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile",
+      "safe_area": { "top": 20, "bottom": 0 }
+    },
+    {
+      "id": "iphone-14-pro",
+      "label": "iPhone 14 Pro",
+      "source": "chrome-devtools",
+      "w": 393,
+      "h": 852,
+      "dpr": 3,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile",
+      "safe_area": { "top": 59, "bottom": 34 }
+    },
+    {
+      "id": "iphone-15-pro-max",
+      "label": "iPhone 15 Pro Max",
+      "source": "chrome-devtools",
+      "w": 430,
+      "h": 932,
+      "dpr": 3,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile",
+      "safe_area": { "top": 59, "bottom": 34 }
+    },
+    {
+      "id": "ipad-air",
+      "label": "iPad Air",
+      "source": "chrome-devtools",
+      "w": 820,
+      "h": 1180,
+      "dpr": 2,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "tablet"
+    },
+    {
+      "id": "ipad-pro-11",
+      "label": "iPad Pro 11",
+      "source": "safari-rdm",
+      "w": 834,
+      "h": 1194,
+      "dpr": 2,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "tablet"
+    },
+    {
+      "id": "pixel-7",
+      "label": "Pixel 7",
+      "source": "chrome-devtools",
+      "w": 412,
+      "h": 915,
+      "dpr": 2.625,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile"
+    },
+    {
+      "id": "pixel-7-pro",
+      "label": "Pixel 7 Pro",
+      "source": "chrome-devtools",
+      "w": 412,
+      "h": 892,
+      "dpr": 3.5,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile"
+    },
+    {
+      "id": "samsung-s20-ultra",
+      "label": "Samsung Galaxy S20 Ultra",
+      "source": "chrome-devtools",
+      "w": 412,
+      "h": 915,
+      "dpr": 3.5,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile"
+    },
+    {
+      "id": "galaxy-fold",
+      "label": "Galaxy Z Fold 5",
+      "source": "chrome-devtools",
+      "w": 344,
+      "h": 882,
+      "dpr": 2.625,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile",
+      "note": "folded; unfolded ~1768×2208 logical varies"
+    },
+    {
+      "id": "surface-duo",
+      "label": "Surface Duo",
+      "source": "chrome-devtools",
+      "w": 540,
+      "h": 720,
+      "dpr": 2.5,
+      "touch": true,
+      "mobile": true,
+      "user_agent_type": "mobile"
+    },
+    {
+      "id": "nest-hub",
+      "label": "Nest Hub",
+      "source": "chrome-devtools",
+      "w": 1024,
+      "h": 600,
+      "dpr": 2,
+      "touch": true,
+      "mobile": false,
+      "user_agent_type": "tablet",
+      "role_hint": "tv"
+    },
+    {
+      "id": "nest-hub-max",
+      "label": "Nest Hub Max",
+      "source": "chrome-devtools",
+      "w": 1280,
+      "h": 800,
+      "dpr": 2,
+      "touch": true,
+      "mobile": false,
+      "user_agent_type": "tablet",
+      "role_hint": "tv"
+    },
+    {
+      "id": "desktop-1080",
+      "label": "Desktop 1080p",
+      "source": "firefox-rdm",
+      "w": 1920,
+      "h": 1080,
+      "dpr": 1,
+      "touch": false,
+      "mobile": false,
+      "user_agent_type": "desktop"
+    },
+    {
+      "id": "desktop-1440",
+      "label": "Desktop 1440p",
+      "source": "firefox-rdm",
+      "w": 2560,
+      "h": 1440,
+      "dpr": 1,
+      "touch": false,
+      "mobile": false,
+      "user_agent_type": "desktop"
+    },
+    {
+      "id": "macbook-13",
+      "label": "MacBook 13",
+      "source": "safari-rdm",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "touch": false,
+      "mobile": false,
+      "user_agent_type": "desktop"
+    },
+    {
+      "id": "tcl-cast-1080",
+      "label": "TCL Cast 1080p (DashCast)",
+      "source": "fornevercollective",
+      "w": 1920,
+      "h": 1080,
+      "dpr": 1,
+      "touch": false,
+      "mobile": false,
+      "user_agent_type": "tv",
+      "role_hint": "tv",
+      "cast_profile": "tcl-google-uhd"
+    },
+    {
+      "id": "hisense-cast-1080",
+      "label": "Hisense Cast 1080p",
+      "source": "fornevercollective",
+      "w": 1920,
+      "h": 1080,
+      "dpr": 1,
+      "touch": false,
+      "mobile": false,
+      "user_agent_type": "tv",
+      "role_hint": "tv",
+      "cast_profile": "hisense-google-uhd"
+    }
+  ]
+}

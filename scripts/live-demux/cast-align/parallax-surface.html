@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Infinite window · phone parallax</title>
+  <style>
+    :root { --bg: #05070c; --ink: #e8ecf2; --muted: #8b93a7; --accent: #50c8ff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif; overflow: hidden; }
+    body.tv #bar { display: none; }
+    #bar {
+      position: fixed; z-index: 20; left: 0; right: 0; top: 0;
+      display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+      padding: .5rem .75rem; background: rgba(10,12,18,.92);
+      border-bottom: 1px solid #222;
+      font-size: .75rem;
+    }
+    #bar button {
+      background: #1a2230; color: var(--ink); border: 1px solid #3a4256;
+      border-radius: 6px; padding: .35rem .6rem; font: inherit; cursor: pointer;
+    }
+    #bar button.primary { background: #163048; border-color: #2a6a96; color: #cfefff; }
+    #bar .meta { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+    #stage {
+      position: absolute; inset: 0;
+      perspective: 900px;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 50% 40%, #12182a 0%, #05070c 70%);
+    }
+    .layer {
+      position: absolute; inset: -12%;
+      will-change: transform;
+      transform-style: preserve-3d;
+      background-size: cover;
+      background-position: center;
+      transition: transform 0.05s linear;
+    }
+    /* 2.5D layers — stand-in for lightfield samples */
+    #bg {
+      background:
+        radial-gradient(circle at 30% 40%, rgba(80,160,255,.15), transparent 40%),
+        radial-gradient(circle at 70% 60%, rgba(180,80,255,.12), transparent 45%),
+        linear-gradient(180deg, #0a1020 0%, #05070c 100%);
+      filter: blur(0.5px);
+    }
+    #mid {
+      background:
+        repeating-linear-gradient(90deg, transparent 0 80px, rgba(255,255,255,.03) 80px 81px),
+        repeating-linear-gradient(0deg, transparent 0 80px, rgba(255,255,255,.03) 80px 81px);
+      opacity: .9;
+    }
+    #fg {
+      pointer-events: none;
+      box-shadow: inset 0 0 120px rgba(0,0,0,.55);
+      border: 2px solid rgba(80,200,255,.15);
+      inset: 4%;
+      border-radius: 4px;
+    }
+    #glass {
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.06), transparent 40%, rgba(255,255,255,.03));
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+    #portal {
+      position: absolute; left: 50%; top: 48%;
+      width: min(72vw, 1100px); height: min(58vh, 620px);
+      transform: translate(-50%, -50%);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(80,200,255,.35), 0 30px 80px rgba(0,0,0,.55);
+    }
+    #portal .depth {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, #1a2840 0%, #0c1424 50%, #080c14 100%);
+    }
+    #portal .horizon {
+      position: absolute; left: -20%; right: -20%; top: 42%; height: 40%;
+      background: linear-gradient(180deg, rgba(100,160,220,.35), transparent);
+      filter: blur(8px);
+    }
+    #portal .orb {
+      position: absolute; width: 18%; aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff8, #50c8ff88, #2040a044);
+      filter: blur(1px);
+      left: 38%; top: 28%;
+    }
+    #portal .grid {
+      position: absolute; inset: 10%;
+      background-image:
+        linear-gradient(rgba(80,200,255,.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(80,200,255,.12) 1px, transparent 1px);
+      background-size: 12% 12%;
+      transform: perspective(600px) rotateX(58deg) translateY(20%);
+      transform-origin: center bottom;
+      opacity: .55;
+    }
+    #hud {
+      position: absolute; left: 12px; bottom: 12px; z-index: 5;
+      font: 12px ui-monospace, monospace; color: #8ec8ff;
+      text-shadow: 0 1px 2px #000;
+      opacity: .85;
+    }
+    body.tv #hud { font-size: 16px; left: 24px; bottom: 24px; }
+    #qr-hint {
+      position: absolute; right: 16px; bottom: 16px; z-index: 5;
+      width: 96px; height: 96px;
+      background: #fff; border-radius: 6px;
+      display: grid; place-items: center;
+      font: 600 11px system-ui; color: #111; text-align: center;
+      padding: 6px; opacity: .9;
+    }
+    body.control #stage { top: 48px; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <strong>Infinite window</strong>
+    <span style="color:var(--muted)">phone pose → TV parallax · lightfield-lite</span>
+    <button type="button" id="btnGyro" class="primary">Enable phone gyro</button>
+    <button type="button" id="btnCast">Copy TV URL</button>
+    <button type="button" id="btnReset">Reset pose</button>
+    <span class="meta" id="meta">yaw 0 · pitch 0</span>
+  </div>
+  <div id="stage">
+    <div class="layer" id="bg"></div>
+    <div class="layer" id="mid"></div>
+    <div id="portal">
+      <div class="depth" id="depth"></div>
+      <div class="horizon" id="horizon"></div>
+      <div class="grid" id="pgrid"></div>
+      <div class="orb" id="orb"></div>
+    </div>
+    <div class="layer" id="fg"></div>
+    <div class="layer" id="glass"></div>
+    <div id="hud">viewer · waiting for phone</div>
+    <div id="qr-hint">scan cell<br/>QR later<br/>glyph launch</div>
+  </div>
+<script>
+(function () {
+  'use strict';
+  const u = new URL(location.href);
+  const isTv = u.searchParams.get('tv') === '1' || u.searchParams.get('cast') === '1';
+  if (isTv) document.body.classList.add('tv');
+  else document.body.classList.add('control');
+
+  const viewer = { yaw: 0, pitch: 0, roll: 0, x: 0, y: 0, z: 1, source: 'init', t: 0 };
+  let lastPush = 0;
+  let baseBeta = null, baseGamma = null;
+
+  const $ = (id) => document.getElementById(id);
+  const meta = $('meta');
+  const hud = $('hud');
+
+  function applyLayers() {
+    // depth-ish parallax: farther layers move less (window into depth)
+    const k = 28; // px scale
+    const y = viewer.yaw * k;
+    const p = viewer.pitch * k;
+    const z = Math.max(0.6, Math.min(1.8, viewer.z || 1));
+
+    $('bg').style.transform = `translate3d(${-y * 0.25}px, ${-p * 0.2}px, 0) scale(${1.05 + (1 - z) * 0.04})`;
+    $('mid').style.transform = `translate3d(${-y * 0.55}px, ${-p * 0.45}px, 0)`;
+    $('portal').style.transform = `translate(-50%, -50%) translate3d(${-y * 0.9}px, ${-p * 0.75}px, 0) scale(${1.0 + (z - 1) * 0.08})`;
+    $('orb').style.transform = `translate3d(${y * 0.35}px, ${p * 0.25}px, 0)`;
+    $('pgrid').style.transform = `perspective(600px) rotateX(${58 + viewer.pitch * 8}deg) translateY(20%) translateX(${-y * 0.4}px)`;
+    $('fg').style.transform = `translate3d(${-y * 1.15}px, ${-p * 1.0}px, 0)`;
+    $('glass').style.transform = `translate3d(${-y * 1.3}px, ${-p * 1.15}px, 0)`;
+
+    const line = `yaw ${viewer.yaw.toFixed(2)}  pitch ${viewer.pitch.toFixed(2)}  z ${z.toFixed(2)}  · ${viewer.source || '?'}`;
+    if (meta) meta.textContent = line;
+    if (hud) hud.textContent = isTv ? `infinite window · ${line}` : `pushing · ${line}`;
+  }
+
+  async function pushViewer() {
+    if (isTv) return;
+    try {
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          surface: 'parallax',
+          viewer: { ...viewer, t: Date.now() / 1000 },
+          controller: 'phone-parallax',
+        }),
+      });
+      lastPush = Date.now();
+    } catch (_) {}
+  }
+
+  async function pullLoop() {
+    if (!isTv) return;
+    try {
+      const since = viewer.t || 0;
+      const r = await fetch('/api/long-poll?since=' + encodeURIComponent(since), { cache: 'no-store' });
+      if (r.ok) {
+        const st = await r.json();
+        if (st.viewer) {
+          Object.assign(viewer, st.viewer);
+          applyLayers();
+        }
+      }
+    } catch (_) {}
+    setTimeout(pullLoop, 40);
+  }
+
+  function onOrient(e) {
+    // beta: front-back, gamma: left-right (deg)
+    const beta = e.beta ?? 0;
+    const gamma = e.gamma ?? 0;
+    if (baseBeta == null) { baseBeta = beta; baseGamma = gamma; }
+    viewer.pitch = Math.max(-1.2, Math.min(1.2, (beta - baseBeta) / 35));
+    viewer.yaw = Math.max(-1.2, Math.min(1.2, (gamma - baseGamma) / 35));
+    viewer.roll = (e.alpha || 0) / 180;
+    viewer.z = 1;
+    viewer.source = 'deviceorientation';
+    viewer.t = Date.now() / 1000;
+    applyLayers();
+    if (Date.now() - lastPush > 50) pushViewer();
+  }
+
+  // pointer fallback (desk mouse = virtual phone move)
+  let dragging = false, lx = 0, ly = 0;
+  window.addEventListener('pointerdown', (e) => {
+    if (isTv) return;
+    dragging = true; lx = e.clientX; ly = e.clientY;
+  });
+  window.addEventListener('pointerup', () => { dragging = false; });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging || isTv) return;
+    viewer.yaw = Math.max(-1.2, Math.min(1.2, viewer.yaw + (e.clientX - lx) / 180));
+    viewer.pitch = Math.max(-1.2, Math.min(1.2, viewer.pitch + (e.clientY - ly) / 180));
+    lx = e.clientX; ly = e.clientY;
+    viewer.source = 'pointer';
+    applyLayers();
+    if (Date.now() - lastPush > 40) pushViewer();
+  });
+
+  if ($('btnGyro')) {
+    $('btnGyro').onclick = async () => {
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const p = await DeviceOrientationEvent.requestPermission();
+          if (p !== 'granted') { alert('gyro permission denied'); return; }
+        }
+        baseBeta = baseGamma = null;
+        window.addEventListener('deviceorientation', onOrient, true);
+        $('btnGyro').textContent = 'Gyro on';
+        viewer.source = 'deviceorientation';
+      } catch (err) {
+        alert('gyro: ' + err);
+      }
+    };
+  }
+  if ($('btnReset')) {
+    $('btnReset').onclick = () => {
+      viewer.yaw = viewer.pitch = viewer.roll = 0;
+      viewer.z = 1;
+      baseBeta = baseGamma = null;
+      applyLayers();
+      pushViewer();
+    };
+  }
+  if ($('btnCast')) {
+    $('btnCast').onclick = async () => {
+      const tv = location.origin + '/parallax?tv=1';
+      try {
+        await navigator.clipboard.writeText(tv);
+        alert('TV URL copied:\n' + tv + '\n\ncast: catt -d "Smart TV" cast_site \'' + tv + "'");
+      } catch {
+        prompt('TV URL', tv);
+      }
+    };
+  }
+
+  applyLayers();
+  if (isTv) pullLoop();
+  else {
+    // seed hub
+    pushViewer();
+    setInterval(() => { if (viewer.source && viewer.source !== 'init') pushViewer(); }, 200);
+  }
+})();
+</script>
+</body>
+</html>

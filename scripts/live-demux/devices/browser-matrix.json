@@ -1,0 +1,91 @@
+{
+  "schema": "fc-browser-matrix-v1",
+  "version": 1,
+  "note": "Capability matrix for Chrome · Safari · Firefox (real + DevTools device mode). Used by cast surfaces for safe feature gates — not UA sniffing as truth.",
+  "engines": {
+    "chromium": {
+      "label": "Chrome / Edge / Chromium / Chrome DevTools device mode",
+      "ua_hints": ["Chrome/", "CriOS/", "Edg/", "Chromium"],
+      "features": {
+        "deviceorientation": true,
+        "deviceorientation_permission": false,
+        "geolocation": true,
+        "getusermedia": true,
+        "serviceworker": true,
+        "webp": true,
+        "avif": true,
+        "backdrop_filter": true,
+        "visual_viewport": true,
+        "touch_action": true,
+        "cast_receiver_webview": "partial"
+      },
+      "notes": [
+        "Desktop Chrome DevTools device toolbar emulates viewport + DPR + touch; gyro/geo still host desktop unless sensors mocked",
+        "Google TV / Chromecast DashCast is a Chromium WebView — treat as chromium + tv role"
+      ]
+    },
+    "webkit": {
+      "label": "Safari / iOS Safari / Safari Responsive Design Mode",
+      "ua_hints": ["Safari/"],
+      "ua_exclude": ["Chrome/", "CriOS/", "Edg/", "Android"],
+      "features": {
+        "deviceorientation": true,
+        "deviceorientation_permission": true,
+        "geolocation": true,
+        "getusermedia": "secure_context_only",
+        "serviceworker": true,
+        "webp": true,
+        "avif": "version_dependent",
+        "backdrop_filter": true,
+        "visual_viewport": true,
+        "touch_action": true,
+        "standalone_pwa": true
+      },
+      "notes": [
+        "DeviceOrientationEvent.requestPermission() required (user gesture)",
+        "getUserMedia needs https:// secure context (or localhost)",
+        "Add to Home Screen → standalone display mode",
+        "Safari RDM emulates viewport; real gyro needs physical device"
+      ]
+    },
+    "gecko": {
+      "label": "Firefox / Firefox Responsive Design Mode",
+      "ua_hints": ["Firefox/"],
+      "features": {
+        "deviceorientation": true,
+        "deviceorientation_permission": false,
+        "geolocation": true,
+        "getusermedia": true,
+        "serviceworker": true,
+        "webp": true,
+        "avif": true,
+        "backdrop_filter": "version_dependent",
+        "visual_viewport": true,
+        "touch_action": true
+      },
+      "notes": [
+        "RDM: Ctrl+Shift+M — viewport + DPR + touch simulation",
+        "about:config may gate some sensors; prefer physical phone for gyro cast control"
+      ]
+    }
+  },
+  "roles": {
+    "control": {
+      "label": "Desk / phone control",
+      "default_stream_mode": "economy",
+      "surfaces": ["/box", "/news", "/setup.html"]
+    },
+    "tv": {
+      "label": "Cast / TV WebView",
+      "default_stream_mode": "tv-native",
+      "surfaces": ["/news?tv=1", "/tv?tv=1", "/box?tv=1"]
+    },
+    "emulate": {
+      "label": "DevTools device emulation",
+      "default_stream_mode": "economy",
+      "surfaces": ["?device=<id>&emulate=1"]
+    }
+  },
+  "cast_devices": ["tcl-google-uhd", "hisense-google-uhd"],
+  "devtools_presets_file": "devtools-presets.json"
+}

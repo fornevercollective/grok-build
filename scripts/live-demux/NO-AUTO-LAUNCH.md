@@ -13,6 +13,10 @@ Auditors can read filters and refuse-lists. **Runtime must stay explicit.**
 | Terminal.app windows | `deploy-fc-grok.sh --open` / launch-*.sh only |
 | desk TUI you\|phone | `/cam phone` or `/phone` (TUI only) |
 | MG `/wave` poll | only if `MG_WAVE_URL` is set |
+| Cast to TCL / Chromecast | `/cast …` or `cast-tv.sh …` only |
+| Independent ffplay tiles | `ffplay-tiles.sh load|place|close …` only |
+| Camera relay (JPEG → hub/TV) | `cam-relay.sh start` or `cast-tv.sh box` (opt-out `LIVE_DEMUX_BOX_CAMS=0`) |
+| News wall multi-feed + audio | `cast-tv.sh news` or phone **Start wall** only |
 
 ## Env guards
 

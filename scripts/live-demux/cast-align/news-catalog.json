@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "layout": { "cols": 6, "rows": 3, "gap_px": 6, "safe_pct": 0.04 },
+  "regions": ["us", "uk", "eu", "me", "asia", "world"],
+  "note": "channel_id enables youtube-nocookie live_stream embeds at scaled tile heights. No AVFoundation / cam-relay required.",
+  "channels": [
+    { "id": "cnn", "label": "CNN", "url": "https://www.youtube.com/@CNN/live", "channel_id": "UCupvZG-5ko_eiXAupbDfxWw", "region": "us", "kind": "news", "tags": ["breaking"], "cell": 1 },
+    { "id": "bbc", "label": "BBC", "url": "https://www.youtube.com/@BBCNews/live", "channel_id": "UC16niRr50-MSBwiO3YDb3RA", "region": "uk", "kind": "news", "tags": ["breaking"], "cell": 2 },
+    { "id": "aje", "label": "Al Jazeera", "url": "https://www.youtube.com/@AlJazeeraEnglish/live", "channel_id": "UCNye-wNBqNL5ZzHSJj3l8Bg", "region": "me", "kind": "news", "tags": ["world"], "cell": 3 },
+    { "id": "bbg", "label": "Bloomberg", "url": "https://www.youtube.com/@BloombergTelevision/live", "channel_id": "UCIALMKvObZNtJ6AmdCLP7Lg", "region": "us", "kind": "news", "tags": ["markets"], "cell": 4 },
+    { "id": "cnbc", "label": "CNBC", "url": "https://www.youtube.com/@CNBC/live", "channel_id": "UCvJJ_dzjViJCoLf5uKUTwoA", "region": "us", "kind": "news", "tags": ["markets"], "cell": 5 },
+    { "id": "sky", "label": "Sky News", "url": "https://www.youtube.com/@SkyNews/live", "channel_id": "UCoMdktPbSTixAyNGwb-UYkQ", "region": "uk", "kind": "news", "tags": ["breaking"], "cell": 6 },
+    { "id": "dw", "label": "DW", "url": "https://www.youtube.com/@dwnews/live", "channel_id": "UCknLrEdhRCp1aegoMqRaCZg", "region": "eu", "kind": "news", "tags": ["europe"], "cell": 7 },
+    { "id": "f24", "label": "France 24", "url": "https://www.youtube.com/@France24_en/live", "channel_id": "UCQfwfsi5VrQ8yKZ-UWmAEFg", "region": "eu", "kind": "news", "tags": ["europe"], "cell": 8 },
+    { "id": "eur", "label": "Euronews", "url": "https://www.youtube.com/@euronews/live", "channel_id": "UCW2QcKZiU8aUGg4yxCIditg", "region": "eu", "kind": "news", "tags": ["europe"], "cell": 9 },
+    { "id": "nhk", "label": "NHK World", "url": "https://www.youtube.com/@NHKWORLDJAPAN/live", "channel_id": "UCSPEjw8F2nQDtmUKPFNF7_A", "region": "asia", "kind": "news", "tags": ["asia"], "cell": 10 },
+    { "id": "cna", "label": "CNA", "url": "https://www.youtube.com/@channelnewsasia/live", "channel_id": "UC83jt4dlz1Gjl58fzQrrKZg", "region": "asia", "kind": "news", "tags": ["asia"], "cell": 11 },
+    { "id": "abc", "label": "ABC News", "url": "https://www.youtube.com/@ABCNews/live", "channel_id": "UCBi2mrWuNuyYy4gbM6fU18Q", "region": "us", "kind": "news", "tags": ["us"], "cell": 12 },
+    { "id": "nbc", "label": "NBC News", "url": "https://www.youtube.com/@NBCNews/live", "channel_id": "UCeY0bbntWzzVIaj2z3QigXg", "region": "us", "kind": "news", "tags": ["us"], "cell": 13 },
+    { "id": "fox", "label": "Fox News", "url": "https://www.youtube.com/@FoxNews/live", "channel_id": "UCXIJgqnII2ZOINSWNOGFThA", "region": "us", "kind": "news", "tags": ["us"], "cell": 14 },
+    { "id": "msnbc", "label": "MSNBC", "url": "https://www.youtube.com/@MSNBC/live", "channel_id": "UCaXkIU1QidjPwiAYu6GcHjg", "region": "us", "kind": "news", "tags": ["politics"], "cell": 15 },
+    { "id": "cspan", "label": "C-SPAN", "url": "https://www.youtube.com/@cspan/live", "channel_id": "UCb--64Gl51jIEVE-GLDAVTg", "region": "us", "kind": "public", "tags": ["public"], "cell": 16 },
+    { "id": "pbs", "label": "PBS", "url": "https://www.youtube.com/@PBSNewsHour/live", "channel_id": "UC6ZFN9Tx6xh-skXCuRHCDpQ", "region": "us", "kind": "news", "tags": ["public"], "cell": 17 },
+    { "id": "trtw", "label": "TRT World", "url": "https://www.youtube.com/@trtworld/live", "channel_id": "UC7fWeaHhqgM4Ry-RMpM2YYw", "region": "me", "kind": "news", "tags": ["world"], "cell": 18 }
+  ],
+  "audio": {
+    "lofi_url": "",
+    "news_bed_url": "",
+    "duck_db": -14,
+    "duck_attack_ms": 120,
+    "duck_release_ms": 800,
+    "default_mix": {
+      "program": 0.85,
+      "lofi": 0.22,
+      "bed": 0.18,
+      "isolated": null
+    }
+  },
+  "spacing": {
+    "program_cells": [8, 9, 14, 15],
+    "pip_priority": ["breaking", "markets", "world"],
+    "region_order": ["us", "uk", "eu", "me", "asia"]
+  }
+}

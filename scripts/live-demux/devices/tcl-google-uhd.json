@@ -1,0 +1,109 @@
+{
+  "id": "tcl-google-uhd",
+  "label": "TCL Google Smart TV (UHD class)",
+  "os": "Google TV",
+  "manufacturer": "TCL",
+  "manufacturer_class": "TCL Google TV / Chromecast built-in",
+  "discovered": {
+    "friendly_name": "Smart TV",
+    "catt_model": "TCL Smart TV",
+    "ip": "192.168.0.5",
+    "cast_port": 8009,
+    "eureka_port": 8008,
+    "ssdp_udn": "78a8ad8c-6a24-f6c4-afad-742d0d208027",
+    "cast_protocol_version": 12,
+    "cast_build_revision": "3.72.446070",
+    "cast_build_version": "446070",
+    "smoke_cast": "2026-07-30 local mp4 via catt Default Media Receiver OK",
+    "note": "Exact retail SKU not in Cast eureka_info — confirm Settings → System → About → Model on the panel"
+  },
+  "cast": {
+    "protocol": "chromecast-builtin",
+    "discovery": "_googlecast._tcp",
+    "default_receiver": true,
+    "catt_device": "Smart TV",
+    "preferred_device_env": "LIVE_DEMUX_CAST_DEVICE"
+  },
+  "panel": {
+    "resolution_class": "3840x2160",
+    "resolution_note": "Most modern TCL Google TVs are UHD; confirm inch/series on About screen",
+    "refresh_hz_typical": [60, 120],
+    "refresh_hz_cast_path": [24, 30, 60],
+    "panel_tech_typical": ["VA", "IPS"],
+    "viewing_angle_deg_marketed": 178,
+    "viewing_angle_note": "VA: marketed ~178° but contrast/color wash off-axis — center seating for dual/mosaic walls. IPS lines hold color better off-axis. Cast cannot change panel physics; use high-contrast large tiles.",
+    "hdr_typical": ["HDR10", "HLG"],
+    "dolby_vision": "model-dependent (higher TCL S/C/QM SKUs)",
+    "color_gamut": "model-dependent; cast path forces Rec.709 SDR",
+    "lut_support_on_tv": false,
+    "lut_path": "apply 3D LUT at encode (ffmpeg lut3d / LIVE_DEMUX_CAST_LUT), not TV picture menu"
+  },
+  "cast_encode": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "video_codec": "libx264",
+    "video_profile": "high",
+    "h264_level_safe": "4.1",
+    "h264_level_note": "Default Media Receiver: 1080p30 High@L4.1 is universal; Google TV Cast often accepts 4K H.264 but v1 stays 1080p for reliability",
+    "pixel_format": "yuv420p",
+    "audio_codec": "aac",
+    "audio_bitrate": "128k",
+    "container": "mp4",
+    "container_alt": ["mpegts", "hls"],
+    "color": "bt709",
+    "color_range": "tv",
+    "hdr_cast": false,
+    "uhd_opt_in_env": "LIVE_DEMUX_CAST_UHD",
+    "uhd_width": 3840,
+    "uhd_height": 2160,
+    "uhd_fps": 30,
+    "fps_opt_in_env": "LIVE_DEMUX_CAST_FPS",
+    "max_bitrate_hint_kbps": 8000,
+    "google_cast_safe": {
+      "video": "H.264 High yuv420p",
+      "audio": "AAC-LC",
+      "avoid": ["AV1 for Default Receiver", "HEVC in MPEG-TS", "localhost URLs", "CORS-missing HLS"]
+    }
+  },
+  "error_handling": {
+    "offline": "retry /cast list; same Wi-Fi (no guest AP isolation); ping 192.168.0.5",
+    "codec": "re-encode H.264+AAC progressive MP4 or short HLS; avoid AV1/HEVC for Default Media Receiver",
+    "localhost": "never cast 127.0.0.1/localhost — serve 0.0.0.0 and use LAN IP",
+    "session_stolen": "another phone/app stole Cast — re-run /cast",
+    "stall": "shorter segments; check ~/.panda/vision/cast/cast.log; lower bitrate",
+    "black_screen": "codec mismatch or URL unreachable from TV; open http://LAN:8765/… from phone on same Wi-Fi",
+    "discovery_empty": "catt scan / dns-sd _googlecast._tcp; wake TV; disable VPN hiding mDNS",
+    "exclusive_cam": "release TTY cam / other ffplay before desk encode",
+    "wrong_device": "two TVs on LAN (TCL Smart TV + Hisense GoogleTV3065) — set LIVE_DEMUX_CAST_DEVICE='Smart TV'",
+    "hdcp_app_path": "rare on Default Media Receiver — stick to local HTTP media"
+  },
+  "layouts": {
+    "single": "one stream full 16:9 → 1920x1080",
+    "desk": "you | phone side-by-side stills → scale 16:9",
+    "mosaic": "2x2 xstack: you, phone, stream still, lens still (or placeholders)",
+    "wall": "future multi-device matrix / multi-cast",
+    "xr_source": "phone Continuity + VR browser later feed same encode wall → one Cast session to TCL"
+  },
+  "wall_content": {
+    "feeds": "resolved /watch or yt-dlp URLs re-encoded",
+    "mosaics": "ffmpeg xstack / hstack from still-pipe + desk dual",
+    "streams": "HLS/MP4 on LAN HTTP :8765",
+    "optimized": "Rec.709 SDR, high-contrast tiles, avoid 1px chrome (viewing angle)"
+  },
+  "sibling_devices_lan": [
+    {
+      "name": "GoogleTV3065",
+      "model": "Hisense SmartTV 4K FFM",
+      "ip": "192.168.0.61",
+      "profile": "hisense-google-uhd"
+    }
+  ],
+  "notes": [
+    "LAN discovery 2026-07-30: catt → Smart TV = TCL Smart TV @ 192.168.0.5",
+    "Do not confuse with Hisense GoogleTV3065 @ 192.168.0.61",
+    "Game Mode 120Hz is HDMI path, not Chromecast encode path",
+    "Custom LUTs: LIVE_DEMUX_CAST_LUT=/path/to.cube at encode",
+    "Exact retail model: TV Settings → System → About → Model → LIVE_DEMUX_CAST_TV_SKU"
+  ]
+}
