@@ -1717,26 +1717,34 @@ pub(crate) async fn run(
         }
     }
 
-    // Live-watch / media launch (`launch-watch.sh`, `GROK_LIVE_WATCH`,
+    // Media launch (`launch-watch.sh` / `launch-timesync.sh` / `launch-map.sh`,
+    // `GROK_LIVE_WATCH` / `GROK_OPEN_TIMESYNC` / `GROK_MAP_TARGET`,
     // `GROK_NEW_SESSION_AT_STARTUP=1`): skip the welcome menu and land on an
-    // agent prompt (and optionally open `/watch` immediately). Without this,
-    // bare pager starts on Welcome where session-scoped `/watch`/`/gmux`
-    // either don't appear or silently no-op.
+    // agent prompt (and optionally open `/watch` `/timesync` `/map` immediately).
     {
         let live_watch = std::env::var("GROK_LIVE_WATCH").ok();
         let live_popout = matches!(
             std::env::var("GROK_LIVE_WATCH_POPOUT").as_deref(),
             Ok("1") | Ok("true") | Ok("yes")
         );
+        let open_timesync = matches!(
+            std::env::var("GROK_OPEN_TIMESYNC").as_deref(),
+            Ok("1") | Ok("true") | Ok("yes") | Ok("clock") | Ok("timesync")
+        );
+        let open_map = std::env::var("GROK_MAP_TARGET").ok().filter(|s| !s.is_empty());
         let force_session = std::env::var("GROK_NEW_SESSION_AT_STARTUP").as_deref() == Ok("1")
             || live_watch.is_some()
-            || live_popout;
+            || live_popout
+            || open_timesync
+            || open_map.is_some();
         if force_session {
             // SAFETY: pre-multithreaded app loop; one-shot consume like dashboard.
             unsafe {
                 std::env::remove_var("GROK_NEW_SESSION_AT_STARTUP");
                 std::env::remove_var("GROK_LIVE_WATCH");
                 std::env::remove_var("GROK_LIVE_WATCH_POPOUT");
+                std::env::remove_var("GROK_OPEN_TIMESYNC");
+                std::env::remove_var("GROK_MAP_TARGET");
             }
             if !app.is_zdr_blocked() {
                 if app.session_startup_allowed() {
@@ -1765,6 +1773,15 @@ pub(crate) async fn run(
                             &mut app,
                         ));
                     }
+                    if open_timesync {
+                        effs.extend(dispatch::dispatch(Action::OpenTimesync, &mut app));
+                    }
+                    if let Some(target) = open_map {
+                        effs.extend(dispatch::dispatch(
+                            Action::OpenMap { target },
+                            &mut app,
+                        ));
+                    }
                     if process_effects(effs, &mut tasks, &mut app, &progress_tx) {
                         return Ok(make_run_result(&app));
                     }
@@ -1775,6 +1792,12 @@ pub(crate) async fn run(
                     if let Some(src) = live_watch {
                         // Pop-out is fire-and-forget; if still gated, fall back to TTY open.
                         app.deferred_startup.open_live_watch = Some(src);
+                    }
+                    if open_timesync {
+                        app.deferred_startup.open_timesync = true;
+                    }
+                    if let Some(target) = open_map {
+                        app.deferred_startup.open_map = Some(target);
                     }
                 }
             }

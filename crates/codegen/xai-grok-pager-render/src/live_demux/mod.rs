@@ -20,13 +20,16 @@
 mod camera;
 mod channels;
 mod layout;
+mod mic;
 mod popout;
 mod x_live;
 
 pub use camera::{
-    apply_cam_profile, cam_auto_on, cam_capture_size, cam_device, cam_dims, cam_mirror_default,
-    cam_width_frac, CameraFeed,
+    apply_cam_profile, apply_phone_tether_profile, cam_auto_on, cam_capture_size, cam_device,
+    cam_dims, cam_mirror_default, cam_source, cam_still_path, cam_width_frac, CamSource,
+    CameraFeed,
 };
+pub use mic::{mic_auto_on, MicLevelFeed, MicSnapshot, MicSource, WAVE_BINS};
 // cam_width_frac retained for side-mode / env overrides (layout prefers PiP).
 pub use layout::{
     cam_tile_cells, is_lean_term, layout_watch_video, popup_fill_frac, prefer_pip, CamMode,
@@ -50,7 +53,7 @@ pub use x_live::{
     normalize_x_url, open_x_studio, parse_go_live_args, HINT_PASTE_X, TOAST_GO_LIVE,
 };
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -69,8 +72,10 @@ const SEARCH_BAR_ROWS: u16 = 1;
 /// Feature identity (ledger / toast).
 pub const FEATURE_ID: &str = "fc-live-demux-v1";
 pub const FEATURE_LABEL: &str = "fornevercollective live demux";
+/// Cam talk / waveform / motion-track stamp (Memory Glass → terminal).
+pub const FEATURE_CAM_TALK: &str = mic::FEATURE_ID; // "fc-cam-talk-v1"
 pub const TOAST_OPEN: &str =
-    "WATCH · fornevercollective live demux → half-block TTY · o pop-out (fc-live-demux-v1)";
+    "WATCH · live demux · c cam · a mic wave · t talk · o pop-out (fc-live-demux-v1 · fc-cam-talk-v1)";
 
 /// Default Friday-stream playlist when `/watch` is bare (= VEVO music TV).
 pub const DEFAULT_URL: &str = VEVO_FRIDAY_URL;
@@ -747,6 +752,17 @@ pub struct LiveWatchState {
     cam_paint_w: u32,
     cam_paint_h: u32,
     cam_paint_gen: u64,
+    /// Mic level / waveform (Memory Glass talk grammar). Toggle with **`a`**.
+    mic: Option<MicLevelFeed>,
+    mic_on: bool,
+    mic_snap: MicSnapshot,
+    /// Motion energy 0..1 from cam frame diffs (tracking proxy).
+    motion_level: f32,
+    prev_cam_thumb: Option<Vec<u8>>,
+    /// In-modal talk/chat strip (cam interaction). **`t`** focuses; Enter posts.
+    talk_buf: String,
+    talk_focused: bool,
+    talk_lines: VecDeque<String>,
     /// Cached frame for paint (avoids clone every draw when gen stable).
     paint_rgb: Option<Vec<u8>>,
     paint_w: u32,
@@ -909,6 +925,14 @@ impl LiveWatchState {
             cam_paint_w: cam_w,
             cam_paint_h: cam_h,
             cam_paint_gen: 0,
+            mic: None,
+            mic_on: false,
+            mic_snap: MicSnapshot::idle(),
+            motion_level: 0.0,
+            prev_cam_thumb: None,
+            talk_buf: String::new(),
+            talk_focused: false,
+            talk_lines: VecDeque::new(),
             paint_rgb: None,
             paint_w: w,
             paint_h: h,
@@ -1099,6 +1123,32 @@ impl LiveWatchState {
             }
             // Arrow keys leave search focused but allow scrub? Better stay in search.
             KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down => {
+                LiveWatchKeyOutcome::Changed
+            }
+            _ => LiveWatchKeyOutcome::Changed,
+        }
+    }
+
+    /// Talk strip keys — Memory Glass camera-talk → terminal chat notes.
+    fn handle_talk_key(&mut self, key: &KeyEvent) -> LiveWatchKeyOutcome {
+        match key.code {
+            KeyCode::Esc => {
+                self.talk_focused = false;
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Enter => {
+                self.commit_talk_line();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Backspace | KeyCode::Delete => {
+                self.talk_buf.pop();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                if !ch.is_control() && self.talk_buf.chars().count() < 160 {
+                    self.talk_buf.push(ch);
+                }
                 LiveWatchKeyOutcome::Changed
             }
             _ => LiveWatchKeyOutcome::Changed,
@@ -1408,6 +1458,8 @@ impl LiveWatchState {
         self.cam_paint_rgb = None;
         self.cam_paint_gen = 0;
         self.camera_err = None;
+        self.prev_cam_thumb = None;
+        self.motion_level = 0.0;
         let (w, h) = cam_dims();
         let fps = camera::cam_fps();
         match CameraFeed::start(w, h, fps, self.camera_mirror) {
@@ -1415,6 +1467,10 @@ impl LiveWatchState {
                 self.cam_paint_w = feed.width;
                 self.cam_paint_h = feed.height;
                 self.camera = Some(feed);
+                // Memory Glass talk grammar: mic/wave with cam when enabled.
+                if mic_auto_on() {
+                    self.start_mic();
+                }
             }
             Err(e) => {
                 self.camera_err = Some(e.clone());
@@ -1428,6 +1484,149 @@ impl LiveWatchState {
         self.camera.take();
         self.cam_paint_rgb = None;
         self.cam_paint_gen = 0;
+        self.prev_cam_thumb = None;
+        self.motion_level = 0.0;
+        self.stop_mic();
+    }
+
+    /// Toggle mic waveform meter (Memory Glass L/R/M grammar → TTY bars).
+    pub fn toggle_mic(&mut self) {
+        if self.mic_on {
+            self.stop_mic();
+            self.status = "mic · off".into();
+            return;
+        }
+        self.start_mic();
+        self.status = if self.mic_on {
+            "mic · on · wave under cam (MG hub if :9877)".into()
+        } else {
+            "mic · failed".into()
+        };
+    }
+
+    /// Switch cam tile between local device and phone still-pipe (`live.jpg`).
+    ///
+    /// Memory Glass inspect grammar: phone PWA → hub `/upload` → still → tile.
+    pub fn toggle_phone_source(&mut self) {
+        let next = match camera::cam_source() {
+            camera::CamSource::Local => camera::CamSource::PhoneStill,
+            camera::CamSource::PhoneStill => camera::CamSource::Local,
+        };
+        // SAFETY: process-wide knobs; cam restart reads them.
+        unsafe {
+            match next {
+                camera::CamSource::PhoneStill => {
+                    std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "phone");
+                    std::env::set_var("LIVE_DEMUX_CAM_MIRROR", "0");
+                    if std::env::var("LIVE_DEMUX_CAM_STILL").is_err() {
+                        std::env::set_var("LIVE_DEMUX_CAM_STILL", camera::cam_still_path());
+                    }
+                }
+                camera::CamSource::Local => {
+                    std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "local");
+                }
+            }
+        }
+        if self.camera_on {
+            self.stop_camera();
+            self.camera_on = true;
+            self.start_camera();
+        }
+        self.status = match next {
+            camera::CamSource::PhoneStill => format!(
+                "cam · phone still-pipe · {} · open phone PWA → allow cam",
+                camera::cam_still_path()
+            ),
+            camera::CamSource::Local => "cam · local device".into(),
+        };
+    }
+
+    fn start_mic(&mut self) {
+        self.mic.take();
+        self.mic_on = false;
+        self.mic_snap = MicSnapshot::idle();
+        match MicLevelFeed::start() {
+            Ok(feed) => {
+                self.mic = Some(feed);
+                self.mic_on = true;
+            }
+            Err(e) => {
+                self.status = format!("mic: {e}");
+                self.mic_on = false;
+            }
+        }
+    }
+
+    fn stop_mic(&mut self) {
+        if let Some(mut m) = self.mic.take() {
+            m.stop();
+        }
+        self.mic_on = false;
+        self.mic_snap = MicSnapshot::idle();
+    }
+
+    pub fn mic_on(&self) -> bool {
+        self.mic_on
+    }
+
+    pub fn talk_focused(&self) -> bool {
+        self.talk_focused
+    }
+
+    pub fn motion_level(&self) -> f32 {
+        self.motion_level
+    }
+
+    fn focus_talk(&mut self) {
+        self.talk_focused = true;
+        self.search_focused = false;
+        self.status = "talk · type · Enter post · Esc unfocus".into();
+    }
+
+    fn commit_talk_line(&mut self) {
+        let line = self.talk_buf.trim().to_string();
+        self.talk_buf.clear();
+        if line.is_empty() {
+            return;
+        }
+        // Keep last 6 lines for HUD / mesh handoff later.
+        while self.talk_lines.len() >= 6 {
+            self.talk_lines.pop_front();
+        }
+        self.talk_lines.push_back(line.clone());
+        self.status = format!("talk · {line}");
+        // Optional: emit to stderr for agents / GY hooks.
+        eprintln!("[fc-cam-talk] {line}");
+    }
+
+    /// Update motion energy from a downscaled cam thumb (tracking proxy).
+    fn update_motion_from_cam(&mut self, rgb: &[u8], w: u32, h: u32) {
+        // Sample every 8th pixel into a tiny thumb for cheap Δ.
+        let step = 8usize;
+        let mut thumb = Vec::with_capacity(((w as usize / step) * (h as usize / step)).max(1));
+        let ww = w as usize;
+        let hh = h as usize;
+        for y in (0..hh).step_by(step) {
+            for x in (0..ww).step_by(step) {
+                let i = (y * ww + x) * 3;
+                if i + 2 < rgb.len() {
+                    // luma
+                    let yv = (rgb[i] as u32 * 3 + rgb[i + 1] as u32 * 6 + rgb[i + 2] as u32) / 10;
+                    thumb.push(yv as u8);
+                }
+            }
+        }
+        if let Some(prev) = self.prev_cam_thumb.as_ref() {
+            if prev.len() == thumb.len() && !thumb.is_empty() {
+                let mut acc = 0u64;
+                for (a, b) in prev.iter().zip(thumb.iter()) {
+                    acc += (*a as i16 - *b as i16).unsigned_abs() as u64;
+                }
+                let mean = acc as f32 / thumb.len() as f32 / 255.0;
+                self.motion_level = (self.motion_level * 0.65 + mean * 2.5).clamp(0.0, 1.0);
+            }
+        }
+        self.prev_cam_thumb = Some(thumb);
     }
 
     /// Toggle selfie mirror (restarts capture if camera is on).
@@ -1523,32 +1722,49 @@ impl LiveWatchState {
             .unwrap_or("…");
         let play = if self.playing { "▶" } else { "⏸" };
         let cam = if self.camera_on {
+            let src = camera::cam_source().label();
             if self.camera_err.is_some() {
-                "  · cam!"
+                format!("  · cam!({src})")
             } else if self.cam_paint_rgb.is_some() {
-                "  · cam"
+                format!("  · {src} mot{:.0}%", self.motion_level * 100.0)
             } else {
-                "  · cam…"
+                format!("  · {src}…")
             }
+        } else {
+            String::new()
+        };
+        let mic = if self.mic_on {
+            format!(
+                "  · {} ▮{:.0}%",
+                self.mic_snap.source_label(),
+                self.mic_snap.rms * 100.0
+            )
+        } else {
+            String::new()
+        };
+        let talk = if self.talk_focused {
+            "  · talk▌"
+        } else if !self.talk_lines.is_empty() {
+            "  · talk"
         } else {
             ""
         };
         let shuf = if self.shuffle { "  · 🔀" } else { "" };
         match self.kind {
             ChannelKind::MusicTv => format!(
-                "{play} {}  {}/{}  {title}  · n/p  s shuffle  g guide  o  c  t≈{}s{shuf}{cam}",
+                "{play} {}  {}/{}  {title}  · n/p  s  g  o  c  a mic  t talk  t≈{}s{shuf}{cam}{mic}{talk}",
                 self.channel_label,
                 self.idx + 1,
                 n,
                 self.seek_secs
             ),
             ChannelKind::LiveNews => format!(
-                "{play} {}  · live  n/p stations  g guide  t≈{}s  o pop-out  c cam{cam}",
+                "{play} {}  · live  n/p  g  t≈{}s  o  c  a  t{cam}{mic}{talk}",
                 self.channel_label,
                 self.seek_secs
             ),
             ChannelKind::Generic => format!(
-                "{play} [{}/{}] {}  t≈{}s  s shuffle  g guide  o  c{shuf}{cam}",
+                "{play} [{}/{}] {}  t≈{}s  s  g  o  c  a  t{shuf}{cam}{mic}{talk}",
                 self.idx + 1,
                 n,
                 title,
@@ -1664,6 +1880,7 @@ impl LiveWatchState {
                     if frame_gen != self.cam_paint_gen
                         && let Some((rgb, w, h)) = cam.snapshot_rgb()
                     {
+                        self.update_motion_from_cam(&rgb, w, h);
                         self.cam_paint_rgb = Some(rgb);
                         self.cam_paint_w = w;
                         self.cam_paint_h = h;
@@ -1674,6 +1891,20 @@ impl LiveWatchState {
             }
         }
 
+        // Mic waveform (local ffmpeg and/or Memory Glass /wave hub).
+        if self.mic_on {
+            if let Some(ref mic) = self.mic {
+                let snap = mic.snapshot();
+                if snap.generation != self.mic_snap.generation {
+                    self.mic_snap = snap;
+                    dirty = true;
+                }
+            }
+        }
+
+        if !self.playing && !self.camera_on && !self.mic_on {
+            return dirty;
+        }
         if !self.playing {
             return dirty;
         }
@@ -1718,6 +1949,11 @@ impl LiveWatchState {
     }
 
     pub fn handle_key(&mut self, key: &KeyEvent) -> LiveWatchKeyOutcome {
+        // ── Talk strip (cam chat) — Memory Glass talk → terminal ──
+        if self.talk_focused {
+            return self.handle_talk_key(key);
+        }
+
         // ── In-modal search (type under video without leaving /watch) ──
         if self.search_focused {
             return self.handle_search_key(key);
@@ -1732,6 +1968,7 @@ impl LiveWatchState {
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.demux.take();
                 self.stop_camera();
+                self.stop_mic();
                 LiveWatchKeyOutcome::Close
             }
             // Focus search bar under the video — load more content in-place.
@@ -1748,9 +1985,24 @@ impl LiveWatchState {
                 self.open_guide(Some(GuideFilter::News));
                 LiveWatchKeyOutcome::Changed
             }
+            KeyCode::Char('a') | KeyCode::Char('A') => {
+                // Mic / waveform (Memory Glass phone-wave grammar).
+                self.toggle_mic();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char('t') | KeyCode::Char('T') => {
+                // Talk / chat strip focus (Memory Glass camera-talk → terminal).
+                self.focus_talk();
+                LiveWatchKeyOutcome::Changed
+            }
             KeyCode::Char('c') | KeyCode::Char('C') => {
                 // Local camera side pane (left of stream).
                 self.toggle_camera();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char('h') | KeyCode::Char('H') => {
+                // Phone still-pipe (Memory Glass tether) ↔ local device.
+                self.toggle_phone_source();
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('m') | KeyCode::Char('M') => {
@@ -1941,8 +2193,10 @@ impl LiveWatchState {
     /// - Wide rooms may use a side column (`LIVE_DEMUX_CAM_LAYOUT=side`).
     /// - Channel guide overlays the stream rect; search bar is always bottom row(s).
     pub fn paint_half_blocks(&mut self, buf: &mut Buffer, area: Rect) -> bool {
-        // Reserve bottom row(s) for search so typing never needs Esc → main prompt.
-        let bar_h = if self.search_focused && !self.search_buf.is_empty() {
+        // Reserve bottom row(s) for search/talk so typing never needs Esc → main prompt.
+        let bar_h = if self.talk_focused {
+            2
+        } else if self.search_focused && !self.search_buf.is_empty() {
             2
         } else {
             SEARCH_BAR_ROWS
@@ -1972,7 +2226,7 @@ impl LiveWatchState {
         painted
     }
 
-    /// 1-cell dim frame around the camera tile (GY pin rail readability).
+    /// 1-cell dim frame around the camera tile + wave/motion footer.
     fn paint_camera_chrome(&self, buf: &mut Buffer, area: Rect) {
         use crate::render::safe_buf::SafeBuf;
         use ratatui::style::{Color, Style};
@@ -2004,9 +2258,42 @@ impl LiveWatchState {
                 1,
             );
         }
+        // Waveform + motion on bottom chrome row (overwrites bottom border center).
+        if area.height >= 3 && area.width > 6 {
+            let inner_w = area.width.saturating_sub(2) as usize;
+            let wave = if self.mic_on {
+                self.mic_snap.bar_line(inner_w.saturating_sub(8).max(4))
+            } else {
+                "·".repeat(inner_w.saturating_sub(8).max(4))
+            };
+            let meter = format!(
+                " {} {} m{:.0}%",
+                camera::cam_source().label(),
+                if self.mic_on {
+                    self.mic_snap.source_label()
+                } else {
+                    "mute"
+                },
+                self.motion_level * 100.0
+            );
+            let line = format!("{wave}{meter}");
+            let wave_style = Style::default()
+                .fg(if self.mic_on && self.mic_snap.rms > 0.05 {
+                    Color::Rgb(120, 220, 160)
+                } else {
+                    Color::Rgb(90, 110, 130)
+                })
+                .bg(Color::Rgb(8, 10, 14));
+            buf.set_span_safe(
+                area.x + 1,
+                area.y + area.height - 1,
+                &Span::styled(line, wave_style),
+                area.width.saturating_sub(2),
+            );
+        }
     }
 
-    /// Draw the under-video search / tune line.
+    /// Draw the under-video search / tune line (or talk strip when talk-focused).
     fn paint_search_bar(&self, buf: &mut Buffer, area: Rect) {
         use crate::render::safe_buf::SafeBuf;
         use ratatui::style::{Color, Modifier, Style};
@@ -2015,6 +2302,22 @@ impl LiveWatchState {
         if area.width < 8 || area.height == 0 {
             return;
         }
+
+        // Talk mode reuses the bottom bar (Memory Glass camera-talk → terminal).
+        if self.talk_focused || (!self.search_focused && self.camera_on && !self.talk_lines.is_empty())
+        {
+            self.paint_talk_bar(buf, area);
+            if self.talk_focused {
+                return;
+            }
+            // When not focused but have lines, fall through only if search empty —
+            // prefer showing last talk on second visual; keep search prompt if focused.
+        }
+
+        if self.talk_focused {
+            return;
+        }
+
         let bg = if self.search_focused {
             Color::Rgb(28, 36, 52)
         } else {
@@ -2031,7 +2334,11 @@ impl LiveWatchState {
 
         let prompt = if self.search_focused { "▸ " } else { "/ " };
         let display = if self.search_buf.is_empty() && !self.search_focused {
-            format!("{prompt}search channel · URL · words  (Enter load · Tab complete)")
+            if self.camera_on {
+                format!("{prompt}search · or t talk · a mic wave  (Enter load)")
+            } else {
+                format!("{prompt}search channel · URL · words  (Enter load · Tab complete)")
+            }
         } else if self.search_focused {
             format!("{prompt}{}▌", self.search_buf)
         } else {
@@ -2075,6 +2382,76 @@ impl LiveWatchState {
                     area.width,
                 );
             }
+        }
+    }
+
+    /// Talk / chat bar under video (Memory Glass camera-talk → terminal).
+    fn paint_talk_bar(&self, buf: &mut Buffer, area: Rect) {
+        use crate::render::safe_buf::SafeBuf;
+        use ratatui::style::{Color, Modifier, Style};
+        use ratatui::text::Span;
+
+        if area.width < 8 || area.height == 0 {
+            return;
+        }
+        let bg = if self.talk_focused {
+            Color::Rgb(24, 40, 36)
+        } else {
+            Color::Rgb(14, 20, 18)
+        };
+        let accent = Color::Rgb(120, 230, 180);
+        let dim = Color::Rgb(100, 140, 120);
+        buf.set_style(area, Style::default().bg(bg));
+
+        let wave = if self.mic_on {
+            self.mic_snap.bar_line(12)
+        } else {
+            "············".into()
+        };
+        let last = self.talk_lines.back().map(|s| s.as_str()).unwrap_or("");
+        let prompt = if self.talk_focused {
+            format!("talk › {}▌", self.talk_buf)
+        } else if !last.is_empty() {
+            format!("talk · {last}")
+        } else {
+            "talk › (t focus · Enter post · a mic)".into()
+        };
+        let head = format!(
+            "{wave} m{:.0}% ",
+            self.motion_level * 100.0
+        );
+        let style = Style::default()
+            .fg(if self.talk_focused { accent } else { dim })
+            .bg(bg)
+            .add_modifier(if self.talk_focused {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            });
+        let line = format!("{head}{prompt}");
+        buf.set_span_safe(area.x, area.y, &Span::styled(line, style), area.width);
+
+        if area.height >= 2 && self.talk_focused && !self.talk_lines.is_empty() {
+            let hist: String = self
+                .talk_lines
+                .iter()
+                .rev()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" · ");
+            buf.set_span_safe(
+                area.x,
+                area.y + 1,
+                &Span::styled(
+                    format!("  {hist}"),
+                    Style::default().fg(Color::Rgb(90, 120, 110)).bg(bg),
+                ),
+                area.width,
+            );
         }
     }
 
@@ -2425,6 +2802,14 @@ mod tests {
             cam_paint_w: 80,
             cam_paint_h: 90,
             cam_paint_gen: 0,
+            mic: None,
+            mic_on: false,
+            mic_snap: MicSnapshot::idle(),
+            motion_level: 0.0,
+            prev_cam_thumb: None,
+            talk_buf: String::new(),
+            talk_focused: false,
+            talk_lines: VecDeque::new(),
             paint_rgb: Some(vec![0u8; 160 * 90 * 3]),
             paint_w: 160,
             paint_h: 90,
@@ -2441,6 +2826,28 @@ mod tests {
             search_focused: false,
             shuffle: false,
         }
+    }
+
+    #[test]
+    fn talk_focus_and_commit() {
+        let mut s = stub_state(ChannelKind::Generic, Vec::new());
+        s.focus_talk();
+        assert!(s.talk_focused());
+        s.talk_buf = "hello mesh".into();
+        s.commit_talk_line();
+        assert!(!s.talk_buf.is_empty() || s.talk_lines.back().map(|x| x.as_str()) == Some("hello mesh"));
+        assert_eq!(s.talk_lines.back().map(|x| x.as_str()), Some("hello mesh"));
+        assert!(s.talk_buf.is_empty());
+    }
+
+    #[test]
+    fn motion_updates_from_frame_delta() {
+        let mut s = stub_state(ChannelKind::Generic, Vec::new());
+        let black = vec![0u8; 16 * 16 * 3];
+        let white = vec![255u8; 16 * 16 * 3];
+        s.update_motion_from_cam(&black, 16, 16);
+        s.update_motion_from_cam(&white, 16, 16);
+        assert!(s.motion_level() > 0.01);
     }
 
     #[test]

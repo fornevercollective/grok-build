@@ -447,6 +447,8 @@ pub(in crate::app::dispatch) fn drain_startup_actions(app: &mut AppView) -> Vec<
         open_dashboard,
         pending_chat,
         open_live_watch,
+        open_timesync,
+        open_map,
     } = app.deferred_startup.take();
     let mut effects = Vec::new();
     match deferred {
@@ -547,7 +549,7 @@ pub(in crate::app::dispatch) fn drain_startup_actions(app: &mut AppView) -> Vec<
                 ));
             } else if new_session {
                 // Media launch must not hit worktree Ask/Always — plain agent.
-                if open_live_watch.is_some() {
+                if open_live_watch.is_some() || open_timesync || open_map.is_some() {
                     effects.extend(dispatch_new_session_inner(app, None));
                 } else {
                     effects.extend(dispatch_new_session(app));
@@ -563,9 +565,15 @@ pub(in crate::app::dispatch) fn drain_startup_actions(app: &mut AppView) -> Vec<
     if open_dashboard {
         effects.extend(dispatch(Action::OpenDashboard, app));
     }
-    // Live watch needs an Agent view — open after any deferred NewSession above.
+    // Media modals need an Agent view — open after any deferred NewSession above.
     if let Some(src) = open_live_watch {
         effects.extend(super::super::status::dispatch_open_live_watch(app, &src));
+    }
+    if open_timesync {
+        effects.extend(super::super::status::dispatch_open_timesync(app));
+    }
+    if let Some(target) = open_map {
+        effects.extend(super::super::status::dispatch_open_map(app, &target));
     }
     effects
 }

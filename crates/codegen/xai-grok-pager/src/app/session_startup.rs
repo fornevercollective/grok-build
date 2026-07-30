@@ -48,6 +48,10 @@ pub struct DeferredStartupActions {
     /// (channel name, URL, or empty string → VEVO default). Set by
     /// `GROK_LIVE_WATCH` / launch-watch.sh so startup skips the welcome menu.
     pub open_live_watch: Option<String>,
+    /// Open `/timesync` world clock after session start (`GROK_OPEN_TIMESYNC=1`).
+    pub open_timesync: bool,
+    /// Open `/map` with this target after session start (`GROK_MAP_TARGET`).
+    pub open_map: Option<String>,
 }
 impl DeferredStartupActions {
     pub fn is_empty(&self) -> bool {

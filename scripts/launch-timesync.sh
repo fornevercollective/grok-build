@@ -121,16 +121,21 @@ open_macos() {
   osascript <<APPLESCRIPT
 tell application "Terminal"
   activate
-  do script "cd $(printf %q "$ROOT") && echo 'When TUI is up (agent chat), type: /timesync' && ${cmd}"
+  do script "cd $(printf %q "$ROOT") && export GROK_NEW_SESSION_AT_STARTUP=1 GROK_OPEN_TIMESYNC=1 HALFBLOCK_PAINT_TIMINGS=1 && echo 'CLOCK · auto /timesync' && ${cmd}"
+  set custom title of front window to "CLOCK · /timesync"
 end tell
 APPLESCRIPT
-  echo "opened Terminal.app with Grok TUI — type /timesync"
+  echo "opened Terminal.app — auto /timesync (GROK_OPEN_TIMESYNC=1)"
 }
+
+# Always auto-open clock when launching the TUI path.
+export GROK_NEW_SESSION_AT_STARTUP=1
+export GROK_OPEN_TIMESYNC=1
 
 if [[ ! -t 0 || ! -t 1 ]]; then
   if [[ "$(uname -s)" == "Darwin" ]]; then
     if [[ "$USE_CARGO" -eq 1 ]]; then
-      open_macos "export HALFBLOCK_PAINT_TIMINGS=1 && cargo run -p xai-grok-pager-bin"
+      open_macos "cargo run -p xai-grok-pager-bin"
     else
       open_macos "$(printf %q "$BIN")"
     fi
@@ -142,7 +147,7 @@ if [[ ! -t 0 || ! -t 1 ]]; then
 fi
 
 echo "timesync · fornevercollective · fc-timesync-v1"
-echo "  When Grok is up (agent chat composer), type:  /timesync"
+echo "  auto-open: /timesync  (GROK_OPEN_TIMESYNC=1)"
 echo "  aliases: /clock /zulu · Esc close · m layout · r reset · n ntp"
 echo ""
 

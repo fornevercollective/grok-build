@@ -126,9 +126,27 @@ if [[ -z "$BIN" ]]; then
   exit 1
 fi
 
+export GROK_NEW_SESSION_AT_STARTUP=1
+# Default auto-open /map so gallery/snapshot launches work without typing.
+if [[ "$AUTO" -eq 1 ]] || [[ -n "${GROK_MAP_TARGET:-}" ]] || [[ ! -t 0 || ! -t 1 ]]; then
+  export GROK_MAP_TARGET="${GROK_MAP_TARGET:-$TARGET}"
+  AUTO=1
+fi
+
 if [[ ! -t 0 || ! -t 1 ]]; then
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    osascript <<APPLESCRIPT
+tell application "Terminal"
+  activate
+  do script "cd $(printf %q "$ROOT") && export GROK_NEW_SESSION_AT_STARTUP=1 GROK_MAP_TARGET=$(printf %q "${GROK_MAP_TARGET:-$TARGET}") HALFBLOCK_PAINT_TIMINGS=1 && echo 'MAP · auto /map' && $(printf %q "$BIN")"
+  set custom title of front window to "MAP · /map"
+end tell
+APPLESCRIPT
+    echo "opened Terminal.app — auto /map ${GROK_MAP_TARGET:-$TARGET}"
+    exit 0
+  fi
   echo "error: non-TTY — open Terminal.app and run:"
-  echo "  $ROOT/scripts/launch-map.sh"
+  echo "  $ROOT/scripts/launch-map.sh --auto"
   exit 6
 fi
 
@@ -137,7 +155,7 @@ echo "maptrace: ${MAPTRACE_BIN:-not found (in-Grok map still works)}"
 echo ""
 if [[ "$AUTO" -eq 1 ]]; then
   export GROK_MAP_TARGET="$TARGET"
-  echo "auto-map: /map $TARGET  (if binary supports GROK_MAP_TARGET)"
+  echo "auto-map: /map $TARGET"
 else
   echo "When TUI is up, type:"
   echo "  /map"

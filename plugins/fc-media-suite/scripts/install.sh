@@ -66,10 +66,22 @@ else
   cp -R "$PLUGIN" "$HOME/.grok/plugins/fc-media-suite"
 fi
 
-# --- 3. Optional binary build (feature stamps) ---
+# --- 3. Main Terminal deploy (fork as `grok`, not stock x.ai only) ---
+# Prefer scripts/deploy-fc-grok.sh: installs ~/.grok/bin/grok with cam-talk stamps
+# so *new* Terminal windows get /cam wave·talk·track without cargo-run.
 if [[ "${FC_MEDIA_SKIP_BUILD:-0}" != "1" ]]; then
-  if command -v cargo >/dev/null 2>&1 && [[ -f "$DIR/Cargo.toml" ]]; then
-    echo "==> building xai-grok-pager (feature stamps for /watch /clock /map)"
+  if [[ -x "$DIR/scripts/deploy-fc-grok.sh" ]]; then
+    echo "==> main Terminal deploy (deploy-fc-grok · not stock x.ai-only)"
+    DEPLOY_FLAGS=()
+    if [[ "${FC_MEDIA_RELEASE:-0}" == "1" ]]; then
+      DEPLOY_FLAGS+=(--release)
+    else
+      DEPLOY_FLAGS+=(--debug)
+    fi
+    bash "$DIR/scripts/deploy-fc-grok.sh" "${DEPLOY_FLAGS[@]}" \
+      || echo "    warn: deploy-fc-grok failed — falling back to local link only"
+  elif command -v cargo >/dev/null 2>&1 && [[ -f "$DIR/Cargo.toml" ]]; then
+    echo "==> building xai-grok-pager (feature stamps for /watch /cam /clock /map)"
     PROFILE=debug
     ARGS=(-p xai-grok-pager-bin)
     if [[ "${FC_MEDIA_RELEASE:-0}" == "1" ]]; then
@@ -79,10 +91,17 @@ if [[ "${FC_MEDIA_SKIP_BUILD:-0}" != "1" ]]; then
     (cd "$DIR" && cargo build "${ARGS[@]}") || echo "    warn: cargo build failed — plugin docs still installed"
     BIN="$DIR/target/$PROFILE/xai-grok-pager"
     if [[ -x "$BIN" ]]; then
-      mkdir -p "$HOME/.local/bin"
+      mkdir -p "$HOME/.local/bin" "$HOME/.grok/bin"
       ln -sfn "$BIN" "$HOME/.local/bin/grok-fc" 2>/dev/null || true
+      # Main entry when deploy script missing — still prefer fork for new terminals.
+      if [[ ! -e "$HOME/.grok/bin/grok-stable" && -e "$HOME/.grok/bin/grok" ]]; then
+        cp -f "$(readlink "$HOME/.grok/bin/grok" 2>/dev/null || echo "$HOME/.grok/bin/grok")" \
+          "$HOME/.grok/bin/grok-stable" 2>/dev/null || true
+      fi
+      ln -sfn "$BIN" "$HOME/.grok/bin/grok" 2>/dev/null || true
+      ln -sfn "$BIN" "$HOME/.local/bin/grok" 2>/dev/null || true
       echo "    binary: $BIN"
-      echo "    alias:  ~/.local/bin/grok-fc  (optional PATH link)"
+      echo "    main:   ~/.grok/bin/grok  (fork · restore stock via deploy-fc-grok.sh --restore)"
     fi
   else
     echo "==> skip binary build (no cargo or not a full checkout)"

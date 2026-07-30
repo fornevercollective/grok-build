@@ -108,6 +108,85 @@ pub fn cam_dims() -> (u32, u32) {
     (w, h)
 }
 
+/// Where the cam tile samples frames from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CamSource {
+    /// Local AVFoundation / v4l2 device.
+    Local,
+    /// Memory Glass still-pipe (`live.jpg` from phone PWA POST /upload).
+    PhoneStill,
+}
+
+impl CamSource {
+    pub fn label(self) -> &'static str {
+        match self {
+            CamSource::Local => "local",
+            CamSource::PhoneStill => "phone",
+        }
+    }
+}
+
+/// Active cam source from env (`LIVE_DEMUX_CAM_SOURCE=phone|still|local`).
+pub fn cam_source() -> CamSource {
+    match std::env::var("LIVE_DEMUX_CAM_SOURCE")
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "phone" | "still" | "stillpipe" | "still-pipe" | "tether" | "pwa" | "live.jpg"
+        | "mg" | "memoryglass" | "memory-glass" => CamSource::PhoneStill,
+        _ => CamSource::Local,
+    }
+}
+
+/// Path to still-pipe JPEG (phone uploads → this file).
+pub fn cam_still_path() -> String {
+    if let Ok(p) = std::env::var("LIVE_DEMUX_CAM_STILL") {
+        if !p.trim().is_empty() {
+            return p;
+        }
+    }
+    if let Ok(p) = std::env::var("MG_LIVE_JPG") {
+        if !p.trim().is_empty() {
+            return p;
+        }
+    }
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let vision = std::env::var("GY_VISION_DIR")
+        .unwrap_or_else(|_| format!("{home}/.panda/vision"));
+    format!("{vision}/live.jpg")
+}
+
+/// Apply phone / still-pipe tether profile (Memory Glass inspect grammar).
+///
+/// Sets large cam + `LIVE_DEMUX_CAM_SOURCE=phone` so the tile reads
+/// `~/.panda/vision/live.jpg` (phone PWA → still-server POST /upload).
+pub fn apply_phone_tether_profile() {
+    apply_cam_profile("large");
+    // SAFETY: same process-wide knobs as apply_cam_profile.
+    unsafe {
+        std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "phone");
+        std::env::set_var("LIVE_DEMUX_CAM_ON", "1");
+        std::env::set_var("GROK_LIVE_WATCH_CAM", "1");
+        // Selfie mirror off for phone (phone already orients).
+        std::env::set_var("LIVE_DEMUX_CAM_MIRROR", "0");
+        std::env::set_var("LIVE_DEMUX_MIC", "1");
+        if std::env::var("LIVE_DEMUX_CAM_STILL").is_err() {
+            std::env::set_var("LIVE_DEMUX_CAM_STILL", cam_still_path());
+        }
+        if std::env::var("MG_WAVE_URL").is_err()
+            && std::env::var("MEMORY_GLASS_WAVE_URL").is_err()
+        {
+            let port = std::env::var("MG_STILL_PORT").unwrap_or_else(|_| "9877".into());
+            std::env::set_var(
+                "MG_WAVE_URL",
+                format!("http://127.0.0.1:{port}/wave"),
+            );
+        }
+    }
+}
+
 /// Apply a named camera size/layout profile for `/cam` (process env).
 ///
 /// | profile | tile | layout | notes |
@@ -117,8 +196,17 @@ pub fn cam_dims() -> (u32, u32) {
 /// | `max` | fills room | side | leave ~18 cols for stream |
 /// | `pip` | 40×20 | pip | large overlay, not column |
 /// | `lean` | 13×7 | pip | GY dual / 80×24 |
+/// | `phone` / `tether` | large | side | still-pipe live.jpg (phone PWA) |
 pub fn apply_cam_profile(profile: &str) {
     let p = profile.trim().to_ascii_lowercase();
+    // Phone / tether is a source profile, not only a tile size.
+    if matches!(
+        p.as_str(),
+        "phone" | "tether" | "still" | "stillpipe" | "pwa" | "mg" | "inspect"
+    ) {
+        apply_phone_tether_profile();
+        return;
+    }
     let (tile, layout, mirror_on) = match p.as_str() {
         "" | "large" | "big" | "lg" | "cam" => ("large", "side", "1"),
         "xl" | "huge" | "xlarge" => ("xl", "side", "1"),
@@ -213,8 +301,12 @@ pub struct CameraFeed {
 
 impl CameraFeed {
     /// Start capture. `mirror` applies hflip in the filter graph.
+    ///
+    /// Source is selected by [`cam_source`]:
+    /// - **Local** — AVFoundation / v4l2
+    /// - **PhoneStill** — Memory Glass still-pipe `live.jpg` (tethered phone PWA)
     pub fn start(w: u32, h: u32, fps: f64, mirror: bool) -> Result<Self, String> {
-        let device = cam_device();
+        let source = cam_source();
         let shared = Arc::new(Mutex::new(SharedCam::new(w, h)));
         let stop = Arc::new(AtomicBool::new(false));
         let (cap_w, cap_h) = cam_capture_size();
@@ -222,45 +314,73 @@ impl CameraFeed {
         let cap_fps = (fps.max(1.0) as u32).clamp(1, 30);
 
         let mut vf = format!("scale={w}:{h}");
-        if mirror {
+        // Phone still-pipe is already device-oriented; mirror only for local selfie.
+        if mirror && source == CamSource::Local {
             vf.push_str(",hflip");
         }
 
         let mut cmd = Command::new("ffmpeg");
         cmd.args(["-hide_banner", "-loglevel", "error"]);
 
-        if cfg!(target_os = "macos") {
-            // AVFoundation: video[:audio]. We only want video.
-            // Device can be index "0" or a name — keep as-is for ffmpeg.
-            // Use a real mode (640x480@12) then scale down for half-block.
-            cmd.args([
-                "-f",
-                "avfoundation",
-                "-framerate",
-                &format!("{cap_fps}"),
-                "-video_size",
-                &format!("{cap_w}x{cap_h}"),
-                "-i",
-                &format!("{device}:none"),
-            ]);
-        } else if cfg!(target_os = "linux") {
-            let dev = if device.starts_with('/') {
-                device.clone()
-            } else {
-                format!("/dev/video{device}")
-            };
-            cmd.args([
-                "-f",
-                "v4l2",
-                "-framerate",
-                &format!("{cap_fps}"),
-                "-video_size",
-                &format!("{cap_w}x{cap_h}"),
-                "-i",
-                &dev,
-            ]);
-        } else {
-            return Err("camera capture only supported on macOS (AVFoundation) and Linux (v4l2)".into());
+        match source {
+            CamSource::PhoneStill => {
+                // Memory Glass inspect grammar: phone → POST /upload → live.jpg.
+                // Re-read the JPEG as it is atomically replaced by still-server.
+                let still = cam_still_path();
+                // Seed a tiny placeholder so ffmpeg does not exit if phone
+                // has not uploaded yet (phone-tether may start first).
+                ensure_still_seed(&still);
+                let still_fps = cap_fps.min(10).max(2);
+                cmd.args([
+                    "-f",
+                    "image2",
+                    "-loop",
+                    "1",
+                    "-framerate",
+                    &format!("{still_fps}"),
+                    "-i",
+                    &still,
+                ]);
+            }
+            CamSource::Local => {
+                let device = cam_device();
+                if cfg!(target_os = "macos") {
+                    // AVFoundation: video[:audio]. We only want video.
+                    // Device can be index "0" or a name — keep as-is for ffmpeg.
+                    // Use a real mode (640x480@12) then scale down for half-block.
+                    cmd.args([
+                        "-f",
+                        "avfoundation",
+                        "-framerate",
+                        &format!("{cap_fps}"),
+                        "-video_size",
+                        &format!("{cap_w}x{cap_h}"),
+                        "-i",
+                        &format!("{device}:none"),
+                    ]);
+                } else if cfg!(target_os = "linux") {
+                    let dev = if device.starts_with('/') {
+                        device.clone()
+                    } else {
+                        format!("/dev/video{device}")
+                    };
+                    cmd.args([
+                        "-f",
+                        "v4l2",
+                        "-framerate",
+                        &format!("{cap_fps}"),
+                        "-video_size",
+                        &format!("{cap_w}x{cap_h}"),
+                        "-i",
+                        &dev,
+                    ]);
+                } else {
+                    return Err(
+                        "camera capture only supported on macOS (AVFoundation) and Linux (v4l2)"
+                            .into(),
+                    );
+                }
+            }
         }
 
         cmd.args([
@@ -282,7 +402,7 @@ impl CameraFeed {
 
         let mut child = cmd
             .spawn()
-            .map_err(|e| format!("camera ffmpeg spawn failed: {e}"))?;
+            .map_err(|e| format!("camera ffmpeg spawn failed ({source:?}): {e}"))?;
         let mut pg = xai_tty_utils::ProcessGroup::new()
             .map_err(|e| format!("camera process group: {e}"))?;
         let _ = pg.attach_std(&child);
@@ -301,7 +421,13 @@ impl CameraFeed {
         };
 
         let reader = thread::Builder::new()
-            .name("live-demux-cam".into())
+            .name(
+                match source {
+                    CamSource::PhoneStill => "live-demux-cam-phone",
+                    CamSource::Local => "live-demux-cam",
+                }
+                .into(),
+            )
             .spawn(move || {
                 let mut reader = stdout;
                 let mut buf = vec![0u8; frame_len];
@@ -410,6 +536,49 @@ fn read_exact(r: &mut impl Read, buf: &mut [u8], stop: &AtomicBool) -> Result<bo
     Ok(true)
 }
 
+/// Write a 1×1 JPEG so ffmpeg image2 can open before the phone posts.
+fn ensure_still_seed(path: &str) {
+    use std::path::Path;
+    let p = Path::new(path);
+    if p.is_file() {
+        if let Ok(meta) = p.metadata() {
+            if meta.len() > 32 {
+                return;
+            }
+        }
+    }
+    if let Some(parent) = p.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    // Minimal valid JPEG (1×1 gray) — ~100 bytes.
+    const MINI_JPEG: &[u8] = &[
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00,
+        0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06,
+        0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B,
+        0x0C, 0x19, 0x12, 0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
+        0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31,
+        0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF,
+        0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00,
+        0x1F, 0x00, 0x00, 0x01, 0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
+        0xFF, 0xC4, 0x00, 0xB5, 0x10, 0x00, 0x02, 0x01, 0x03, 0x03, 0x02, 0x04, 0x03, 0x05, 0x05,
+        0x04, 0x04, 0x00, 0x00, 0x01, 0x7D, 0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21,
+        0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xA1, 0x08,
+        0x23, 0x42, 0xB1, 0xC1, 0x15, 0x52, 0xD1, 0xF0, 0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0A,
+        0x16, 0x17, 0x18, 0x19, 0x1A, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x34, 0x35, 0x36, 0x37,
+        0x38, 0x39, 0x3A, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x53, 0x54, 0x55, 0x56,
+        0x57, 0x58, 0x59, 0x5A, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x73, 0x74, 0x75,
+        0x76, 0x77, 0x78, 0x79, 0x7A, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x92, 0x93,
+        0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9,
+        0xAA, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6,
+        0xC7, 0xC8, 0xC9, 0xCA, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xE1, 0xE2,
+        0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
+        0xF8, 0xF9, 0xFA, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0x7F, 0xFE,
+        0x3F, 0xFF, 0xD9,
+    ];
+    let _ = std::fs::write(p, MINI_JPEG);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -425,5 +594,19 @@ mod tests {
     fn frac_clamped_default() {
         let f = cam_width_frac();
         assert!((0.15..=0.50).contains(&f));
+    }
+
+    #[test]
+    fn still_path_default_under_vision() {
+        let p = cam_still_path();
+        assert!(p.ends_with("live.jpg") || p.contains("live.jpg"));
+    }
+
+    #[test]
+    fn phone_profile_sets_source() {
+        // Isolate: save/restore would be ideal; just assert apply sets source.
+        apply_phone_tether_profile();
+        assert_eq!(cam_source(), CamSource::PhoneStill);
+        assert!(cam_auto_on());
     }
 }

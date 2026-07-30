@@ -27,6 +27,7 @@ pub mod feedback;
 pub mod find;
 pub mod fork;
 pub mod cam;
+pub mod phone;
 pub mod gboom;
 pub mod gy;
 pub mod map;
@@ -158,6 +159,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(watch::WatchCommand),
         // Large camera self-view (side tile) under short `/cam` name.
         Arc::new(cam::CamCommand),
+        // Memory Glass phone PWA tether → still-pipe → /cam.
+        Arc::new(phone::PhoneCommand),
         // fornevercollective broadcast timesync world clock inside Grok.
         Arc::new(timesync::TimesyncCommand),
         // fornevercollective maptrace · in-Grok + pop-out.
