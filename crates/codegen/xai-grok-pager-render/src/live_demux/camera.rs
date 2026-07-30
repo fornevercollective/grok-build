@@ -111,10 +111,12 @@ pub fn cam_dims() -> (u32, u32) {
 /// Where the cam tile samples frames from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CamSource {
-    /// Local AVFoundation / v4l2 device.
+    /// Local AVFoundation / v4l2 device (laptop / desktop webcam).
     Local,
     /// Memory Glass still-pipe (`live.jpg` from phone PWA POST /upload).
     PhoneStill,
+    /// **Side-by-side**: laptop webcam **and** phone still-pipe (default for `/cam phone`).
+    Dual,
 }
 
 impl CamSource {
@@ -122,11 +124,24 @@ impl CamSource {
         match self {
             CamSource::Local => "local",
             CamSource::PhoneStill => "phone",
+            CamSource::Dual => "you+phone",
         }
+    }
+
+    pub fn includes_local(self) -> bool {
+        matches!(self, CamSource::Local | CamSource::Dual)
+    }
+
+    pub fn includes_phone(self) -> bool {
+        matches!(self, CamSource::PhoneStill | CamSource::Dual)
+    }
+
+    pub fn is_dual(self) -> bool {
+        matches!(self, CamSource::Dual)
     }
 }
 
-/// Active cam source from env (`LIVE_DEMUX_CAM_SOURCE=phone|still|local`).
+/// Active cam source from env (`LIVE_DEMUX_CAM_SOURCE=dual|phone|local`).
 pub fn cam_source() -> CamSource {
     match std::env::var("LIVE_DEMUX_CAM_SOURCE")
         .unwrap_or_default()
@@ -134,8 +149,16 @@ pub fn cam_source() -> CamSource {
         .to_ascii_lowercase()
         .as_str()
     {
+        // Dual first — `/cam phone` default is you + phone side-by-side.
+        "dual" | "both" | "sidebyside" | "side-by-side" | "sbs" | "you+phone"
+        | "you-phone" | "local+phone" | "phone+local" | "2" | "pair" => CamSource::Dual,
         "phone" | "still" | "stillpipe" | "still-pipe" | "tether" | "pwa" | "live.jpg"
-        | "mg" | "memoryglass" | "memory-glass" => CamSource::PhoneStill,
+        | "mg" | "memoryglass" | "memory-glass" | "phone-only" | "only-phone" => {
+            CamSource::PhoneStill
+        }
+        "local" | "webcam" | "desktop" | "laptop" | "you" | "self" | "facetime" => {
+            CamSource::Local
+        }
         _ => CamSource::Local,
     }
 }
@@ -158,23 +181,191 @@ pub fn cam_still_path() -> String {
     format!("{vision}/live.jpg")
 }
 
+/// True if this AVFoundation name is **not a real camera** (must never open for phone).
+///
+/// When Continuity drops, device indices renumber; a bare numeric index can
+/// point at a non-camera device. Phone path only accepts Continuity/webcam names.
+pub fn is_capture_screen_name(name: &str) -> bool {
+    let n = name.trim().to_ascii_lowercase();
+    n.starts_with("capture screen") || n.contains("capture screen")
+}
+
+/// Resolve a live phone/Continuity device index by **name**, never by blind index.
+///
+/// Prefers: Brick / Continuity / iPhone camera names. Skips FaceTime and non-cameras.
+/// Returns `None` → fall back to optional JPEG still-pipe.
+pub fn resolve_phone_live_device() -> Option<(String, String)> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
+    // Lazy import path: list from popout to avoid circular module issues.
+    let cams = super::popout::list_avfoundation_cameras();
+    // Prefer Continuity / iPhone back cam names.
+    let prefer = [
+        "brick",
+        "continuity",
+        "iphone",
+        "desk view",
+        "deskview",
+        "wide angle",
+        "back",
+    ];
+    for (idx, name) in &cams {
+        if is_capture_screen_name(name) {
+            continue;
+        }
+        let nl = name.to_ascii_lowercase();
+        if nl.contains("facetime") || nl.contains("built-in") {
+            continue;
+        }
+        for p in prefer {
+            if nl.contains(p) {
+                return Some((idx.clone(), name.clone()));
+            }
+        }
+    }
+    // Any non-FaceTime, non-screen cam
+    for (idx, name) in &cams {
+        if is_capture_screen_name(name) {
+            continue;
+        }
+        let nl = name.to_ascii_lowercase();
+        if !nl.contains("facetime") && !nl.contains("built-in") {
+            return Some((idx.clone(), name.clone()));
+        }
+    }
+    None
+}
+
+/// Live Continuity / second-cam device for the **phone** half of dual desk.
+///
+/// When a Continuity cam is **present by name**, phone tiles use live AVFoundation.
+/// When Continuity is offline, returns `None` → optional JPEG still-pipe.
+///
+/// **Never** opens non-camera devices by blind index (indices renumber when Continuity drops).
+///
+/// Env:
+/// - `LIVE_DEMUX_CAM_PHONE_DEVICE=still` → force still-pipe
+/// - `LIVE_DEMUX_CAM_PHONE_DEVICE=Brick` → name fragment match
+/// - `LIVE_DEMUX_CAM_PHONE_DEVICE=1` → only if that index is a real camera
+pub fn cam_phone_device() -> Option<String> {
+    let force_still = matches!(
+        std::env::var("LIVE_DEMUX_CAM_PHONE_STILL")
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase()
+            .as_str(),
+        "1" | "true" | "yes" | "on" | "still"
+    );
+    if force_still {
+        return None;
+    }
+    if let Ok(p) = std::env::var("LIVE_DEMUX_CAM_PHONE_DEVICE") {
+        let p = p.trim();
+        if p.is_empty()
+            || matches!(
+                p.to_ascii_lowercase().as_str(),
+                "still" | "stillpipe" | "jpg" | "jpeg" | "pwa" | "none" | "off"
+            )
+        {
+            return None;
+        }
+        // Numeric index — only accept if listed as a real camera.
+        if p.chars().all(|c| c.is_ascii_digit()) {
+            let cams = super::popout::list_avfoundation_cameras();
+            if let Some((_, name)) = cams.iter().find(|(i, _)| i == p) {
+                if is_capture_screen_name(name) {
+                    eprintln!(
+                        "[fc-cam] refuse phone device [{p}] = {name} (not a Continuity/webcam)"
+                    );
+                    return None;
+                }
+                return Some(p.to_string());
+            }
+            // Index not in real-cam list (might be screen-only slot) — refuse.
+            eprintln!("[fc-cam] refuse phone device [{p}] — not a listed camera");
+            return None;
+        }
+        // Name fragment
+        let cams = super::popout::list_avfoundation_cameras();
+        let needle = p.to_ascii_lowercase();
+        for (idx, name) in cams {
+            if is_capture_screen_name(&name) {
+                continue;
+            }
+            if name.to_ascii_lowercase().contains(&needle) {
+                return Some(idx);
+            }
+        }
+        return None;
+    }
+    // Auto: Continuity by name only — never assume index 1.
+    resolve_phone_live_device().map(|(idx, _)| idx)
+}
+
+/// Capture size for the phone Continuity / second cam (Brick prefers 640x480@30).
+pub fn cam_phone_capture_size() -> (u32, u32) {
+    if let Ok(s) = std::env::var("LIVE_DEMUX_CAM_PHONE_CAPTURE") {
+        if let Some((a, b)) = s.split_once('x') {
+            if let (Ok(w), Ok(h)) = (a.parse::<u32>(), b.parse::<u32>()) {
+                return (w.max(160), h.max(120));
+            }
+        }
+    }
+    // Continuity "Desk View" camera mode (still a camera feed) may list higher modes.
+    if let Some((_, name)) = resolve_phone_live_device() {
+        let nl = name.to_ascii_lowercase();
+        if nl.contains("desk view") || nl.contains("deskview") {
+            return (1920, 1440);
+        }
+    }
+    (640, 480)
+}
+
 /// Apply phone / still-pipe tether profile (Memory Glass inspect grammar).
 ///
-/// Sets large cam + `LIVE_DEMUX_CAM_SOURCE=phone` so the tile reads
-/// `~/.panda/vision/live.jpg` (phone PWA → still-server POST /upload).
+/// **Default `/cam phone`:** **desk dual** — fullscreen laptop webcam | phone
+/// still-pipe. **No yt-dlp / VEVO stream** (that is `/watch`, not the cam desk).
+///
+/// Env:
+/// - `LIVE_DEMUX_CAM_SOURCE=dual` (default) · `phone-only` · `local`
+/// - `LIVE_DEMUX_CAM_DESK=1` — fullscreen you|phone (no stream pane)
+/// - still path `LIVE_DEMUX_CAM_STILL` / `GY_VISION_DIR/live.jpg`
 pub fn apply_phone_tether_profile() {
-    apply_cam_profile("large");
-    // SAFETY: same process-wide knobs as apply_cam_profile.
+    // SAFETY: process-wide knobs; child ffmpeg + layout read at cam start.
     unsafe {
-        std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "phone");
         std::env::set_var("LIVE_DEMUX_CAM_ON", "1");
         std::env::set_var("GROK_LIVE_WATCH_CAM", "1");
-        // Selfie mirror off for phone (phone already orients).
-        std::env::set_var("LIVE_DEMUX_CAM_MIRROR", "0");
+        // Full-bleed dual desk (you | phone) — not a PiP on VEVO.
+        std::env::set_var("LIVE_DEMUX_CAM_DESK", "1");
+        std::env::set_var("LIVE_DEMUX_CAM_LAYOUT", "side");
+        // Large capture so each half stays sharp when split 50/50.
+        if std::env::var("LIVE_DEMUX_CAM_TILE").is_err() {
+            std::env::set_var("LIVE_DEMUX_CAM_TILE", "max");
+        }
+        // `/cam phone` / `tether` / `dual` → you + phone side-by-side.
+        let src = std::env::var("LIVE_DEMUX_CAM_SOURCE").unwrap_or_default();
+        let src = src.trim().to_ascii_lowercase();
+        if src.is_empty()
+            || matches!(
+                src.as_str(),
+                "phone" | "tether" | "pwa" | "mg" | "inspect" | "dual" | "both"
+            )
+        {
+            std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "dual");
+        }
+        // Mirror laptop selfie; phone still is unmirrored in its own feed.
+        std::env::set_var("LIVE_DEMUX_CAM_MIRROR", "1");
         std::env::set_var("LIVE_DEMUX_MIC", "1");
+        if std::env::var("LIVE_DEMUX_CAM_CAPTURE").is_err() {
+            std::env::set_var("LIVE_DEMUX_CAM_CAPTURE", "640x480");
+        }
         if std::env::var("LIVE_DEMUX_CAM_STILL").is_err() {
             std::env::set_var("LIVE_DEMUX_CAM_STILL", cam_still_path());
         }
+        // Live Continuity is resolved by **name** at capture start (see
+        // `cam_phone_device`). Never force a bare index — renumbers when Continuity
+        // disconnects and can hit a non-camera device.
         if std::env::var("MG_WAVE_URL").is_err()
             && std::env::var("MEMORY_GLASS_WAVE_URL").is_err()
         {
@@ -185,6 +376,25 @@ pub fn apply_phone_tether_profile() {
             );
         }
     }
+}
+
+/// Sentinel URL for dual cam desk (no yt-dlp resolve).
+pub const DESK_URL: &str = "cam://desk";
+
+/// True when watch input is the dual-cam desk (you|phone only).
+pub fn is_desk_source(input: &str) -> bool {
+    matches!(
+        input.trim().to_ascii_lowercase().as_str(),
+        "desk"
+            | "camdesk"
+            | "cam-desk"
+            | "dualcam"
+            | "dual-cam"
+            | "you+phone"
+            | "you-phone"
+            | "cam://desk"
+            | "cam:desk"
+    ) || input.trim() == DESK_URL
 }
 
 /// Apply a named camera size/layout profile for `/cam` (process env).
@@ -202,9 +412,24 @@ pub fn apply_cam_profile(profile: &str) {
     // Phone / tether is a source profile, not only a tile size.
     if matches!(
         p.as_str(),
-        "phone" | "tether" | "still" | "stillpipe" | "pwa" | "mg" | "inspect"
+        "phone"
+            | "tether"
+            | "dual"
+            | "both"
+            | "still"
+            | "stillpipe"
+            | "pwa"
+            | "mg"
+            | "inspect"
     ) {
         apply_phone_tether_profile();
+        return;
+    }
+    if matches!(p.as_str(), "phone-only" | "only-phone") {
+        apply_phone_tether_profile();
+        unsafe {
+            std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "phone-only");
+        }
         return;
     }
     let (tile, layout, mirror_on) = match p.as_str() {
@@ -300,13 +525,29 @@ pub struct CameraFeed {
 }
 
 impl CameraFeed {
-    /// Start capture. `mirror` applies hflip in the filter graph.
-    ///
-    /// Source is selected by [`cam_source`]:
-    /// - **Local** — AVFoundation / v4l2
-    /// - **PhoneStill** — Memory Glass still-pipe `live.jpg` (tethered phone PWA)
+    /// Start capture using the process-wide [`cam_source`] (not Dual — use two feeds).
     pub fn start(w: u32, h: u32, fps: f64, mirror: bool) -> Result<Self, String> {
-        let source = cam_source();
+        let source = match cam_source() {
+            CamSource::Dual => CamSource::Local, // dual uses start_source per feed
+            s => s,
+        };
+        Self::start_source(w, h, fps, mirror, source)
+    }
+
+    /// Start capture for an explicit source (Local or PhoneStill).
+    ///
+    /// Dual mode is handled by the live-watch state (two feeds, side-by-side paint).
+    pub fn start_source(
+        w: u32,
+        h: u32,
+        fps: f64,
+        mirror: bool,
+        source: CamSource,
+    ) -> Result<Self, String> {
+        let source = match source {
+            CamSource::Dual => CamSource::Local,
+            s => s,
+        };
         let shared = Arc::new(Mutex::new(SharedCam::new(w, h)));
         let stop = Arc::new(AtomicBool::new(false));
         let (cap_w, cap_h) = cam_capture_size();
@@ -323,24 +564,85 @@ impl CameraFeed {
         cmd.args(["-hide_banner", "-loglevel", "error"]);
 
         match source {
+            CamSource::Dual => unreachable!("mapped to Local above"),
             CamSource::PhoneStill => {
-                // Memory Glass inspect grammar: phone → POST /upload → live.jpg.
-                // Re-read the JPEG as it is atomically replaced by still-server.
-                let still = cam_still_path();
-                // Seed a tiny placeholder so ffmpeg does not exit if phone
-                // has not uploaded yet (phone-tether may start first).
-                ensure_still_seed(&still);
-                let still_fps = cap_fps.min(10).max(2);
-                cmd.args([
-                    "-f",
-                    "image2",
-                    "-loop",
-                    "1",
-                    "-framerate",
-                    &format!("{still_fps}"),
-                    "-i",
-                    &still,
-                ]);
+                // **Continuity Camera first** (live AVFoundation — iPhone as webcam).
+                // HTTP/JPEG still-pipe only when LIVE_DEMUX_CAM_PHONE_STILL=1.
+                let allow_still = matches!(
+                    std::env::var("LIVE_DEMUX_CAM_PHONE_STILL")
+                        .unwrap_or_default()
+                        .trim()
+                        .to_ascii_lowercase()
+                        .as_str(),
+                    "1" | "true" | "yes" | "on" | "still" | "http" | "pwa"
+                );
+                if let Some(phone_dev) = cam_phone_device() {
+                    let (pw, ph) = cam_phone_capture_size();
+                    let phone_fps = std::env::var("LIVE_DEMUX_CAM_PHONE_FPS")
+                        .ok()
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(30u32)
+                        .clamp(8, 30);
+                    eprintln!(
+                        "[fc-cam] phone LIVE Continuity device [{phone_dev}] {pw}x{ph}@{phone_fps}"
+                    );
+                    if cfg!(target_os = "macos") {
+                        cmd.args([
+                            "-f",
+                            "avfoundation",
+                            "-framerate",
+                            &format!("{phone_fps}"),
+                            "-video_size",
+                            &format!("{pw}x{ph}"),
+                            "-pixel_format",
+                            "uyvy422",
+                            "-i",
+                            &format!("{phone_dev}:none"),
+                        ]);
+                    } else if cfg!(target_os = "linux") {
+                        let dev = if phone_dev.starts_with('/') {
+                            phone_dev.clone()
+                        } else {
+                            format!("/dev/video{phone_dev}")
+                        };
+                        cmd.args([
+                            "-f",
+                            "v4l2",
+                            "-framerate",
+                            &format!("{phone_fps}"),
+                            "-video_size",
+                            &format!("{pw}x{ph}"),
+                            "-i",
+                            &dev,
+                        ]);
+                    } else {
+                        return Err("phone live cam only on macOS / Linux".into());
+                    }
+                } else if allow_still {
+                    // Opt-in HTTP/JPEG still-pipe (Mini PWA) — not the default desk path.
+                    let still = cam_still_path();
+                    ensure_still_seed(&still);
+                    let still_fps = cap_fps.min(10).max(2);
+                    eprintln!("[fc-cam] phone still-pipe (opt-in) {still}");
+                    cmd.args([
+                        "-f",
+                        "image2",
+                        "-loop",
+                        "1",
+                        "-framerate",
+                        &format!("{still_fps}"),
+                        "-i",
+                        &still,
+                    ]);
+                } else {
+                    return Err(
+                        "phone Continuity Camera not listed (Brick / iPhone). \
+                         Enable Continuity Camera on iPhone (Settings → General → AirPlay & Handoff), \
+                         keep phone nearby, then reopen /cam phone. \
+                         Optional still-pipe only if LIVE_DEMUX_CAM_PHONE_STILL=1."
+                            .into(),
+                    );
+                }
             }
             CamSource::Local => {
                 let device = cam_device();
@@ -424,7 +726,7 @@ impl CameraFeed {
             .name(
                 match source {
                     CamSource::PhoneStill => "live-demux-cam-phone",
-                    CamSource::Local => "live-demux-cam",
+                    CamSource::Local | CamSource::Dual => "live-demux-cam",
                 }
                 .into(),
             )
@@ -537,6 +839,10 @@ fn read_exact(r: &mut impl Read, buf: &mut [u8], stop: &AtomicBool) -> Result<bo
 }
 
 /// Write a 1×1 JPEG so ffmpeg image2 can open before the phone posts.
+pub fn ensure_still_seed_public(path: &str) {
+    ensure_still_seed(path);
+}
+
 fn ensure_still_seed(path: &str) {
     use std::path::Path;
     let p = Path::new(path);
@@ -603,10 +909,16 @@ mod tests {
     }
 
     #[test]
-    fn phone_profile_sets_source() {
-        // Isolate: save/restore would be ideal; just assert apply sets source.
+    fn phone_profile_sets_dual_side_by_side() {
+        // Isolate: save/restore would be ideal; just assert apply sets dual.
+        // Clear source so profile can set dual default.
+        unsafe {
+            std::env::remove_var("LIVE_DEMUX_CAM_SOURCE");
+        }
         apply_phone_tether_profile();
-        assert_eq!(cam_source(), CamSource::PhoneStill);
+        assert_eq!(cam_source(), CamSource::Dual);
+        assert!(cam_source().includes_local());
+        assert!(cam_source().includes_phone());
         assert!(cam_auto_on());
     }
 }

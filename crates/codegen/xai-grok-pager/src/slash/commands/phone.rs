@@ -186,10 +186,11 @@ impl SlashCommand for PhoneCommand {
     fn suggest_args(&self, _ctx: &AppCtx, args_query: &str) -> Option<Vec<ArgItem>> {
         let q = args_query.trim().to_ascii_lowercase();
         let hints: &[(&str, &str)] = &[
-            ("", "start hub + open large /cam on phone still-pipe"),
-            ("hub", "ensure still-server (0.0.0.0:9877/9878) is running"),
-            ("urls", "show phone PWA + inspect URLs"),
-            ("inspect", "open live.jpg in browser (inspect)"),
+            ("", "desk TUI you|phone only (no hub/browser)"),
+            ("hub", "explicit: start still-server"),
+            ("urls", "print phone URLs only"),
+            ("inspect", "print live.jpg URL (no browser)"),
+            ("inspect open", "explicit: open browser to live.jpg"),
             ("stop", "stop still-server hub"),
         ];
         let mut items = Vec::new();
@@ -216,6 +217,16 @@ impl SlashCommand for PhoneCommand {
 
     fn run(&self, _ctx: &mut CommandExecCtx, args: &str) -> CommandResult {
         let raw = args.trim().to_ascii_lowercase();
+        // Dev safety: never start hubs / open browsers unless the subcommand asks.
+        // Set LIVE_DEMUX_AUTO_HUB=1 only if you want bare /phone to spawn still-server.
+        let auto_hub = matches!(
+            std::env::var("LIVE_DEMUX_AUTO_HUB")
+                .unwrap_or_default()
+                .trim()
+                .to_ascii_lowercase()
+                .as_str(),
+            "1" | "true" | "yes" | "on"
+        );
         match raw.as_str() {
             "hub" | "start" | "up" => {
                 let msg = ensure_hub();
@@ -225,31 +236,46 @@ impl SlashCommand for PhoneCommand {
             "urls" | "url" | "qr" => CommandResult::Message(lan_hint()),
             "stop" | "down" => CommandResult::Message(stop_hub()),
             "inspect" | "live" => {
+                // Explicit only: print URL; open browser only with `inspect open`.
+                let port = still_port();
+                let url = format!("http://127.0.0.1:{port}/live.jpg");
+                CommandResult::Message(format!(
+                    "inspect still: {url}\n\
+                     hub: /phone hub  ·  browser: /phone inspect open\n\
+                     {}",
+                    lan_hint()
+                ))
+            }
+            "inspect open" | "live open" => {
                 let _ = ensure_hub();
                 let port = still_port();
                 let url = format!("http://127.0.0.1:{port}/live.jpg");
                 let _ = Command::new("open").arg(&url).spawn();
-                CommandResult::Message(format!("inspect · {url}\n{}", lan_hint()))
+                CommandResult::Message(format!("opened browser · {url}"))
             }
             _ => {
-                // Default: hub + phone cam profile + open watch.
-                let hub_msg = ensure_hub();
+                // Default: desk dual TUI only — no still-server, no browser, no ffplay.
+                if auto_hub {
+                    let hub_msg = ensure_hub();
+                    eprintln!("[fc-phone-tether] auto-hub {hub_msg}");
+                }
                 crate::live_demux::apply_phone_tether_profile();
-                // Channel after phone token if present.
                 let channel = if raw.is_empty()
                     || matches!(
                         raw.as_str(),
-                        "phone" | "tether" | "cam" | "open" | "still"
+                        "phone" | "tether" | "cam" | "open" | "still" | "dual" | "desk"
                     )
                 {
-                    String::new()
+                    "desk".to_string()
                 } else {
-                    // e.g. /phone bloomberg
+                    unsafe {
+                        std::env::set_var("LIVE_DEMUX_CAM_DESK", "0");
+                    }
                     args.trim().to_string()
                 };
-                let urls = lan_hint();
-                eprintln!("[fc-phone-tether] {hub_msg}");
-                eprintln!("[fc-phone-tether] {urls}");
+                eprintln!(
+                    "[fc-phone-tether] desk open url={channel} (hub only if LIVE_DEMUX_AUTO_HUB=1 or /phone hub)"
+                );
                 CommandResult::Action(Action::OpenLiveWatch { url: channel })
             }
         }
@@ -263,11 +289,13 @@ mod tests {
     use crate::slash::commands::tests::make_ctx;
 
     #[test]
-    fn bare_phone_opens_watch() {
+    fn bare_phone_opens_desk() {
         let models = ModelState::default();
         let mut ctx = make_ctx(&models);
         match PhoneCommand.run(&mut ctx, "") {
-            CommandResult::Action(Action::OpenLiveWatch { .. }) => {}
+            CommandResult::Action(Action::OpenLiveWatch { url }) => {
+                assert_eq!(url, "desk");
+            }
             other => panic!("unexpected {other:?}"),
         }
     }

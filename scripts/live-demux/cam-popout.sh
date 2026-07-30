@@ -29,7 +29,7 @@ MIRROR="${LIVE_DEMUX_CAM_MIRROR:-1}"
 MIRROR_MOSAIC="${LIVE_DEMUX_CAM_MIRROR_MOSAIC:-0}"
 
 list_video_devices() {
-  # stdout: "index<TAB>name" for real cameras (skip "Capture screen N")
+  # stdout: "index<TAB>name" for real cameras only
   ffmpeg -f avfoundation -list_devices true -i "" 2>&1 \
     | awk '
       /AVFoundation video devices:/ { v=1; next }
@@ -46,7 +46,7 @@ list_video_devices() {
 }
 
 print_list() {
-  echo "AVFoundation cameras (skip Capture screen*):"
+  echo "AVFoundation cameras (webcams / Continuity only):"
   echo "  idx  name"
   local n=0
   while IFS=$'\t' read -r idx name; do

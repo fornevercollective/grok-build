@@ -44,11 +44,15 @@ fn is_profile(tok: &str) -> bool {
             | "side"
             | "phone"
             | "tether"
+            | "dual"
+            | "both"
+            | "desk"
             | "still"
             | "stillpipe"
             | "pwa"
             | "mg"
             | "inspect"
+            | "phone-only"
     ) || tok.parse::<u16>().is_ok()
         || tok.contains('x')
         || tok.contains('X')
@@ -97,15 +101,23 @@ impl SlashCommand for CamCommand {
         let ability_hints: &[(&str, &str)] = &[
             (
                 "phone",
-                "tether phone PWA still-pipe · live.jpg (Memory Glass inspect)",
+                "DESK · fullscreen laptop | phone (no VEVO) · Y pop · L lens",
             ),
             (
                 "tether",
-                "alias of phone · still-server POST /upload → cam tile",
+                "alias of phone · desk dual you|phone only",
+            ),
+            (
+                "dual",
+                "same as /cam phone · you|phone desk (no yt-dlp stream)",
+            ),
+            (
+                "desk",
+                "same · cam://desk sentinel",
             ),
             (
                 "still",
-                "alias of phone · ~/.panda/vision/live.jpg",
+                "phone still only · ~/.panda/vision/live.jpg",
             ),
             (
                 "large",
@@ -231,7 +243,7 @@ impl SlashCommand for CamCommand {
                     if q.is_empty() {
                         // Keep list short on bare `/cam ` — top channels only.
                         matches!(
-                            id.as_str(),
+                            *id,
                             "bloomberg"
                                 | "vevo"
                                 | "cnn"
@@ -248,9 +260,9 @@ impl SlashCommand for CamCommand {
                     }
                 })
                 .map(|(id, label)| ArgItem {
-                    display: id.clone(),
-                    match_text: id.clone(),
-                    insert_text: id,
+                    display: (*id).into(),
+                    match_text: (*id).into(),
+                    insert_text: (*id).into(),
                     description: format!("large cam + {label}"),
                 }),
         );
@@ -312,6 +324,7 @@ impl SlashCommand for CamCommand {
         }
 
         // `/cam [profile] [channel…]` — default profile = large side tile.
+        // Phone/tether/dual → desk (you|phone only, no yt-dlp stream).
         let mut tokens = raw.split_whitespace().peekable();
         let profile = if tokens.peek().copied().is_some_and(is_profile) {
             tokens.next().unwrap_or("large")
@@ -321,7 +334,34 @@ impl SlashCommand for CamCommand {
         let channel = tokens.collect::<Vec<_>>().join(" ");
         crate::live_demux::apply_cam_profile(profile);
 
-        CommandResult::Action(Action::OpenLiveWatch { url: channel })
+        let phone_desk = matches!(
+            profile.to_ascii_lowercase().as_str(),
+            "phone"
+                | "tether"
+                | "dual"
+                | "both"
+                | "still"
+                | "stillpipe"
+                | "pwa"
+                | "mg"
+                | "inspect"
+                | "phone-only"
+        );
+        let url = if phone_desk && channel.is_empty() {
+            // Fullscreen you | phone — not VEVO + cam PiP.
+            "desk".to_string()
+        } else if phone_desk {
+            // `/cam phone bloomberg` keeps a news stream + dual cam rail;
+            // clear desk so layout returns stream + dual column.
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_CAM_DESK", "0");
+            }
+            channel
+        } else {
+            channel
+        };
+
+        CommandResult::Action(Action::OpenLiveWatch { url })
     }
 }
 
@@ -404,18 +444,25 @@ mod tests {
     }
 
     #[test]
-    fn cam_phone_applies_still_pipe() {
+    fn cam_phone_applies_dual_you_and_phone() {
         let models = ModelState::default();
         let mut ctx = make_ctx(&models);
+        unsafe {
+            std::env::remove_var("LIVE_DEMUX_CAM_SOURCE");
+        }
         match CamCommand.run(&mut ctx, "phone") {
             CommandResult::Action(Action::OpenLiveWatch { url }) => {
-                assert!(url.is_empty());
+                // Desk mode: you|phone only — not empty VEVO default.
+                assert_eq!(url, "desk");
             }
             other => panic!("unexpected {other:?}"),
         }
         assert_eq!(
             crate::live_demux::cam_source(),
-            crate::live_demux::CamSource::PhoneStill
+            crate::live_demux::CamSource::Dual
         );
+        assert!(crate::live_demux::cam_source().includes_local());
+        assert!(crate::live_demux::cam_source().includes_phone());
+        assert!(crate::live_demux::dual_cam_desk());
     }
 }

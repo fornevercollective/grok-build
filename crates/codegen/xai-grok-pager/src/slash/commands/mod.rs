@@ -28,6 +28,7 @@ pub mod find;
 pub mod fork;
 pub mod cam;
 pub mod phone;
+pub mod lens;
 pub mod gboom;
 pub mod gy;
 pub mod map;
@@ -161,6 +162,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(cam::CamCommand),
         // Memory Glass phone PWA tether → still-pipe → /cam.
         Arc::new(phone::PhoneCommand),
+        // Live HDRI / anamorphic / tiny-bug-world lens pop-out (360-capable).
+        Arc::new(lens::LensCommand),
         // fornevercollective broadcast timesync world clock inside Grok.
         Arc::new(timesync::TimesyncCommand),
         // fornevercollective maptrace · in-Grok + pop-out.

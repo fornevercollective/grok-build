@@ -658,6 +658,26 @@ pub fn resolve_watch_source(input: &str) -> ResolvedSource {
         return resolved_from_channel(ch, false, GuideFilter::Music);
     }
 
+    // Dual cam desk: laptop | phone only — no yt-dlp / VEVO stream.
+    // Also treat bare phone/dual tokens as desk so stale slash paths cannot
+    // fall into ytsearch1:phone live.
+    let key0 = raw.split_whitespace().next().unwrap_or(raw).to_ascii_lowercase();
+    if super::camera::is_desk_source(raw)
+        || matches!(
+            key0.as_str(),
+            "phone" | "tether" | "dual" | "both" | "desk" | "camdesk" | "you+phone"
+        )
+    {
+        return ResolvedSource {
+            url: super::camera::DESK_URL.into(),
+            label: "desk · you | phone".into(),
+            kind: ChannelKind::Generic,
+            channel_id: Some("desk".into()),
+            open_guide: false,
+            guide_filter: GuideFilter::All,
+        };
+    }
+
     // X.com / Twitter / Periscope: normalize broadcast/status/pscp URLs.
     if let Some(xurl) = super::x_live::normalize_x_url(raw) {
         return ResolvedSource {

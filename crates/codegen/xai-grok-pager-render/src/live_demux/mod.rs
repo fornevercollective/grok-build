@@ -20,21 +20,22 @@
 mod camera;
 mod channels;
 mod layout;
+mod lens;
 mod mic;
 mod popout;
 mod x_live;
 
 pub use camera::{
     apply_cam_profile, apply_phone_tether_profile, cam_auto_on, cam_capture_size, cam_device,
-    cam_dims, cam_mirror_default, cam_source, cam_still_path, cam_width_frac, CamSource,
-    CameraFeed,
+    cam_dims, cam_mirror_default, cam_source, cam_still_path, cam_width_frac, is_desk_source,
+    CamSource, CameraFeed, DESK_URL,
 };
 pub use mic::{mic_auto_on, MicLevelFeed, MicSnapshot, MicSource, WAVE_BINS};
 // cam_width_frac retained for side-mode / env overrides (layout prefers PiP).
 pub use layout::{
-    cam_tile_cells, is_lean_term, layout_watch_video, popup_fill_frac, prefer_pip, CamMode,
-    WatchVideoLayout, GLYPH_HALF_ROWS, GLYPH_LEAN_HALF_ROWS, GLYPH_LEAN_N, GLYPH_N, TERM_LEAN_COLS,
-    TERM_LEAN_ROWS,
+    cam_tile_cells, dual_cam_desk, dual_cam_tiles, is_lean_term, layout_watch_video,
+    popup_fill_frac, prefer_pip, CamMode, WatchVideoLayout, GLYPH_HALF_ROWS, GLYPH_LEAN_HALF_ROWS,
+    GLYPH_LEAN_N, GLYPH_N, TERM_LEAN_COLS, TERM_LEAN_ROWS,
 };
 pub use channels::{
     channel_index_in_filter, channel_suggest_items, channels_for_filter, find_channel,
@@ -47,6 +48,10 @@ pub use popout::{
     launch_popout_async, launch_popout_blocking, launch_popout_smart_async, list_avfoundation_cameras,
     parse_cam_pop_mode, parse_watch_args, popout_page, resolve_popout_stream_url,
     spawn_ffplay_camera, spawn_ffplay_popout, CamPopMode, TOAST_CAM_POPOUT, TOAST_POPOUT,
+};
+pub use lens::{
+    is_lens_token, launch_lens_async, launch_lens_blocking, lens_vf, parse_lens_args, LensInput,
+    LensProfile, FEATURE_ID as LENS_FEATURE_ID, TOAST_LENS,
 };
 pub use x_live::{
     is_go_live_token, is_x_hub_token, is_x_locator, is_x_page_url, launch_go_live_async,
@@ -75,7 +80,10 @@ pub const FEATURE_LABEL: &str = "fornevercollective live demux";
 /// Cam talk / waveform / motion-track stamp (Memory Glass → terminal).
 pub const FEATURE_CAM_TALK: &str = mic::FEATURE_ID; // "fc-cam-talk-v1"
 pub const TOAST_OPEN: &str =
-    "WATCH · live demux · c cam · a mic wave · t talk · o pop-out (fc-live-demux-v1 · fc-cam-talk-v1)";
+    "WATCH · live demux · c cam · a mic · t talk · H dual · L lens · o pop-out (fc-live-demux-v1 · fc-cam-talk-v1)";
+/// Toast when opening dual cam desk (you|phone only — no yt-dlp).
+pub const TOAST_DESK: &str =
+    "DESK · you | phone  · no VEVO  · H cycle · L lens · Y pop dual (fc-cam-talk-v1)";
 
 /// Default Friday-stream playlist when `/watch` is bare (= VEVO music TV).
 pub const DEFAULT_URL: &str = VEVO_FRIDAY_URL;
@@ -742,8 +750,10 @@ pub struct LiveWatchState {
     playing: bool,
     phase: Phase,
     demux: Option<LiveDemux>,
-    /// Optional local camera (left pane). Toggle with `c`.
+    /// Optional local camera (left half when dual). Toggle with `c`.
     camera: Option<CameraFeed>,
+    /// Optional phone still-pipe feed (right half when dual / `/cam phone`).
+    camera_phone: Option<CameraFeed>,
     /// User wants camera on (may be waiting on first frame / error).
     camera_on: bool,
     camera_mirror: bool,
@@ -752,6 +762,11 @@ pub struct LiveWatchState {
     cam_paint_w: u32,
     cam_paint_h: u32,
     cam_paint_gen: u64,
+    /// Phone still-pipe paint buffer (dual / phone-only).
+    phone_paint_rgb: Option<Vec<u8>>,
+    phone_paint_w: u32,
+    phone_paint_h: u32,
+    phone_paint_gen: u64,
     /// Mic level / waveform (Memory Glass talk grammar). Toggle with **`a`**.
     mic: Option<MicLevelFeed>,
     mic_on: bool,
@@ -793,11 +808,47 @@ impl LiveWatchState {
     /// Open immediately; playlist + first stream resolve on a worker thread.
     ///
     /// `input` may be empty (→ VEVO Friday), a channel alias (`bloomberg`),
-    /// a full URL, free-text search words, or flags (`shuffle` / `noshuffle`).
+    /// a full URL, free-text search words, flags (`shuffle` / `noshuffle`),
+    /// or **`desk`** (dual you|phone only — no yt-dlp).
     pub fn open(input: &str) -> Self {
         let (w, h) = demux_dims();
         let fps = demux_fps();
         let (shuffle_flag, clean_input) = strip_shuffle_flag(input);
+        // `/cam phone` / dual desk must NEVER fall through to empty → VEVO.
+        // Force desk when: explicit desk tokens, CAM_DESK=1, or dual source
+        // with no real channel/URL (so /phone and /lens dual stay cam-only).
+        let clean_input = {
+            let t = clean_input.trim();
+            let force_desk = camera::is_desk_source(t)
+                || layout::dual_cam_desk()
+                || (layout::dual_cam_tiles()
+                    && (t.is_empty()
+                        || matches!(
+                            t.to_ascii_lowercase().as_str(),
+                            "phone" | "tether" | "dual" | "both" | "cam" | "selfie"
+                        )));
+            if force_desk
+                && (t.is_empty()
+                    || camera::is_desk_source(t)
+                    || matches!(
+                        t.to_ascii_lowercase().as_str(),
+                        "phone" | "tether" | "dual" | "both" | "cam" | "selfie"
+                    ))
+            {
+                // Ensure layout paint path is desk even if slash forgot the env.
+                // SAFETY: single-threaded open before worker spawn.
+                unsafe {
+                    std::env::set_var("LIVE_DEMUX_CAM_DESK", "1");
+                    if !layout::dual_cam_tiles() {
+                        std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "dual");
+                    }
+                    std::env::set_var("LIVE_DEMUX_CAM_ON", "1");
+                }
+                "desk".to_string()
+            } else {
+                clean_input
+            }
+        };
         let resolved = resolve_watch_source(&clean_input);
         let source_url = resolved.url.clone();
         let channel_label = resolved.label.clone();
@@ -818,11 +869,15 @@ impl LiveWatchState {
                 _ => None,
             });
         let end = playlist_end_for_channel(kind, channel_id.as_deref());
-        // X hub sentinel: don't spawn yt-dlp — focus search for paste.
+        // X hub / dual-cam desk: don't spawn yt-dlp.
         let x_hub = source_url == "x://hub"
             || channel_id.as_deref() == Some("x") && source_url.starts_with("x://");
+        let desk = source_url == camera::DESK_URL
+            || channel_id.as_deref() == Some("desk")
+            || camera::is_desk_source(&clean_input)
+            || layout::dual_cam_desk();
         let (tx, rx) = std::sync::mpsc::channel();
-        let worker_rx = if x_hub {
+        let worker_rx = if x_hub || desk {
             None
         } else {
             let url_c = source_url.clone();
@@ -868,7 +923,9 @@ impl LiveWatchState {
         };
 
         let shuf = if shuffle { " · shuffle on" } else { "" };
-        let status = if x_hub {
+        let status = if desk {
+            "desk · you | phone  · H cycle · L lens · Y pop dual · a mic · t talk · Esc".into()
+        } else if x_hub {
             x_live::HINT_PASTE_X.to_string()
         } else {
             match kind {
@@ -910,14 +967,15 @@ impl LiveWatchState {
             entries: Vec::new(),
             idx: 0,
             seek_secs: 0,
-            playing: !x_hub,
-            phase: if x_hub {
+            playing: !x_hub && !desk,
+            phase: if x_hub || desk {
                 Phase::Ready
             } else {
                 Phase::Resolving
             },
             demux: None,
             camera: None,
+            camera_phone: None,
             camera_on: false,
             camera_mirror: cam_mirror_default(),
             camera_err: None,
@@ -925,6 +983,10 @@ impl LiveWatchState {
             cam_paint_w: cam_w,
             cam_paint_h: cam_h,
             cam_paint_gen: 0,
+            phone_paint_rgb: None,
+            phone_paint_w: cam_w,
+            phone_paint_h: cam_h,
+            phone_paint_gen: 0,
             mic: None,
             mic_on: false,
             mic_snap: MicSnapshot::idle(),
@@ -954,10 +1016,17 @@ impl LiveWatchState {
             shuffle,
         };
         // Auto-open local camera side pane (launch-watch.sh camera · LIVE_DEMUX_CAM_ON=1).
-        if camera::cam_auto_on() {
+        // Desk dual always forces cam on (you|phone is the whole surface).
+        if camera::cam_auto_on() || desk {
             state.camera_on = true;
             state.start_camera();
-            state.status = state.hud_status();
+            if desk {
+                state.status =
+                    "desk · you | phone  · H cycle · L lens · Y pop dual · a mic · t talk · Esc"
+                        .into();
+            } else {
+                state.status = state.hud_status();
+            }
         }
         state
     }
@@ -1455,35 +1524,82 @@ impl LiveWatchState {
 
     fn start_camera(&mut self) {
         self.camera.take();
+        self.camera_phone.take();
         self.cam_paint_rgb = None;
         self.cam_paint_gen = 0;
+        self.phone_paint_rgb = None;
+        self.phone_paint_gen = 0;
         self.camera_err = None;
         self.prev_cam_thumb = None;
         self.motion_level = 0.0;
         let (w, h) = cam_dims();
+        // Dual: each half tile is roughly half width.
+        let (cell_w, cell_h) = if camera::cam_source().is_dual() {
+            ((w / 2).max(8) & !1, h)
+        } else {
+            (w, h)
+        };
         let fps = camera::cam_fps();
-        match CameraFeed::start(w, h, fps, self.camera_mirror) {
-            Ok(feed) => {
-                self.cam_paint_w = feed.width;
-                self.cam_paint_h = feed.height;
-                self.camera = Some(feed);
-                // Memory Glass talk grammar: mic/wave with cam when enabled.
-                if mic_auto_on() {
-                    self.start_mic();
+        let src = camera::cam_source();
+        let mut any_ok = false;
+        let mut errs: Vec<String> = Vec::new();
+
+        if src.includes_local() {
+            match CameraFeed::start_source(
+                cell_w,
+                cell_h,
+                fps,
+                self.camera_mirror,
+                camera::CamSource::Local,
+            ) {
+                Ok(feed) => {
+                    self.cam_paint_w = feed.width;
+                    self.cam_paint_h = feed.height;
+                    self.camera = Some(feed);
+                    any_ok = true;
                 }
+                Err(e) => errs.push(format!("local: {e}")),
             }
-            Err(e) => {
-                self.camera_err = Some(e.clone());
-                self.camera_on = false;
-                self.status = format!("cam: {e}");
+        }
+        if src.includes_phone() {
+            match CameraFeed::start_source(
+                cell_w,
+                cell_h,
+                fps,
+                false, // phone still: no hflip
+                camera::CamSource::PhoneStill,
+            ) {
+                Ok(feed) => {
+                    self.phone_paint_w = feed.width;
+                    self.phone_paint_h = feed.height;
+                    self.camera_phone = Some(feed);
+                    any_ok = true;
+                }
+                Err(e) => errs.push(format!("phone: {e}")),
             }
+        }
+
+        if any_ok {
+            if mic_auto_on() {
+                self.start_mic();
+            }
+            if !errs.is_empty() {
+                self.status = format!("cam · partial · {}", errs.join(" · "));
+            }
+        } else {
+            self.camera_err = Some(errs.join(" · "));
+            self.camera_on = false;
+            self.status = format!("cam: {}", errs.join(" · "));
         }
     }
 
     fn stop_camera(&mut self) {
         self.camera.take();
+        self.camera_phone.take();
         self.cam_paint_rgb = None;
         self.cam_paint_gen = 0;
+        self.phone_paint_rgb = None;
+        self.phone_paint_gen = 0;
         self.prev_cam_thumb = None;
         self.motion_level = 0.0;
         self.stop_mic();
@@ -1504,19 +1620,31 @@ impl LiveWatchState {
         };
     }
 
-    /// Switch cam tile between local device and phone still-pipe (`live.jpg`).
+    /// Cycle cam source: local → dual (you|phone) → phone-only → local.
     ///
     /// Memory Glass inspect grammar: phone PWA → hub `/upload` → still → tile.
     pub fn toggle_phone_source(&mut self) {
         let next = match camera::cam_source() {
-            camera::CamSource::Local => camera::CamSource::PhoneStill,
+            camera::CamSource::Local => camera::CamSource::Dual,
+            camera::CamSource::Dual => camera::CamSource::PhoneStill,
             camera::CamSource::PhoneStill => camera::CamSource::Local,
         };
         // SAFETY: process-wide knobs; cam restart reads them.
         unsafe {
             match next {
+                camera::CamSource::Dual => {
+                    std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "dual");
+                    std::env::set_var("LIVE_DEMUX_CAM_MIRROR", "1");
+                    if std::env::var("LIVE_DEMUX_CAM_TILE").is_err() {
+                        std::env::set_var("LIVE_DEMUX_CAM_TILE", "96");
+                    }
+                    std::env::set_var("LIVE_DEMUX_CAM_LAYOUT", "side");
+                    if std::env::var("LIVE_DEMUX_CAM_STILL").is_err() {
+                        std::env::set_var("LIVE_DEMUX_CAM_STILL", camera::cam_still_path());
+                    }
+                }
                 camera::CamSource::PhoneStill => {
-                    std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "phone");
+                    std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "phone-only");
                     std::env::set_var("LIVE_DEMUX_CAM_MIRROR", "0");
                     if std::env::var("LIVE_DEMUX_CAM_STILL").is_err() {
                         std::env::set_var("LIVE_DEMUX_CAM_STILL", camera::cam_still_path());
@@ -1533,11 +1661,15 @@ impl LiveWatchState {
             self.start_camera();
         }
         self.status = match next {
-            camera::CamSource::PhoneStill => format!(
-                "cam · phone still-pipe · {} · open phone PWA → allow cam",
+            camera::CamSource::Dual => format!(
+                "cam · dual you|phone · {} · Y pop-out both",
                 camera::cam_still_path()
             ),
-            camera::CamSource::Local => "cam · local device".into(),
+            camera::CamSource::PhoneStill => format!(
+                "cam · phone only · {} · open phone PWA → allow cam",
+                camera::cam_still_path()
+            ),
+            camera::CamSource::Local => "cam · local webcam only".into(),
         };
     }
 
@@ -1725,7 +1857,7 @@ impl LiveWatchState {
             let src = camera::cam_source().label();
             if self.camera_err.is_some() {
                 format!("  · cam!({src})")
-            } else if self.cam_paint_rgb.is_some() {
+            } else if self.cam_paint_rgb.is_some() || self.phone_paint_rgb.is_some() {
                 format!("  · {src} mot{:.0}%", self.motion_level * 100.0)
             } else {
                 format!("  · {src}…")
@@ -1871,9 +2003,9 @@ impl LiveWatchState {
         if self.camera_on {
             if let Some(ref cam) = self.camera {
                 if let Some(err) = cam.take_error() {
-                    self.camera_err = Some(err.clone());
-                    self.status = format!("cam: {err}");
-                    self.stop_camera();
+                    self.camera_err = Some(format!("local: {err}"));
+                    self.status = format!("cam local: {err}");
+                    self.camera.take();
                     dirty = true;
                 } else {
                     let frame_gen = cam.frame_generation();
@@ -1888,6 +2020,32 @@ impl LiveWatchState {
                         dirty = true;
                     }
                 }
+            }
+            if let Some(ref cam) = self.camera_phone {
+                if let Some(err) = cam.take_error() {
+                    self.status = format!("cam phone: {err}");
+                    self.camera_phone.take();
+                    dirty = true;
+                } else {
+                    let frame_gen = cam.frame_generation();
+                    if frame_gen != self.phone_paint_gen
+                        && let Some((rgb, w, h)) = cam.snapshot_rgb()
+                    {
+                        // Motion from phone too when dual.
+                        if self.camera.is_none() {
+                            self.update_motion_from_cam(&rgb, w, h);
+                        }
+                        self.phone_paint_rgb = Some(rgb);
+                        self.phone_paint_w = w;
+                        self.phone_paint_h = h;
+                        self.phone_paint_gen = frame_gen;
+                        dirty = true;
+                    }
+                }
+            }
+            // Both feeds died → stop.
+            if self.camera.is_none() && self.camera_phone.is_none() && self.camera_err.is_some() {
+                self.camera_on = false;
             }
         }
 
@@ -2000,8 +2158,9 @@ impl LiveWatchState {
                 self.toggle_camera();
                 LiveWatchKeyOutcome::Changed
             }
-            KeyCode::Char('h') | KeyCode::Char('H') => {
-                // Phone still-pipe (Memory Glass tether) ↔ local device.
+            // Capital H only — lowercase `h` is scrub-back (with Left / ,).
+            KeyCode::Char('H') => {
+                // Cycle local → dual you|phone → phone-only (Memory Glass tether).
                 self.toggle_phone_source();
                 LiveWatchKeyOutcome::Changed
             }
@@ -2021,8 +2180,31 @@ impl LiveWatchState {
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('y') | KeyCode::Char('Y') => {
-                // You / selfie cam → one OS window (Zoom self-view).
-                let _ = self.pop_out_camera(popout::CamPopMode::Primary);
+                // You / dual: laptop + phone still as OS windows when dual active.
+                let mode = if camera::cam_source().is_dual()
+                    || camera::cam_source().includes_phone()
+                        && camera::cam_source().includes_local()
+                {
+                    popout::CamPopMode::Dual
+                } else if camera::cam_source() == camera::CamSource::PhoneStill {
+                    popout::CamPopMode::PhoneStill
+                } else {
+                    popout::CamPopMode::Primary
+                };
+                let _ = self.pop_out_camera(mode);
+                LiveWatchKeyOutcome::Changed
+            }
+            // Capital L only — lowercase `l` is scrub-forward (with Right / .).
+            KeyCode::Char('L') => {
+                // Live lens pop-out — tiny bug world / HDRI anamorphic (360-capable).
+                let (profile, input) = lens::parse_lens_args("bug");
+                // Prefer dual when both feeds are live.
+                let input = if camera::cam_source().is_dual() {
+                    lens::LensInput::Dual
+                } else {
+                    input
+                };
+                self.status = lens::launch_lens_async(profile, input);
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('U') => {
@@ -2204,16 +2386,27 @@ impl LiveWatchState {
         let (video_area, search_area) = Self::split_search_bar(area, bar_h);
         let mut painted = if video_area.height >= 2 {
             let lay = layout::layout_watch_video(video_area, self.camera_on);
-            // Stream first (full band) — cam PiP overlays on top.
-            let mut p = self.paint_stream_pane(buf, lay.stream);
-            if self.guide.open {
+            let mut p = false;
+            // Desk dual: no yt-dlp stream — only you | phone full bleed.
+            let desk = layout::dual_cam_desk()
+                || self.channel_id.as_deref() == Some("desk")
+                || self.source_url == camera::DESK_URL;
+            if !desk && lay.stream.width > 0 && lay.stream.height > 0 {
+                // Stream first (full band) — cam PiP overlays on top.
+                p = self.paint_stream_pane(buf, lay.stream);
+            }
+            if self.guide.open && lay.stream.width > 0 {
                 self.paint_guide(buf, lay.stream);
                 p = true;
             }
             if let Some(cam_rect) = lay.cam {
-                // Thin border so the tile reads as a pin against the stream.
+                // Thin border so the tile reads as a pin (or full desk frame).
                 self.paint_camera_chrome(buf, cam_rect);
                 p |= self.paint_camera_pane(buf, cam_rect);
+            } else if desk {
+                // Cam failed to layout — still try full area dual paint.
+                self.paint_camera_chrome(buf, video_area);
+                p |= self.paint_camera_pane(buf, video_area);
             }
             p
         } else {
@@ -2631,22 +2824,125 @@ impl LiveWatchState {
         } else {
             area
         };
+
+        let dual = camera::cam_source().is_dual()
+            || (self.cam_paint_rgb.is_some() && self.phone_paint_rgb.is_some());
+        let phone_only = camera::cam_source() == camera::CamSource::PhoneStill
+            || (self.cam_paint_rgb.is_none() && self.phone_paint_rgb.is_some());
+
+        if dual && inner.width >= 8 {
+            // Side-by-side: left = you (laptop) · right = phone still-pipe.
+            let gap = 1u16;
+            let half = inner.width.saturating_sub(gap) / 2;
+            let left = Rect::new(inner.x, inner.y, half.max(3), inner.height);
+            let right = Rect::new(
+                inner.x + half + gap,
+                inner.y,
+                inner.width.saturating_sub(half + gap).max(3),
+                inner.height,
+            );
+            let mut painted = false;
+            painted |= self.paint_one_cam(
+                buf,
+                left,
+                self.cam_paint_rgb.as_deref(),
+                self.cam_paint_w,
+                self.cam_paint_h,
+                "you",
+            );
+            painted |= self.paint_one_cam(
+                buf,
+                right,
+                self.phone_paint_rgb.as_deref(),
+                self.phone_paint_w,
+                self.phone_paint_h,
+                "phone",
+            );
+            // Labels on top row of each half.
+            self.paint_cam_label(buf, left, "you");
+            self.paint_cam_label(buf, right, "phone");
+            return painted;
+        }
+
+        if phone_only {
+            if let Some(rgb) = self.phone_paint_rgb.as_ref() {
+                let ok = crate::render::halfblock::paint_rgb24(
+                    buf,
+                    inner,
+                    rgb,
+                    self.phone_paint_w,
+                    self.phone_paint_h,
+                );
+                self.paint_cam_label(buf, inner, "phone");
+                return ok;
+            }
+        }
+
         if let Some(rgb) = self.cam_paint_rgb.as_ref() {
-            return crate::render::halfblock::paint_rgb24(
+            let ok = crate::render::halfblock::paint_rgb24(
                 buf,
                 inner,
                 rgb,
                 self.cam_paint_w,
                 self.cam_paint_h,
             );
+            self.paint_cam_label(buf, inner, "you");
+            return ok;
+        }
+        if let Some(rgb) = self.phone_paint_rgb.as_ref() {
+            let ok = crate::render::halfblock::paint_rgb24(
+                buf,
+                inner,
+                rgb,
+                self.phone_paint_w,
+                self.phone_paint_h,
+            );
+            self.paint_cam_label(buf, inner, "phone");
+            return ok;
         }
         let msg = if let Some(err) = self.camera_err.as_deref() {
             err
+        } else if camera::cam_source().includes_phone() {
+            "phone… open PWA"
         } else {
             "cam…"
         };
         self.paint_placeholder(buf, inner, Some(msg));
         false
+    }
+
+    fn paint_one_cam(
+        &self,
+        buf: &mut Buffer,
+        area: Rect,
+        rgb: Option<&[u8]>,
+        w: u32,
+        h: u32,
+        empty: &str,
+    ) -> bool {
+        if let Some(rgb) = rgb {
+            return crate::render::halfblock::paint_rgb24(buf, area, rgb, w, h);
+        }
+        self.paint_placeholder(buf, area, Some(empty));
+        false
+    }
+
+    fn paint_cam_label(&self, buf: &mut Buffer, area: Rect, label: &str) {
+        use crate::render::safe_buf::SafeBuf;
+        use ratatui::style::{Color, Style};
+        use ratatui::text::Span;
+        if area.width < 3 || area.height == 0 {
+            return;
+        }
+        let style = Style::default()
+            .fg(Color::Rgb(180, 210, 255))
+            .bg(Color::Rgb(12, 16, 22));
+        buf.set_span_safe(
+            area.x,
+            area.y,
+            &Span::styled(format!(" {label} "), style),
+            area.width,
+        );
     }
 
     fn paint_placeholder(&self, buf: &mut Buffer, area: Rect, override_msg: Option<&str>) {
@@ -2795,6 +3091,7 @@ mod tests {
             phase: Phase::Ready,
             demux: None,
             camera: None,
+            camera_phone: None,
             camera_on: false,
             camera_mirror: true,
             camera_err: None,
@@ -2802,6 +3099,10 @@ mod tests {
             cam_paint_w: 80,
             cam_paint_h: 90,
             cam_paint_gen: 0,
+            phone_paint_rgb: None,
+            phone_paint_w: 80,
+            phone_paint_h: 90,
+            phone_paint_gen: 0,
             mic: None,
             mic_on: false,
             mic_snap: MicSnapshot::idle(),

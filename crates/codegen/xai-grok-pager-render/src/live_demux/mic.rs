@@ -74,13 +74,16 @@ fn mic_device() -> String {
 }
 
 fn mg_wave_url() -> Option<String> {
+    // Opt-in only — do not poll localhost:9877 unless the user set MG_WAVE_URL.
+    // (Avoids surprise curl loops during bare /cam dev sessions.)
     let u = std::env::var("MG_WAVE_URL")
         .or_else(|_| std::env::var("MEMORY_GLASS_WAVE_URL"))
-        .unwrap_or_else(|_| "http://127.0.0.1:9877/wave".into());
+        .ok()?;
+    let u = u.trim();
     if u.is_empty() || u == "0" || u == "off" {
         None
     } else {
-        Some(u)
+        Some(u.to_string())
     }
 }
 

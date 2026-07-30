@@ -482,7 +482,15 @@ pub(in crate::app::dispatch) fn dispatch_open_live_watch(
     agent.timesync = None;
     agent.maptrace = None;
     agent.live_watch = Some(crate::live_demux::LiveWatchState::open(url));
-    agent.show_toast(crate::live_demux::TOAST_OPEN);
+    let toast = if crate::live_demux::is_desk_source(url)
+        || url.trim().eq_ignore_ascii_case("desk")
+        || crate::live_demux::dual_cam_desk()
+    {
+        crate::live_demux::TOAST_DESK
+    } else {
+        crate::live_demux::TOAST_OPEN
+    };
+    agent.show_toast(toast);
     effects
 }
 

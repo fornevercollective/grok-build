@@ -275,10 +275,14 @@ pub fn popout_page(page_url: &str, label: &str) -> Result<String, String> {
 pub enum CamPopMode {
     /// `LIVE_DEMUX_CAM_DEVICE` / default index only (selfie).
     Primary,
-    /// Every real camera (skip Capture screen*), each its own window.
+    /// Every real camera (webcams / Continuity only), each its own window.
     All,
     /// One gallery window via ffmpeg xstack (2–N cams).
     Mosaic,
+    /// Laptop webcam **and** phone still-pipe (`live.jpg`) — two OS windows.
+    Dual,
+    /// Phone still-pipe only (Memory Glass inspect live.jpg).
+    PhoneStill,
 }
 
 /// Parse channel string after popout flags → cam mode.
@@ -299,6 +303,22 @@ pub fn parse_cam_pop_mode(channel: &str) -> CamPopMode {
     }) {
         return CamPopMode::Mosaic;
     }
+    if tokens.iter().any(|t| {
+        matches!(
+            *t,
+            "dual" | "both" | "sidebyside" | "sbs" | "you+phone" | "pair"
+        )
+    }) {
+        return CamPopMode::Dual;
+    }
+    if tokens.iter().any(|t| {
+        matches!(
+            *t,
+            "phone" | "still" | "stillpipe" | "tether" | "pwa" | "live.jpg"
+        )
+    }) {
+        return CamPopMode::PhoneStill;
+    }
     if tokens.iter().any(|t| matches!(*t, "cameras" | "all")) {
         return CamPopMode::All;
     }
@@ -306,7 +326,54 @@ pub fn parse_cam_pop_mode(channel: &str) -> CamPopMode {
     if tokens.len() >= 2 && tokens[1] == "all" {
         return CamPopMode::All;
     }
+    // When dual cam is active, bare primary pop-out opens both windows.
+    if super::camera::cam_source().is_dual() {
+        return CamPopMode::Dual;
+    }
     CamPopMode::Primary
+}
+
+/// ffplay looping still-pipe JPEG (phone PWA → live.jpg).
+pub fn spawn_ffplay_still(path: &str, label: &str) -> Result<u32, String> {
+    use super::camera::{cam_still_path, ensure_still_seed_public};
+    let still = if path.is_empty() {
+        cam_still_path()
+    } else {
+        path.to_string()
+    };
+    ensure_still_seed_public(&still);
+    let (disp_w, disp_h) = cam_pop_display_size();
+    let title = if label.is_empty() {
+        "cam · phone still-pipe".into()
+    } else {
+        format!("cam · {label}")
+    };
+    let mut cmd = Command::new("ffplay");
+    cmd.args([
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-fflags",
+        "nobuffer",
+        "-flags",
+        "low_delay",
+        "-framedrop",
+        "-loop",
+        "0",
+        "-window_title",
+        &title,
+        "-vf",
+        &format!("scale={disp_w}:{disp_h}"),
+        &still,
+    ]);
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    xai_tty_utils::detach_std_command(&mut cmd);
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("ffplay still spawn failed: {e}"))?;
+    Ok(child.id())
 }
 
 /// Display size for cam ffplay windows (`LIVE_DEMUX_CAM_SIZE`, default 960x540).
@@ -329,7 +396,7 @@ fn cam_pop_fps() -> u32 {
         .clamp(1, 30)
 }
 
-/// List real AVFoundation video device indices (macOS). Skips "Capture screen N".
+/// List real AVFoundation video device indices (macOS). Skips non-camera entries.
 pub fn list_avfoundation_cameras() -> Vec<(String, String)> {
     if !cfg!(target_os = "macos") {
         return Vec::new();
@@ -377,9 +444,27 @@ pub fn list_avfoundation_cameras() -> Vec<(String, String)> {
 
 /// Spawn detached `ffplay` on a local camera device. Returns OS pid.
 pub fn spawn_ffplay_camera(device: &str, label: &str, mirror: bool) -> Result<u32, String> {
-    let (cap_w, cap_h) = cam_capture_size();
+    // Continuity Brick needs native modes (not FaceTime defaults).
+    // Never treat a bare index as Continuity without name resolve — indices
+    // renumber when Continuity disconnects.
+    let is_phone = super::camera::cam_phone_device()
+        .as_ref()
+        .is_some_and(|d| d == device);
+    let (cap_w, cap_h) = if is_phone {
+        super::camera::cam_phone_capture_size()
+    } else {
+        cam_capture_size()
+    };
     let (disp_w, disp_h) = cam_pop_display_size();
-    let fps = cam_pop_fps();
+    let fps = if is_phone {
+        std::env::var("LIVE_DEMUX_CAM_PHONE_FPS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30u32)
+            .clamp(8, 30)
+    } else {
+        cam_pop_fps()
+    };
     let title = if label.is_empty() {
         format!("cam · [{device}]")
     } else {
@@ -406,19 +491,40 @@ pub fn spawn_ffplay_camera(device: &str, label: &str, mirror: bool) -> Result<u3
     ]);
 
     if cfg!(target_os = "macos") {
-        cmd.args([
-            "-f",
-            "avfoundation",
-            "-framerate",
-            &format!("{fps}"),
-            "-video_size",
-            &format!("{cap_w}x{cap_h}"),
-            "-i",
-            &format!("{device}:none"),
-            "-an",
-            "-vf",
-            &vf,
-        ]);
+        let fr = format!("{fps}");
+        let sz = format!("{cap_w}x{cap_h}");
+        let inp = format!("{device}:none");
+        if is_phone {
+            cmd.args([
+                "-f",
+                "avfoundation",
+                "-framerate",
+                &fr,
+                "-video_size",
+                &sz,
+                "-pixel_format",
+                "uyvy422",
+                "-i",
+                &inp,
+                "-an",
+                "-vf",
+                &vf,
+            ]);
+        } else {
+            cmd.args([
+                "-f",
+                "avfoundation",
+                "-framerate",
+                &fr,
+                "-video_size",
+                &sz,
+                "-i",
+                &inp,
+                "-an",
+                "-vf",
+                &vf,
+            ]);
+        }
     } else if cfg!(target_os = "linux") {
         let dev = if device.starts_with('/') {
             device.to_string()
@@ -575,6 +681,36 @@ pub fn launch_cam_popout_blocking(mode: CamPopMode) -> Result<String, String> {
                 "cam pop-out · [{device}] · ffplay pid {pid} (close window to quit)"
             ))
         }
+        CamPopMode::PhoneStill => {
+            // Live Continuity when configured; else still-pipe slideshow.
+            if let Some(dev) = super::camera::cam_phone_device() {
+                let pid = spawn_ffplay_camera(&dev, "phone · Continuity live", false)?;
+                Ok(format!(
+                    "cam pop-out · phone LIVE Continuity [{dev}] · ffplay pid {pid}"
+                ))
+            } else {
+                let path = super::camera::cam_still_path();
+                let pid = spawn_ffplay_still(&path, "phone still-pipe")?;
+                Ok(format!(
+                    "cam pop-out · phone still · {path} · ffplay pid {pid}"
+                ))
+            }
+        }
+        CamPopMode::Dual => {
+            // Side-by-side OS windows: laptop webcam + live Continuity (or still).
+            let device = cam_device();
+            let you = spawn_ffplay_camera(&device, "you · laptop webcam", mirror)?;
+            thread::sleep(std::time::Duration::from_millis(350));
+            let phone = if let Some(dev) = super::camera::cam_phone_device() {
+                spawn_ffplay_camera(&dev, "phone · Continuity live", false)?
+            } else {
+                let path = super::camera::cam_still_path();
+                spawn_ffplay_still(&path, "phone still-pipe")?
+            };
+            Ok(format!(
+                "cam pop-out · dual LIVE · you[{device}] pid {you} · phone pid {phone}"
+            ))
+        }
         CamPopMode::All => {
             let cams = if cfg!(target_os = "macos") {
                 let listed = list_avfoundation_cameras();
@@ -596,9 +732,17 @@ pub fn launch_cam_popout_blocking(mode: CamPopMode) -> Result<String, String> {
                 // Stagger opens so AVFoundation does not race.
                 thread::sleep(std::time::Duration::from_millis(350));
             }
+            // Also open phone still if dual/phone source is active.
+            if super::camera::cam_source().includes_phone() {
+                let path = super::camera::cam_still_path();
+                match spawn_ffplay_still(&path, "phone still-pipe") {
+                    Ok(pid) => pids.push(format!("[phone] pid {pid}")),
+                    Err(e) => pids.push(format!("[phone] err: {e}")),
+                }
+            }
             Ok(format!(
                 "cam pop-out · {} windows · {}",
-                cams.len(),
+                pids.len(),
                 pids.join(" · ")
             ))
         }
@@ -628,6 +772,8 @@ pub fn launch_cam_popout_async(mode: CamPopMode) -> String {
         CamPopMode::Primary => "selfie",
         CamPopMode::All => "all cameras",
         CamPopMode::Mosaic => "gallery mosaic",
+        CamPopMode::Dual => "you + phone (dual)",
+        CamPopMode::PhoneStill => "phone still-pipe",
     };
     let _ = thread::Builder::new()
         .name("live-demux-cam-popout".into())

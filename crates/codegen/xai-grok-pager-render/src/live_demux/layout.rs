@@ -114,6 +114,10 @@ pub fn cam_tile_cells(area: Rect) -> (u16, u16) {
 
 /// Prefer PiP unless explicitly forced side, or width is huge and height is short.
 pub fn prefer_pip(area: Rect) -> bool {
+    // Dual you|phone wants a side rail so both tiles stay readable.
+    if dual_cam_tiles() {
+        return false;
+    }
     if let Ok(s) = std::env::var("LIVE_DEMUX_CAM_LAYOUT") {
         match s.trim().to_ascii_lowercase().as_str() {
             "side" | "column" | "left" => return false,
@@ -126,10 +130,40 @@ pub fn prefer_pip(area: Rect) -> bool {
     !(area.width >= 100 && area.height >= 14)
 }
 
+/// True when `/cam phone` dual mode is active (you + phone still-pipe).
+pub fn dual_cam_tiles() -> bool {
+    match std::env::var("LIVE_DEMUX_CAM_SOURCE")
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "dual" | "both" | "sidebyside" | "side-by-side" | "sbs" | "you+phone"
+        | "you-phone" | "local+phone" | "phone+local" | "2" | "pair" => true,
+        _ => false,
+    }
+}
+
+/// Desk mode: **fullscreen you | phone** — no yt-dlp / VEVO stream pane.
+///
+/// Set by `/cam phone` · `/phone` via `LIVE_DEMUX_CAM_DESK=1`.
+pub fn dual_cam_desk() -> bool {
+    match std::env::var("LIVE_DEMUX_CAM_DESK")
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "1" | "true" | "yes" | "on" | "desk" | "only" | "full" => true,
+        _ => false,
+    }
+}
+
 /// Layout video + optional camera for the given paint area.
 ///
-/// Camera **never** replaces the main stream band — PiP paints on top after
-/// stream so the cam is not obscured. Side mode keeps stream full height.
+/// - **Desk dual** (`LIVE_DEMUX_CAM_DESK=1`): cam fills the whole video band
+///   (you | phone side-by-side). Stream rect is empty — no yt-dlp paint.
+/// - Otherwise: stream main + cam PiP/side (classic /watch).
 pub fn layout_watch_video(area: Rect, camera_on: bool) -> WatchVideoLayout {
     if area.width == 0 || area.height == 0 {
         return WatchVideoLayout {
@@ -138,6 +172,21 @@ pub fn layout_watch_video(area: Rect, camera_on: bool) -> WatchVideoLayout {
             cam_mode: CamMode::Pip,
             cam_src_w: 8,
             cam_src_h: 8,
+            stream_src_w: 8,
+            stream_src_h: 8,
+        };
+    }
+
+    // /cam phone desk: full area is dual cam only (no VEVO / news stream).
+    if camera_on && dual_cam_desk() {
+        let (cw, ch) = src_for_cells(area.width, area.height);
+        return WatchVideoLayout {
+            // Zero-size stream so paint skips yt-dlp half-block.
+            stream: Rect::new(area.x, area.y, 0, 0),
+            cam: Some(area),
+            cam_mode: CamMode::Side,
+            cam_src_w: cw,
+            cam_src_h: ch,
             stream_src_w: 8,
             stream_src_h: 8,
         };
@@ -156,7 +205,12 @@ pub fn layout_watch_video(area: Rect, camera_on: bool) -> WatchVideoLayout {
         };
     }
 
-    let (tile_w, tile_h) = cam_tile_cells(area);
+    let (mut tile_w, tile_h) = cam_tile_cells(area);
+    // Dual you|phone rail next to a stream (when desk is off).
+    if dual_cam_tiles() {
+        tile_w = tile_w.saturating_mul(2).min(area.width.saturating_sub(MIN_STREAM_COLS + 2));
+        tile_w = tile_w.max(24);
+    }
     let tile_w = tile_w.min(area.width.saturating_sub(2)).max(6);
     let tile_h = tile_h.min(area.height.saturating_sub(1)).max(3);
 
@@ -230,6 +284,24 @@ pub fn popup_fill_frac(area: Rect) -> (u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn desk_dual_fills_area_no_stream() {
+        unsafe {
+            std::env::set_var("LIVE_DEMUX_CAM_DESK", "1");
+            std::env::set_var("LIVE_DEMUX_CAM_SOURCE", "dual");
+        }
+        let area = Rect::new(0, 0, 80, 24);
+        let lay = layout_watch_video(area, true);
+        assert!(lay.cam.is_some());
+        let cam = lay.cam.unwrap();
+        assert_eq!(cam.width, 80);
+        assert_eq!(cam.height, 24);
+        assert_eq!(lay.stream.width, 0);
+        unsafe {
+            std::env::remove_var("LIVE_DEMUX_CAM_DESK");
+        }
+    }
 
     #[test]
     fn lean_80x12_uses_pip_13() {
