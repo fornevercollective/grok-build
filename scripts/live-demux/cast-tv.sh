@@ -15,6 +15,9 @@
 #   bash scripts/live-demux/cast-tv.sh align [device]           # interactive HTML surface (cast_site)
 #   bash scripts/live-demux/cast-tv.sh align-mp4 [device]       # static MP4 chart (legacy)
 #   bash scripts/live-demux/cast-tv.sh align-ui                 # hub + phone control + TV surface
+#   bash scripts/live-demux/cast-tv.sh box [device]             # BOX depth + forest + center loop
+#   bash scripts/live-demux/cast-tv.sh gpu [device]             # WebGL GPU env TV stream test
+#   bash scripts/live-demux/cast-tv.sh news [device]            # news wall multi-feed
 #   bash scripts/live-demux/cast-tv.sh stop [device]
 #   bash scripts/live-demux/cast-tv.sh profile                  # print TCL profile
 #
@@ -705,16 +708,56 @@ case "$CMD" in
       open "$phone_url" 2>/dev/null || true
     fi
     ;;
+  gpu|gpu-env|webgl|gpu-test)
+    # WebGL living environment — TV stream GPU test (no cam-relay)
+    hub_start || exit 1
+    lan="$(lan_ip)"
+    phone_url="http://${lan}:${PORT}/gpu"
+    tv_url="http://${lan}:${PORT}/gpu?tv=1"
+    echo "==> GPU ENV · WebGL living forest / depth / forced perspective"
+    echo "  phone:  $phone_url   (demo orbit · heavy particles)"
+    echo "  TV:     $tv_url"
+    echo "  no cam-relay (GPU-only stream test)"
+    python3 - "$PORT" <<'PY' 2>/dev/null || true
+import json, urllib.request, sys
+port = sys.argv[1]
+payload = {"surface": "gpu-env", "variation": "gpu"}
+req = urllib.request.Request(
+  f"http://127.0.0.1:{port}/api/state",
+  data=json.dumps(payload).encode(),
+  headers={"Content-Type": "application/json"},
+  method="POST",
+)
+urllib.request.urlopen(req, timeout=2).read()
+print("  surface=gpu-env seeded")
+PY
+    if [[ "${LIVE_DEMUX_CAST_ALIGN_NO_CAST:-0}" != "1" ]] && command -v catt >/dev/null 2>&1; then
+      device="$(resolve_device "${1:-}")"
+      catt -d "$device" stop 2>>"$LOG" || true
+      sleep 0.4
+      echo "==> catt cast_site → $device"
+      if catt -d "$device" cast_site "$tv_url" 2>>"$LOG"; then
+        echo "cast_site ok · GPU env on TV — watch FPS HUD + orbit"
+      else
+        echo "cast_site failed — open: $tv_url"
+      fi
+    fi
+    if [[ "${LIVE_DEMUX_CAST_ALIGN_BROWSER:-1}" == "1" ]] && command -v open >/dev/null 2>&1; then
+      open "$phone_url" 2>/dev/null || true
+    fi
+    ;;
   box|depth|gmunk)
     # BOX-style: full grid + depth cube + forest plate + center video loop + cams + phone track
     hub_start || exit 1
-    # start camera relay unless disabled
-    if [[ "${LIVE_DEMUX_BOX_CAMS:-1}" == "1" ]]; then
+    # start camera relay unless disabled (default OFF if LIVE_DEMUX_BOX_CAMS unset after spool thrash)
+    if [[ "${LIVE_DEMUX_BOX_CAMS:-0}" == "1" ]]; then
       RELAY="$ROOT/scripts/live-demux/cam-relay.sh"
       if [[ -f "$RELAY" ]]; then
         bash "$RELAY" start 2>>"$LOG" || bash "$RELAY" start 0 1 2>>"$LOG" || true
         echo "  cams: relay started (see cam-relay.sh status)"
       fi
+    else
+      echo "  cams: skipped (LIVE_DEMUX_BOX_CAMS=0 · no spool thrash)"
     fi
     lan="$(lan_ip)"
     media="${LIVE_DEMUX_BOX_MEDIA:-/media/zane-center.mp4}"

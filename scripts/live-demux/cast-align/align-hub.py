@@ -16,6 +16,7 @@ Serves:
   GET  /api/stream/plan  → scaled per-feed budget (fc-stream-plan-v1)
   POST /api/stream/cmd   → light TV tweaks (mode/pgm/quality/pause)
   GET  /tv               → TV-native PWA shell (panel-side decode)
+  GET  /gpu              → WebGL GPU environment (TV stream test)
   GET  /devices          → device lab (Chrome/Safari/Firefox DevTools presets)
   GET  /api/devices      → browser matrix + cast profiles + presets
   GET  /api/refs         → SuperMap · Parallel Stereo · SHELLS · BOX
@@ -45,6 +46,7 @@ NEWS = HERE / "news-wall.html"
 NEWS_CATALOG = HERE / "news-catalog.json"
 STREAM_POLICY = HERE / "stream-policy.json"
 TV_SHELL = HERE / "tv-shell.html"
+GPU_ENV = HERE / "gpu-env.html"
 DEVICES_HTML = HERE / "devices.html"
 DEVICE_KIT = HERE / "device-kit.js"
 DEVICES_DIR = HERE.parent / "devices"
@@ -932,6 +934,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._bytes(200, NEWS.read_bytes(), "text/html; charset=utf-8")
                 return
             self._json(500, {"error": "tv-shell missing"})
+            return
+
+        # WebGL GPU environment — living forest/depth for DashCast TV stream test
+        if path in ("/gpu", "/gpu-env", "/gpu-env.html", "/gpu-test"):
+            if GPU_ENV.is_file():
+                self._bytes(200, GPU_ENV.read_bytes(), "text/html; charset=utf-8")
+                return
+            self._json(500, {"error": "gpu-env.html missing"})
             return
 
         if path in ("/devices", "/devices.html", "/device-lab"):
