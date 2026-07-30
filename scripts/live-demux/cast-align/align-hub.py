@@ -17,6 +17,7 @@ Serves:
   POST /api/stream/cmd   → light TV tweaks (mode/pgm/quality/pause)
   GET  /tv               → TV-native PWA shell (panel-side decode)
   GET  /gpu              → WebGL GPU environment (TV stream test)
+  GET  /crazy            → multi-device augmented perspective (phone/quest → TV)
   GET  /devices          → device lab (Chrome/Safari/Firefox DevTools presets)
   GET  /api/devices      → browser matrix + cast profiles + presets
   GET  /api/refs         → SuperMap · Parallel Stereo · SHELLS · BOX
@@ -47,6 +48,7 @@ NEWS_CATALOG = HERE / "news-catalog.json"
 STREAM_POLICY = HERE / "stream-policy.json"
 TV_SHELL = HERE / "tv-shell.html"
 GPU_ENV = HERE / "gpu-env.html"
+CRAZY = HERE / "crazy.html"
 DEVICES_HTML = HERE / "devices.html"
 DEVICE_KIT = HERE / "device-kit.js"
 DEVICES_DIR = HERE.parent / "devices"
@@ -942,6 +944,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._bytes(200, GPU_ENV.read_bytes(), "text/html; charset=utf-8")
                 return
             self._json(500, {"error": "gpu-env.html missing"})
+            return
+
+        # Multi-device crazy cast — phones + Quest browser → TV perspective
+        if path in ("/crazy", "/crazy.html", "/crazy-cast"):
+            if CRAZY.is_file():
+                self._bytes(200, CRAZY.read_bytes(), "text/html; charset=utf-8")
+                return
+            self._json(500, {"error": "crazy.html missing"})
             return
 
         if path in ("/devices", "/devices.html", "/device-lab"):
@@ -1890,6 +1900,17 @@ class Handler(BaseHTTPRequestHandler):
                 vt.update(patch["vantage"])
                 vt["users"] = users
                 st["vantage"] = vt
+                bump = True
+            # multi-device crazy cast: merge peer poses (you / partner / quest)
+            if "crazy_peers" in patch and isinstance(patch["crazy_peers"], dict):
+                peers = dict(st.get("crazy_peers") or {})
+                for uid, pose in patch["crazy_peers"].items():
+                    if isinstance(pose, dict):
+                        prev = dict(peers.get(uid) or {})
+                        prev.update(pose)
+                        prev["t"] = time.time()
+                        peers[str(uid)] = prev
+                st["crazy_peers"] = peers
                 bump = True
             # normalize selected to sorted unique ints
             try:

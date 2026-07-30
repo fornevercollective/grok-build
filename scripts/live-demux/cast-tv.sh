@@ -18,6 +18,7 @@
 #   bash scripts/live-demux/cast-tv.sh box [device]             # BOX depth + forest + center loop
 #   bash scripts/live-demux/cast-tv.sh gpu [device]             # WebGL on TV (DashCast; often low res/fps)
 #   bash scripts/live-demux/cast-tv.sh gpu-pipe [device]        # laptop VT H.264 pipe → cast (recommended)
+#   bash scripts/live-demux/cast-tv.sh crazy [device]           # multi-phone/Quest → TV perspective
 #   bash scripts/live-demux/cast-tv.sh news [device]            # news wall multi-feed
 #   bash scripts/live-demux/cast-tv.sh stop [device]
 #   bash scripts/live-demux/cast-tv.sh profile                  # print TCL profile
@@ -751,6 +752,10 @@ PY
       open "$phone_url" 2>/dev/null || true
     fi
     echo "  tip: for 720p/1080p on TV use  $0 gpu-pipe  (laptop VT encode, not WebView)"
+    ;;
+  crazy|crazy-cast|multi-device)
+    # Multi-phone + Quest → TV augmented perspective (+ optional quality pipe)
+    exec bash "$ROOT/scripts/live-demux/crazy-cast.sh" ${1:+"--device=$1"} "${@:2}"
     ;;
   gpu-pipe|gpu-native|imagine-pipe)
     # Laptop VideoToolbox H.264 pipe → catt cast (bypasses DashCast WebGL 960×540@12fps)

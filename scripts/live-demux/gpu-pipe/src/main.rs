@@ -20,6 +20,7 @@
 
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
+use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -109,6 +110,14 @@ struct Args {
     /// Prefer software libx264 if videotoolbox missing
     #[arg(long, default_value_t = false)]
     allow_sw: bool,
+
+    /// Poll hub viewer pose and warp each segment (augmented perspective)
+    #[arg(long, default_value = "", env = "FC_GPU_PIPE_POSE_URL")]
+    pose_url: String,
+
+    /// Crazy mode: shorter segments + live pose + recast each segment
+    #[arg(long, default_value_t = false, env = "FC_GPU_PIPE_CRAZY")]
+    crazy: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -243,34 +252,99 @@ fn has_videotoolbox() -> bool {
         .unwrap_or(false)
 }
 
-/// lavfi graph: Imagine field. Fast filters only — VT stays ≥ realtime on Intel UHD.
-/// (Per-pixel `geq` was ~0.3× realtime and forced 540p throttle.)
-fn lavfi_imagine(b: &Budget, secs: f64, mode: &str) -> String {
-    let s = format!("{}x{}", b.w, b.h);
-    let r = b.fps;
-    let d = secs;
-    match mode {
-        "portal" | "box" => format!(
-            "gradients=s={s}:c0=0x1a1040:c1=0x050510:x0=0:y0=0:x1=1:y1=1:r={r}:d={d},\
-hue=h=55:s=1.4,eq=contrast=1.15:saturation=1.35:brightness=0.02,\
-vignette=PI/4,noise=alls=5:allf=t,format=yuv420p"
-        ),
-        "tunnel" => format!(
-            "gradients=s={s}:c0=0x301860:c1=0x020208:x0=0.5:y0=0.5:x1=0:y1=0:r={r}:d={d},\
-hue=h=200:s=1.45,eq=contrast=1.18:saturation=1.4,\
-vignette=PI/5,noise=alls=6:allf=t,format=yuv420p"
-        ),
-        // imagine (default) — Grok promo purple void + cyan edge + grain
-        _ => format!(
-            "gradients=s={s}:c0=0x2a1850:c1=0x050510:x0=0:y0=0:x1=1:y1=1:r={r}:d={d},\
-hue=h=48:s=1.45,eq=contrast=1.12:saturation=1.4:brightness=0.025,\
-vignette=PI/4.2,noise=alls=5:allf=t,format=yuv420p"
-        ),
+#[derive(Clone, Copy, Debug, Default)]
+struct Pose {
+    yaw: f64,
+    pitch: f64,
+    z: f64,
+}
+
+fn fetch_pose(url: &str) -> Pose {
+    if url.is_empty() {
+        return Pose::default();
+    }
+    // tiny dependency-free HTTP GET via curl (always on macOS)
+    let out = Command::new("curl")
+        .args(["-sS", "-m", "2", url])
+        .output();
+    let Ok(o) = out else {
+        return Pose::default();
+    };
+    if !o.status.success() {
+        return Pose::default();
+    }
+    let v: Value = match serde_json::from_slice(&o.stdout) {
+        Ok(v) => v,
+        Err(_) => return Pose::default(),
+    };
+    let viewer = v.get("viewer").cloned().unwrap_or(v);
+    Pose {
+        yaw: viewer
+            .get("yaw")
+            .and_then(|x| x.as_f64())
+            .unwrap_or(0.0)
+            .clamp(-1.8, 1.8),
+        pitch: viewer
+            .get("pitch")
+            .and_then(|x| x.as_f64())
+            .unwrap_or(0.0)
+            .clamp(-1.5, 1.5),
+        z: viewer
+            .get("z")
+            .and_then(|x| x.as_f64())
+            .unwrap_or(1.0)
+            .clamp(0.6, 1.6),
     }
 }
 
-fn build_ffmpeg_cmd(b: &Budget, secs: f64, out: &Path, mode: &str, use_vt: bool) -> Command {
-    let lavfi = lavfi_imagine(b, secs, mode);
+/// lavfi graph: Imagine field + optional pose warp (augmented perspective).
+fn lavfi_imagine(b: &Budget, secs: f64, mode: &str, pose: Pose) -> String {
+    let s = format!("{}x{}", b.w, b.h);
+    let r = b.fps;
+    let d = secs;
+    // map pose → subtle pan/rotate for "phone drives the world"
+    let rot = pose.yaw * 0.12;
+    let hue_bias = 48.0 + pose.yaw * 25.0 + pose.pitch * 15.0;
+    let sat = 1.35 + (pose.z - 1.0) * 0.2;
+    let base = match mode {
+        "portal" | "box" => format!(
+            "gradients=s={s}:c0=0x1a1040:c1=0x050510:x0=0:y0=0:x1=1:y1=1:r={r}:d={d},\
+hue=h={hue_bias}:s={sat},eq=contrast=1.15:saturation=1.35:brightness=0.02"
+        ),
+        "tunnel" => format!(
+            "gradients=s={s}:c0=0x301860:c1=0x020208:x0=0.5:y0=0.5:x1=0:y1=0:r={r}:d={d},\
+hue=h={h}:s={sat},eq=contrast=1.18:saturation=1.4",
+            h = 200.0 + pose.yaw * 40.0
+        ),
+        // crazy: wilder color separation
+        "crazy" => format!(
+            "gradients=s={s}:c0=0x3b0764:c1=0x0c4a6e:x0=0:y0=0:x1=1:y1=1:r={r}:d={d},\
+hue=h={hue_bias}:s={sat},eq=contrast=1.22:saturation=1.55:brightness=0.04"
+        ),
+        // imagine (default)
+        _ => format!(
+            "gradients=s={s}:c0=0x2a1850:c1=0x050510:x0=0:y0=0:x1=1:y1=1:r={r}:d={d},\
+hue=h={hue_bias}:s={sat},eq=contrast=1.12:saturation=1.4:brightness=0.025"
+        ),
+    };
+    // pose-driven rotate + scale back (crop after rotw can fail on small angles)
+    format!(
+        "{base},rotate=a={rot}:ow=rotw(iw):oh=roth(ih):c=0x050508,\
+scale={w}:{h},vignette=PI/4.2,noise=alls=5:allf=t,format=yuv420p",
+        w = b.w,
+        h = b.h,
+    )
+}
+
+fn build_ffmpeg_cmd(
+    b: &Budget,
+    secs: f64,
+    out: &Path,
+    mode: &str,
+    use_vt: bool,
+    pose: Pose,
+) -> Command {
+    let lavfi = lavfi_imagine(b, secs, mode, pose);
     let mut cmd = Command::new("ffmpeg");
     cmd.args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"])
         .arg(&lavfi);
@@ -393,8 +467,30 @@ fn main() {
         "  tier {} · {}x{} @ {}fps · {} kbps · VT={}",
         budget.label, budget.w, budget.h, budget.fps, budget.bitrate_k, use_vt
     );
-    println!("  mode {} · secs {} · out {}", args.mode, args.secs, out.display());
+    let pose_url = if args.crazy && args.pose_url.is_empty() {
+        "http://127.0.0.1:8765/api/viewer".into()
+    } else {
+        args.pose_url.clone()
+    };
+    let secs = if args.crazy && (args.secs - 12.0).abs() < 0.01 {
+        6.0
+    } else {
+        args.secs
+    };
+    let mode = if args.crazy && args.mode == "imagine" {
+        "crazy".into()
+    } else {
+        args.mode.clone()
+    };
+
+    println!("  mode {} · secs {} · out {}", mode, secs, out.display());
     println!("  status {}", status_path.display());
+    if !pose_url.is_empty() {
+        println!("  live pose ← {pose_url}");
+    }
+    if args.crazy {
+        println!("  CRAZY · short segments · pose warp · recast each");
+    }
     if !args.cast_device.is_empty() {
         println!("  cast → {}", args.cast_device);
     }
@@ -408,7 +504,14 @@ fn main() {
 
     while seg_i < max_seg {
         seg_i += 1;
-        let mut cmd = build_ffmpeg_cmd(&budget, args.secs, &out, &args.mode, use_vt);
+        let pose = fetch_pose(&pose_url);
+        if !pose_url.is_empty() {
+            print!(
+                "  pose y{:.2} p{:.2} z{:.2} · ",
+                pose.yaw, pose.pitch, pose.z
+            );
+        }
+        let mut cmd = build_ffmpeg_cmd(&budget, secs, &out, &mode, use_vt, pose);
 
         if args.dry_run {
             println!("dry-run argv: {cmd:?}");
@@ -436,11 +539,11 @@ fn main() {
                         h: budget.h,
                         fps: budget.fps,
                         bitrate_k: budget.bitrate_k,
-                        secs: args.secs,
+                        secs,
                         encode_secs: 0.0,
                         realtime_ratio: 0.0,
                         out: out.display().to_string(),
-                        mode: args.mode.clone(),
+                        mode: mode.clone(),
                         note: e,
                     },
                 );
@@ -450,7 +553,7 @@ fn main() {
 
         let encode_secs = encode_dt.as_secs_f64();
         let ratio = if encode_secs > 0.0 {
-            args.secs / encode_secs
+            secs / encode_secs
         } else {
             0.0
         };
@@ -470,13 +573,16 @@ fn main() {
                 h: budget.h,
                 fps: budget.fps,
                 bitrate_k: budget.bitrate_k,
-                secs: args.secs,
+                secs,
                 encode_secs,
                 realtime_ratio: ratio,
                 out: out.display().to_string(),
-                mode: args.mode.clone(),
+                mode: mode.clone(),
                 note: if use_vt {
-                    "h264_videotoolbox".into()
+                    format!(
+                        "h264_videotoolbox pose y{:.2} p{:.2}",
+                        pose.yaw, pose.pitch
+                    )
                 } else {
                     "libx264".into()
                 },
@@ -511,11 +617,11 @@ fn main() {
                             h: budget.h,
                             fps: budget.fps,
                             bitrate_k: budget.bitrate_k,
-                            secs: args.secs,
+                            secs,
                             encode_secs,
                             realtime_ratio: ratio,
                             out: out.display().to_string(),
-                            mode: args.mode.clone(),
+                            mode: mode.clone(),
                             note: e,
                         },
                     );
@@ -525,10 +631,14 @@ fn main() {
 
         // Pace segments: if encode was faster than realtime, wait so we don't thrash GPU
         if args.segments != 1 && ratio > 1.05 {
-            let wait = Duration::from_secs_f64((args.secs - encode_secs).max(0.0) * 0.25);
+            let wait = Duration::from_secs_f64((secs - encode_secs).max(0.0) * 0.2);
             if wait > Duration::from_millis(50) {
                 thread::sleep(wait);
             }
+        }
+        // crazy continuous: keep going; shorter wait between recasts
+        if args.crazy && max_seg > 1 {
+            thread::sleep(Duration::from_millis(200));
         }
     }
 

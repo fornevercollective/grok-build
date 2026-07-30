@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#050508" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>GrokCast · CRAZY · multi-device</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; overflow: hidden; background: #050508; color: #f0e8ff; font-family: system-ui, sans-serif; }
+    body.tv #bar { display: none; }
+    #bar {
+      position: fixed; z-index: 40; inset: 0 0 auto 0;
+      display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+      padding: .4rem .55rem; background: rgba(8,6,16,.95); border-bottom: 1px solid #3a2860;
+      font-size: .7rem;
+    }
+    #bar button {
+      background: #1a1430; color: #f0e8ff; border: 1px solid #4a3880;
+      border-radius: 5px; padding: .28rem .5rem; font: inherit; cursor: pointer;
+    }
+    #bar button.primary { background: #2a1860; border-color: #8b5cf6; }
+    #bar button.active { border-color: #fde68a; color: #fde68a; }
+    #bar .meta { margin-left: auto; font: 600 10px ui-monospace, monospace; color: #a78bfa; }
+    #stage {
+      position: absolute; inset: 0;
+      perspective: 1200px; overflow: hidden;
+      background: radial-gradient(ellipse 80% 60% at 50% 45%, #1a1040 0%, #08061a 50%, #050508 100%);
+    }
+    #nebula {
+      position: absolute; inset: -15%;
+      background:
+        radial-gradient(ellipse 40% 35% at 30% 40%, rgba(139,92,246,.35), transparent 60%),
+        radial-gradient(ellipse 45% 40% at 70% 55%, rgba(56,189,248,.25), transparent 55%),
+        radial-gradient(ellipse 30% 30% at 50% 70%, rgba(236,72,153,.2), transparent 50%);
+      will-change: transform;
+      animation: neb 18s ease-in-out infinite alternate;
+    }
+    @keyframes neb {
+      from { filter: hue-rotate(-12deg) brightness(.95); }
+      to { filter: hue-rotate(18deg) brightness(1.1); }
+    }
+    #cube-wrap {
+      position: absolute; left: 50%; top: 48%;
+      width: min(42vw, 420px); height: min(42vw, 420px);
+      margin: calc(min(42vw, 420px) / -2) 0 0 calc(min(42vw, 420px) / -2);
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .cube {
+      width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      position: relative;
+    }
+    .face {
+      position: absolute; inset: 12%;
+      border: 1.5px solid rgba(196,181,253,.75);
+      background: linear-gradient(135deg, rgba(139,92,246,.18), rgba(56,189,248,.08));
+      box-shadow: 0 0 40px rgba(139,92,246,.25), inset 0 0 30px rgba(56,189,248,.1);
+      backface-visibility: visible;
+    }
+    .face.f { transform: translateZ(110px); }
+    .face.b { transform: rotateY(180deg) translateZ(110px); opacity: .5; }
+    .face.l { transform: rotateY(-90deg) translateZ(110px); opacity: .7; }
+    .face.r { transform: rotateY(90deg) translateZ(110px); opacity: .7; }
+    .face.u { transform: rotateX(90deg) translateZ(110px); opacity: .55; }
+    .face.d { transform: rotateX(-90deg) translateZ(110px); opacity: .55; }
+    #portal {
+      position: absolute; left: 50%; top: 50%;
+      width: min(38vw, 520px); height: min(28vw, 300px);
+      transform: translate(-50%, -50%);
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(167,139,250,.5);
+      box-shadow: 0 0 60px rgba(139,92,246,.35), 0 25px 80px #000a;
+      will-change: transform;
+      z-index: 5;
+      background: #000;
+    }
+    #portal video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .85; }
+    #portal .label {
+      position: absolute; left: 8px; top: 6px; z-index: 2;
+      font: 700 11px ui-monospace, monospace; color: #e9d5ff;
+      text-shadow: 0 1px 4px #000;
+    }
+    #glass {
+      position: absolute; inset: 0; z-index: 8; pointer-events: none;
+      background: linear-gradient(125deg, rgba(255,255,255,.06), transparent 40%, transparent 60%, rgba(167,139,250,.05));
+      mix-blend-mode: screen;
+    }
+    #mark {
+      position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+      text-align: center; z-index: 12; pointer-events: none;
+      text-shadow: 0 0 30px rgba(167,139,250,.5), 0 4px 20px #000;
+    }
+    #mark .g { font: 700 11px system-ui; letter-spacing: .28em; color: #a78bfa; text-transform: uppercase; }
+    #mark .i { font: 300 42px/1.05 system-ui; color: #fff; letter-spacing: -.02em; margin-top: .15em; }
+    body.tv #mark .i { font-size: 56px; }
+    #mark .sub { font: 500 12px system-ui; color: rgba(220,210,255,.5); margin-top: .4em; }
+    .reticle {
+      position: absolute; z-index: 15; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+      border: 2px solid; border-radius: 50%; pointer-events: none;
+      box-shadow: 0 0 12px currentColor;
+    }
+    .reticle.you { color: #50c8ff; border-color: #50c8ff; }
+    .reticle.partner { color: #f472b6; border-color: #f472b6; }
+    .reticle.quest { color: #34d399; border-color: #34d399; }
+    #peers {
+      position: fixed; left: 12px; bottom: 52px; z-index: 20;
+      font: 600 11px ui-monospace, monospace; color: #c4b5fd;
+      background: rgba(0,0,0,.5); padding: 6px 10px; border-radius: 6px;
+      border: 1px solid rgba(167,139,250,.25); pointer-events: none;
+      line-height: 1.45;
+    }
+    body.tv #peers { font-size: 13px; bottom: 64px; }
+    #l3 {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 18;
+      padding: 10px 16px 14px;
+      background: linear-gradient(0deg, rgba(5,5,8,.95), transparent);
+      font: 600 12px ui-monospace, monospace; color: #c4b5fd;
+      pointer-events: none;
+    }
+    body.tv #l3 { font-size: 15px; padding: 14px 22px 18px; }
+    #l3 .zulu { color: #fde68a; }
+    #err {
+      display: none; position: fixed; top: 40%; left: 50%; transform: translateX(-50%);
+      z-index: 50; background: #3a1020; color: #ffc0d0; padding: .75rem 1rem;
+      border-radius: 8px; font: 600 13px system-ui;
+    }
+    #err.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <strong>CRAZY · multi-device</strong>
+    <button type="button" id="btnGyro" class="primary">Phone gyro</button>
+    <button type="button" id="btnZero" class="primary">Zero</button>
+    <button type="button" id="btnUser" class="primary">You</button>
+    <button type="button" id="btnQuest" data-u="quest">Quest</button>
+    <button type="button" id="btnPartner" data-u="partner">Partner</button>
+    <button type="button" id="btnRecast" class="primary">Recast TV</button>
+    <button type="button" id="btnPlay">Play center</button>
+    <span class="meta" id="meta">…</span>
+  </div>
+  <div id="err"></div>
+  <div id="stage">
+    <div id="nebula"></div>
+    <div id="mark">
+      <div class="g">Grok · multi-vantage</div>
+      <div class="i">CRAZY CAST</div>
+      <div class="sub">phone · partner · quest → TV perspective</div>
+    </div>
+    <div id="cube-wrap">
+      <div class="cube" id="cube">
+        <div class="face f"></div><div class="face b"></div>
+        <div class="face l"></div><div class="face r"></div>
+        <div class="face u"></div><div class="face d"></div>
+      </div>
+    </div>
+    <div id="portal">
+      <div class="label">ZANE · center · mute</div>
+      <video id="vid" playsinline webkit-playsinline muted loop autoplay></video>
+    </div>
+    <div id="glass"></div>
+    <div class="reticle you" id="retYou"></div>
+    <div class="reticle partner" id="retPartner" style="display:none"></div>
+    <div class="reticle quest" id="retQuest" style="display:none"></div>
+  </div>
+  <div id="peers">peers · waiting</div>
+  <div id="l3">TIMESYNC · … · crazy multi-device</div>
+<script>
+(function () {
+  'use strict';
+  var u = new URL(location.href);
+  var isTv = u.searchParams.get('tv') === '1' || u.searchParams.get('cast') === '1';
+  var myUser = u.searchParams.get('user') || 'you';
+  if (isTv) document.body.classList.add('tv');
+  else document.body.classList.add('control');
+
+  var viewer = { yaw: 0, pitch: 0, roll: 0, z: 1, source: 'init', user: myUser };
+  var peers = {};
+  var smooth = { yaw: 0, pitch: 0, roll: 0, z: 1 };
+  var baseBeta = null, baseGamma = null;
+  var lastReload = null;
+  var users = ['you', 'partner', 'quest'];
+  var userIdx = Math.max(0, users.indexOf(myUser));
+
+  var nebula = document.getElementById('nebula');
+  var cube = document.getElementById('cube');
+  var cubeWrap = document.getElementById('cube-wrap');
+  var portal = document.getElementById('portal');
+  var vid = document.getElementById('vid');
+  var meta = document.getElementById('meta');
+  var peersEl = document.getElementById('peers');
+
+  // center media
+  var src = u.searchParams.get('src') || '/media/zane-center.mp4';
+  try { vid.src = src; vid.play().catch(function () {}); } catch (e) {}
+
+  function applyPose() {
+    var sm = 0.28;
+    smooth.yaw = smooth.yaw * sm + viewer.yaw * (1 - sm);
+    smooth.pitch = smooth.pitch * sm + viewer.pitch * (1 - sm);
+    smooth.roll = smooth.roll * sm + (viewer.roll || 0) * (1 - sm);
+    smooth.z = smooth.z * sm + (viewer.z || 1) * (1 - sm);
+    var k = 68;
+    var y = smooth.yaw * k;
+    var p = smooth.pitch * k;
+    var z = smooth.z;
+    nebula.style.transform = 'translate3d(' + (-y * 0.4) + 'px,' + (-p * 0.35) + 'px,0) scale(' + (1.08 + (z - 1) * 0.05) + ')';
+    portal.style.transform =
+      'translate(calc(-50% + ' + (-y * 1.1) + 'px), calc(-50% + ' + (-p * 0.95) + 'px)) scale(' + (1 + (z - 1) * 0.08) + ') ' +
+      'rotateY(' + (smooth.yaw * -10) + 'deg) rotateX(' + (smooth.pitch * 8) + 'deg)';
+    cubeWrap.style.transform =
+      'translate(calc(-50% + ' + (-y * 0.5) + 'px), calc(-50% + ' + (-p * 0.45) + 'px))';
+    cube.style.transform =
+      'rotateX(' + (18 + smooth.pitch * 42) + 'deg) rotateY(' + (-smooth.yaw * 48) + 'deg) rotateZ(' + (smooth.roll * 16) + 'deg) scale(' + (0.9 + z * 0.15) + ')';
+
+    // multi-user reticles (screen space)
+    placeReticle('retYou', peers.you || (myUser === 'you' ? viewer : null), '#50c8ff');
+    placeReticle('retPartner', peers.partner || (myUser === 'partner' ? viewer : null), '#f472b6');
+    placeReticle('retQuest', peers.quest || (myUser === 'quest' ? viewer : null), '#34d399');
+
+    var peerLines = [];
+    ['you', 'partner', 'quest'].forEach(function (id) {
+      var v = peers[id] || (id === myUser ? viewer : null);
+      if (v && v.source && v.source !== 'init') {
+        peerLines.push(id + ' · ' + (v.source || '?') + ' y' + (v.yaw || 0).toFixed(2) + ' p' + (v.pitch || 0).toFixed(2));
+      }
+    });
+    peersEl.textContent = peerLines.length ? peerLines.join('\n') : 'peers · waiting for gyro / quest';
+    meta.textContent = myUser + ' · ' + (viewer.source || '?') + ' · y' + viewer.yaw.toFixed(2) + ' p' + viewer.pitch.toFixed(2);
+  }
+
+  function placeReticle(id, v) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (!v || v.source === 'init' || v.source === 'idle') {
+      el.style.display = isTv ? 'none' : (id === 'retYou' && myUser === 'you' ? 'block' : 'none');
+      if (!isTv && id === 'retYou') {
+        el.style.left = (window.innerWidth / 2) + 'px';
+        el.style.top = (window.innerHeight / 2) + 'px';
+      }
+      return;
+    }
+    el.style.display = 'block';
+    var cx = window.innerWidth / 2 + (v.yaw || 0) * 140;
+    var cy = window.innerHeight / 2 + (v.pitch || 0) * 140;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+  }
+
+  function onOrient(e) {
+    if (isTv) return;
+    var beta = e.beta, gamma = e.gamma;
+    if (beta == null || gamma == null) return;
+    if (baseBeta == null) { baseBeta = beta; baseGamma = gamma; }
+    viewer.yaw = ((gamma - baseGamma) / 45);
+    viewer.pitch = ((beta - baseBeta) / 50);
+    viewer.roll = (e.alpha ? 0 : 0);
+    viewer.z = 1;
+    viewer.source = 'gyro';
+    viewer.user = myUser;
+    viewer.t = Date.now() / 1000;
+    applyPose();
+    if (!onOrient._t || Date.now() - onOrient._t > 70) {
+      onOrient._t = Date.now();
+      pushPose();
+    }
+  }
+
+  function pushPose() {
+    if (isTv) return;
+    fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        surface: 'crazy',
+        controller: 'crazy-' + myUser,
+        viewer: {
+          yaw: viewer.yaw,
+          pitch: viewer.pitch,
+          roll: viewer.roll || 0,
+          z: viewer.z,
+          source: viewer.source,
+          user: myUser,
+          t: Date.now() / 1000,
+        },
+        vantage: { user: myUser },
+        crazy_peers: (function () {
+          var o = {};
+          o[myUser] = {
+            yaw: viewer.yaw, pitch: viewer.pitch, z: viewer.z,
+            source: viewer.source, t: Date.now() / 1000,
+          };
+          return o;
+        })(),
+      }),
+    }).catch(function () {});
+  }
+
+  async function pullState() {
+    try {
+      var r = await fetch('/api/state?_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      var st = await r.json();
+      if (st.tv_cmd && st.tv_cmd.reload_token != null) {
+        if (lastReload != null && st.tv_cmd.reload_token !== lastReload) {
+          location.reload(); return;
+        }
+        lastReload = st.tv_cmd.reload_token;
+      }
+      // merge peers
+      if (st.crazy_peers && typeof st.crazy_peers === 'object') {
+        Object.keys(st.crazy_peers).forEach(function (k) {
+          peers[k] = st.crazy_peers[k];
+        });
+      }
+      // TV follows primary viewer; also show multi reticles
+      if (isTv && st.viewer) {
+        viewer.yaw = Number(st.viewer.yaw) || 0;
+        viewer.pitch = Number(st.viewer.pitch) || 0;
+        viewer.roll = Number(st.viewer.roll) || 0;
+        viewer.z = Number(st.viewer.z) || 1;
+        viewer.source = st.viewer.source || 'hub';
+        if (st.viewer.user) peers[st.viewer.user] = st.viewer;
+      }
+      // control: keep own gyro, track others
+      if (!isTv && st.viewer && st.viewer.user && st.viewer.user !== myUser) {
+        peers[st.viewer.user] = st.viewer;
+      }
+      applyPose();
+    } catch (e) {}
+  }
+
+  async function pullClock() {
+    try {
+      var r = await fetch('/api/clock?_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      var snap = await r.json();
+      var z = snap.zulu || '';
+      var zp = z.length >= 7 ? z.slice(0, 2) + ':' + z.slice(2, 4) + ':' + z.slice(4, 6) + ' Z' : z;
+      document.getElementById('l3').innerHTML =
+        'TIMESYNC · <span class="zulu">' + zp + '</span> · CRAZY · multi-device · ' + myUser;
+    } catch (e) {}
+  }
+
+  document.getElementById('btnGyro').onclick = async function () {
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        var p = await DeviceOrientationEvent.requestPermission();
+        if (p !== 'granted') { alert('gyro denied'); return; }
+      }
+      baseBeta = baseGamma = null;
+      window.addEventListener('deviceorientation', onOrient, true);
+      document.getElementById('btnGyro').classList.add('active');
+      document.getElementById('btnGyro').textContent = 'Gyro on';
+    } catch (e) { alert(e); }
+  };
+  document.getElementById('btnZero').onclick = function () {
+    baseBeta = baseGamma = null;
+    viewer.yaw = viewer.pitch = 0;
+    applyPose();
+    pushPose();
+  };
+  document.getElementById('btnUser').onclick = function () {
+    userIdx = (userIdx + 1) % users.length;
+    myUser = users[userIdx];
+    document.getElementById('btnUser').textContent = myUser;
+    viewer.user = myUser;
+    var url = new URL(location.href);
+    url.searchParams.set('user', myUser);
+    history.replaceState({}, '', url);
+  };
+  document.getElementById('btnPartner').onclick = function () {
+    location.href = '/crazy?user=partner&pwa=1';
+  };
+  document.getElementById('btnQuest').onclick = function () {
+    location.href = '/crazy?user=quest&pwa=1';
+  };
+  document.getElementById('btnRecast').onclick = function () {
+    fetch('/api/tv/recast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device: 'Smart TV', url: location.origin + '/crazy?tv=1' }),
+    }).catch(function () {});
+  };
+  document.getElementById('btnPlay').onclick = function () {
+    vid.muted = false;
+    vid.play().catch(function () {});
+  };
+
+  // idle breathe on TV if no pose
+  var idle = 0;
+  function tick() {
+    if (isTv && (!viewer.source || viewer.source === 'init' || viewer.source === 'idle')) {
+      idle += 0.01;
+      viewer.yaw = Math.sin(idle) * 0.35;
+      viewer.pitch = Math.cos(idle * 0.7) * 0.2;
+      viewer.source = 'idle';
+      applyPose();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // deep-merge crazy_peers on hub via state posts from each device
+  // TV polls full state
+  pullState();
+  setInterval(pullState, isTv ? 80 : 200);
+  pullClock();
+  setInterval(pullClock, 500);
+  tick();
+  applyPose();
+
+  if (!isTv && (window.isSecureContext || /pwa=1/.test(location.search))) {
+    // auto-try gyro on secure
+    document.getElementById('btnGyro').click();
+  }
+
+  fetch('/api/state', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ surface: 'crazy', variation: 'crazy-multi' }),
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>
