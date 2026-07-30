@@ -3,17 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#030208" />
+  <meta name="theme-color" content="#0a0a0c" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>GrokCast · Cube Webgrid · True Depth</title>
+  <title>Grok × Apple Music · Cube Webgrid</title>
   <style>
+    :root {
+      --am-pink: #fa586a;
+      --am-red: #fc3c44;
+      --ink: #f5f5f7;
+      --void: #050508;
+      --violet: #a78bfa;
+      --cyan: #38bdf8;
+      --mx: 50%;
+      --my: 50%;
+    }
     * { box-sizing: border-box; margin: 0; }
     html, body {
-      height: 100%; overflow: hidden; background: #030208; color: #f4f0ff;
-      font-family: "SF Pro Display", system-ui, sans-serif;
+      height: 100%; overflow: hidden; background: var(--void); color: var(--ink);
+      font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
     }
     body.tv #bar { display: none; }
+
     #frame {
       position: absolute; inset: 0;
       display: grid; place-items: center;
@@ -23,48 +34,193 @@
       position: relative;
       width: min(100vw, calc(100vh * 16 / 9));
       height: min(100vh, calc(100vw * 9 / 16));
-      max-width: 100%; max-height: 100%;
       overflow: hidden;
-      background: #030208;
-      perspective: 1100px;
+      background: var(--void);
+      perspective: 1400px;
       perspective-origin: 50% 46%;
     }
-    body.tv #viewport {
-      width: 100vw; height: 100vh;
-      max-width: none; max-height: none;
+    body.tv #viewport { width: 100vw; height: 100vh; }
+
+    /* ═══ FULL BG — Framer marketplace stack (burn · ripple · spheres · warp · trails · base-box · astra) ═══ */
+    #bg-root {
+      position: absolute; inset: 0; z-index: 0;
+      overflow: hidden; pointer-events: none;
+      transform-style: preserve-3d;
     }
     #sky {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      display: block; z-index: 0;
+      position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+      opacity: 1;
     }
+    /* Astra-like soft orbs behind everything */
+    #astra {
+      position: absolute; inset: -20%;
+      background:
+        radial-gradient(ellipse 45% 40% at 20% 30%, rgba(250,88,106,.28), transparent 55%),
+        radial-gradient(ellipse 40% 45% at 80% 70%, rgba(167,139,250,.22), transparent 55%),
+        radial-gradient(ellipse 35% 30% at 55% 20%, rgba(56,189,248,.12), transparent 50%),
+        radial-gradient(ellipse 60% 50% at 50% 100%, rgba(252,60,68,.1), transparent 60%);
+      filter: blur(2px);
+      animation: astraDrift 18s ease-in-out infinite alternate;
+    }
+    @keyframes astraDrift {
+      from { transform: scale(1) translate(0,0); }
+      to { transform: scale(1.08) translate(-2%, 1%); }
+    }
+
+    /* Magnetic ripple grid (Framer magnetic-ripple-grid) */
+    #ripple {
+      position: absolute; inset: -8%;
+      display: grid;
+      grid-template-columns: repeat(28, 1fr);
+      grid-template-rows: repeat(16, 1fr);
+      opacity: .72;
+      mix-blend-mode: screen;
+      z-index: 2;
+    }
+    #ripple i {
+      display: block;
+      border-radius: 50%;
+      width: 5px; height: 5px;
+      margin: auto;
+      background: rgba(250, 88, 106, .4);
+      box-shadow: 0 0 8px rgba(167, 139, 250, .35);
+      transform: scale(var(--s, 1));
+      will-change: transform;
+    }
+
+    /* 3D grid trails */
+    #trails {
+      position: absolute; inset: 0;
+      overflow: hidden;
+      opacity: .55;
+      z-index: 3;
+      mix-blend-mode: screen;
+    }
+    #trails canvas { width: 100%; height: 100%; display: block; }
+
+    /* CMS warp gallery (depth carousel of album art) */
+    #warp {
+      position: absolute; left: -15%; right: -15%; top: 8%;
+      height: 32%;
+      display: flex; gap: 22px; align-items: center;
+      transform-style: preserve-3d;
+      transform: rotateX(14deg) translateZ(-280px);
+      opacity: .7;
+      z-index: 4;
+      perspective: 900px;
+    }
+    #warp .card {
+      flex: 0 0 150px; height: 150px;
+      border-radius: 14px;
+      background-size: cover; background-position: center;
+      background-color: #1c1c1e;
+      box-shadow: 0 24px 48px #000a, 0 0 0 1px rgba(255,255,255,.1);
+      transform: rotateY(var(--ry, 0deg)) translateZ(var(--tz, 0px)) scale(var(--sc, 1));
+      filter: saturate(1.2) brightness(1.05);
+      transition: transform .4s ease, filter .3s;
+    }
+    #warp .card.variant-b { border-radius: 50%; }
+    #warp .card.variant-c { border-radius: 4px; filter: hue-rotate(40deg) saturate(1.4); }
+
+    /* Image spheres */
+    #spheres {
+      position: absolute; inset: 0;
+      transform-style: preserve-3d;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .sphere {
+      position: absolute;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      background-color: #1a1030;
+      box-shadow:
+        inset -14px -18px 36px rgba(0,0,0,.6),
+        inset 12px 14px 24px rgba(255,255,255,.14),
+        0 0 50px rgba(250,88,106,.28);
+      will-change: transform;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    /* Base-box floating wire cubes in deep BG */
+    #baseboxes {
+      position: absolute; inset: 0;
+      transform-style: preserve-3d;
+      z-index: 1;
+      opacity: .35;
+    }
+    .bbox {
+      position: absolute;
+      width: 80px; height: 80px;
+      left: 50%; top: 50%;
+      transform-style: preserve-3d;
+      border: 1px solid rgba(250,88,106,.35);
+      box-shadow: 0 0 20px rgba(167,139,250,.15), inset 0 0 20px rgba(250,88,106,.08);
+      background: linear-gradient(135deg, rgba(250,88,106,.06), rgba(167,139,250,.04));
+    }
+    .bbox::before, .bbox::after {
+      content: "";
+      position: absolute; inset: -1px;
+      border: 1px solid rgba(167,139,250,.25);
+      transform: translateZ(40px);
+    }
+    .bbox::after { transform: rotateY(90deg) translateZ(40px); border-color: rgba(56,189,248,.2); }
+
+    /* Burn / vignette + magnetic glow (Framer burn) */
+    #burn {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 75% 65% at 50% 50%, transparent 22%, rgba(0,0,0,.45) 70%, #000 100%),
+        radial-gradient(ellipse 42% 32% at 72% 18%, rgba(250,88,106,.16), transparent 52%),
+        radial-gradient(ellipse 30% 28% at 20% 80%, rgba(167,139,250,.1), transparent 50%);
+      mix-blend-mode: multiply;
+      pointer-events: none;
+      z-index: 15;
+    }
+    #burn::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle 28% at var(--mx) var(--my),
+        rgba(250,88,106,.22), transparent 55%);
+      mix-blend-mode: screen;
+      opacity: .85;
+    }
+    #burn::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle 18% at calc(var(--mx) + 8%) calc(var(--my) - 6%),
+        rgba(167,139,250,.14), transparent 50%);
+      mix-blend-mode: screen;
+      opacity: .7;
+    }
+
+    /* ═══ 3D WORLD + CUBE WEBGRID ═══ */
     #world {
       position: absolute; left: 50%; top: 50%;
       width: 0; height: 0;
       transform-style: preserve-3d;
       transform: translate(-50%, -50%);
       will-change: transform;
-      z-index: 1;
+      z-index: 10;
     }
     #floor {
       position: absolute;
-      width: 2800px; height: 2800px;
-      left: -1400px; top: -1400px;
+      width: 3600px; height: 3600px;
+      left: -1800px; top: -1800px;
       background:
-        linear-gradient(90deg, rgba(167,139,250,.18) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(96,165,250,.12) 1px, transparent 1px);
-      background-size: 70px 70px;
-      transform: rotateX(90deg) translateZ(-20px);
-      transform-origin: center center;
-      mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 15%, transparent 72%);
-      -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 15%, transparent 72%);
-      pointer-events: none;
+        linear-gradient(90deg, rgba(250,88,106,.18) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(167,139,250,.14) 1px, transparent 1px),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(250,88,106,.06), transparent 70%);
+      background-size: 72px 72px, 72px 72px, 100% 100%;
+      transform: rotateX(90deg) translateZ(-14px);
+      mask-image: radial-gradient(ellipse 46% 46% at 50% 50%, #000 8%, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse 46% 46% at 50% 50%, #000 8%, transparent 72%);
     }
-    /* ── Cube WEBGRID ─────────────────────────────────── */
     #grid {
       position: absolute;
-      left: 0; top: 0;
       transform-style: preserve-3d;
-      transform: translateZ(40px);
+      transform: translateZ(70px);
     }
     .cell {
       position: absolute;
@@ -73,160 +229,205 @@
       cursor: pointer;
     }
     .cube {
-      position: absolute;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
+      position: absolute; inset: 0;
       transform-style: preserve-3d;
       transform-origin: center center;
     }
     .face {
-      position: absolute;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
-      /* WRAP: each face is a full tile of continuous pattern */
-      background-size: 100% 100%;
-      background-repeat: no-repeat;
-      border: 1px solid rgba(233,213,255,.4);
-      backface-visibility: hidden;
-      overflow: hidden;
-      box-shadow: inset 0 0 24px rgba(0,0,0,.35);
-    }
-    .face .label {
-      position: absolute; left: 6px; bottom: 5px;
-      font: 700 9px ui-monospace, monospace;
-      color: rgba(255,255,255,.75);
-      text-shadow: 0 1px 3px #000;
-      letter-spacing: .04em;
-      pointer-events: none;
-    }
-    .face .wrap {
       position: absolute; inset: 0;
-      background-size: cover;
-      background-position: center;
-      opacity: .95;
+      backface-visibility: hidden;
+      border: 1px solid rgba(255,255,255,.22);
+      overflow: hidden;
+      background: #0e0e12;
+      box-shadow: inset 0 0 24px rgba(0,0,0,.45);
     }
-    /* Seam continuity: shared gradient families wrap around cube */
-    .cell.hot .face {
-      border-color: rgba(253,224,71,.85);
-      box-shadow:
-        inset 0 0 30px rgba(251,191,36,.2),
-        0 0 28px rgba(251,191,36,.35);
+    .face .art {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      background-size: 220% 220%;
+      background-position: 50% 50%;
+      background-repeat: no-repeat;
+      display: block;
+      transition: opacity .35s ease;
     }
-    .cell.near .face {
-      border-color: rgba(96,165,250,.75);
-      box-shadow: inset 0 0 20px rgba(56,189,248,.15), 0 0 18px rgba(56,189,248,.25);
+    /* Live video layer — perspective UV via object-position */
+    .face video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: 50% 50%;
+      display: none;
+      background: #000;
+      z-index: 1;
     }
-    .cell.focus {
-      z-index: 5;
+    .face.front  video { object-position: 50% 50%; }
+    .face.back   video { object-position: 0% 50%; transform: scaleX(-1); }
+    .face.right  video { object-position: 100% 50%; }
+    .face.left   video { object-position: 0% 50%; }
+    .face.top    video { object-position: 50% 0%; }
+    .face.bottom video { object-position: 50% 100%; }
+
+    .face.front  .art { background-position: 50% 50%; }
+    .face.back   .art { background-position: 0% 50%; transform: scaleX(-1); }
+    .face.right  .art { background-position: 100% 50%; }
+    .face.left   .art { background-position: 0% 50%; }
+    .face.top    .art { background-position: 50% 0%; }
+    .face.bottom .art { background-position: 50% 100%; }
+
+    .cell.live .face video { display: block; }
+    .cell.live .face .art { opacity: .22; }
+    .cell.live .face.front .art { opacity: .08; }
+
+    .face .badge {
+      position: absolute; left: 5px; bottom: 4px; z-index: 3;
+      font: 700 8px ui-monospace, monospace;
+      color: #fff; text-shadow: 0 1px 3px #000;
+      background: rgba(0,0,0,.5); padding: 1px 5px; border-radius: 3px;
+      max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .face .live-dot {
+      position: absolute; right: 5px; top: 5px; z-index: 3;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--am-pink);
+      box-shadow: 0 0 10px var(--am-pink), 0 0 20px rgba(250,88,106,.5);
+      display: none;
+      animation: livePulse 1.2s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .55; transform: scale(1.25); }
+    }
+    .cell.live .face .live-dot { display: block; }
     .cell.focus .face {
       border-color: #fff;
-      box-shadow:
-        inset 0 0 40px rgba(167,139,250,.35),
-        0 0 40px rgba(139,92,246,.55);
+      box-shadow: inset 0 0 36px rgba(250,88,106,.3), 0 0 42px rgba(167,139,250,.55);
     }
-    /* Connection beams between neighboring cells (2D overlay in 3D) */
+    .cell.near .face {
+      border-color: rgba(56,189,248,.75);
+      box-shadow: 0 0 18px rgba(56,189,248,.35);
+    }
     .beam {
-      position: absolute;
-      height: 2px;
-      transform-origin: left center;
-      background: linear-gradient(90deg, rgba(167,139,250,.0), rgba(167,139,250,.55), rgba(56,189,248,.0));
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity .25s;
+      position: absolute; height: 2px; transform-origin: left center;
+      background: linear-gradient(90deg, transparent, rgba(250,88,106,.7), transparent);
+      opacity: 0; pointer-events: none;
+      box-shadow: 0 0 8px rgba(250,88,106,.4);
     }
     .beam.on { opacity: 1; }
 
     #title {
-      position: absolute; left: 50%; top: 6%; transform: translateX(-50%);
+      position: absolute; left: 50%; top: 4%; transform: translateX(-50%);
       text-align: center; z-index: 20; pointer-events: none;
-      text-shadow: 0 0 40px rgba(167,139,250,.5), 0 4px 24px #000;
+      text-shadow: 0 0 48px rgba(250,88,106,.45), 0 4px 28px #000;
     }
-    #title .g { font: 700 10px system-ui; letter-spacing: .26em; color: #a78bfa; text-transform: uppercase; }
-    #title .i { font: 300 32px/1.05 system-ui; color: #fff; letter-spacing: -.02em; margin-top: .1em; }
-    body.tv #title .i { font-size: 42px; }
-    #title .sub { font: 500 11px system-ui; color: rgba(220,210,255,.5); margin-top: .3em; }
+    #title .g {
+      font: 700 10px system-ui; letter-spacing: .28em;
+      background: linear-gradient(90deg, var(--am-pink), var(--violet), var(--cyan));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+    #title .i { font: 300 36px/1.05 system-ui; color: #fff; margin-top: .12em; letter-spacing: -.025em; }
+    body.tv #title .i { font-size: 48px; }
+    #title .sub { font: 500 11px system-ui; color: rgba(245,245,247,.55); margin-top: .35em; letter-spacing: .04em; }
 
     #bar {
       position: fixed; z-index: 50; inset: 0 0 auto 0;
       display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
-      padding: .4rem .55rem; background: rgba(8,6,16,.94);
-      border-bottom: 1px solid #3a2860; font-size: .7rem;
+      padding: .4rem .55rem; background: rgba(12,10,16,.96);
+      border-bottom: 1px solid #2a2038; font-size: .7rem;
     }
     #bar button, #bar select {
-      background: #1a1430; color: #f0e8ff; border: 1px solid #4a3880;
+      background: #1c1428; color: var(--ink); border: 1px solid #3a3058;
       border-radius: 5px; padding: .28rem .5rem; font: inherit; cursor: pointer;
     }
-    #bar button.primary { background: #2a1860; border-color: #8b5cf6; }
+    #bar button.primary { background: linear-gradient(135deg, #3a1850, #1c1440); border-color: var(--am-pink); }
     #bar button.active { border-color: #fde68a; color: #fde68a; }
     #bar .meta { margin-left: auto; font: 600 10px ui-monospace, monospace; color: #a78bfa; }
+
     #hud {
       position: absolute; left: 12px; bottom: 48px; z-index: 25;
-      font: 600 11px ui-monospace, monospace; color: #c4b5fd;
-      background: rgba(0,0,0,.5); padding: 7px 10px; border-radius: 6px;
-      border: 1px solid rgba(167,139,250,.25); line-height: 1.45;
-      pointer-events: none; max-width: min(92%, 24rem);
+      font: 600 10px ui-monospace, monospace; color: #e8d5ff;
+      background: rgba(0,0,0,.58); padding: 8px 11px; border-radius: 8px;
+      border: 1px solid rgba(250,88,106,.28); line-height: 1.5;
+      pointer-events: none; max-width: min(94%, 28rem);
     }
     body.tv #hud { font-size: 12px; bottom: 56px; opacity: .85; }
     #l3 {
       position: absolute; left: 0; right: 0; bottom: 0; z-index: 24;
       padding: 10px 16px 12px;
-      background: linear-gradient(0deg, rgba(3,2,8,.95), transparent);
-      font: 600 12px ui-monospace, monospace; color: #c4b5fd;
+      background: linear-gradient(0deg, rgba(10,10,12,.97), transparent);
+      font: 600 12px ui-monospace, monospace; color: #e8d5ff;
       pointer-events: none;
     }
     body.tv #l3 { font-size: 14px; padding: 12px 22px 16px; }
     #l3 .zulu { color: #fde68a; }
+    #l3 .am { color: var(--am-pink); font-weight: 800; }
     .reticle {
-      position: absolute; z-index: 30; width: 24px; height: 24px;
-      margin: -12px 0 0 -12px; border: 2px solid; border-radius: 50%;
+      position: absolute; z-index: 30; width: 22px; height: 22px;
+      margin: -11px 0 0 -11px; border: 2px solid; border-radius: 50%;
       pointer-events: none; box-shadow: 0 0 12px currentColor;
     }
     .reticle.you { color: #50c8ff; }
     .reticle.partner { color: #f472b6; }
     .reticle.quest { color: #34d399; }
+
+    #am-dock {
+      display: none;
+      position: fixed; right: 8px; bottom: 56px; z-index: 40;
+      width: min(320px, 42vw); height: 175px;
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid rgba(250,88,106,.4);
+      box-shadow: 0 12px 40px #000a;
+      background: #1c1c1e;
+    }
+    body.control #am-dock { display: block; }
+    #am-dock iframe { width: 100%; height: 100%; border: 0; }
   </style>
 </head>
 <body>
   <div id="bar">
-    <strong>CUBE WEBGRID</strong>
-    <select id="cols" title="Columns">
-      <option value="4">4 cols</option>
-      <option value="5" selected>5 cols</option>
-      <option value="6">6 cols</option>
-      <option value="7">7 cols</option>
-    </select>
-    <select id="rows" title="Rows">
-      <option value="2">2 rows</option>
-      <option value="3" selected>3 rows</option>
-      <option value="4">4 rows</option>
-    </select>
+    <strong>GROK × APPLE MUSIC</strong>
+    <select id="cols"><option value="4">4 cols</option><option value="5" selected>5 cols</option><option value="6">6 cols</option></select>
+    <select id="rows"><option value="2">2 rows</option><option value="3" selected>3 rows</option><option value="4">4 rows</option></select>
     <button type="button" id="btnGyro" class="primary">Phone gyro</button>
-    <button type="button" id="btnZero" class="primary">Zero look</button>
-    <button type="button" id="btnSpin" class="primary active">Auto spin</button>
+    <button type="button" id="btnZero" class="primary">Zero</button>
+    <button type="button" id="btnSpin" class="primary active">Wrap spin</button>
+    <button type="button" id="btnLive" class="primary active">Live map</button>
+    <button type="button" id="btnPlate" class="primary">Next plate</button>
+    <button type="button" id="btnVariant" class="primary">Variants</button>
     <button type="button" id="btnRecast" class="primary">Recast TV</button>
-    <button type="button" id="btnUser">You</button>
+    <button type="button" id="btnRefreshArt">Refresh art</button>
     <span class="meta" id="meta">…</span>
   </div>
   <div id="frame">
     <div id="viewport">
-      <canvas id="sky"></canvas>
+      <div id="bg-root">
+        <div id="astra"></div>
+        <canvas id="sky"></canvas>
+        <div id="baseboxes"></div>
+        <div id="ripple"></div>
+        <div id="trails"><canvas id="trailc"></canvas></div>
+        <div id="warp"></div>
+        <div id="spheres"></div>
+        <div id="burn"></div>
+      </div>
       <div id="world">
         <div id="floor"></div>
         <div id="grid"></div>
       </div>
       <div id="title">
-        <div class="g">Grok Imagine · wrapped faces</div>
-        <div class="i">CUBE WEBGRID</div>
-        <div class="sub">columns of interacting 3D cubes · look to focus</div>
+        <div class="g">Grok × Apple Music</div>
+        <div class="i">PROMO WEBGRID</div>
+        <div class="sub">live video face-mapped · multi-column cubes · not YouTube</div>
       </div>
       <div class="reticle you" id="retYou" style="display:none"></div>
       <div class="reticle partner" id="retPartner" style="display:none"></div>
       <div class="reticle quest" id="retQuest" style="display:none"></div>
-      <div id="hud">webgrid · building…</div>
-      <div id="l3">TIMESYNC · … · cube webgrid</div>
+      <div id="hud">loading Apple Music promo catalog…</div>
+      <div id="l3">TIMESYNC · … · grok × apple music</div>
     </div>
   </div>
+  <div id="am-dock"><iframe id="amFrame" allow="autoplay *; encrypted-media *; fullscreen *" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" title="Apple Music"></iframe></div>
 <script>
 (function () {
   'use strict';
@@ -236,38 +437,37 @@
   if (isTv) document.body.classList.add('tv');
   else document.body.classList.add('control');
 
-  var COLS = parseInt(u.searchParams.get('cols') || '5', 10) || 5;
-  var ROWS = parseInt(u.searchParams.get('rows') || '3', 10) || 3;
-  COLS = Math.max(3, Math.min(8, COLS));
-  ROWS = Math.max(2, Math.min(5, ROWS));
+  var COLS = Math.max(3, Math.min(7, parseInt(u.searchParams.get('cols') || '5', 10) || 5));
+  var ROWS = Math.max(2, Math.min(4, parseInt(u.searchParams.get('rows') || '3', 10) || 3));
   document.getElementById('cols').value = String(COLS);
   document.getElementById('rows').value = String(ROWS);
 
-  var CUBE = isTv ? 108 : 96;       // face size px
-  var GAP = isTv ? 28 : 22;         // space between cubes
+  var CUBE = isTv ? 114 : 102;
+  var GAP = isTv ? 28 : 22;
   var HALF = CUBE / 2;
+  var MAX_VID = isTv ? 2 : 3;
+  var FACES_LIVE = isTv ? 4 : 5; // front/left/right/top (+back on control)
 
-  // Continuous wrap palettes — each cube samples a tile of a shared atlas
-  // so patterns appear to wrap across the grid and around each cube.
-  var PALETTES = [
-    ['#2a1850', '#0c4a6e', '#7c3aed', '#38bdf8'],
-    ['#4c1d95', '#be185d', '#a78bfa', '#f472b6'],
-    ['#0f172a', '#1e3a5f', '#60a5fa', '#c4b5fd'],
-    ['#1a0a2e', '#3b0764', '#e879f9', '#22d3ee'],
-    ['#0c0a1a', '#312e81', '#818cf8', '#fde68a'],
-  ];
-
-  var look = { yaw: 0, pitch: 0, roll: 0, dist: 0 };
-  var target = { yaw: 0, pitch: 0, roll: 0, dist: 0, source: 'init' };
+  var catalog = null;
+  var feeds = [];
+  var artById = {};
+  var livePlates = [];
+  var plateIdx = 0;
+  var look = { yaw: 0, pitch: 0, dist: 0 };
+  var target = { yaw: 0, pitch: 0, dist: 0, source: 'init' };
   var baseBeta = null, baseGamma = null;
   var peers = {};
   var lastReload = null;
   var autoSpin = true;
+  var liveMap = true;
   var focusIdx = -1;
-  var cells = []; // { el, cube, col, row, rotY, rotX, spin, hot }
+  var cells = [];
+  var liveVideoSrc = '/media/zane-center.mp4';
+  var variantMode = 0; // random-variants cycle
+  var feedOffset = 0;
   var t0 = performance.now();
-  var users = ['you', 'partner', 'quest'];
-  var userIdx = Math.max(0, users.indexOf(myUser));
+  var mx = 0.5, my = 0.5;
+  var drag = null;
 
   var world = document.getElementById('world');
   var gridEl = document.getElementById('grid');
@@ -275,18 +475,247 @@
   var meta = document.getElementById('meta');
   var viewport = document.getElementById('viewport');
   var sky = document.getElementById('sky');
+  var trailc = document.getElementById('trailc');
+  var tctx = trailc.getContext('2d');
+  var burn = document.getElementById('burn');
 
-  // ── Build webgrid of cubes ───────────────────────────────────
-  function faceStyle(col, row, face, pi) {
-    // Shared atlas UV so neighbors + faces wrap continuously
-    var u0 = col / COLS;
-    var v0 = row / ROWS;
-    var faceOff = { front: 0, back: 0.5, left: 0.25, right: 0.75, top: 0.12, bottom: 0.38 };
-    var fo = faceOff[face] || 0;
-    var p = PALETTES[pi % PALETTES.length];
-    var ang = (u0 + fo) * 360;
-    return 'linear-gradient(' + ang + 'deg,' +
-      p[0] + ' 0%,' + p[1] + ' 35%,' + p[2] + ' 70%,' + p[3] + ' 100%)';
+  // Visible faces that receive live video (budget)
+  var LIVE_FACE_NAMES = ['front', 'right', 'left', 'top', 'back'];
+
+  // ── Magnetic ripple ──────────────────────────────────────────
+  var ripple = document.getElementById('ripple');
+  var rippleDots = [];
+  (function buildRipple() {
+    var n = 28 * 16;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < n; i++) {
+      var d = document.createElement('i');
+      frag.appendChild(d);
+      rippleDots.push(d);
+    }
+    ripple.appendChild(frag);
+  })();
+
+  function updateRipple() {
+    var cols = 28, rows = 16;
+    for (var i = 0; i < rippleDots.length; i++) {
+      var c = i % cols, r = Math.floor(i / cols);
+      var nx = c / (cols - 1), ny = r / (rows - 1);
+      var dx = nx - mx, dy = ny - my;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      var wave = Math.sin(d * 18 - performance.now() * 0.004) * 0.15;
+      var s = 1 + Math.max(0, 1 - d * 2.0) * 3.6 + wave;
+      var el = rippleDots[i];
+      el.style.setProperty('--s', s.toFixed(2));
+      if (d < 0.22) {
+        el.style.background = 'rgba(250,88,106,' + (0.4 + (1 - d * 4.5) * 0.55).toFixed(2) + ')';
+      } else if (d < 0.45) {
+        el.style.background = 'rgba(167,139,250,' + (0.2 + (0.45 - d) * 0.8).toFixed(2) + ')';
+      } else {
+        el.style.background = 'rgba(56,189,248,' + (0.08 + Math.max(0, 0.15 - d * 0.2)).toFixed(2) + ')';
+      }
+    }
+  }
+
+  // ── 3D grid trails ───────────────────────────────────────────
+  var trailPts = [];
+  var trailGrid = [];
+  function resizeTrails() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    trailc.width = Math.floor(viewport.clientWidth * dpr);
+    trailc.height = Math.floor(viewport.clientHeight * dpr);
+  }
+  function pushTrail(nx, ny) {
+    trailPts.push({ x: nx, y: ny, life: 1 });
+    if (trailPts.length > 56) trailPts.shift();
+  }
+  function drawTrails(t) {
+    var w = trailc.width, h = trailc.height;
+    if (!w) return;
+    tctx.clearRect(0, 0, w, h);
+    var lw = 1.5 * (w / Math.max(viewport.clientWidth, 1));
+
+    // perspective grid lines that trail with look
+    tctx.strokeStyle = 'rgba(167,139,250,0.12)';
+    tctx.lineWidth = lw;
+    var ox = (0.5 + look.yaw / 120) * w;
+    var oy = (0.55 + look.pitch / 90) * h;
+    for (var g = -6; g <= 6; g++) {
+      tctx.beginPath();
+      tctx.moveTo(ox + g * w * 0.08, 0);
+      tctx.lineTo(ox + g * w * 0.14 + Math.sin(t + g) * 8, h);
+      tctx.stroke();
+    }
+    for (var r = 0; r < 10; r++) {
+      var yy = h * 0.35 + r * h * 0.07 + Math.sin(t * 0.5 + r) * 4;
+      tctx.beginPath();
+      tctx.moveTo(0, yy);
+      tctx.lineTo(w, yy + (yy - oy) * 0.05);
+      tctx.stroke();
+    }
+
+    // pointer / look trail ribbon
+    tctx.lineWidth = 2.5 * (w / Math.max(viewport.clientWidth, 1));
+    tctx.lineJoin = 'round';
+    for (var i = 1; i < trailPts.length; i++) {
+      var a = trailPts[i - 1], b = trailPts[i];
+      a.life *= 0.975; b.life *= 0.975;
+      tctx.strokeStyle = 'rgba(250,88,106,' + (b.life * 0.65).toFixed(2) + ')';
+      tctx.beginPath();
+      tctx.moveTo(a.x * w, a.y * h);
+      tctx.lineTo(b.x * w, b.y * h);
+      tctx.stroke();
+      tctx.fillStyle = 'rgba(167,139,250,' + (b.life * 0.35).toFixed(2) + ')';
+      tctx.beginPath();
+      tctx.arc(b.x * w, b.y * h, 3 * b.life * (w / 800), 0, Math.PI * 2);
+      tctx.fill();
+    }
+  }
+
+  // ── Base-box floating wireframes ─────────────────────────────
+  (function buildBaseBoxes() {
+    var root = document.getElementById('baseboxes');
+    for (var i = 0; i < 7; i++) {
+      var b = document.createElement('div');
+      b.className = 'bbox';
+      b.dataset.i = String(i);
+      root.appendChild(b);
+    }
+  })();
+  function tickBaseBoxes(t) {
+    var boxes = document.querySelectorAll('.bbox');
+    for (var i = 0; i < boxes.length; i++) {
+      var ph = i * 0.9;
+      var x = Math.sin(t * 0.25 + ph) * 38 + (i - 3) * 12;
+      var y = Math.cos(t * 0.2 + ph) * 22 + Math.sin(t * 0.4 + i) * 8;
+      var z = -400 + Math.sin(t * 0.3 + ph) * 80 - i * 40;
+      var ry = t * 12 + i * 40;
+      var rx = 20 + Math.sin(t * 0.5 + ph) * 15;
+      boxes[i].style.transform =
+        'translate3d(calc(-50% + ' + x + 'vw), calc(-50% + ' + y + 'vh), ' + z + 'px) ' +
+        'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg) scale(' + (0.7 + (i % 3) * 0.2) + ')';
+    }
+  }
+
+  // ── Catalog + iTunes art ─────────────────────────────────────
+  async function loadCatalog() {
+    try {
+      var r = await fetch('/api/music/catalog?_=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) catalog = await r.json();
+    } catch (e) {}
+    if (!catalog) {
+      try {
+        var r2 = await fetch('/apple-music-catalog.json?_=' + Date.now());
+        if (r2.ok) catalog = await r2.json();
+      } catch (e2) {}
+    }
+    feeds = (catalog && catalog.feeds) || [];
+    if (catalog && catalog.layout) {
+      if (catalog.layout.cols) COLS = catalog.layout.cols;
+      if (catalog.layout.rows) ROWS = catalog.layout.rows;
+    }
+    livePlates = (catalog && catalog.live_plates) || [];
+    var firstVideo = livePlates.find(function (p) { return p && p.src; });
+    if (firstVideo) liveVideoSrc = firstVideo.src;
+    if (catalog && catalog.decode_budget) {
+      MAX_VID = isTv
+        ? (catalog.decode_budget.tv_max_videos || 2)
+        : (catalog.decode_budget.control_max_videos || 3);
+      FACES_LIVE = catalog.decode_budget.faces_per_live_cube || FACES_LIVE;
+    }
+  }
+
+  async function fetchArt(feed) {
+    var term = encodeURIComponent(feed.search || feed.label || 'Apple Music');
+    var entity = feed.entity || 'album';
+    try {
+      var r = await fetch(
+        'https://itunes.apple.com/search?term=' + term + '&entity=' + entity + '&limit=3'
+      );
+      if (!r.ok) throw new Error('itunes ' + r.status);
+      var j = await r.json();
+      if (j.results && j.results.length) {
+        // pick richest artwork
+        for (var i = 0; i < j.results.length; i++) {
+          var art = j.results[i].artworkUrl100 || j.results[i].artworkUrl60;
+          if (art) {
+            return art
+              .replace('100x100bb', '600x600bb')
+              .replace('60x60bb', '600x600bb');
+          }
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async function loadAllArt() {
+    await Promise.all(feeds.map(function (f) {
+      return fetchArt(f).then(function (url) { artById[f.id] = url; });
+    }));
+  }
+
+  // ── Warp gallery + spheres (random variants) ─────────────────
+  function buildWarpAndSpheres() {
+    var warp = document.getElementById('warp');
+    var spheres = document.getElementById('spheres');
+    warp.innerHTML = '';
+    spheres.innerHTML = '';
+    var arts = Object.keys(artById).map(function (k) { return artById[k]; }).filter(Boolean);
+    if (!arts.length) {
+      // Apple Music pink placeholders
+      for (var p = 0; p < 8; p++) arts.push(null);
+    }
+    var nCards = Math.min(14, Math.max(8, arts.length));
+    for (var i = 0; i < nCards; i++) {
+      var c = document.createElement('div');
+      c.className = 'card';
+      var v = (variantMode + i) % 3;
+      if (v === 1) c.classList.add('variant-b');
+      if (v === 2) c.classList.add('variant-c');
+      var art = arts[i % arts.length];
+      if (art) c.style.backgroundImage = 'url(' + art + ')';
+      else c.style.background =
+        'linear-gradient(' + (120 + i * 28) + 'deg,#fa586a,#3b0764 45%,#0c4a6e)';
+      c.style.setProperty('--ry', ((i - nCards / 2) * 9) + 'deg');
+      c.style.setProperty('--tz', (Math.sin(i * 0.9) * 55) + 'px');
+      c.style.setProperty('--sc', String(0.85 + (i % 3) * 0.08));
+      warp.appendChild(c);
+    }
+    for (var s = 0; s < 7; s++) {
+      var sp = document.createElement('div');
+      sp.className = 'sphere';
+      var size = 64 + s * 16;
+      sp.style.width = size + 'px';
+      sp.style.height = size + 'px';
+      sp.style.left = (6 + (s * 13) % 88) + '%';
+      sp.style.top = (48 + (s % 4) * 12) + '%';
+      var a2 = arts[s % arts.length];
+      if (a2) sp.style.backgroundImage = 'url(' + a2 + ')';
+      else sp.style.background = 'radial-gradient(circle at 30% 30%,#fa586a,#1a1030)';
+      sp.dataset.phase = String(s * 1.15);
+      spheres.appendChild(sp);
+    }
+  }
+
+  // UV offsets so one video wraps continuously around cube faces
+  function faceUV(c, r, faceName) {
+    var u0 = (c / Math.max(COLS - 1, 1)) * 40;
+    var v0 = (r / Math.max(ROWS - 1, 1)) * 30;
+    var map = {
+      front:  (50 + u0 * 0.2) + '% ' + (50 + v0 * 0.1) + '%',
+      back:   (10 + u0 * 0.15) + '% 50%',
+      left:   (5 + u0 * 0.1) + '% 50%',
+      right:  (95 - u0 * 0.1) + '% 50%',
+      top:    (50 + u0 * 0.15) + '% ' + (8 + v0 * 0.2) + '%',
+      bottom: (50 + u0 * 0.15) + '% ' + (92 - v0 * 0.2) + '%',
+    };
+    return map[faceName] || '50% 50%';
+  }
+
+  function feedForIndex(idx) {
+    if (!feeds.length) return { id: 'f' + idx, label: 'Mix ' + (idx + 1) };
+    return feeds[(idx + feedOffset) % feeds.length];
   }
 
   function buildGrid() {
@@ -294,73 +723,89 @@
     cells = [];
     var totalW = COLS * CUBE + (COLS - 1) * GAP;
     var totalH = ROWS * CUBE + (ROWS - 1) * GAP;
-    var originX = -totalW / 2;
-    var originY = -totalH / 2;
+    var ox = -totalW / 2, oy = -totalH / 2;
+    HALF = CUBE / 2;
 
     for (var r = 0; r < ROWS; r++) {
       for (var c = 0; c < COLS; c++) {
         var idx = r * COLS + c;
+        var feed = feedForIndex(idx);
         var cell = document.createElement('div');
         cell.className = 'cell';
-        cell.dataset.idx = String(idx);
-        cell.dataset.col = String(c);
-        cell.dataset.row = String(r);
         cell.style.width = CUBE + 'px';
         cell.style.height = CUBE + 'px';
-        var x = originX + c * (CUBE + GAP);
-        var y = originY + r * (CUBE + GAP);
-        // slight Z stagger for depth interest
+        var x = ox + c * (CUBE + GAP);
+        var y = oy + r * (CUBE + GAP);
         var z = ((c + r) % 3) * 18 - 18;
         cell.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px)';
 
         var cube = document.createElement('div');
         cube.className = 'cube';
         var faces = [
-          ['front',  'translateZ(' + HALF + 'px)'],
-          ['back',   'rotateY(180deg) translateZ(' + HALF + 'px)'],
-          ['right',  'rotateY(90deg) translateZ(' + HALF + 'px)'],
-          ['left',   'rotateY(-90deg) translateZ(' + HALF + 'px)'],
-          ['top',    'rotateX(90deg) translateZ(' + HALF + 'px)'],
+          ['front', 'translateZ(' + HALF + 'px)'],
+          ['back', 'rotateY(180deg) translateZ(' + HALF + 'px)'],
+          ['right', 'rotateY(90deg) translateZ(' + HALF + 'px)'],
+          ['left', 'rotateY(-90deg) translateZ(' + HALF + 'px)'],
+          ['top', 'rotateX(90deg) translateZ(' + HALF + 'px)'],
           ['bottom', 'rotateX(-90deg) translateZ(' + HALF + 'px)'],
         ];
-        var pi = (c * 3 + r * 5) % PALETTES.length;
+        var art = artById[feed.id];
+        var accent = feed.accent || '#fa586a';
         for (var f = 0; f < faces.length; f++) {
-          var name = faces[f][0];
-          var xf = faces[f][1];
+          var fname = faces[f][0];
           var face = document.createElement('div');
-          face.className = 'face ' + name;
-          face.style.transform = xf;
-          // WRAP: continuous gradient + secondary wrap layer offset by face
-          face.style.backgroundImage = faceStyle(c, r, name, pi);
-          var wrap = document.createElement('div');
-          wrap.className = 'wrap';
-          // second layer scrolls so pattern "wraps" around as cube spins
-          wrap.style.backgroundImage =
-            'repeating-linear-gradient(' + (45 + f * 30) + 'deg,' +
-            'transparent 0 12px, rgba(255,255,255,.06) 12px 13px,' +
-            'transparent 13px 26px)';
-          face.appendChild(wrap);
-          var lab = document.createElement('div');
-          lab.className = 'label';
-          lab.textContent = (c + 1) + '·' + (r + 1) + (f === 0 ? '' : '');
-          if (f === 0) face.appendChild(lab);
+          face.className = 'face ' + fname;
+          face.style.transform = faces[f][1];
+          face.dataset.face = fname;
+
+          var artEl = document.createElement('div');
+          artEl.className = 'art';
+          if (art) {
+            artEl.style.backgroundImage = 'url(' + art + ')';
+            artEl.style.backgroundPosition = faceUV(c, r, fname);
+          } else {
+            artEl.style.background =
+              'linear-gradient(' + (45 + f * 40 + c * 15) + 'deg,' + accent + ',#3b0764 50%,#0c4a6e)';
+          }
+          face.appendChild(artEl);
+
+          // Video node ready for live map (src attached only when live)
+          var vid = document.createElement('video');
+          vid.muted = true;
+          vid.loop = true;
+          vid.playsInline = true;
+          vid.preload = 'none';
+          vid.setAttribute('playsinline', '');
+          vid.setAttribute('webkit-playsinline', '');
+          vid.setAttribute('muted', '');
+          vid.dataset.face = fname;
+          vid.style.objectPosition = faceUV(c, r, fname);
+          face.appendChild(vid);
+
+          if (f === 0) {
+            var badge = document.createElement('div');
+            badge.className = 'badge';
+            badge.textContent = feed.label || feed.id;
+            face.appendChild(badge);
+          }
+          var dot = document.createElement('div');
+          dot.className = 'live-dot';
+          face.appendChild(dot);
           cube.appendChild(face);
         }
         cell.appendChild(cube);
-        gridEl.appendChild(cell);
 
-        // neighbor beams (horizontal + vertical)
         if (c < COLS - 1) {
           var bh = document.createElement('div');
-          bh.className = 'beam h';
+          bh.className = 'beam';
           bh.style.width = GAP + 'px';
-          bh.style.left = (CUBE) + 'px';
+          bh.style.left = CUBE + 'px';
           bh.style.top = (HALF - 1) + 'px';
           cell.appendChild(bh);
         }
         if (r < ROWS - 1) {
           var bv = document.createElement('div');
-          bv.className = 'beam v';
+          bv.className = 'beam';
           bv.style.width = GAP + 'px';
           bv.style.left = (HALF - 1) + 'px';
           bv.style.top = CUBE + 'px';
@@ -368,38 +813,107 @@
           cell.appendChild(bv);
         }
 
+        gridEl.appendChild(cell);
         var entry = {
-          el: cell,
-          cube: cube,
-          col: c,
-          row: r,
-          idx: idx,
-          x: x, y: y, z: z,
-          rotY: (c - (COLS - 1) / 2) * 8,
-          rotX: (r - (ROWS - 1) / 2) * -6,
-          spin: 0,
-          phase: Math.random() * Math.PI * 2,
-          hot: false,
+          el: cell, cube: cube, col: c, row: r, idx: idx,
+          x: x, y: y, z: z, feed: feed, art: art,
+          rotY: (c - (COLS - 1) / 2) * 6,
+          rotX: (r - (ROWS - 1) / 2) * -5,
+          spin: (c + r) * 12, phase: Math.random() * Math.PI * 2,
+          live: false,
         };
         cells.push(entry);
-
         (function (entry) {
-          cell.addEventListener('pointerenter', function () {
-            if (isTv) return;
-            setFocus(entry.idx);
-          });
           cell.addEventListener('pointerdown', function (e) {
             if (isTv) return;
             e.stopPropagation();
-            setFocus(entry.idx);
+            setFocus(entry.idx, true);
             entry.spin += 90;
+            openAppleEmbed(entry.feed);
           });
         })(entry);
       }
     }
   }
 
-  function setFocus(idx) {
+  function openAppleEmbed(feed) {
+    if (isTv || !feed) return;
+    var frame = document.getElementById('amFrame');
+    if (feed.embed) frame.src = feed.embed;
+    else if (feed.apple_url) {
+      frame.src = 'https://embed.music.apple.com' +
+        feed.apple_url.replace('https://music.apple.com', '');
+    }
+  }
+
+  /**
+   * Perspective-map live streaming video onto cube faces.
+   * Focus + nearest cubes get the plate; each face shows a UV slice so
+   * wrap-spin reveals continuous motion around the solid.
+   */
+  function mapLiveVideo() {
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].live = false;
+      cells[i].el.classList.remove('live');
+      var vids = cells[i].cube.querySelectorAll('video');
+      for (var v = 0; v < vids.length; v++) {
+        try { vids[v].pause(); } catch (e) {}
+        vids[v].removeAttribute('src');
+        vids[v].style.display = 'none';
+        try { vids[v].load(); } catch (e2) {}
+      }
+    }
+    if (!liveMap || !liveVideoSrc) return;
+
+    var order = cells.slice().sort(function (a, b) {
+      if (focusIdx < 0) return a.idx - b.idx;
+      var fa = Math.abs(a.col - cells[focusIdx].col) + Math.abs(a.row - cells[focusIdx].row);
+      var fb = Math.abs(b.col - cells[focusIdx].col) + Math.abs(b.row - cells[focusIdx].row);
+      // radio / live_priority feeds first
+      var pa = (a.feed && a.feed.live_priority) ? -2 : 0;
+      var pb = (b.feed && b.feed.live_priority) ? -2 : 0;
+      return (fa + pa) - (fb + pb);
+    });
+
+    var liveN = 0;
+    var faceBudget = Math.min(FACES_LIVE, LIVE_FACE_NAMES.length);
+    for (var j = 0; j < order.length && liveN < MAX_VID; j++) {
+      var ce = order[j];
+      ce.live = true;
+      ce.el.classList.add('live');
+      var faces = ce.cube.querySelectorAll('.face');
+      var attached = 0;
+      for (var k = 0; k < faces.length && attached < faceBudget; k++) {
+        var face = faces[k];
+        var fname = face.dataset.face;
+        if (LIVE_FACE_NAMES.indexOf(fname) === -1) continue;
+        // skip bottom always (rarely seen, saves decoder)
+        if (fname === 'bottom') continue;
+        var vid = face.querySelector('video');
+        if (!vid) continue;
+        vid.src = liveVideoSrc;
+        vid.style.display = 'block';
+        vid.style.objectPosition = faceUV(ce.col, ce.row, fname);
+        // slight time offset per face → wrap parallax feel
+        (function (vid, faceI, cubeI) {
+          var onReady = function () {
+            try {
+              var dur = vid.duration || 8;
+              vid.currentTime = ((faceI * 0.4 + cubeI * 1.1) % Math.max(dur - 0.5, 1));
+            } catch (e) {}
+            vid.play().catch(function () {});
+          };
+          vid.addEventListener('loadeddata', onReady, { once: true });
+          vid.play().catch(function () {});
+        })(vid, attached, liveN);
+        attached++;
+      }
+      liveN++;
+    }
+  }
+
+  function setFocus(idx, forceVideo) {
+    if (idx < 0 || idx >= cells.length) return;
     focusIdx = idx;
     for (var i = 0; i < cells.length; i++) {
       var ce = cells[i];
@@ -407,24 +921,40 @@
       var dist = Math.abs(ce.col - fc.col) + Math.abs(ce.row - fc.row);
       ce.el.classList.toggle('focus', i === idx);
       ce.el.classList.toggle('near', dist === 1);
-      ce.el.classList.toggle('hot', dist === 0);
-      // light neighbor beams
       var beams = ce.el.querySelectorAll('.beam');
-      for (var b = 0; b < beams.length; b++) {
-        beams[b].classList.toggle('on', dist <= 1);
-      }
+      for (var b = 0; b < beams.length; b++) beams[b].classList.toggle('on', dist <= 1);
     }
+    if (forceVideo || liveMap) mapLiveVideo();
+    if (cells[idx] && cells[idx].feed) openAppleEmbed(cells[idx].feed);
   }
 
-  // ── Sky WebGL1 ───────────────────────────────────────────────
-  var gl = sky.getContext('webgl', { alpha: false, antialias: false })
-        || sky.getContext('experimental-webgl', { alpha: false });
-  var skyOk = false, skyProg, skyBuf, uT, uRes, uLook;
+  function nextPlate() {
+    var videos = livePlates.filter(function (p) { return p && p.src; });
+    if (!videos.length) {
+      liveVideoSrc = '/media/zane-center.mp4';
+      mapLiveVideo();
+      return;
+    }
+    plateIdx = (plateIdx + 1) % videos.length;
+    liveVideoSrc = videos[plateIdx].src;
+    mapLiveVideo();
+  }
 
+  function cycleVariants() {
+    variantMode = (variantMode + 1) % 3;
+    feedOffset = (feedOffset + 3) % Math.max(feeds.length, 1);
+    buildWarpAndSpheres();
+    buildGrid();
+    setFocus(focusIdx >= 0 ? Math.min(focusIdx, cells.length - 1) : Math.floor(COLS / 2), true);
+  }
+
+  // ── Sky shader (Apple pink → void → violet) ──────────────────
+  var gl = sky.getContext('webgl', { alpha: false, antialias: false }) ||
+           sky.getContext('experimental-webgl');
+  var skyOk = false, skyProg, skyBuf, uT, uRes, uLook;
   function compile(type, src) {
     var s = gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
+    gl.shaderSource(s, src); gl.compileShader(s);
     return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
   }
   if (gl) {
@@ -437,22 +967,22 @@
       'float fbm(vec2 p){float v=0.,a=.5;v+=a*noise(p);p=p*2.07+vec2(1.7,9.2);a*=.5;v+=a*noise(p);p=p*2.07+vec2(1.7,9.2);a*=.5;v+=a*noise(p);p=p*2.07+vec2(1.7,9.2);a*=.5;v+=a*noise(p);return v;}',
       'void main(){',
       'vec2 uv=(gl_FragCoord.xy-.5*u_res)/max(u_res.y,1.);',
-      'uv.x+=u_look.x*.12;uv.y+=u_look.y*.1;',
+      'uv+=u_look*.14;',
       'float t=u_t;',
-      'vec2 q=uv+.3*vec2(fbm(uv*1.1+t*.05),fbm(uv*1.1+vec2(5.2,1.3)-t*.04));',
-      'float n1=fbm(q*1.2+t*.03),n2=fbm(q*2.2-t*.06);',
-      'vec3 col=mix(vec3(.05,.03,.12),vec3(.25,.15,.45),n1);',
-      'col=mix(col,vec3(.15,.4,.75),n2*.45);',
-      'float r=length(uv);',
-      'col+=vec3(.55,.45,.95)*exp(-r*r*2.2)*.4;',
-      'col*=.55+.45*smoothstep(1.35,.25,r);',
-      'col=pow(max(col,0.),vec3(.9));',
+      'vec2 q=uv+.3*vec2(fbm(uv*1.2+t*.06),fbm(uv*1.2+vec2(5.2,1.1)-t*.05));',
+      'float n1=fbm(q*1.2),n2=fbm(q*2.2-t*.06),n3=fbm(q*3.5+t*.03);',
+      'vec3 col=mix(vec3(.03,.02,.05),vec3(.62,.16,.32),n1*.75);',
+      'col=mix(col,vec3(.38,.22,.58),n2*.45);',
+      'col=mix(col,vec3(.12,.18,.35),n3*.25);',
+      'col+=vec3(.98,.35,.42)*exp(-dot(uv,uv)*2.2)*.42;',
+      'col+=vec3(.65,.55,.95)*exp(-dot(uv-vec2(.4,-.2),uv-vec2(.4,-.2))*4.)*.2;',
+      'col*=.48+.52*smoothstep(1.5,.15,length(uv));',
+      'col=pow(max(col,0.),vec3(.86));',
       'gl_FragColor=vec4(col,1.);}',
     ].join('\n'));
     if (vs && fs) {
       skyProg = gl.createProgram();
-      gl.attachShader(skyProg, vs);
-      gl.attachShader(skyProg, fs);
+      gl.attachShader(skyProg, vs); gl.attachShader(skyProg, fs);
       gl.linkProgram(skyProg);
       if (gl.getProgramParameter(skyProg, gl.LINK_STATUS)) {
         skyBuf = gl.createBuffer();
@@ -465,16 +995,11 @@
       }
     }
   }
-
   function drawSky(t) {
     if (!gl || !skyOk) return;
-    var dpr = Math.min(window.devicePixelRatio || 1, isTv ? 1.15 : 1.5);
-    var w = Math.floor(viewport.clientWidth * dpr);
-    var h = Math.floor(viewport.clientHeight * dpr);
-    if (sky.width !== w || sky.height !== h) {
-      sky.width = w; sky.height = h;
-      gl.viewport(0, 0, w, h);
-    }
+    var dpr = Math.min(window.devicePixelRatio || 1, isTv ? 1.1 : 1.4);
+    var w = Math.floor(viewport.clientWidth * dpr), h = Math.floor(viewport.clientHeight * dpr);
+    if (sky.width !== w || sky.height !== h) { sky.width = w; sky.height = h; gl.viewport(0, 0, w, h); }
     gl.useProgram(skyProg);
     gl.bindBuffer(gl.ARRAY_BUFFER, skyBuf);
     var a = gl.getAttribLocation(skyProg, 'a');
@@ -486,59 +1011,49 @@
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  // ── Camera + cube interaction ────────────────────────────────
   function applyCamera(t) {
-    // True 3D camera on world
     world.style.transform =
-      'translate(-50%,-50%)' +
-      ' translateZ(' + look.dist + 'px)' +
-      ' rotateX(' + (-look.pitch) + 'deg)' +
-      ' rotateY(' + (look.yaw) + 'deg)';
+      'translate(-50%,-50%) translateZ(' + look.dist + 'px)' +
+      ' rotateX(' + (-look.pitch) + 'deg) rotateY(' + look.yaw + 'deg)';
 
-    // Ray-ish focus: which cell is under look center?
-    // Map look angles to grid UV
-    var uLook = 0.5 + look.yaw / 70;
-    var vLook = 0.5 + look.pitch / 55;
-    var fc = Math.round(uLook * (COLS - 1));
-    var fr = Math.round(vLook * (ROWS - 1));
-    fc = Math.max(0, Math.min(COLS - 1, fc));
-    fr = Math.max(0, Math.min(ROWS - 1, fr));
-    var fIdx = fr * COLS + fc;
-    if (fIdx !== focusIdx && (isTv || target.source === 'gyro' || target.source === 'hub' || target.source === 'idle' || target.source === 'drag')) {
-      setFocus(fIdx);
+    var warp = document.getElementById('warp');
+    var scroll = Math.sin(t * 0.15) * 40 - look.yaw * 2.2;
+    warp.style.transform =
+      'rotateX(14deg) translateZ(-280px) translateX(' + scroll + 'px) rotateY(' + (look.yaw * 0.15) + 'deg)';
+
+    var sps = document.querySelectorAll('.sphere');
+    for (var s = 0; s < sps.length; s++) {
+      var ph = parseFloat(sps[s].dataset.phase || '0');
+      var sx = Math.sin(t * 0.4 + ph) * 14 + look.yaw * 0.5;
+      var sy = Math.cos(t * 0.35 + ph) * 12 + look.pitch * 0.35;
+      var sz = Math.sin(t * 0.55 + ph) * 40 - 20;
+      sps[s].style.transform = 'translate3d(' + sx + 'px,' + sy + 'px,' + sz + 'px) rotateY(' + (t * 20 + ph * 30) + 'deg)';
     }
 
-    // Animate each cube: wrap spin + neighbor influence
+    tickBaseBoxes(t);
+
+    var uL = 0.5 + look.yaw / 70, vL = 0.5 + look.pitch / 55;
+    var fc = Math.max(0, Math.min(COLS - 1, Math.round(uL * (COLS - 1))));
+    var fr = Math.max(0, Math.min(ROWS - 1, Math.round(vL * (ROWS - 1))));
+    var fIdx = fr * COLS + fc;
+    if (fIdx !== focusIdx) setFocus(fIdx, false);
+
     for (var i = 0; i < cells.length; i++) {
       var ce = cells[i];
       var dist = focusIdx >= 0
-        ? Math.abs(ce.col - cells[focusIdx].col) + Math.abs(ce.row - cells[focusIdx].row)
-        : 3;
-      var influence = Math.max(0, 1 - dist * 0.35);
-      // continuous wrap spin on Y (content appears to wrap around)
-      if (autoSpin) {
-        ce.spin += (0.35 + influence * 1.2 + ce.col * 0.05) * (isTv ? 1 : 0.85);
-      }
-      // interaction: near cubes lean toward focus
-      var leanY = ce.rotY;
-      var leanX = ce.rotX;
+        ? Math.abs(ce.col - cells[focusIdx].col) + Math.abs(ce.row - cells[focusIdx].row) : 2;
+      var influence = Math.max(0, 1 - dist * 0.4);
+      if (autoSpin) ce.spin += 0.45 + influence * 1.5 + ce.col * 0.04;
+      var leanY = ce.rotY, leanX = ce.rotX;
       if (focusIdx >= 0 && dist > 0 && dist < 3) {
-        var fc2 = cells[focusIdx];
-        leanY += (fc2.col - ce.col) * 12 * influence;
-        leanX += (fc2.row - ce.row) * -10 * influence;
+        leanY += (cells[focusIdx].col - ce.col) * 14 * influence;
+        leanX += (cells[focusIdx].row - ce.row) * -11 * influence;
       }
-      // focus cube pulls forward in Z
-      var zBoost = dist === 0 ? 70 : (dist === 1 ? 28 : 0);
-      var bob = Math.sin(t * 1.1 + ce.phase) * (6 + influence * 10);
-      ce.el.style.transform =
-        'translate3d(' + ce.x + 'px,' + (ce.y + bob) + 'px,' + (ce.z + zBoost) + 'px)';
-      ce.cube.style.transform =
-        'rotateX(' + leanX + 'deg) rotateY(' + (leanY + ce.spin) + 'deg)';
-      // wrap layer scroll on faces for continuous wrap feel
-      var wraps = ce.cube.querySelectorAll('.wrap');
-      for (var w = 0; w < wraps.length; w++) {
-        wraps[w].style.backgroundPosition = (ce.spin * 0.4 + w * 20) + '% center';
-      }
+      var zBoost = dist === 0 ? 90 : (dist === 1 ? 36 : 0);
+      var bob = Math.sin(t * 1.15 + ce.phase) * (5 + influence * 8);
+      ce.el.style.transform = 'translate3d(' + ce.x + 'px,' + (ce.y + bob) + 'px,' + (ce.z + zBoost) + 'px)';
+      // continuous wrap so art + live video orbit all faces
+      ce.cube.style.transform = 'rotateX(' + leanX + 'deg) rotateY(' + (leanY + ce.spin) + 'deg)';
     }
 
     placeReticle('retYou', peers.you || (myUser === 'you' ? { yaw: target.yaw * 0.01745, pitch: target.pitch * 0.01745, source: target.source } : null));
@@ -546,91 +1061,81 @@
     placeReticle('retQuest', peers.quest);
 
     var fi = focusIdx >= 0 ? cells[focusIdx] : null;
+    var liveCount = 0;
+    for (var li = 0; li < cells.length; li++) if (cells[li].live) liveCount++;
+    var plateName = (livePlates[plateIdx] && livePlates[plateIdx].label) || liveVideoSrc;
     hud.innerHTML =
-      'WEBGRID  ' + COLS + '×' + ROWS + ' cubes · wrap-around faces<br/>' +
-      'CAM  yaw ' + look.yaw.toFixed(1) + '°  pitch ' + look.pitch.toFixed(1) + '°  dolly ' + look.dist.toFixed(0) + '<br/>' +
-      'FOCUS  ' + (fi ? 'col ' + (fi.col + 1) + ' · row ' + (fi.row + 1) + ' · neighbors lean in' : '—') + '<br/>' +
-      'user  ' + myUser + ' · ' + (target.source || '—') + (autoSpin ? ' · spin' : '');
-    meta.textContent = COLS + '×' + ROWS + ' · y' + look.yaw.toFixed(0) + '°';
+      '<b style="color:#fa586a">GROK × APPLE MUSIC</b> · ' + COLS + '×' + ROWS + ' cubes<br/>' +
+      'LIVE VIDEO → ' + liveCount + ' cube(s) · ' + FACES_LIVE + ' faces · wrap spin<br/>' +
+      'PLATE  ' + plateName + '<br/>' +
+      'FOCUS  ' + (fi && fi.feed ? fi.feed.label : '—') +
+      ' · feeds ' + feeds.length + ' · art ' + Object.keys(artById).filter(function (k) { return artById[k]; }).length + '<br/>' +
+      'CAM  ' + look.yaw.toFixed(0) + '° / ' + look.pitch.toFixed(0) + '° · ' + (target.source || '—') +
+      (liveMap ? ' · <span style="color:#fa586a">LIVE MAP</span>' : ' · art only');
+    meta.textContent = COLS + '×' + ROWS + ' · live ' + liveCount + ' · ' + (fi && fi.feed ? fi.feed.label : '');
   }
 
   function placeReticle(id, v) {
     var el = document.getElementById(id);
     if (!el) return;
-    if (!v || !v.source || v.source === 'init' || v.source === 'idle') {
-      el.style.display = 'none';
-      return;
-    }
+    if (!v || !v.source || v.source === 'init' || v.source === 'idle') { el.style.display = 'none'; return; }
     el.style.display = 'block';
     var yaw = v.yaw || 0, pitch = v.pitch || 0;
-    if (Math.abs(yaw) < 3 && Math.abs(pitch) < 3) {
-      yaw *= 57.2958; pitch *= 57.2958;
-    }
+    if (Math.abs(yaw) < 3 && Math.abs(pitch) < 3) { yaw *= 57.3; pitch *= 57.3; }
     var rect = viewport.getBoundingClientRect();
     el.style.left = (rect.width / 2 + (yaw / 45) * rect.width * 0.26) + 'px';
     el.style.top = (rect.height / 2 + (pitch / 35) * rect.height * 0.26) + 'px';
   }
 
   function setTargetFromRadians(yawR, pitchR, z, source) {
-    target.yaw = Math.max(-50, Math.min(50, yawR * 57.2958));
-    target.pitch = Math.max(-36, Math.min(36, pitchR * 57.2958));
-    target.dist = Math.max(-160, Math.min(200, ((z || 1) - 1) * 260));
+    target.yaw = Math.max(-48, Math.min(48, yawR * 57.2958));
+    target.pitch = Math.max(-34, Math.min(34, pitchR * 57.2958));
+    target.dist = Math.max(-150, Math.min(180, ((z || 1) - 1) * 240));
     target.source = source || 'hub';
   }
 
   function onOrient(e) {
-    if (isTv) return;
-    if (e.beta == null || e.gamma == null) return;
+    if (isTv || e.beta == null || e.gamma == null) return;
     if (baseBeta == null) { baseBeta = e.beta; baseGamma = e.gamma; }
-    target.yaw = Math.max(-50, Math.min(50, (e.gamma - baseGamma) * 1.15));
-    target.pitch = Math.max(-36, Math.min(36, (e.beta - baseBeta) * 0.95));
+    target.yaw = Math.max(-48, Math.min(48, (e.gamma - baseGamma) * 1.1));
+    target.pitch = Math.max(-34, Math.min(34, (e.beta - baseBeta) * 0.9));
     target.source = 'gyro';
     pushPose();
   }
-
   function pushPose() {
     if (isTv) return;
     if (!pushPose._t || Date.now() - pushPose._t > 70) {
       pushPose._t = Date.now();
-      var yawR = target.yaw * 0.0174533;
-      var pitchR = target.pitch * 0.0174533;
-      var z = 1 + target.dist / 260;
-      var peersLocal = {};
-      peersLocal[myUser] = { yaw: yawR, pitch: pitchR, z: z, source: target.source, t: Date.now() / 1000 };
+      var yawR = target.yaw * 0.01745, pitchR = target.pitch * 0.01745;
+      var z = 1 + target.dist / 240;
+      var cp = {};
+      cp[myUser] = { yaw: yawR, pitch: pitchR, z: z, source: target.source, t: Date.now() / 1000 };
       fetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           surface: 'crazy',
-          controller: 'webgrid-' + myUser,
-          viewer: { yaw: yawR, pitch: pitchR, roll: 0, z: z, source: target.source, user: myUser, t: Date.now() / 1000 },
-          crazy_peers: peersLocal,
+          viewer: { yaw: yawR, pitch: pitchR, z: z, source: target.source, user: myUser, t: Date.now() / 1000 },
+          crazy_peers: cp,
         }),
       }).catch(function () {});
     }
   }
-
   async function pullState() {
     try {
       var r = await fetch('/api/state?_=' + Date.now(), { cache: 'no-store' });
       if (!r.ok) return;
       var st = await r.json();
       if (st.tv_cmd && st.tv_cmd.reload_token != null) {
-        if (lastReload != null && st.tv_cmd.reload_token !== lastReload) {
-          location.reload(); return;
-        }
+        if (lastReload != null && st.tv_cmd.reload_token !== lastReload) { location.reload(); return; }
         lastReload = st.tv_cmd.reload_token;
       }
-      if (st.crazy_peers) {
-        Object.keys(st.crazy_peers).forEach(function (k) { peers[k] = st.crazy_peers[k]; });
-      }
+      if (st.crazy_peers) Object.keys(st.crazy_peers).forEach(function (k) { peers[k] = st.crazy_peers[k]; });
       if (isTv && st.viewer) {
-        setTargetFromRadians(Number(st.viewer.yaw) || 0, Number(st.viewer.pitch) || 0, Number(st.viewer.z) || 1, st.viewer.source || 'hub');
-        if (st.viewer.user) peers[st.viewer.user] = st.viewer;
+        setTargetFromRadians(+st.viewer.yaw || 0, +st.viewer.pitch || 0, +st.viewer.z || 1, st.viewer.source || 'hub');
       }
     } catch (e) {}
   }
-
   async function pullClock() {
     try {
       var r = await fetch('/api/clock?_=' + Date.now(), { cache: 'no-store' });
@@ -638,65 +1143,106 @@
       var snap = await r.json();
       var z = snap.zulu || '';
       var zp = z.length >= 7 ? z.slice(0, 2) + ':' + z.slice(2, 4) + ':' + z.slice(4, 6) + ' Z' : z;
+      var fi = focusIdx >= 0 && cells[focusIdx] ? cells[focusIdx].feed : null;
+      var liveCount = 0;
+      for (var i = 0; i < cells.length; i++) if (cells[i].live) liveCount++;
       document.getElementById('l3').innerHTML =
-        'TIMESYNC · <span class="zulu">' + zp + '</span> · CUBE WEBGRID ' + COLS + '×' + ROWS + ' · wrap faces';
+        'TIMESYNC · <span class="zulu">' + zp + '</span> · <span class="am">APPLE MUSIC</span> · ' +
+        (fi ? fi.label : 'promo grid') + ' · live×' + liveCount + ' face-map';
     } catch (e) {}
   }
 
-  var t0 = performance.now();
   function tick(now) {
     var t = (now - t0) / 1000;
     if (isTv && (!target.source || target.source === 'idle' || target.source === 'init')) {
-      target.yaw = Math.sin(t * 0.22) * 26;
-      target.pitch = Math.cos(t * 0.17) * 12;
-      target.dist = Math.sin(t * 0.13) * 50;
+      target.yaw = Math.sin(t * 0.2) * 26;
+      target.pitch = Math.cos(t * 0.16) * 12;
+      target.dist = Math.sin(t * 0.12) * 50;
       target.source = 'idle';
     }
-    var sm = 0.16;
+    var sm = 0.15;
     look.yaw += (target.yaw - look.yaw) * sm;
     look.pitch += (target.pitch - look.pitch) * sm;
     look.dist += (target.dist - look.dist) * sm;
+
+    mx = 0.5 + look.yaw / 80;
+    my = 0.5 + look.pitch / 60;
+    burn.style.setProperty('--mx', (mx * 100) + '%');
+    burn.style.setProperty('--my', (my * 100) + '%');
+    document.documentElement.style.setProperty('--mx', (mx * 100) + '%');
+    document.documentElement.style.setProperty('--my', (my * 100) + '%');
+    updateRipple();
+    pushTrail(mx, my);
+    drawTrails(t);
     applyCamera(t);
     drawSky(t);
     requestAnimationFrame(tick);
   }
 
-  // controls
+  viewport.addEventListener('pointermove', function (e) {
+    var rect = viewport.getBoundingClientRect();
+    mx = (e.clientX - rect.left) / rect.width;
+    my = (e.clientY - rect.top) / rect.height;
+  });
+  viewport.addEventListener('pointerdown', function (e) {
+    if (isTv) return;
+    drag = { x: e.clientX, y: e.clientY, yaw: target.yaw, pitch: target.pitch };
+    viewport.setPointerCapture(e.pointerId);
+  });
+  viewport.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    target.yaw = Math.max(-48, Math.min(48, drag.yaw + (e.clientX - drag.x) * 0.14));
+    target.pitch = Math.max(-34, Math.min(34, drag.pitch + (e.clientY - drag.y) * 0.11));
+    target.source = 'drag';
+    pushPose();
+  });
+  viewport.addEventListener('pointerup', function () { drag = null; });
+  viewport.addEventListener('wheel', function (e) {
+    if (isTv) return;
+    e.preventDefault();
+    target.dist = Math.max(-150, Math.min(180, target.dist - e.deltaY * 0.35));
+    target.source = 'dolly';
+    pushPose();
+  }, { passive: false });
+
   document.getElementById('cols').onchange = function (e) {
     COLS = parseInt(e.target.value, 10) || 5;
     buildGrid();
+    setFocus(Math.floor(COLS / 2) + Math.floor(ROWS / 2) * COLS, true);
   };
   document.getElementById('rows').onchange = function (e) {
     ROWS = parseInt(e.target.value, 10) || 3;
     buildGrid();
+    setFocus(Math.floor(COLS / 2) + Math.floor(ROWS / 2) * COLS, true);
   };
   document.getElementById('btnSpin').onclick = function () {
     autoSpin = !autoSpin;
     document.getElementById('btnSpin').classList.toggle('active', autoSpin);
   };
+  document.getElementById('btnLive').onclick = function () {
+    liveMap = !liveMap;
+    document.getElementById('btnLive').classList.toggle('active', liveMap);
+    mapLiveVideo();
+  };
+  document.getElementById('btnPlate').onclick = function () { nextPlate(); };
+  document.getElementById('btnVariant').onclick = function () { cycleVariants(); };
   document.getElementById('btnGyro').onclick = async function () {
     try {
-      if (typeof DeviceOrientationEvent !== 'undefined' &&
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         var p = await DeviceOrientationEvent.requestPermission();
-        if (p !== 'granted') { alert('gyro denied'); return; }
+        if (p !== 'granted') return;
       }
       baseBeta = baseGamma = null;
       window.addEventListener('deviceorientation', onOrient, true);
       document.getElementById('btnGyro').classList.add('active');
       document.getElementById('btnGyro').textContent = 'Gyro on';
-    } catch (e) { alert(e); }
+    } catch (e) {}
   };
   document.getElementById('btnZero').onclick = function () {
     baseBeta = baseGamma = null;
     target.yaw = target.pitch = target.dist = 0;
     target.source = 'zero';
     pushPose();
-  };
-  document.getElementById('btnUser').onclick = function () {
-    userIdx = (userIdx + 1) % users.length;
-    myUser = users[userIdx];
-    document.getElementById('btnUser').textContent = myUser;
   };
   document.getElementById('btnRecast').onclick = function () {
     fetch('/api/tv/recast', {
@@ -708,46 +1254,46 @@
       }),
     }).catch(function () {});
   };
+  document.getElementById('btnRefreshArt').onclick = async function () {
+    hud.textContent = 'refreshing iTunes art…';
+    await loadAllArt();
+    buildWarpAndSpheres();
+    buildGrid();
+    setFocus(focusIdx >= 0 ? focusIdx : 0, true);
+  };
 
-  // desk drag / dolly
-  var drag = null;
-  viewport.addEventListener('pointerdown', function (e) {
-    if (isTv) return;
-    drag = { x: e.clientX, y: e.clientY, yaw: target.yaw, pitch: target.pitch };
-    viewport.setPointerCapture(e.pointerId);
-  });
-  viewport.addEventListener('pointermove', function (e) {
-    if (!drag) return;
-    target.yaw = Math.max(-50, Math.min(50, drag.yaw + (e.clientX - drag.x) * 0.14));
-    target.pitch = Math.max(-36, Math.min(36, drag.pitch + (e.clientY - drag.y) * 0.11));
-    target.source = 'drag';
-    pushPose();
-  });
-  viewport.addEventListener('pointerup', function () { drag = null; });
-  viewport.addEventListener('wheel', function (e) {
-    if (isTv) return;
-    e.preventDefault();
-    target.dist = Math.max(-160, Math.min(200, target.dist - e.deltaY * 0.35));
-    target.source = 'dolly';
-    pushPose();
-  }, { passive: false });
+  // Auto-cycle plates every 45s on TV for living promo feel
+  if (isTv) setInterval(function () { if (liveMap) nextPlate(); }, 45000);
+  // Random variants every 28s
+  setInterval(function () {
+    if (!isTv) return;
+    variantMode = (variantMode + 1) % 3;
+    buildWarpAndSpheres();
+  }, 28000);
 
-  buildGrid();
-  setFocus(Math.floor(COLS / 2) + Math.floor(ROWS / 2) * COLS);
-  pullState();
-  setInterval(pullState, isTv ? 70 : 150);
-  pullClock();
-  setInterval(pullClock, 500);
-  requestAnimationFrame(tick);
-
-  if (!isTv && window.isSecureContext) {
-    setTimeout(function () { document.getElementById('btnGyro').click(); }, 500);
-  }
-  fetch('/api/state', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ surface: 'crazy', variation: 'cube-webgrid' }),
-  }).catch(function () {});
+  (async function boot() {
+    resizeTrails();
+    window.addEventListener('resize', resizeTrails);
+    await loadCatalog();
+    hud.textContent = 'fetching Apple Music / iTunes artwork…';
+    await loadAllArt();
+    buildWarpAndSpheres();
+    buildGrid();
+    setFocus(Math.floor(COLS / 2) + Math.floor(ROWS / 2) * COLS, true);
+    pullState();
+    setInterval(pullState, isTv ? 70 : 150);
+    pullClock();
+    setInterval(pullClock, 500);
+    requestAnimationFrame(tick);
+    if (!isTv && window.isSecureContext) {
+      setTimeout(function () { document.getElementById('btnGyro').click(); }, 500);
+    }
+    fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ surface: 'crazy', variation: 'apple-music-webgrid-v2' }),
+    }).catch(function () {});
+  })();
 })();
 </script>
 </body>

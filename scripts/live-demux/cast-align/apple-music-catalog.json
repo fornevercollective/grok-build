@@ -1,0 +1,246 @@
+{
+  "schema": "fc-apple-music-promo-v1",
+  "version": 2,
+  "brand": {
+    "collab": "Grok × Apple Music",
+    "tagline": "Promo webgrid · live face-map · not YouTube",
+    "note": "Artwork via iTunes Search API. Live plates = cast-safe HLS/MP4 on cube faces. Control dock uses embed.music.apple.com. Not full DRM track decode.",
+    "colors": ["#fa586a", "#fc3c44", "#1c1c1e", "#f5f5f7", "#a78bfa", "#38bdf8"],
+    "aesthetic": ["burn", "ripple-grid", "image-spheres", "warp-gallery", "3d-trails", "base-box", "astra"]
+  },
+  "layout": {
+    "cols": 5,
+    "rows": 3,
+    "cube_px": 110,
+    "gap_px": 24
+  },
+  "feeds": [
+    {
+      "id": "new-music",
+      "label": "New Music Daily",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/new-music-daily/pl.2b0e6e332fdf4b7a91164da3162127b5",
+      "embed": "https://embed.music.apple.com/us/playlist/new-music-daily/pl.2b0e6e332fdf4b7a91164da3162127b5",
+      "search": "New Music Daily Apple Music",
+      "entity": "album",
+      "tags": ["editorial", "daily", "promo"],
+      "accent": "#fa586a"
+    },
+    {
+      "id": "todays-hits",
+      "label": "Today's Hits",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/todays-hits/pl.f4d106fed2bd41149aaacabb233eb5eb",
+      "embed": "https://embed.music.apple.com/us/playlist/todays-hits/pl.f4d106fed2bd41149aaacabb233eb5eb",
+      "search": "Today's Hits Apple Music",
+      "entity": "album",
+      "tags": ["hits", "chart"],
+      "accent": "#fc3c44"
+    },
+    {
+      "id": "rap-life",
+      "label": "Rap Life",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/rap-life/pl.abe8ba42278f4ef490e3a9fc5ec8e8c5",
+      "embed": "https://embed.music.apple.com/us/playlist/rap-life/pl.abe8ba42278f4ef490e3a9fc5ec8e8c5",
+      "search": "Rap Life Apple Music",
+      "entity": "album",
+      "tags": ["hip-hop"],
+      "accent": "#a78bfa"
+    },
+    {
+      "id": "a-list-pop",
+      "label": "A-List Pop",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/a-list-pop/pl.5ee8333dbe944d9f9151e97d92d1ead9",
+      "embed": "https://embed.music.apple.com/us/playlist/a-list-pop/pl.5ee8333dbe944d9f9151e97d92d1ead9",
+      "search": "A-List Pop Apple Music",
+      "entity": "album",
+      "tags": ["pop"],
+      "accent": "#f472b6"
+    },
+    {
+      "id": "alt-now",
+      "label": "Alt Now",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/alt-now/pl.b0e04e25887741ea845c232b0ec635a9",
+      "embed": "https://embed.music.apple.com/us/playlist/alt-now/pl.b0e04e25887741ea845c232b0ec635a9",
+      "search": "Alt Now Apple Music",
+      "entity": "album",
+      "tags": ["alternative"],
+      "accent": "#38bdf8"
+    },
+    {
+      "id": "pure-focus",
+      "label": "Pure Focus",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/pure-focus/pl.edcaa3b407104eb8b1c3510eac6e5fc1",
+      "embed": "https://embed.music.apple.com/us/playlist/pure-focus/pl.edcaa3b407104eb8b1c3510eac6e5fc1",
+      "search": "Pure Focus Apple Music",
+      "entity": "album",
+      "tags": ["focus", "ambient"],
+      "accent": "#67e8f9"
+    },
+    {
+      "id": "spatial",
+      "label": "Spatial Audio",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/spatial-audio/pl.edcaa3b407104eb8b1c3510eac6e5fc1",
+      "embed": "https://embed.music.apple.com/us/playlist/spatial-audio",
+      "search": "Spatial Audio Dolby Atmos Apple Music",
+      "entity": "album",
+      "tags": ["spatial", "atmos"],
+      "accent": "#c4b5fd"
+    },
+    {
+      "id": "live-radio",
+      "label": "Apple Music 1",
+      "kind": "radio",
+      "apple_url": "https://music.apple.com/us/station/apple-music-1/ra.978194965",
+      "embed": "https://embed.music.apple.com/us/station/apple-music-1/ra.978194965",
+      "search": "Apple Music 1 Zane Lowe",
+      "entity": "album",
+      "tags": ["radio", "live", "promo"],
+      "accent": "#fa586a",
+      "live_priority": 1
+    },
+    {
+      "id": "hits-radio",
+      "label": "Apple Music Hits",
+      "kind": "radio",
+      "apple_url": "https://music.apple.com/us/station/apple-music-hits/ra.1461858873",
+      "embed": "https://embed.music.apple.com/us/station/apple-music-hits/ra.1461858873",
+      "search": "Apple Music Hits radio",
+      "entity": "album",
+      "tags": ["radio", "hits"],
+      "accent": "#fc3c44"
+    },
+    {
+      "id": "breakout",
+      "label": "Breakout",
+      "kind": "playlist",
+      "apple_url": "https://music.apple.com/us/playlist/breakout/pl.a0f8db6dc87c41b3b39c3c6d3f2d0c0e",
+      "search": "Breakout Apple Music playlist",
+      "entity": "album",
+      "tags": ["emerging"],
+      "accent": "#fbbf24"
+    },
+    {
+      "id": "rnb-now",
+      "label": "R&B Now",
+      "kind": "playlist",
+      "search": "R&B Now Apple Music",
+      "entity": "album",
+      "tags": ["rnb"],
+      "accent": "#e879f9"
+    },
+    {
+      "id": "dance-xl",
+      "label": "DanceXL",
+      "kind": "playlist",
+      "search": "DanceXL Apple Music",
+      "entity": "album",
+      "tags": ["dance", "electronic"],
+      "accent": "#22d3ee"
+    },
+    {
+      "id": "country-hits",
+      "label": "Country Hits",
+      "kind": "playlist",
+      "search": "Today's Country Apple Music",
+      "entity": "album",
+      "tags": ["country"],
+      "accent": "#f59e0b"
+    },
+    {
+      "id": "jazz-essentials",
+      "label": "Jazz Essentials",
+      "kind": "playlist",
+      "search": "Jazz Essentials Apple Music",
+      "entity": "album",
+      "tags": ["jazz"],
+      "accent": "#94a3b8"
+    },
+    {
+      "id": "classical",
+      "label": "Classical Essentials",
+      "kind": "playlist",
+      "search": "Classical Essentials Apple Music",
+      "entity": "album",
+      "tags": ["classical"],
+      "accent": "#e2e8f0"
+    },
+    {
+      "id": "k-pop",
+      "label": "K-Pop Hits",
+      "kind": "playlist",
+      "search": "K-Pop Hits Apple Music",
+      "entity": "album",
+      "tags": ["kpop"],
+      "accent": "#fb7185"
+    },
+    {
+      "id": "latino-ahora",
+      "label": "¡Dale Play!",
+      "kind": "playlist",
+      "search": "Dale Play Apple Music Latino",
+      "entity": "album",
+      "tags": ["latin"],
+      "accent": "#f97316"
+    },
+    {
+      "id": "africa-now",
+      "label": "Africa Now",
+      "kind": "playlist",
+      "search": "Africa Now Apple Music",
+      "entity": "album",
+      "tags": ["afrobeats"],
+      "accent": "#84cc16"
+    },
+    {
+      "id": "essentials-billie",
+      "label": "Billie Essentials",
+      "kind": "artist",
+      "search": "Billie Eilish",
+      "entity": "album",
+      "tags": ["artist", "promo"],
+      "accent": "#a3e635"
+    },
+    {
+      "id": "essentials-taylor",
+      "label": "Taylor Essentials",
+      "kind": "artist",
+      "search": "Taylor Swift Midnights",
+      "entity": "album",
+      "tags": ["artist", "promo"],
+      "accent": "#c084fc"
+    }
+  ],
+  "live_plates": [
+    {
+      "id": "zane-center",
+      "label": "Live plate · center",
+      "kind": "video",
+      "src": "/media/zane-center.mp4",
+      "note": "Primary LAN promo plate — perspective-mapped onto focus cube faces (front/sides/top)",
+      "map": "cube-faces"
+    },
+    {
+      "id": "ambient-wave",
+      "label": "Ambient wave",
+      "kind": "procedural",
+      "src": null,
+      "note": "Shader/CSS burn fallback when no mp4"
+    }
+  ],
+  "decode_budget": {
+    "tv_max_videos": 2,
+    "control_max_videos": 3,
+    "faces_per_live_cube": 4,
+    "poster_for_rest": true
+  },
+  "effects": {
+    "bg": ["sky-fbm", "magnetic-ripple", "warp-gallery", "image-spheres", "grid-trails", "burn", "base-box"],
+    "cube": ["face-wrap", "live-video-uv", "auto-spin", "focus-boost"]
+  }
+}

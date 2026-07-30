@@ -20,6 +20,8 @@ Serves:
   GET  /crazy            → multi-device augmented perspective (phone/quest → TV)
   GET  /devices          → device lab (Chrome/Safari/Firefox DevTools presets)
   GET  /api/devices      → browser matrix + cast profiles + presets
+  GET  /api/music/catalog → Apple Music promo feeds (Grok × Apple collab aesthetic)
+  GET  /apple-music-catalog.json
   GET  /api/refs         → SuperMap · Parallel Stereo · SHELLS · BOX
   GET  /health
 
@@ -49,6 +51,7 @@ STREAM_POLICY = HERE / "stream-policy.json"
 TV_SHELL = HERE / "tv-shell.html"
 GPU_ENV = HERE / "gpu-env.html"
 CRAZY = HERE / "crazy.html"
+MUSIC_CATALOG = HERE / "apple-music-catalog.json"
 DEVICES_HTML = HERE / "devices.html"
 DEVICE_KIT = HERE / "device-kit.js"
 DEVICES_DIR = HERE.parent / "devices"
@@ -1043,6 +1046,47 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(500, {"error": str(e)})
                     return
             self._json(404, {"error": "news-catalog.json missing"})
+            return
+
+        # Grok × Apple Music promo catalog (iTunes art + embed.music.apple.com)
+        if path in (
+            "/api/music/catalog",
+            "/api/music",
+            "/api/apple-music",
+            "/api/apple-music/catalog",
+            "/apple-music-catalog.json",
+        ):
+            if MUSIC_CATALOG.is_file():
+                try:
+                    data = json.loads(MUSIC_CATALOG.read_text(encoding="utf-8"))
+                    # Enumerate LAN media so live_plates resolve to real files
+                    media_dir = (MEDIA_ROOT / "media").resolve()
+                    plates = list(data.get("live_plates") or [])
+                    known = {p.get("src") for p in plates if p.get("src")}
+                    if media_dir.is_dir():
+                        for mp4 in sorted(media_dir.glob("*.mp4")):
+                            url = f"/media/{mp4.name}"
+                            if url not in known:
+                                plates.append(
+                                    {
+                                        "id": mp4.stem,
+                                        "label": mp4.stem.replace("-", " ").title(),
+                                        "kind": "video",
+                                        "src": url,
+                                        "note": "auto from cast media",
+                                    }
+                                )
+                                known.add(url)
+                    data = dict(data)
+                    data["live_plates"] = plates
+                    data["media_root"] = str(media_dir)
+                    data["ok"] = True
+                    self._json(200, data)
+                    return
+                except Exception as e:
+                    self._json(500, {"error": str(e)})
+                    return
+            self._json(404, {"error": "apple-music-catalog.json missing"})
             return
 
         if path in ("/api/stream/policy", "/api/stream/policy.json"):
