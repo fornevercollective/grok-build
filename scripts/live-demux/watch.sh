@@ -61,10 +61,20 @@ need yt-dlp
 need ffmpeg
 
 YTDLP_EXTRA=()
+# X media / tweets often need a logged-in browser session.
+if [[ -z "${YTDLP_COOKIES:-}" && -z "${YTDLP_COOKIES_FROM_BROWSER:-}" && -z "${X_COOKIES:-}" && -z "${X_COOKIES_FROM_BROWSER:-}" ]]; then
+  case "$URL" in
+    *://x.com/*|*://twitter.com/*|*://t.co/*) export YTDLP_COOKIES_FROM_BROWSER="${YTDLP_COOKIES_FROM_BROWSER:-safari}" ;;
+  esac
+fi
 if [[ -n "${YTDLP_COOKIES:-}" && -f "${YTDLP_COOKIES}" ]]; then
   YTDLP_EXTRA+=(--cookies "$YTDLP_COOKIES")
+elif [[ -n "${X_COOKIES:-}" && -f "${X_COOKIES}" ]]; then
+  YTDLP_EXTRA+=(--cookies "$X_COOKIES")
 elif [[ -n "${YTDLP_COOKIES_FROM_BROWSER:-}" ]]; then
   YTDLP_EXTRA+=(--cookies-from-browser "$YTDLP_COOKIES_FROM_BROWSER")
+elif [[ -n "${X_COOKIES_FROM_BROWSER:-}" ]]; then
+  YTDLP_EXTRA+=(--cookies-from-browser "$X_COOKIES_FROM_BROWSER")
 fi
 
 WORKDIR="${TMPDIR:-/tmp}/live-demux-$$"
@@ -79,7 +89,41 @@ trap cleanup EXIT INT TERM
 
 echo "==> flat-playlist resolve (end=$PLAYLIST_END)"
 # id|title|url  (url may be empty for flat entries — reconstruct from id)
-mapfile -t ENTRIES < <(
+# Bash 3.2 (macOS /bin/bash) has no mapfile — use a temp file + while-read.
+ENTRIES=()
+ENTRY_FILE="$WORKDIR/entries.tsv"
+: >"$ENTRY_FILE"
+
+# X profile Media tabs — yt-dlp Unsupported URL; expand via GraphQL helper.
+is_x_media_feed() {
+  case "$1" in
+    *://x.com/*/media*|*://twitter.com/*/media*|*://x.com/*/videos*|*://x.com/*/photos*) return 0 ;;
+    *://x.com/*/*) return 1 ;;
+    *://x.com/*|*://twitter.com/*)
+      # bare profile (no /status/ /i/)
+      case "$1" in
+        */status/*|*/i/*|*/broadcasts/*|*/spaces/*) return 1 ;;
+        *) return 0 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+if is_x_media_feed "$URL"; then
+  echo "==> X media feed — GraphQL expand (x-media-feed.py)"
+  XFEED_PY="$(cd "$(dirname "$0")/../.." && pwd)/scripts/live-demux/x-media-feed.py"
+  # Prefer yt-dlp's python (yt_dlp.cookies); else python3.
+  XFEED_PYBIN="python3"
+  for cand in \
+    /usr/local/Cellar/yt-dlp/*/libexec/bin/python \
+    /opt/homebrew/Cellar/yt-dlp/*/libexec/bin/python; do
+    if [[ -x "$cand" ]]; then XFEED_PYBIN="$cand"; break; fi
+  done
+  # shellcheck disable=SC2086
+  "$XFEED_PYBIN" "$XFEED_PY" --end "$PLAYLIST_END" --format tsv "$URL" 2>/dev/null \
+    >>"$ENTRY_FILE" || true
+else
   yt-dlp --flat-playlist -j --playlist-end "$PLAYLIST_END" --no-warnings \
     "${YTDLP_EXTRA[@]}" "$URL" 2>/dev/null \
   | python3 -c '
@@ -98,8 +142,13 @@ for line in sys.stdin:
         page=f"https://www.youtube.com/watch?v={eid}"
     if page:
         print(f"{eid}|{title}|{page}")
-'
-)
+' >>"$ENTRY_FILE" || true
+fi
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+  [[ -z "$line" ]] && continue
+  ENTRIES+=("$line")
+done <"$ENTRY_FILE"
 
 if [[ ${#ENTRIES[@]} -eq 0 ]]; then
   echo "==> flat playlist empty — treating URL as single item"
@@ -150,9 +199,10 @@ start_demux() {
   fi
 
   # optional input seek (skip -ss 0 — some googlevideo URLs error on seek)
-  local ss_args=()
+  # Bash 3.2 + set -u cannot expand empty "${arr[@]}" — branch instead.
+  local ss_pre=()
   if [[ "${SEEK:-0}" -gt 0 ]]; then
-    ss_args=(-ss "$SEEK")
+    ss_pre=(-ss "$SEEK")
   fi
 
   # process group so we can kill all children
@@ -162,34 +212,65 @@ start_demux() {
       need ffplay
       # demux → ffplay window (preview; not half-block yet)
       # WIN_W/H upscale so the SDL window is visible (demux stays small for bench)
-      ffmpeg -hide_banner -loglevel error \
-        -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
-        "${ss_args[@]}" -i "$stream" \
-        -an -vf "scale=${W}:${H}" -r "$FPS" \
-        -f rawvideo -pix_fmt rgb24 - \
-        2>"$WORKDIR/ffmpeg.err" \
-      | ffplay -hide_banner -loglevel error -autoexit \
-          -fflags nobuffer -flags low_delay -framedrop \
-          -f rawvideo -pixel_format rgb24 -video_size "${W}x${H}" -framerate "$FPS" \
-          -vf "scale=${WIN_W}:${WIN_H}" \
-          -window_title "live-demux · $title" -i pipe:0 \
-          2>"$WORKDIR/ffplay.err" &
+      if [[ ${#ss_pre[@]} -gt 0 ]]; then
+        ffmpeg -hide_banner -loglevel error \
+          -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+          "${ss_pre[@]}" -i "$stream" \
+          -an -vf "scale=${W}:${H}" -r "$FPS" \
+          -f rawvideo -pix_fmt rgb24 - \
+          2>"$WORKDIR/ffmpeg.err" \
+        | ffplay -hide_banner -loglevel error -autoexit \
+            -fflags nobuffer -flags low_delay -framedrop \
+            -f rawvideo -pixel_format rgb24 -video_size "${W}x${H}" -framerate "$FPS" \
+            -vf "scale=${WIN_W}:${WIN_H}" \
+            -window_title "live-demux · $title" -i pipe:0 \
+            2>"$WORKDIR/ffplay.err" &
+      else
+        ffmpeg -hide_banner -loglevel error \
+          -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+          -i "$stream" \
+          -an -vf "scale=${W}:${H}" -r "$FPS" \
+          -f rawvideo -pix_fmt rgb24 - \
+          2>"$WORKDIR/ffmpeg.err" \
+        | ffplay -hide_banner -loglevel error -autoexit \
+            -fflags nobuffer -flags low_delay -framedrop \
+            -f rawvideo -pixel_format rgb24 -video_size "${W}x${H}" -framerate "$FPS" \
+            -vf "scale=${WIN_W}:${WIN_H}" \
+            -window_title "live-demux · $title" -i pipe:0 \
+            2>"$WORKDIR/ffplay.err" &
+      fi
       FF_PID=$!
       ;;
     null)
-      ffmpeg -hide_banner -loglevel error \
-        -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
-        "${ss_args[@]}" -i "$stream" \
-        -an -vf "scale=${W}:${H}" -r "$FPS" -t 30 \
-        -f null - 2>"$WORKDIR/ffmpeg.err" &
+      if [[ ${#ss_pre[@]} -gt 0 ]]; then
+        ffmpeg -hide_banner -loglevel error \
+          -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+          "${ss_pre[@]}" -i "$stream" \
+          -an -vf "scale=${W}:${H}" -r "$FPS" -t 30 \
+          -f null - 2>"$WORKDIR/ffmpeg.err" &
+      else
+        ffmpeg -hide_banner -loglevel error \
+          -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+          -i "$stream" \
+          -an -vf "scale=${W}:${H}" -r "$FPS" -t 30 \
+          -f null - 2>"$WORKDIR/ffmpeg.err" &
+      fi
       FF_PID=$!
       ;;
     raw)
-      exec ffmpeg -hide_banner -loglevel error \
-        -reconnect 1 -reconnect_streamed 1 \
-        "${ss_args[@]}" -i "$stream" \
-        -an -vf "scale=${W}:${H}" -r "$FPS" \
-        -f rawvideo -pix_fmt rgb24 -
+      if [[ ${#ss_pre[@]} -gt 0 ]]; then
+        exec ffmpeg -hide_banner -loglevel error \
+          -reconnect 1 -reconnect_streamed 1 \
+          "${ss_pre[@]}" -i "$stream" \
+          -an -vf "scale=${W}:${H}" -r "$FPS" \
+          -f rawvideo -pix_fmt rgb24 -
+      else
+        exec ffmpeg -hide_banner -loglevel error \
+          -reconnect 1 -reconnect_streamed 1 \
+          -i "$stream" \
+          -an -vf "scale=${W}:${H}" -r "$FPS" \
+          -f rawvideo -pix_fmt rgb24 -
+      fi
       ;;
     *)
       echo "unknown LIVE_DEMUX_MODE=$MODE"

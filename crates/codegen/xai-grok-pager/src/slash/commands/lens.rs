@@ -75,7 +75,15 @@ impl SlashCommand for LensCommand {
             ),
             (
                 "tiny",
-                "tilt-shift miniature / diorama tiny world",
+                "tilt-shift miniature / diorama (not stereographic)",
+            ),
+            (
+                "planet",
+                "tiny planet · stereographic HDRI (equirect polar / OpenCV-style)",
+            ),
+            (
+                "rabbit",
+                "rabbit hole · inverted planet (sky center)",
             ),
             (
                 "hdri",
@@ -135,12 +143,14 @@ impl SlashCommand for LensCommand {
         // Help
         if matches!(raw.to_ascii_lowercase().as_str(), "help" | "?" | "keys") {
             return CommandResult::Message(
-                "/lens · live bug-world / HDRI anamorphic pop-out (fc-lens-bug-v1)\n\
-                 profiles: bug · 360 · anamorphic · tiny · hdri\n\
+                "/lens · live bug / planet / rabbit HDRI (fc-lens-bug-v1)\n\
+                 profiles: bug · planet · rabbit · 360 · anamorphic · tiny · hdri\n\
+                 planet = stereographic tiny globe · rabbit = inverted hole\n\
                  inputs:   dual · phone · you  (default follows /cam source)\n\
-                 in /watch: L = bug lens pop-out · Y = clean dual cam pop-out\n\
-                 shell: bash scripts/live-demux/lens-popout.sh bug dual\n\
-                 360 cam: LIVE_DEMUX_CAM_DEVICE=<idx> /lens 360"
+                 in /watch: L = bug lens · Y = clean dual cam\n\
+                 shell: bash scripts/live-demux/lens-popout.sh planet dual\n\
+                 still: python3 scripts/live-demux/tiny-planet.py pano.jpg\n\
+                 360 cam: LIVE_DEMUX_LENS_360=1 /lens planet"
                     .into(),
             );
         }

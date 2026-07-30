@@ -4,12 +4,17 @@
 //! Paste into `/watch` search or args:
 //! - `https://x.com/i/broadcasts/<id>`
 //! - `https://x.com/<user>/status/<id>` / `https://x.com/i/status/<id>`
+//! - `https://x.com/<user>/media` — profile Media tab (video playlist via GraphQL)
 //! - `https://pscp.tv/w/…` · `video.pscp.tv` HLS
 //! - `x:<broadcast-or-status>` · `twitter <url>`
 //!
-//! Resolved with **yt-dlp** extractors `twitter`, `twitter:broadcast`,
+//! Status / broadcast / spaces: **yt-dlp** extractors `twitter`, `twitter:broadcast`,
 //! `twitter:spaces`, … Cookies (`YTDLP_COOKIES` / `YTDLP_COOKIES_FROM_BROWSER`)
-//! help on gated broadcasts.
+//! help on gated streams.
+//!
+//! Profile `/media` is **not** a yt-dlp URL — expanded by
+//! `scripts/live-demux/x-media-feed.py` (GraphQL UserMedia) into status pages,
+//! then each clip uses yt-dlp `-g` as usual.
 //!
 //! # To x.com (go live)
 //! Local camera/mic → HLS via `~/Projects/x-media-studio-hls` (or `X_HLS_ROOT`),
@@ -91,6 +96,105 @@ pub fn parse_go_live_args(raw: &str) -> (bool, String) {
         }
     }
     (go, parts.join(" "))
+}
+
+/// True when `url` is an X/Twitter **profile media feed** (not a single status).
+///
+/// Matches `/user/media`, `/user/videos`, `/user/photos`, bare `/user` profile,
+/// and `x.com/user/media?…`. These need GraphQL expansion — yt-dlp rejects them.
+pub fn is_x_user_media_feed(url: &str) -> bool {
+    let t = url.trim();
+    if t.is_empty() {
+        return false;
+    }
+    let lower = t.to_ascii_lowercase();
+    // Must look like an X host path (or path-only after normalize).
+    let path = if let Some(rest) = lower
+        .strip_prefix("https://x.com/")
+        .or_else(|| lower.strip_prefix("http://x.com/"))
+        .or_else(|| lower.strip_prefix("https://twitter.com/"))
+        .or_else(|| lower.strip_prefix("http://twitter.com/"))
+        .or_else(|| lower.strip_prefix("https://www.x.com/"))
+        .or_else(|| lower.strip_prefix("https://mobile.twitter.com/"))
+        .or_else(|| lower.strip_prefix("https://www.twitter.com/"))
+    {
+        rest
+    } else if lower.starts_with("x.com/") {
+        &lower["x.com/".len()..]
+    } else if lower.starts_with("twitter.com/") {
+        &lower["twitter.com/".len()..]
+    } else {
+        return false;
+    };
+
+    let path = path.split('?').next().unwrap_or(path).trim_matches('/');
+    if path.is_empty() {
+        return false;
+    }
+    let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
+    if parts.is_empty() {
+        return false;
+    }
+    let user = parts[0];
+    // Reserved top-level paths — not a profile.
+    if matches!(
+        user,
+        "i" | "home"
+            | "explore"
+            | "search"
+            | "settings"
+            | "messages"
+            | "notifications"
+            | "compose"
+            | "login"
+            | "signup"
+            | "intent"
+            | "hashtag"
+            | "share"
+    ) {
+        return false;
+    }
+    // Bare profile: x.com/user
+    if parts.len() == 1 {
+        return true;
+    }
+    // x.com/user/media|videos|photos|likes
+    if parts.len() >= 2 {
+        return matches!(parts[1], "media" | "videos" | "photos" | "likes");
+    }
+    false
+}
+
+/// Screen name from a profile / media feed URL, if any.
+pub fn x_user_media_handle(url: &str) -> Option<String> {
+    if !is_x_user_media_feed(url) {
+        return None;
+    }
+    let lower = url.trim().to_ascii_lowercase();
+    let path = lower
+        .strip_prefix("https://x.com/")
+        .or_else(|| lower.strip_prefix("http://x.com/"))
+        .or_else(|| lower.strip_prefix("https://twitter.com/"))
+        .or_else(|| lower.strip_prefix("http://twitter.com/"))
+        .or_else(|| lower.strip_prefix("https://www.x.com/"))
+        .or_else(|| lower.strip_prefix("https://mobile.twitter.com/"))
+        .or_else(|| lower.strip_prefix("https://www.twitter.com/"))
+        .or_else(|| lower.strip_prefix("x.com/"))
+        .or_else(|| lower.strip_prefix("twitter.com/"))?;
+    let path = path.split('?').next().unwrap_or(path).trim_matches('/');
+    let user = path.split('/').next().unwrap_or("");
+    if user.is_empty() {
+        return None;
+    }
+    // Preserve original casing from the input URL when possible.
+    let raw = url.trim();
+    if let Some(idx) = raw.to_ascii_lowercase().find(user) {
+        let end = idx + user.len();
+        if end <= raw.len() {
+            return Some(raw[idx..end].to_string());
+        }
+    }
+    Some(user.to_string())
 }
 
 /// Normalize user paste into a canonical URL yt-dlp can extract.
@@ -351,6 +455,15 @@ mod tests {
     fn detects_x_urls() {
         assert!(is_x_locator("https://x.com/i/broadcasts/1ynJOZQeqXqGR"));
         assert!(is_x_locator("https://twitter.com/foo/status/1234567890123456789"));
+        assert!(is_x_user_media_feed("https://x.com/zanelowe/media"));
+        assert!(is_x_user_media_feed("https://x.com/zanelowe"));
+        assert!(is_x_user_media_feed("https://twitter.com/zanelowe/videos"));
+        assert!(!is_x_user_media_feed("https://x.com/zanelowe/status/1234567890123456789"));
+        assert!(!is_x_user_media_feed("https://x.com/i/broadcasts/1ynJOZQeqXqGR"));
+        assert_eq!(
+            x_user_media_handle("https://x.com/zanelowe/media").as_deref(),
+            Some("zanelowe")
+        );
         assert!(is_x_locator("x:1ynJOZQeqXqGR"));
         assert!(is_x_locator("https://video.pscp.tv/foo.m3u8"));
         assert!(!is_x_locator("https://www.youtube.com/watch?v=abc"));

@@ -172,16 +172,24 @@ if ! has_feature "$BIN" "fc-live-demux"; then
   exit 1
 fi
 
-if [[ ! -t 0 || ! -t 1 ]]; then
+# Pure pop-out (ffplay OS window) does not need a TTY. TUI path does.
+if [[ "$POPOUT" -eq 0 ]] && [[ ! -t 0 || ! -t 1 ]]; then
   echo "error: Device not configured / non-TTY"
   echo "Grok TUI needs a real terminal. Open Terminal.app and run:"
   echo "  $ROOT/scripts/launch-watch.sh"
   echo "  # or:  $ROOT/scripts/launch-watch.sh bloomberg"
+  echo "  # pop-out (no TTY): $ROOT/scripts/launch-watch.sh popout 'https://x.com/user/media'"
   exit 6
 fi
 
 command -v yt-dlp >/dev/null || { echo "error: need yt-dlp on PATH"; exit 1; }
 command -v ffmpeg >/dev/null || { echo "error: need ffmpeg on PATH"; exit 1; }
+# X status / media feeds usually need browser cookies.
+if [[ -z "${YTDLP_COOKIES:-}" && -z "${YTDLP_COOKIES_FROM_BROWSER:-}" ]]; then
+  case "${CHANNEL:-}" in
+    *x.com/*|*twitter.com/*) export YTDLP_COOKIES_FROM_BROWSER=safari ;;
+  esac
+fi
 
 # Skip welcome menu → land on agent prompt so /watch and /gmux work.
 export GROK_NEW_SESSION_AT_STARTUP=1
@@ -229,7 +237,6 @@ if [[ "$POPOUT" -eq 1 && "${GROK_LIVE_WATCH_POPOUT_TTY:-0}" != "1" ]]; then
   echo "binary: $BIN (pop-out only · no TUI modal)"
   echo "auto-popout: '${CHANNEL:-vevo (default)}'"
   echo "resolving + launching ffplay…"
-  # Prefer rust pop-out if the binary exports a helper; else shell path.
   ROOT_URL=""
   case "${CHANNEL:-}" in
     ""|vevo|friday|music) ROOT_URL="https://www.youtube.com/watch?v=jaCxgxTScjc&list=PLbAbqvKSxmj4" ;;
@@ -240,12 +247,45 @@ if [[ "$POPOUT" -eq 1 && "${GROK_LIVE_WATCH_POPOUT_TTY:-0}" != "1" ]]; then
     # Named channel other than bloomberg/vevo — let yt-dlp search live.
     ROOT_URL="ytsearch1:${CHANNEL} live"
   fi
-  STREAM="$(yt-dlp -g -f 'b[height<=720]/best[height<=720]/b/best' --no-playlist --no-warnings "$ROOT_URL" 2>/dev/null | head -1 || true)"
+
+  YT_COOKIE_ARGS=()
+  if [[ -n "${YTDLP_COOKIES:-}" && -f "${YTDLP_COOKIES}" ]]; then
+    YT_COOKIE_ARGS=(--cookies "$YTDLP_COOKIES")
+  elif [[ -n "${YTDLP_COOKIES_FROM_BROWSER:-}" ]]; then
+    YT_COOKIE_ARGS=(--cookies-from-browser "$YTDLP_COOKIES_FROM_BROWSER")
+  fi
+
+  # X profile /media → first video status via GraphQL (yt-dlp cannot flat this).
+  case "$ROOT_URL" in
+    *://x.com/*/media*|*://twitter.com/*/media*|*://x.com/*/videos*|*://twitter.com/*/videos*)
+      echo "X media feed — expanding via x-media-feed.py…"
+      XFEED_PY="$ROOT/scripts/live-demux/x-media-feed.py"
+      XFEED_PYBIN="python3"
+      for cand in \
+        /usr/local/Cellar/yt-dlp/*/libexec/bin/python \
+        /opt/homebrew/Cellar/yt-dlp/*/libexec/bin/python; do
+        if [[ -x "$cand" ]]; then XFEED_PYBIN="$cand"; break; fi
+      done
+      FIRST="$("$XFEED_PYBIN" "$XFEED_PY" --end 1 --format tsv "$ROOT_URL" 2>/dev/null | head -1 || true)"
+      if [[ -z "$FIRST" ]]; then
+        echo "error: x-media-feed empty for $ROOT_URL (login x.com in Safari?)"
+        exit 1
+      fi
+      IFS='|' read -r _eid _title ROOT_URL <<<"$FIRST"
+      echo "first clip: ${_title:-$ROOT_URL}"
+      ;;
+  esac
+
+  STREAM="$(yt-dlp -g -f 'b[height<=720]/best[height<=720]/b/best' --no-playlist --no-warnings \
+    "${YT_COOKIE_ARGS[@]+"${YT_COOKIE_ARGS[@]}"}" "$ROOT_URL" 2>/dev/null | head -1 || true)"
   if [[ -z "${STREAM:-}" ]]; then
     echo "error: yt-dlp resolve failed for $ROOT_URL"
     exit 1
   fi
-  TITLE="$(yt-dlp --print '%(title)s' --no-playlist --no-warnings "$ROOT_URL" 2>/dev/null | head -1 || echo "$CHANNEL")"
+  TITLE="$(yt-dlp --print '%(title)s' --no-playlist --no-warnings \
+    "${YT_COOKIE_ARGS[@]+"${YT_COOKIE_ARGS[@]}"}" "$ROOT_URL" 2>/dev/null | head -1 || echo "$CHANNEL")"
+  # bash 3.2 + set -u: empty array expand is fine only when guarded above
+  command -v ffplay >/dev/null || { echo "error: need ffplay (brew install ffmpeg)"; exit 1; }
   exec ffplay -hide_banner -loglevel error -autoexit \
     -fflags nobuffer -flags low_delay -framedrop \
     -window_title "pop-out · /watch · ${TITLE}" \

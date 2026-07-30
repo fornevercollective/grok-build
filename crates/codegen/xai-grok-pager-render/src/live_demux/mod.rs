@@ -54,8 +54,9 @@ pub use lens::{
     LensProfile, FEATURE_ID as LENS_FEATURE_ID, TOAST_LENS,
 };
 pub use x_live::{
-    is_go_live_token, is_x_hub_token, is_x_locator, is_x_page_url, launch_go_live_async,
-    normalize_x_url, open_x_studio, parse_go_live_args, HINT_PASTE_X, TOAST_GO_LIVE,
+    is_go_live_token, is_x_hub_token, is_x_locator, is_x_page_url, is_x_user_media_feed,
+    launch_go_live_async, normalize_x_url, open_x_studio, parse_go_live_args, x_user_media_handle,
+    HINT_PASTE_X, TOAST_GO_LIVE,
 };
 
 use std::collections::{HashMap, VecDeque};
@@ -237,6 +238,19 @@ pub fn resolve_playlist(url: &str) -> Result<Vec<PlaylistEntry>, String> {
 
 /// Resolve with an explicit playlist-end (music TV uses a longer list).
 pub fn resolve_playlist_limited(url: &str, end: u32) -> Result<Vec<PlaylistEntry>, String> {
+    // X profile Media tabs are not yt-dlp playlists — expand via GraphQL helper.
+    if x_live::is_x_user_media_feed(url) {
+        match resolve_x_user_media_playlist(url, end) {
+            Ok(entries) if !entries.is_empty() => return Ok(entries),
+            Ok(_) => {
+                return Err(format!(
+                    "X media feed empty for {url} (cookies? YTDLP_COOKIES_FROM_BROWSER=safari)"
+                ));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
     let end = end.max(1).to_string();
     let mut cmd = Command::new("yt-dlp");
     cmd.args([
@@ -312,6 +326,175 @@ pub fn resolve_playlist_limited(url: &str, end: u32) -> Result<Vec<PlaylistEntry
         });
     }
     Ok(entries)
+}
+
+/// Expand `https://x.com/<user>/media` via `scripts/live-demux/x-media-feed.py`.
+fn resolve_x_user_media_playlist(url: &str, end: u32) -> Result<Vec<PlaylistEntry>, String> {
+    let end = end.max(1).to_string();
+    let script = x_media_feed_script().ok_or_else(|| {
+        "x-media-feed.py not found (expected scripts/live-demux/x-media-feed.py under repo or GROK_BUILD_ROOT)".to_string()
+    })?;
+
+    // Prefer yt-dlp's venv python (has yt_dlp.cookies); fall back to python3.
+    let py = ytdlp_python().unwrap_or_else(|| "python3".into());
+    let mut cmd = Command::new(&py);
+    cmd.arg(&script)
+        .args(["--end", &end, "--format", "jsonl"])
+        .arg(url)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    // Propagate cookie env so the helper matches yt-dlp.
+    for (k, v) in [
+        ("YTDLP_COOKIES", std::env::var("YTDLP_COOKIES").ok()),
+        (
+            "YTDLP_COOKIES_FROM_BROWSER",
+            std::env::var("YTDLP_COOKIES_FROM_BROWSER")
+                .ok()
+                .or_else(|| std::env::var("X_COOKIES_FROM_BROWSER").ok())
+                .or_else(|| Some("safari".into())),
+        ),
+        ("X_COOKIES", std::env::var("X_COOKIES").ok()),
+        (
+            "X_COOKIES_FROM_BROWSER",
+            std::env::var("X_COOKIES_FROM_BROWSER").ok(),
+        ),
+    ] {
+        if let Some(val) = v {
+            if !val.is_empty() {
+                cmd.env(k, val);
+            }
+        }
+    }
+    xai_tty_utils::detach_std_command(&mut cmd);
+    let output = cmd
+        .output()
+        .map_err(|e| format!("x-media-feed.py spawn failed ({py}): {e}"))?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        let err = err.trim();
+        return Err(if err.is_empty() {
+            "x-media-feed.py failed (login x.com in Safari? YTDLP_COOKIES_FROM_BROWSER=safari)".into()
+        } else {
+            format!("x-media-feed: {err}")
+        });
+    }
+
+    let mut entries = Vec::new();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        let eid = v
+            .get("id")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        if eid.is_empty() {
+            continue;
+        }
+        let title = v
+            .get("title")
+            .and_then(|x| x.as_str())
+            .unwrap_or(&eid)
+            .replace('|', "/")
+            .replace('\n', " ");
+        let title = title.chars().take(80).collect::<String>();
+        let page = v
+            .get("url")
+            .and_then(|x| x.as_str())
+            .or_else(|| v.get("webpage_url").and_then(|x| x.as_str()))
+            .unwrap_or("")
+            .to_string();
+        if !page.starts_with("http") {
+            continue;
+        }
+        entries.push(PlaylistEntry {
+            id: eid,
+            title,
+            page_url: page,
+        });
+    }
+    Ok(entries)
+}
+
+fn x_media_feed_script() -> Option<PathBuf> {
+    // Explicit override
+    if let Ok(p) = std::env::var("X_MEDIA_FEED_PY") {
+        let pb = PathBuf::from(&p);
+        if pb.is_file() {
+            return Some(pb);
+        }
+    }
+    // Repo-relative candidates
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Ok(r) = std::env::var("GROK_BUILD_ROOT") {
+        roots.push(PathBuf::from(r));
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        roots.push(cwd.clone());
+        // walk up a few levels for when binary runs from target/
+        let mut p = cwd;
+        for _ in 0..5 {
+            if p.join("scripts/live-demux/x-media-feed.py").is_file() {
+                roots.push(p.clone());
+            }
+            if !p.pop() {
+                break;
+            }
+        }
+    }
+    // Common dev path
+    if let Some(home) = std::env::var_os("HOME") {
+        roots.push(PathBuf::from(home).join("Projects/grok-build"));
+    }
+    for root in roots {
+        let cand = root.join("scripts/live-demux/x-media-feed.py");
+        if cand.is_file() {
+            return Some(cand);
+        }
+    }
+    None
+}
+
+fn ytdlp_python() -> Option<String> {
+    // Homebrew cellar layouts
+    for base in ["/usr/local/Cellar/yt-dlp", "/opt/homebrew/Cellar/yt-dlp"] {
+        let base = PathBuf::from(base);
+        if !base.is_dir() {
+            continue;
+        }
+        let mut versions: Vec<PathBuf> = std::fs::read_dir(&base)
+            .ok()?
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.is_dir())
+            .collect();
+        versions.sort();
+        versions.reverse();
+        for v in versions {
+            let py = v.join("libexec/bin/python");
+            if py.is_file() {
+                return Some(py.to_string_lossy().into_owned());
+            }
+        }
+    }
+    // `yt-dlp` next to a venv python
+    if let Ok(out) = Command::new("yt-dlp")
+        .args(["--version"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+    {
+        if out.success() {
+            // fall through — caller uses python3
+        }
+    }
+    None
 }
 
 fn resolve_title(url: &str) -> Option<String> {

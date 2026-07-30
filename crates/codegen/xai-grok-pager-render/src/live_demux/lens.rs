@@ -1,4 +1,4 @@
-//! Live **lens** pop-out — HDRI / anamorphic / tiny-bug-world vision.
+//! Live **lens** pop-out — HDRI / anamorphic / tiny-bug-world / **tiny planet**.
 //!
 //! **fornevercollective** · `fc-lens-bug-v1`
 //!
@@ -7,13 +7,14 @@
 //! - compound-eye / 360 fisheye
 //! - anamorphic squeeze plate
 //! - miniature “tiny world” tilt-shift
+//! - **stereographic tiny planet / rabbit-hole** (equirect polar remap)
 //! - HDR-ish tone (lifted shadows, packed highlights, lush sat)
 //!
 //! Sources: laptop webcam · phone still-pipe · dual · optional 360 equirect.
 //!
 //! ```text
 //! /lens                  bug world from dual/you cam
-//! /lens bug · tiny · hdri · anamorphic · 360
+//! /lens planet · rabbit · bug · tiny · hdri · anamorphic · 360
 //! /cam phone  then  L    live lens pop-out while watch open
 //! ```
 
@@ -26,7 +27,7 @@ use std::thread;
 pub const FEATURE_ID: &str = "fc-lens-bug-v1";
 
 pub const TOAST_LENS: &str =
-    "LENS · bug-world / HDRI anamorphic pop-out (L key · /lens · 360 fisheye)";
+    "LENS · bug / planet / rabbit HDRI (L · /lens planet · /lens rabbit)";
 
 /// Named live-lens look.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,10 +38,15 @@ pub enum LensProfile {
     Compound360,
     /// Cinema 2x anamorphic desqueeze plate + mild macro.
     Anamorphic,
-    /// Tilt-shift miniature only (tiny planet / diorama).
+    /// Tilt-shift miniature only (shallow DOF diorama — not stereographic).
     TinyWorld,
     /// HDR tone + bloom-ish unsharp without heavy geometry.
     Hdri,
+    /// **Tiny planet** — stereographic polar remap (equirect θ,r → globe).
+    /// Same geometry as OpenCV `remap` / polar coordinates “little planet”.
+    TinyPlanet,
+    /// **Rabbit hole** — inverted planet (sky center, ground outward).
+    RabbitHole,
 }
 
 impl LensProfile {
@@ -51,6 +57,8 @@ impl LensProfile {
             LensProfile::Anamorphic => "anamorphic",
             LensProfile::TinyWorld => "tiny",
             LensProfile::Hdri => "hdri",
+            LensProfile::TinyPlanet => "planet",
+            LensProfile::RabbitHole => "rabbit",
         }
     }
 
@@ -61,7 +69,14 @@ impl LensProfile {
             LensProfile::Anamorphic => "2× anamorphic plate",
             LensProfile::TinyWorld => "tilt-shift tiny world",
             LensProfile::Hdri => "HDRI tone map",
+            LensProfile::TinyPlanet => "tiny planet · stereographic HDRI",
+            LensProfile::RabbitHole => "rabbit hole · inverted planet HDRI",
         }
+    }
+
+    /// Square output preferred (planet / rabbit).
+    pub fn prefers_square(self) -> bool {
+        matches!(self, LensProfile::TinyPlanet | LensProfile::RabbitHole)
     }
 }
 
@@ -83,7 +98,36 @@ pub fn parse_lens_args(raw: &str) -> (LensProfile, LensInput) {
     let t = raw.trim().to_ascii_lowercase();
     let tokens: Vec<&str> = t.split_whitespace().collect();
 
+    // planet / rabbit before "tiny" so "tinyplanet" and "planet" win.
     let profile = if tokens.iter().any(|x| {
+        matches!(
+            *x,
+            "rabbit"
+                | "rabbithole"
+                | "rabbit-hole"
+                | "invert"
+                | "inverted"
+                | "tunnel"
+                | "hole"
+        )
+    }) {
+        LensProfile::RabbitHole
+    } else if tokens.iter().any(|x| {
+        matches!(
+            *x,
+            "planet"
+                | "tinyplanet"
+                | "tiny-planet"
+                | "littleplanet"
+                | "little-planet"
+                | "globe"
+                | "stereographic"
+                | "sg"
+                | "spin"
+        )
+    }) {
+        LensProfile::TinyPlanet
+    } else if tokens.iter().any(|x| {
         matches!(
             *x,
             "360" | "compound" | "fisheye" | "equirect" | "vr" | "omni"
@@ -155,6 +199,7 @@ pub fn parse_lens_args(raw: &str) -> (LensProfile, LensInput) {
 }
 
 /// Display size for lens windows (`LIVE_DEMUX_LENS_SIZE`, default 1280x720).
+/// Planet/rabbit default to square 1000×1000 (OpenCV-style output_size).
 fn lens_display_size() -> (u32, u32) {
     if let Ok(s) = std::env::var("LIVE_DEMUX_LENS_SIZE") {
         if let Some((a, b)) = s.split_once('x') {
@@ -162,8 +207,26 @@ fn lens_display_size() -> (u32, u32) {
                 return (w.max(640), h.max(360));
             }
         }
+        // bare number → square
+        if let Ok(n) = s.parse::<u32>() {
+            let n = n.clamp(512, 2048);
+            return (n, n);
+        }
     }
     (1280, 720)
+}
+
+fn planet_output_size() -> u32 {
+    std::env::var("LIVE_DEMUX_LENS_PLANET_SIZE")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .or_else(|| {
+            std::env::var("LIVE_DEMUX_LENS_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+        })
+        .unwrap_or(1000)
+        .clamp(512, 2048)
 }
 
 fn lens_fps() -> u32 {
@@ -174,12 +237,65 @@ fn lens_fps() -> u32 {
         .clamp(8, 60)
 }
 
+/// Stereographic tiny-planet / rabbit-hole graph.
+///
+/// Matches OpenCV polar remap geometry:
+/// - θ (angle) → panorama X  
+/// - R (radius) → panorama Y  
+/// True equirect uses `v360 … output=sg`. Flat cams are stretched into a
+/// 2:1 canvas then treated as equirect (common “phone planet” approximation).
+fn planet_vf(invert: bool, equirect: bool, size: u32) -> String {
+    let s = size.max(512);
+    // HDRI grade after geometry (same spirit as bug grade, slightly cooler sky).
+    let grade = "eq=contrast=1.14:brightness=0.02:saturation=1.5:gamma=1.04,\
+colorbalance=rs=-0.03:gs=0.05:bs=0.02:rm=0.01:gm=0.03:bm=0.04,\
+unsharp=5:5:0.55:5:5:0.0,\
+curves=all='0/0 0.2/0.18 0.5/0.52 0.8/0.85 1/1'";
+    // pitch=-90 → ground center (planet); +90 → sky center (rabbit hole).
+    // OpenCV invert flips source vertically first — pitch flip is equivalent.
+    let pitch = if invert { "90" } else { "-90" };
+    let sg = format!(
+        "v360=input=e:output=sg:yaw=0:pitch={pitch}:roll=0:h_fov=360:v_fov=180,scale={s}:{s}"
+    );
+    if equirect {
+        // True 360 equirect → stereographic globe + HDRI.
+        format!("{sg},{grade}")
+    } else {
+        // Flat webcam/phone: force 2:1 canvas as pseudo-equirect, then planet.
+        // Same idea as “pinch to planet” on non-360 phone pans.
+        format!(
+            "scale=2048:1024:force_original_aspect_ratio=increase,crop=2048:1024,{sg},{grade}"
+        )
+    }
+}
+
 /// Build ffmpeg `-vf` chain for a profile.
 ///
-/// Geometry is approximate “insect / anamorphic / tiny world” using filters
-/// available in stock ffmpeg (no custom GLSL). 360 path prefers `v360` when
-/// the graph is labeled equirect; flat cams use barrel `lenscorrection`.
+/// Geometry uses stock ffmpeg filters (no custom GLSL). 360 path prefers
+/// `v360` when the graph is labeled equirect; flat cams use barrel /
+/// pseudo-equirect approximations.
 pub fn lens_vf(profile: LensProfile, equirect: bool, w: u32, h: u32) -> String {
+    // Optional env override full graph.
+    if let Ok(extra) = std::env::var("LIVE_DEMUX_LENS_VF") {
+        if !extra.trim().is_empty() {
+            return extra;
+        }
+    }
+
+    // Planet / rabbit always square (OpenCV output_size).
+    if matches!(profile, LensProfile::TinyPlanet | LensProfile::RabbitHole) {
+        let size = if w == h {
+            w
+        } else {
+            planet_output_size()
+        };
+        return planet_vf(
+            matches!(profile, LensProfile::RabbitHole),
+            equirect && use_v360_pref(),
+            size,
+        );
+    }
+
     let (w, h) = (w.max(640), h.max(360));
     // Common HDR-ish grade: lift shadows, roll highlights, lush sat, slight green.
     let grade = "eq=contrast=1.12:brightness=0.03:saturation=1.45:gamma=1.05,\
@@ -195,14 +311,6 @@ unsharp=5:5:0.6:5:5:0.0";
         "scale=iw*0.42:ih,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=0x05080c"
     );
 
-    // Tiny-world: soft top/bottom blur bands (tilt-shift proxy).
-    let tiny = format!(
-        "split[a][b];\
-[a]boxblur=8:2[blur];\
-[b]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(between(Y,H*0.28,H*0.72),255,0)'[mask];\
-[blur][mask]alphamerge[blura];\
-[b][blura]overlay"
-    );
     // Simpler tiny (more portable): vignette + slight zoom center.
     let tiny_simple = "crop=iw*0.92:ih*0.92,scale=iw*1.08:ih*1.08,crop=iw:ih,vignette=PI/5";
 
@@ -212,7 +320,6 @@ unsharp=5:5:0.6:5:5:0.0";
     let barrel_hard = "lenscorrection=k1=0.42:k2=0.18:cx=0.5:cy=0.5";
 
     // 360 equirect → dual fisheye or rectilinear “bug stare”.
-    // v360 may be missing on some builds — caller can fall back.
     let v360_bug = format!(
         "v360=input=e:output=dfisheye:h_fov=190:v_fov=190,scale={w}:{h}"
     );
@@ -222,7 +329,7 @@ unsharp=5:5:0.6:5:5:0.0";
 
     let base_scale = format!("scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2");
 
-    let chain = match (profile, equirect) {
+    match (profile, equirect) {
         (LensProfile::Compound360, true) => {
             format!("{v360_bug},{grade},vignette=PI/3.2")
         }
@@ -239,8 +346,6 @@ unsharp=5:5:0.6:5:5:0.0";
             format!("{v360_flat},{tiny_simple},{grade}")
         }
         (LensProfile::TinyWorld, false) => {
-            // Prefer simple tiny; complex alphamerge can fail on some ffplay builds.
-            let _ = tiny;
             format!("{base_scale},{tiny_simple},{grade},hue=h=18:s=1.1")
         }
         (LensProfile::Hdri, true) => {
@@ -262,15 +367,9 @@ unsharp=5:5:0.6:5:5:0.0";
                 "{base_scale},{barrel_hard},{tiny_simple},{grade},{ana},vignette=PI/3.5,hue=h=22:s=1.15"
             )
         }
-    };
-
-    // Optional env override full graph.
-    if let Ok(extra) = std::env::var("LIVE_DEMUX_LENS_VF") {
-        if !extra.trim().is_empty() {
-            return extra;
-        }
+        // Handled above.
+        (LensProfile::TinyPlanet | LensProfile::RabbitHole, _) => unreachable!(),
     }
-    chain
 }
 
 fn use_v360_pref() -> bool {
@@ -284,9 +383,15 @@ fn use_v360_pref() -> bool {
 pub fn spawn_lens_webcam(profile: LensProfile, equirect: bool) -> Result<u32, String> {
     let device = cam_device();
     let (cap_w, cap_h) = cam_capture_size();
-    let (disp_w, disp_h) = lens_display_size();
+    let (disp_w, disp_h) = if profile.prefers_square() {
+        let s = planet_output_size();
+        (s, s)
+    } else {
+        lens_display_size()
+    };
     let fps = lens_fps();
-    let mirror = cam_mirror_default() && !equirect;
+    // Planet geometry owns orientation — skip selfie mirror (warps the pole).
+    let mirror = cam_mirror_default() && !equirect && !profile.prefers_square();
     let mut vf = lens_vf(profile, equirect && use_v360_pref(), disp_w, disp_h);
     if mirror {
         vf = format!("hflip,{vf}");
@@ -362,7 +467,12 @@ pub fn spawn_lens_webcam(profile: LensProfile, equirect: bool) -> Result<u32, St
 pub fn spawn_lens_still(profile: LensProfile, equirect: bool) -> Result<u32, String> {
     let still = cam_still_path();
     super::camera::ensure_still_seed_public(&still);
-    let (disp_w, disp_h) = lens_display_size();
+    let (disp_w, disp_h) = if profile.prefers_square() {
+        let s = planet_output_size();
+        (s, s)
+    } else {
+        lens_display_size()
+    };
     let vf = lens_vf(profile, equirect && use_v360_pref(), disp_w, disp_h);
     let title = format!("lens · {} · phone still", profile.label());
     // Re-read path ~12×/s — matches phone upload cadence without thrashing.
@@ -490,6 +600,12 @@ pub fn is_lens_token(tok: &str) -> bool {
             | "tinyworld"
             | "tiny-world"
             | "tiltshift"
+            | "planet"
+            | "tinyplanet"
+            | "tiny-planet"
+            | "rabbit"
+            | "rabbithole"
+            | "globe"
     )
 }
 
@@ -536,6 +652,32 @@ mod tests {
         let (p, i) = parse_lens_args("anamorphic phone");
         assert_eq!(p, LensProfile::Anamorphic);
         assert_eq!(i, LensInput::PhoneStill);
+    }
+
+    #[test]
+    fn parse_planet_and_rabbit() {
+        assert_eq!(
+            parse_lens_args("planet dual").0,
+            LensProfile::TinyPlanet
+        );
+        assert_eq!(
+            parse_lens_args("rabbit phone").0,
+            LensProfile::RabbitHole
+        );
+        assert_eq!(
+            parse_lens_args("tinyplanet").0,
+            LensProfile::TinyPlanet
+        );
+    }
+
+    #[test]
+    fn vf_planet_stereographic_hdri() {
+        let vf = lens_vf(LensProfile::TinyPlanet, true, 1000, 1000);
+        assert!(vf.contains("output=sg") || vf.contains("sg:"), "{vf}");
+        assert!(vf.contains("pitch=-90"), "{vf}");
+        assert!(vf.contains("eq=") || vf.contains("saturation"), "{vf}");
+        let rabbit = lens_vf(LensProfile::RabbitHole, true, 1000, 1000);
+        assert!(rabbit.contains("pitch=90"), "{rabbit}");
     }
 
     #[test]

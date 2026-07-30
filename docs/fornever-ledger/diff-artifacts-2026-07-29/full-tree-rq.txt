@@ -1,0 +1,510 @@
+Only in /Users/qbit/Projects/grok-build: .github
+Files /Users/qbit/Projects/xai-grok-build/Cargo.lock and /Users/qbit/Projects/grok-build/Cargo.lock differ
+Files /Users/qbit/Projects/xai-grok-build/README.md and /Users/qbit/Projects/grok-build/README.md differ
+Files /Users/qbit/Projects/xai-grok-build/SOURCE_REV and /Users/qbit/Projects/grok-build/SOURCE_REV differ
+Files /Users/qbit/Projects/xai-grok-build/crates/build/xai-proto-build/src/lib.rs and /Users/qbit/Projects/grok-build/crates/build/xai-proto-build/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-crash-handler/src/handler.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-crash-handler/src/handler.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-crash-handler/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-crash-handler/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-crash-handler/src/symbolicate.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-crash-handler/src/symbolicate.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-crash-handler/tests/integration.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-crash-handler/tests/integration.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-file-utils/src/events/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-file-utils/src/events/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-fsnotify/src/watcher.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-fsnotify/src/watcher.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-agent/src/builder.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-agent/src/builder.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-agent/src/error.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-agent/src/error.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-agent/src/plugins/hooks_adapter.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-agent/src/plugins/hooks_adapter.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/loader.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/loader.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/managed_cache/claim_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/managed_cache/claim_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/managed_cache/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/managed_cache/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/managed_cache.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/managed_cache.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/signed_policy/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/signed_policy/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config/src/signed_policy.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config/src/signed_policy.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config-types/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config-types/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-config-types/src/mcp.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-config-types/src/mcp.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/config.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/config.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/discovery.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/discovery.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/dispatcher.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/dispatcher.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/event.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/event.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/runner/command.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/runner/command.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/runner/http.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/runner/http.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/src/runner/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/src/runner/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-hooks/tests/integration.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-hooks/tests/integration.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-http/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-http/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-mcp/src/servers.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-mcp/src/servers.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-models/default_models.json and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-models/default_models.json differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/custom-hooks.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/custom-hooks.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/02-authentication.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/02-authentication.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/03-keyboard-shortcuts.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/03-keyboard-shortcuts.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/04-slash-commands.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/04-slash-commands.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/05-configuration.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/05-configuration.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/07-mcp-servers.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/07-mcp-servers.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/08-skills.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/08-skills.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/09-plugins.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/09-plugins.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/10-hooks.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/10-hooks.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/11-custom-models.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/11-custom-models.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/16-subagents.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/16-subagents.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/18-sandbox.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/18-sandbox.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/19-plan-mode.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/19-plan-mode.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/20-background-tasks.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/20-background-tasks.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/21-terminal-support.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/21-terminal-support.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/22-permissions-and-safety.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/22-permissions-and-safety.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/23-dashboard.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/23-dashboard.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/24-monitoring-usage.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/24-monitoring-usage.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/docs/user-guide/README.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/docs/user-guide/README.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/acp/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/acp/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/acp/spawn.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/acp/spawn.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/acp/tracker.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/acp/tracker.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/background.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/background.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/interactions.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/interactions.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/permissions.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/permissions.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/prompt_origin.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/prompt_origin.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/queue.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/queue.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/session_notification.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/session_notification.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/settings.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/settings.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/interjection.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/interjection.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/queue_and_adoption.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/queue_and_adoption.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/settings.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/settings.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/turn_completion.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/tests/turn_completion.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/workflow_ingest.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/acp_handler/workflow_ingest.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/actions.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/actions.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/input.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/input.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/interactions.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/interactions.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/links.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/links.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/media.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/media.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/notices.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/notices.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/plan.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/plan.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/prompt.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/prompt.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/queue.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/queue.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/render.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/render.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/session.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/session.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/viewer.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/viewer.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/workflows_overlay.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/agent_view/workflows_overlay.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/app_view.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/app_view.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/dashboard.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/dashboard.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/interject.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/interject.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/prompt.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/prompt.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/queue.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/queue.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/router.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/router.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/session/lifecycle.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/session/lifecycle.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/session/load.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/session/load.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/settings/ui.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/settings/ui.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/status.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/status.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/task_result.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/task_result.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/dashboard.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/dashboard.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/prompt.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/prompt.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/fork.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/fork.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/lifecycle.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/lifecycle.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/load.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/load.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/modal.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/session/modal.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/settings.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/settings.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/status.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/status.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/task_result.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/task_result.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/voice.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/tests/voice.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/voice.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/dispatch/voice.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/display_refresh_startup.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/display_refresh_startup.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/effects/helpers.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/effects/helpers.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/effects/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/effects/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/event_loop.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/event_loop.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/leader_cluster/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/leader_cluster/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/mouse.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/mouse.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/subagent.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/subagent.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/turn_completion/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/turn_completion/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/app/turn_completion.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/app/turn_completion.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/diagnostics/fix_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/diagnostics/fix_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/docs.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/docs.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/doctor_cmd/json.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/doctor_cmd/json.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/doctor_cmd/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/doctor_cmd/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/headless.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/headless.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/input/mouse/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/input/mouse/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/input/mouse.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/input/mouse.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/mcp_cmd.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/mcp_cmd.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/minimal/api.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/minimal/api.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/models.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/models.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/notifications/sleep.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/notifications/sleep.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/scrollback/blocks/session_event.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/scrollback/blocks/session_event.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/scrollback/blocks/thinking.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/scrollback/blocks/thinking.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/scrollback/state/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/scrollback/state/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/scrollback/wrappers/entry_renderer.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/scrollback/wrappers/entry_renderer.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/settings/defs.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/settings/defs.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/settings/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/settings/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/settings/registry.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/settings/registry.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/share_cmd.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/share_cmd.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/slash/commands: delete.rs
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/slash/commands: gy.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/slash/commands/loop_cmd.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/slash/commands/loop_cmd.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/slash/commands/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/slash/commands/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/slash/commands/privacy.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/slash/commands/privacy.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/slash/commands/voice.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/slash/commands/voice.rs differ
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/slash/commands: watch.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/dashboard/peek.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/dashboard/peek.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/dashboard/render.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/dashboard/render.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/dashboard/state.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/dashboard/state.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/file_search/line_viewer.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/file_search/line_viewer.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/file_search/state.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/file_search/state.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/history_search.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/history_search.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/modal.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/modal.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/privacy_banner.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/privacy_banner.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/prompt_widget/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/prompt_widget/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/prompt_widget/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/prompt_widget/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/question_view.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/question_view.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/input.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/input.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/render.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/render.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/state.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/state.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/settings_modal/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/tasks_pane.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/tasks_pane.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/turn_status.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/turn_status.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/welcome/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/welcome/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/views/workflows.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/views/workflows.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/voice/handle.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/voice/handle.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/voice/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/voice/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/src/worktree_cmd/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/src/worktree_cmd/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/leader_pty_e2e/campaign_leader_mode_remote_dismiss_on_model_pick.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/leader_pty_e2e/campaign_leader_mode_remote_dismiss_on_model_pick.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/bash_full_output_double_click_fold_pty.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/bash_full_output_double_click_fold_pty.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/common.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/common.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: embedded_mode_boots_without_hanging_on_blocked_backend.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/empty_enter_sends_top_not_last_of_two.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/empty_enter_sends_top_not_last_of_two.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: endline_park_is_markerless.rs
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: endline_park_two_static_markers.rs
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: endline_wakeups_are_markerless.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: endline_wakeups_close_with_markers.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal/minimal_continue_reprints_transcript.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal/minimal_continue_reprints_transcript.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal: minimal_parked_plan_commits_to_scrollback.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal: minimal_parked_plan_survives_quit.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal: minimal_thinking_is_visually_distinct_from_output.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/minimal/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/queued_message_renders_once_not_twice.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/queued_message_renders_once_not_twice.rs differ
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: reparked_wait_repushes_buried_marker.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e: reparked_wait_stays_markerless.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/spinner_reappears_after_wait_resumes.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/spinner_reappears_after_wait_resumes.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/subscription_watch_and_gate_verify_pty.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e/subscription_watch_and_gate_verify_pty.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e_persistence.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e_persistence.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e_smoke.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/pty_e2e_smoke.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager/tests/settings_e2e.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager/tests/settings_e2e.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-bin/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-bin/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-bin/src/main.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-bin/src/main.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-minimal/src/commit.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-minimal/src/commit.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-minimal/src: commit_tests.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-minimal/src/full_view.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-minimal/src/full_view.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-minimal/src/live.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-minimal/src/live.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-minimal/src/overlay.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-minimal/src/overlay.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-minimal/src/plan.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-minimal/src/plan.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-pty-harness/src/flows.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-pty-harness/src/flows.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-pty-harness/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-pty-harness/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-pty-harness/src/pty.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-pty-harness/src/pty.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-pty-harness/tests/privacy_banner_e2e.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-pty-harness/tests/privacy_banner_e2e.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-pty-harness/tests: settings_locked_row_e2e.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/appearance/config.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/appearance/config.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/clipboard/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/clipboard/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/gboom/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/gboom/mod.rs differ
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src: gy_tty
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/lib.rs differ
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src: live_demux
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/prompt_images.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/prompt_images.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/render/gboom_overlay.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/render/gboom_overlay.rs differ
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/render: halfblock.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/render/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/render/mod.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/terminal: da2.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/terminal: kitty_keyboard.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/terminal/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/terminal/mod.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/terminal: term_version.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/terminal/test.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/terminal/test.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-pager-render/src/terminal/xtversion.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-pager-render/src/terminal/xtversion.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-sampler/src/client.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-sampler/src/client.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-sampler/src/stream/messages.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-sampler/src/stream/messages.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-sampler/src/stream/messages_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-sampler/src/stream/messages_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-sampling-types/src/conversation.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-sampling-types/src/conversation.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-sampling-types/src/messages.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-sampling-types/src/messages.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-sandbox/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-sandbox/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/CHANGELOG.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/CHANGELOG.md differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/README.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/README.md differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/benches: fork_copy.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs/0.2.111.md and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/changelogs/0.2.111.md differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs: 0.2.112.json
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs: 0.2.112.md
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs: 0.2.113.json
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs: 0.2.113.md
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs: 0.2.114.json
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/changelogs: 0.2.114.md
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/activity.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/activity.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/app.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/app.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/config.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/config.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/config_model_override_parse.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/config_model_override_parse.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/init.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/init.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mod.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent: models
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/models.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/models.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/acp_agent.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/acp_agent.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/agent_ops.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/agent_ops.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/code_nav.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/code_nav.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/folder_trust_prompt.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/folder_trust_prompt.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/session_lifecycle.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/session_lifecycle.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/subagent_coordinator.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/subagent_coordinator.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests/dhat_soak.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests/dhat_soak.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests: process_scope_reclaim.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests/subagent_spawn_context_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests/subagent_spawn_context_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/mvp_agent/tests.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent: otel_gate.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/server.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/server.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/subagent/handle_request.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/subagent/handle_request.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/subagent/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/subagent/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/subagent/tests/rest.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/subagent/tests/rest.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/agent/subscription_check.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/agent/subscription_check.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/auth_provider.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/auth_provider.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/credential_provider.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/credential_provider.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/error.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/error.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/external_auth.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/external_auth.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/flow.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/flow.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/manager.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/manager.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/manager_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/manager_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/auth_backend_contract_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/auth_backend_contract_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/oidc_refresher.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/oidc_refresher.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/oidc_refresher_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/refresh/oidc_refresher_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/auth/storage.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/auth/storage.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/config/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/config/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/config/reloader.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/config/reloader.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/config/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/config/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/extensions/auth.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/extensions/auth.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/extensions/git.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/extensions/git.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/extensions/hooks.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/extensions/hooks.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/extensions/mcp.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/extensions/mcp.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/extensions/session_admin.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/extensions/session_admin.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/inspect/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/inspect/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/leader/client.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/leader/client.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/leader: in_process.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/leader/lock.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/leader/lock.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/leader/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/leader/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/leader/server.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/leader/server.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/mcp_doctor.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/mcp_doctor.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/remote/client.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/remote/client.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/remote/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/remote/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/hook_dispatch.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/hook_dispatch.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/hooks_plugins.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/hooks_plugins.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/mcp.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/mcp.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/notification_drain.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/notification_drain.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/run_loop.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/run_loop.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/sampler_turn.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/sampler_turn.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/spawn.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/spawn.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/stop_gate.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/stop_gate.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/tool_calls.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/tool_calls.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/turn.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/turn.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/turn_end.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/turn_end.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/workflow.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_impl/workflow.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/auth_error_no_retry_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/auth_error_no_retry_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/auto_wake_suppression_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/auto_wake_suppression_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/client_hooks_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/client_hooks_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/observability_bridge_mapping_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/observability_bridge_mapping_tests.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests: plan_exit_batch_barrier_tests.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/acp_session_tests/turn: chat_history_integrity_tests.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/agent_rebuild.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/agent_rebuild.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/commands.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/commands.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/events.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/events.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/handle.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/handle.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/managed_mcp.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/managed_mcp.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/mcp_restart.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/mcp_restart.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/mcp_servers.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/mcp_servers.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/merge.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/merge.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/persistence.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/persistence.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/persistence_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/persistence_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/slash_commands.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/slash_commands.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage/jsonl/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/storage/jsonl/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage/jsonl/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/storage/jsonl/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/storage/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage/search.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/storage/search.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage/search_fts.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/storage/search_fts.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage: search_recovery.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/storage/search_remote_sync.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/storage/search_remote_sync.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/telemetry.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/telemetry.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session: testkit
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/wire_tags.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/wire_tags.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/workflow/host_service.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/workflow/host_service.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/workflow/manager.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/workflow/manager.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/session/workflow/tracker.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/session/workflow/tracker.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/terminal/adapter.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/terminal/adapter.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/terminal/output_recorder.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/terminal/output_recorder.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/test_support/lsp_runtime.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/test_support/lsp_runtime.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/tools/notification_bridge.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/tools/notification_bridge.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/tools/tool_context.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/tools/tool_context.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/config/campaigns.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/config/campaigns.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/config/mcp.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/config/mcp.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/config/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/config/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/config/resolve/features.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/config/resolve/features.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/config/tips.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/config/tips.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/hooks.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/hooks.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util: limits.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/subprocess.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/subprocess.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/src/util/user_identity.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/src/util/user_identity.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: session_fork_replay_memory.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests/session_load_perf.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/tests/session_load_perf.rs differ
+Only in /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/tests: team_managed_config.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: test_auth_provider_command_e2e.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests/test_built_binary_e2e.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/tests/test_built_binary_e2e.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: test_leader_sandbox_confinement.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests/test_leader_soak.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/tests/test_leader_soak.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: test_nonblocking_startup.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: test_nonblocking_startup_offline.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests/test_registry_churn.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/tests/test_registry_churn.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: test_session_end_hook_e2e.rs
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: test_session_load_memory.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests/test_settings_refresh.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell/tests/test_settings_refresh.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell/tests: testkit_synth_roundtrip.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-shell-base/src/util/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-shell-base/src/util/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/client.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/client.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/events.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/events.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/external/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/external/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/external/providers.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/external/providers.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/external/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/external/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/otel_layer/redact.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/otel_layer/redact.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-telemetry/src/unified_log.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-telemetry/src/unified_log.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-test-support/src/env.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-test-support/src/env.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-test-support/src/leader.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-test-support/src/leader.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-test-support/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-test-support/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-test-support/src/mock_server.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-test-support/src/mock_server.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-test-support/src: resources.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/bridge.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/bridge.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/computer/local/shell_state.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/computer/local/shell_state.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/computer/local/static_shell.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/computer/local/static_shell.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/computer/local/terminal.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/computer/local/terminal.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/computer/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/computer/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/apply_patch/tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/apply_patch/tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/grep_files/tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/grep_files/tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/list_dir/tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/list_dir/tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/read_file/tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/codex/read_file/tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/ask_user_question/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/ask_user_question/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/bash/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/bash/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/enter_plan_mode/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/enter_plan_mode/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/exit_plan_mode/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/exit_plan_mode/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/grep/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/grep/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/image_edit/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/image_edit/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/image_gen/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/image_gen/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/kill_task/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/kill_task/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/kill_task/terminal_command.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/kill_task/terminal_command.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/list_dir/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/list_dir/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/lsp/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/lsp/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/monitor/tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/monitor/tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/monitor/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/monitor/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/read_file/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/read_file/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/scheduler/create.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/scheduler/create.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/scheduler/delete.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/scheduler/delete.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/scheduler/list.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/scheduler/list.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/search_replace/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/search_replace/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/coordinator.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/coordinator.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/coordinator_state.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/coordinator_state.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/coordinator_tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/coordinator_tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task_output/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task_output/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task_output/terminal_command.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task_output/terminal_command.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task_output/wait_tasks.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/task_output/wait_tasks.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/todo/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/todo/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/update_goal/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/update_goal/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/video_gen/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/video_gen/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/web_fetch/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/web_fetch/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/web_search/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/web_search/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/workflow/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build/workflow/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_concise/bash.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_concise/bash.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_concise/read_file.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_concise/read_file.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_concise/search_replace.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_concise/search_replace.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_hashline/edit/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_hashline/edit/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_hashline/grep.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_hashline/grep.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_hashline/read_file.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/grok_build_hashline/read_file.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/client.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/client.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/dispatch.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/dispatch.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/manager.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/manager.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/restart.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/restart.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/tests.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/lsp/tests.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/memory/get_tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/memory/get_tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/memory/search_tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/memory/search_tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/memory/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/memory/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/bash/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/bash/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/edit/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/edit/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/glob/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/glob/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/grep/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/grep/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/read/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/read/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/skill/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/skill/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/todowrite/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/todowrite/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/write/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/opencode/write/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/search_tool/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/search_tool/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/task_output/tool.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/task_output/tool.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/implementations/use_tool/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/implementations/use_tool/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/registry/types.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/registry/types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/reminders/task_completion.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/reminders/task_completion.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/types/output.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/types/output.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/types/skill_discovery_tracker/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/types/skill_discovery_tracker/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/types/template_renderer.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/types/template_renderer.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/src/types/tool_metadata.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools/src/types/tool_metadata.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools/tests: test_subagent_soak.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-tools-api/src/slash_commands.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-tools-api/src/slash_commands.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-update/src/auto_update.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-update/src/auto_update.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-version/Cargo.toml and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-version/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/bin/workspace_server.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/bin/workspace_server.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/error.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/error.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src: export_github.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/file_system/fuzzy.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/file_system/fuzzy.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/handle.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/handle.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/hub.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/hub.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/hub_server.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/hub_server.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/permission/auto_mode.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/permission/auto_mode.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/permission/manager.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/permission/manager.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/permission/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/permission/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/permission/prompter.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/permission/prompter.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/permission/shell_access.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/permission/shell_access.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/preview_supervisor.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/preview_supervisor.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/rpc_envelope.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/rpc_envelope.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/session/git.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/session/git.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/session/jj.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/session/jj.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/session/tool_config.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/session/tool_config.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace/src/workspace_ops.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace/src/workspace_ops.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-client/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace-client/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/deploy.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/deploy.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-types/src/rpc: export_github.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/git.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/git.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/hooks.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/hooks.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/mod.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/mod.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/workspace.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-grok-workspace-types/src/rpc/workspace.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-tty-utils/src/lib.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-tty-utils/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-tty-utils/src/process_scope.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-tty-utils/src/process_scope.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-tty-utils/src: runtime.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-workflow/src/engine.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-workflow/src/engine.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/codegen/xai-workflow/src/journal.rs and /Users/qbit/Projects/grok-build/crates/codegen/xai-workflow/src/journal.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-circuit-breaker/Cargo.toml and /Users/qbit/Projects/grok-build/crates/common/xai-circuit-breaker/Cargo.toml differ
+Only in /Users/qbit/Projects/xai-grok-build/crates/common/xai-circuit-breaker/src: grpc.rs
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-circuit-breaker/src/lib.rs and /Users/qbit/Projects/grok-build/crates/common/xai-circuit-breaker/src/lib.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-computer-hub-sdk/Cargo.toml and /Users/qbit/Projects/grok-build/crates/common/xai-computer-hub-sdk/Cargo.toml differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-computer-hub-sdk/src/auth.rs and /Users/qbit/Projects/grok-build/crates/common/xai-computer-hub-sdk/src/auth.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-computer-hub-sdk/src/connection.rs and /Users/qbit/Projects/grok-build/crates/common/xai-computer-hub-sdk/src/connection.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-computer-hub-sdk/src/metric_donate.rs and /Users/qbit/Projects/grok-build/crates/common/xai-computer-hub-sdk/src/metric_donate.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-computer-hub-sdk/src/metrics.rs and /Users/qbit/Projects/grok-build/crates/common/xai-computer-hub-sdk/src/metrics.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-computer-hub-sdk/src/oidc_provider.rs and /Users/qbit/Projects/grok-build/crates/common/xai-computer-hub-sdk/src/oidc_provider.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-tool-protocol/src/turn_hook.rs and /Users/qbit/Projects/grok-build/crates/common/xai-tool-protocol/src/turn_hook.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-tool-types/src/serde_lenient.rs and /Users/qbit/Projects/grok-build/crates/common/xai-tool-types/src/serde_lenient.rs differ
+Files /Users/qbit/Projects/xai-grok-build/crates/common/xai-tool-types/src/task.rs and /Users/qbit/Projects/grok-build/crates/common/xai-tool-types/src/task.rs differ
+Only in /Users/qbit/Projects/grok-build: docs
+Only in /Users/qbit/Projects/grok-build: experiments
+Files /Users/qbit/Projects/xai-grok-build/prod/mc/cli-chat-proxy-types/src/feedback_types.rs and /Users/qbit/Projects/grok-build/prod/mc/cli-chat-proxy-types/src/feedback_types.rs differ
+Files /Users/qbit/Projects/xai-grok-build/prod/mc/cli-chat-proxy-types/src/lib.rs and /Users/qbit/Projects/grok-build/prod/mc/cli-chat-proxy-types/src/lib.rs differ
+Only in /Users/qbit/Projects/xai-grok-build/prod/mc/cli-chat-proxy-types/src: team_managed_config_types.rs
+Only in /Users/qbit/Projects/grok-build: scripts

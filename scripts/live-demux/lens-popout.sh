@@ -5,6 +5,8 @@
 # Usage:
 #   bash scripts/live-demux/lens-popout.sh              # bug world · webcam
 #   bash scripts/live-demux/lens-popout.sh bug
+#   bash scripts/live-demux/lens-popout.sh planet       # tiny planet (stereographic HDRI)
+#   bash scripts/live-demux/lens-popout.sh rabbit dual  # inverted rabbit hole
 #   bash scripts/live-demux/lens-popout.sh 360          # compound barrel (flat cams)
 #   bash scripts/live-demux/lens-popout.sh 360 dual     # you + phone, compound both
 #   bash scripts/live-demux/lens-popout.sh equirect     # true v360 equirect path
@@ -14,11 +16,16 @@
 #   bash scripts/live-demux/lens-popout.sh bug phone    # phone still-pipe
 #   bash scripts/live-demux/lens-popout.sh bug dual     # you + phone
 #
+# Still photo (OpenCV polar, same math as planet profile):
+#   python3 scripts/live-demux/tiny-planet.py panorama.jpg -o out.jpg
+#   python3 scripts/live-demux/tiny-planet.py pano.jpg --invert -o rabbit.jpg
+#
 # Env:
 #   LIVE_DEMUX_CAM_DEVICE=0
 #   LIVE_DEMUX_CAM_CAPTURE=640x480
 #   LIVE_DEMUX_CAM_STILL=~/.panda/vision/live.jpg
 #   LIVE_DEMUX_LENS_SIZE=1280x720
+#   LIVE_DEMUX_LENS_PLANET_SIZE=1000   square planet/rabbit size
 #   LIVE_DEMUX_LENS_FPS=24
 #   LIVE_DEMUX_LENS_STILL_FPS=12   re-open live.jpg N×/s
 #   LIVE_DEMUX_LENS_VF=...     full ffmpeg -vf override
@@ -50,6 +57,7 @@ need ffmpeg
 
 # --- filter graphs (match crates/.../lens.rs) ---
 grade="eq=contrast=1.12:brightness=0.03:saturation=1.45:gamma=1.05,colorbalance=rs=-0.04:gs=0.06:bs=-0.03:rm=0.02:gm=0.04:bm=-0.02,unsharp=5:5:0.6:5:5:0.0"
+grade_planet="eq=contrast=1.14:brightness=0.02:saturation=1.5:gamma=1.04,colorbalance=rs=-0.03:gs=0.05:bs=0.02:rm=0.01:gm=0.03:bm=0.04,unsharp=5:5:0.55:5:5:0.0,curves=all='0/0 0.2/0.18 0.5/0.52 0.8/0.85 1/1'"
 barrel="lenscorrection=k1=0.28:k2=0.12:cx=0.5:cy=0.5"
 barrel_hard="lenscorrection=k1=0.42:k2=0.18:cx=0.5:cy=0.5"
 tiny="crop=iw*0.92:ih*0.92,scale=iw*1.08:ih*1.08,crop=iw:ih,vignette=PI/5"
@@ -58,6 +66,15 @@ ana2="scale=iw*0.42:ih,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=0x05080c"
 base="scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2"
 v360_bug="v360=input=e:output=dfisheye:h_fov=190:v_fov=190,scale=${W}:${H}"
 v360_flat="v360=input=e:output=flat:yaw=0:pitch=-18:roll=0:h_fov=110:v_fov=70,scale=${W}:${H}"
+PLANET_SIZE="${LIVE_DEMUX_LENS_PLANET_SIZE:-1000}"
+# Stereographic tiny planet (OpenCV polar remap equivalent via v360 sg)
+planet_sg="v360=input=e:output=sg:yaw=0:pitch=-90:roll=0:h_fov=360:v_fov=180,scale=${PLANET_SIZE}:${PLANET_SIZE}"
+rabbit_sg="v360=input=e:output=sg:yaw=0:pitch=90:roll=0:h_fov=360:v_fov=180,scale=${PLANET_SIZE}:${PLANET_SIZE}"
+# Flat cam → pseudo-equirect 2:1 then planet
+planet_flat="scale=2048:1024:force_original_aspect_ratio=increase,crop=2048:1024,${planet_sg},${grade_planet}"
+rabbit_flat="scale=2048:1024:force_original_aspect_ratio=increase,crop=2048:1024,${rabbit_sg},${grade_planet}"
+planet_eq="${planet_sg},${grade_planet}"
+rabbit_eq="${rabbit_sg},${grade_planet}"
 
 # True equirect only when forced or input is equirect — NOT merely profile "360".
 # Flat FaceTime + phone still crash or thrash under v360+image2 on some builds.
@@ -75,6 +92,20 @@ fi
 
 if [[ -z "${VF:-}" ]]; then
   case "$PROFILE" in
+    planet|tinyplanet|tiny-planet|littleplanet|globe|sg|stereographic)
+      if [[ "$USE360" == "1" ]]; then
+        VF="${planet_eq}"
+      else
+        VF="${planet_flat}"
+      fi
+      ;;
+    rabbit|rabbithole|rabbit-hole|invert|inverted|tunnel|hole)
+      if [[ "$USE360" == "1" ]]; then
+        VF="${rabbit_eq}"
+      else
+        VF="${rabbit_flat}"
+      fi
+      ;;
     360|compound|fisheye|equirect|equirectangular|vr)
       if [[ "$USE360" == "1" ]]; then
         VF="${v360_bug},${grade},vignette=PI/3.2"

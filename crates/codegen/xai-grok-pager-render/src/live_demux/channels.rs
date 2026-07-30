@@ -678,13 +678,28 @@ pub fn resolve_watch_source(input: &str) -> ResolvedSource {
         };
     }
 
-    // X.com / Twitter / Periscope: normalize broadcast/status/pscp URLs.
+    // X.com / Twitter / Periscope: normalize broadcast/status/pscp /media URLs.
     if let Some(xurl) = super::x_live::normalize_x_url(raw) {
+        // Profile Media tabs are multi-item video feeds (zap like music TV).
+        let is_feed = super::x_live::is_x_user_media_feed(&xurl);
+        let handle = super::x_live::x_user_media_handle(&xurl);
+        let label = if is_feed {
+            match handle {
+                Some(h) => format!("X · @{h} media"),
+                None => format!("X · {}", xurl.chars().take(48).collect::<String>()),
+            }
+        } else {
+            format!("X · {}", xurl.chars().take(48).collect::<String>())
+        };
         return ResolvedSource {
-            url: xurl.clone(),
-            label: format!("X · {}", xurl.chars().take(48).collect::<String>()),
-            kind: ChannelKind::Generic,
-            channel_id: Some("x".into()),
+            url: xurl,
+            label,
+            kind: if is_feed {
+                ChannelKind::MusicTv
+            } else {
+                ChannelKind::Generic
+            },
+            channel_id: Some(if is_feed { "x-media".into() } else { "x".into() }),
             open_guide: false,
             guide_filter: GuideFilter::Region(ChannelRegion::Specialty),
         };

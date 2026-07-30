@@ -1,0 +1,9 @@
+crates/codegen/xai-grok-pager/src/slash/commands/gy.rs
+crates/codegen/xai-grok-pager/src/slash/commands/watch.rs
+crates/codegen/xai-grok-pager/tests/pty_e2e/endline_park_two_static_markers.rs
+crates/codegen/xai-grok-pager/tests/pty_e2e/endline_wakeups_are_markerless.rs
+crates/codegen/xai-grok-pager/tests/pty_e2e/reparked_wait_repushes_buried_marker.rs
+crates/codegen/xai-grok-pager-render/src/gy_tty/mod.rs
+crates/codegen/xai-grok-pager-render/src/live_demux/mod.rs
+crates/codegen/xai-grok-pager-render/src/render/halfblock.rs
+crates/codegen/xai-grok-shell/tests/team_managed_config.rs

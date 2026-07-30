@@ -18,9 +18,11 @@ Sources are **cameras only**: laptop FaceTime/webcam, Continuity Camera (iPhone 
 | Profile | Feel |
 |---------|------|
 | **bug** (default) | fisheye barrel + anamorphic plate + tiny-world crop + HDRI tone + green cast |
+| **planet** | **tiny planet** stereographic globe (OpenCV polar / `v360` `sg` + HDRI grade) |
+| **rabbit** | inverted planet / rabbit-hole tunnel (sky center) |
 | **360** | dual-fisheye compound eye (`v360` when input is equirect / 360 cam) |
 | **anamorphic** | 2× cinema squeeze plate |
-| **tiny** | tilt-shift miniature / diorama |
+| **tiny** | tilt-shift miniature / diorama (not stereographic) |
 | **hdri** | tone map · lush sat · soft vignette |
 
 ## Inputs
@@ -37,11 +39,22 @@ Sources are **cameras only**: laptop FaceTime/webcam, Continuity Camera (iPhone 
 
 ```text
 /lens
+/lens planet              # tiny planet HDRI (pseudo-equirect from webcam/phone)
+/lens planet dual
+/lens rabbit              # rabbit hole (invert)
+/lens planet equirect     # true 360 equirect source
 /lens bug dual
 /lens 360
 /lens anamorphic phone
 /lens tiny
 /lens hdri
+```
+
+Still from a panorama file (explicit OpenCV path, same math):
+
+```bash
+python3 scripts/live-demux/tiny-planet.py panorama.jpg -o planet.jpg
+python3 scripts/live-demux/tiny-planet.py panorama.jpg --invert -o rabbit.jpg
 ```
 
 While `/watch` / desk open: **`L`** → bug lens **ffplay** windows only (explicit).  
