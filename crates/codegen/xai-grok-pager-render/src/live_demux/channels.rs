@@ -678,6 +678,29 @@ pub fn resolve_watch_source(input: &str) -> ResolvedSource {
         };
     }
 
+    // Optical blur / jawta light as the **main /watch surface** (not a side cam).
+    if super::optical::is_optical_source(raw)
+        || matches!(
+            key0.as_str(),
+            "optical" | "optic" | "jawta" | "optical-blur" | "fountain" | "decimen"
+        )
+    {
+        let (mode, text) = super::optical::parse_optical_args(raw);
+        let label = if text.is_empty() || text == "FC OPTICAL" {
+            mode.label().to_string()
+        } else {
+            format!("{} · {}", mode.id(), text.chars().take(40).collect::<String>())
+        };
+        return ResolvedSource {
+            url: super::optical::optical_url(mode),
+            label,
+            kind: ChannelKind::Generic,
+            channel_id: Some("optical".into()),
+            open_guide: false,
+            guide_filter: GuideFilter::All,
+        };
+    }
+
     // X.com / Twitter / Periscope: normalize broadcast/status/pscp /media URLs.
     if let Some(xurl) = super::x_live::normalize_x_url(raw) {
         // Profile Media tabs are multi-item video feeds (zap like music TV).

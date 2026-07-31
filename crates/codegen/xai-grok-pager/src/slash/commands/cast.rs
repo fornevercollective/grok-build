@@ -1,7 +1,8 @@
-//! `/cast` · `/share` · `/mirror` — send media to TCL Google TV / Chromecast.
+//! `/cast` · `/mirror` · `/chromecast` — send media to TCL Google TV / Chromecast.
 //!
 //! **fc-cast-tv-v1** · explicit only (no auto cast on session start).
-//! `mirror` / `share` are soft aliases — **not** OS Screen Sharing.
+//! Soft aliases only — **not** OS Screen Sharing.
+//! Do not claim `/share` (session URL) or `/tv` (`/watch` alias).
 //!
 //! ```text
 //! /cast list
@@ -72,8 +73,9 @@ impl SlashCommand for CastCommand {
     }
 
     fn aliases(&self) -> &[&str] {
-        // share / mirror = cast aliases (not OS Screen Sharing / Miracast stack)
-        &["share", "mirror", "tv", "chromecast"]
+        // Free aliases only — not OS Screen Sharing.
+        // Reserved elsewhere: share (session URL), tv (watch live).
+        &["mirror", "chromecast"]
     }
 
     fn description(&self) -> &str {
@@ -81,7 +83,7 @@ impl SlashCommand for CastCommand {
     }
 
     fn usage(&self) -> &str {
-        "/cast [list|profile|doctor|desk|mosaic|align|align-ui|stop|URL]  ·  /share · /mirror"
+        "/cast [list|profile|doctor|desk|mosaic|align|align-ui|stop|URL]  ·  /mirror · /chromecast"
     }
 
     fn takes_args(&self) -> bool {
@@ -140,7 +142,7 @@ impl SlashCommand for CastCommand {
                 "/cast · TCL Google TV / Chromecast wall (fc-cast-tv-v1)\n\
                  /cast list · profile · doctor · status · desk · mosaic · align · align-ui · stop\n\
                  /cast https://…   (direct if TV can fetch; else encode-url via script)\n\
-                 /share · /mirror  = aliases (not OS Screen Sharing)\n\
+                 /mirror · /chromecast  = aliases (not OS Screen Sharing)\n\
                  align: numbered pixel chart for region placement (select 1,2,5-8,A3)\n\
                  default device: Smart TV (TCL) · sibling: GoogleTV3065 (Hisense)\n\
                  shell: bash scripts/live-demux/cast-tv.sh align\n\
@@ -218,9 +220,12 @@ mod tests {
     }
 
     #[test]
-    fn aliases_include_share_mirror() {
+    fn aliases_free_of_stock_collisions() {
         let a = CastCommand.aliases();
-        assert!(a.contains(&"share"));
         assert!(a.contains(&"mirror"));
+        assert!(a.contains(&"chromecast"));
+        // /share = session URL · /tv = /watch alias
+        assert!(!a.contains(&"share"));
+        assert!(!a.contains(&"tv"));
     }
 }

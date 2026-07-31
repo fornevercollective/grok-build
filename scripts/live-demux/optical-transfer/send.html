@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>fc optical blur · TX</title>
+<style>
+  :root { --bg:#050510; --fg:#e6edf3; --acc:#22d3ee; --dim:#8b949e; --ok:#3fb950; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  #stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:#000; overflow:hidden; }
+  #blurCanvas { position:absolute; inset:0; width:100%; height:100%; }
+  #qrBox { position:relative; z-index:2; padding:12px; background:rgba(0,0,0,.35);
+    border-radius:12px; backdrop-filter:blur(8px); }
+  #qrBox canvas, #qrBox img { image-rendering: pixelated; display:block; margin:0 auto; }
+  #hud { position:fixed; left:12px; right:12px; bottom:12px; z-index:5;
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    background:rgba(13,17,23,.88); border:1px solid #30363d; border-radius:10px;
+    padding:10px 12px; font-size:12px; }
+  #hud label { color:var(--dim); }
+  #hud input, #hud select, #hud button {
+    background:#161b22; color:var(--fg); border:1px solid #30363d; border-radius:6px;
+    padding:6px 8px; font-size:12px; }
+  #hud button.primary { background:#238636; border-color:#2ea043; font-weight:700; }
+  #hud button.active { outline:1px solid var(--acc); }
+  #status { color:var(--acc); font-family:ui-monospace, monospace; flex:1; min-width:160px; }
+  #lightFlash { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0;
+    background:#fbbf24; transition: opacity .02s linear; }
+  body.mode-light #blurCanvas { display:none; }
+  body.mode-light #qrBox { display:none; }
+  body.mode-qr #blurCanvas { opacity:.25; }
+  body.mode-glyph #qrBox canvas { background:#fff; }
+  .tag { font-size:10px; color:var(--dim); letter-spacing:.04em; text-transform:uppercase; }
+</style>
+</head>
+<body class="mode-blur">
+<div id="stage">
+  <canvas id="blurCanvas"></canvas>
+  <div id="lightFlash"></div>
+  <div id="qrBox">
+    <div class="tag" style="text-align:center;margin-bottom:6px">optical embed</div>
+    <div id="qrHost"></div>
+  </div>
+</div>
+<div id="hud">
+  <span class="tag">fc-optical-blur</span>
+  <a href="#" id="decimenLink" style="color:#22d3ee;font-size:12px">Decimen QR (load-tested) →</a>
+  <select id="mode">
+    <option value="blur">blur · jawta+embed</option>
+    <option value="light">light · jawta pulse</option>
+    <option value="qr">qr · open Decimen</option>
+    <option value="glyph">glyph · open Decimen</option>
+  </select>
+  <label>text <input id="text" size="24" value="FC OPTICAL BLUR · jawta" /></label>
+  <label>wpm <input id="wpm" type="number" min="5" max="40" value="15" style="width:48px" /></label>
+  <label>fps <input id="fps" type="number" min="4" max="60" value="12" style="width:48px" /></label>
+  <label>block <input id="block" type="number" min="32" max="1024" value="200" style="width:56px" /></label>
+  <button id="btnStart" class="primary">Transmit</button>
+  <button id="btnStop">Stop</button>
+  <span id="status">idle · jawta light + Decimen fountain</span>
+</div>
+<script src="shared.js"></script>
+<script src="/qrcode-generator.js"></script>
+<script>
+(function () {
+  const OT = window.OpticalTransfer;
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const modeEl = $("mode");
+  const textEl = $("text");
+  const wpmEl = $("wpm");
+  const fpsEl = $("fps");
+  const blockEl = $("block");
+  const status = $("status");
+  const flash = $("lightFlash");
+  const canvas = $("blurCanvas");
+  const ctx = canvas.getContext("2d");
+  const qrHost = $("qrHost");
+
+  if (params.get("mode")) modeEl.value = params.get("mode");
+  if (params.get("wpm")) wpmEl.value = params.get("wpm");
+  if (params.get("text")) textEl.value = params.get("text");
+
+  let running = false;
+  let seq = 0;
+  let enc = null;
+  let events = [];
+  let t0 = 0;
+  let raf = 0;
+  let timer = 0;
+
+  function setMode(m) {
+    document.body.className = "mode-" + m;
+  }
+
+  function resize() {
+    canvas.width = innerWidth * devicePixelRatio;
+    canvas.height = innerHeight * devicePixelRatio;
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function paintBlur(t, on) {
+    const w = canvas.width, h = canvas.height;
+    const g = ctx.createRadialGradient(w * 0.4, h * 0.35, 0, w * 0.5, h * 0.5, w * 0.7);
+    const lift = 20 + 80 * on;
+    g.addColorStop(0, `rgb(${60 + lift},${80 + lift},${120 + lift})`);
+    g.addColorStop(0.45, `rgb(${30 + lift * 0.6},${40 + lift * 0.5},${70 + lift * 0.4})`);
+    g.addColorStop(1, `rgb(${8 + lift * 0.2},${10 + lift * 0.15},${18})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    // soft noise blobs
+    for (let i = 0; i < 6; i++) {
+      const x = (0.2 + 0.6 * ((Math.sin(t * 0.3 + i) + 1) / 2)) * w;
+      const y = (0.2 + 0.6 * ((Math.cos(t * 0.25 + i * 1.3) + 1) / 2)) * h;
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, w * 0.18);
+      rg.addColorStop(0, `rgba(255,255,255,${0.06 + 0.08 * on})`);
+      rg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, 0, w, h);
+    }
+    // optical blur vignette
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.arc(w / 2, h / 2, Math.min(w, h) * 0.42, 0, Math.PI * 2, true);
+    ctx.fill("evenodd");
+  }
+
+  function drawGlyph(bytes, n) {
+    n = n || 29;
+    const cell = 8;
+    const c = document.createElement("canvas");
+    c.width = n * cell;
+    c.height = n * cell;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, c.width, c.height);
+    // simple modules from payload bits + finder-ish border
+    g.fillStyle = "#000";
+    for (let i = 0; i < n; i++) {
+      g.fillRect(i * cell, 0, cell, cell);
+      g.fillRect(i * cell, (n - 1) * cell, cell, cell);
+      g.fillRect(0, i * cell, cell, cell);
+      g.fillRect((n - 1) * cell, i * cell, cell, cell);
+    }
+    let bi = 0;
+    for (let y = 2; y < n - 2; y++) {
+      for (let x = 2; x < n - 2; x++) {
+        const byte = bytes[bi >> 3] || 0;
+        const bit = (byte >> (7 - (bi & 7))) & 1;
+        if (bit) g.fillRect(x * cell, y * cell, cell, cell);
+        bi++;
+      }
+    }
+    qrHost.innerHTML = "";
+    qrHost.appendChild(c);
+  }
+
+  function drawQR(bytes) {
+    qrHost.innerHTML = "";
+    // Prefer real QR if library present
+    if (typeof qrcode === "function") {
+      try {
+        // encode as base64url chunk (QR text mode)
+        let b64 = btoa(String.fromCharCode.apply(null, bytes.subarray(0, Math.min(bytes.length, 800))));
+        const q = qrcode(0, "L");
+        q.addData(b64);
+        q.make();
+        const size = q.getModuleCount();
+        const cell = Math.max(3, Math.floor(Math.min(280, innerWidth * 0.4) / size));
+        const c = document.createElement("canvas");
+        c.width = size * cell;
+        c.height = size * cell;
+        const g = c.getContext("2d");
+        for (let r = 0; r < size; r++) {
+          for (let col = 0; col < size; col++) {
+            g.fillStyle = q.isDark(r, col) ? "#000" : "#fff";
+            g.fillRect(col * cell, r * cell, cell, cell);
+          }
+        }
+        qrHost.appendChild(c);
+        return;
+      } catch (e) {
+        console.warn("qr fail", e);
+      }
+    }
+    drawGlyph(bytes, 33);
+  }
+
+  function onLevelAt(ms) {
+    for (const e of events) {
+      if (ms >= e.start && ms < e.start + e.dur) return 1;
+    }
+    return 0;
+  }
+
+  function tick() {
+    if (!running) return;
+    const mode = modeEl.value;
+    const now = performance.now() / 1000 - t0;
+    let on = 0;
+    if (events.length) {
+      const cycle = (events[events.length - 1].start + events[events.length - 1].dur) / 1000;
+      const ms = ((now % Math.max(cycle, 0.001)) * 1000);
+      on = onLevelAt(ms);
+    }
+
+    if (mode === "light") {
+      flash.style.opacity = on ? "1" : "0.04";
+      flash.style.background = on ? "#fbbf24" : "#050510";
+    } else {
+      flash.style.opacity = "0";
+      paintBlur(now, mode === "blur" ? on * 0.9 : 0.15);
+    }
+
+    if (enc && (mode === "blur" || mode === "qr" || mode === "glyph")) {
+      const frame = enc.pack(seq);
+      if (mode === "qr" || mode === "blur") drawQR(frame);
+      else drawGlyph(frame, 33);
+      status.textContent =
+        `TX ${mode} · seq ${seq} · frames k≈${enc.k} · on=${on} · fps=${fpsEl.value}`;
+      seq++;
+    } else if (mode === "light") {
+      status.textContent = `TX light · jawta · on=${on} · wpm=${wpmEl.value}`;
+    }
+
+    const fps = Math.max(4, Number(fpsEl.value) || 12);
+    timer = setTimeout(() => {
+      raf = requestAnimationFrame(tick);
+    }, 1000 / fps);
+  }
+
+  async function loadPayload() {
+    try {
+      const r = await fetch("/api/payload?_=" + Date.now());
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function start() {
+    stop();
+    const mode = modeEl.value;
+    setMode(mode);
+    let text = textEl.value || "FC";
+    let bytes = new TextEncoder().encode(text);
+    const remote = await loadPayload();
+    if (remote && remote.b64) {
+      const bin = atob(remote.b64);
+      bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      if (remote.text) text = remote.text;
+      if (remote.blockLen) blockEl.value = remote.blockLen;
+      if (remote.wpm) wpmEl.value = remote.wpm;
+    }
+    const morse = OT.textToMorse(text.length < 80 ? text : "DATA");
+    events = OT.morseTimeline(morse, Number(wpmEl.value) || 15);
+    const session = (Math.random() * 0xfffe) | 1;
+    enc = new OT.LTEncoder(bytes, Number(blockEl.value) || 200, session);
+    seq = 0;
+    t0 = performance.now() / 1000;
+    running = true;
+    status.textContent = `start ${mode} · ${bytes.length} B · k=${enc.k} · session ${session}`;
+    tick();
+  }
+
+  function stop() {
+    running = false;
+    clearTimeout(timer);
+    cancelAnimationFrame(raf);
+    flash.style.opacity = "0";
+    status.textContent = "stopped";
+  }
+
+  $("btnStart").onclick = start;
+  $("btnStop").onclick = stop;
+  modeEl.onchange = () => {
+    setMode(modeEl.value);
+    if (modeEl.value === "qr" || modeEl.value === "glyph") {
+      // Real load-tested path is Decimen (BashAlarmist), not this stub canvas.
+      const port = params.get("decimenPort") || "5173";
+      location.href = `https://127.0.0.1:${port}/send/`;
+    }
+  };
+  setMode(modeEl.value);
+  const dlink = document.getElementById("decimenLink");
+  if (dlink) {
+    dlink.onclick = (e) => {
+      e.preventDefault();
+      location.href = "https://127.0.0.1:" + (params.get("decimenPort") || "5173") + "/send/";
+    };
+  }
+
+  // auto-start when ?auto=1 or mode=blur with payload
+  if (params.get("auto") !== "0") {
+    if (modeEl.value === "qr" || modeEl.value === "glyph") {
+      location.href = "https://127.0.0.1:" + (params.get("decimenPort") || "5173") + "/send/";
+    } else {
+      start();
+    }
+  }
+})();
+</script>
+</body>
+</html>

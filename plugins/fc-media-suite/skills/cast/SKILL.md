@@ -7,7 +7,8 @@ description: >
 
 # /cast · TCL Google TV wall
 
-**Explicit only** — never auto-casts. Aliases: `/share` · `/mirror` (not OS Screen Sharing).
+**Explicit only** — never auto-casts. Aliases: `/mirror` · `/chromecast` (not OS Screen Sharing).  
+`/share` stays stock session-URL. Optical air-gap TX: **`/optical`** (jawta light · fountain blur).
 
 ## LAN devices (discovered)
 

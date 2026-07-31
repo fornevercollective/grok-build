@@ -74,6 +74,25 @@ impl SlashCommand for WatchCommand {
             ("camout", "Zoom self-view — primary cam → OS ffplay window"),
             ("cameras", "all local cams — one OS window each (Zoom tiles)"),
             ("mosaic", "all cams in one gallery grid window"),
+            (
+                "star",
+                "cam style star — GPU glass orb (+ large cam under /watch)",
+            ),
+            (
+                "style",
+                "cam styles: star · glass · bubble (S key while watching)",
+            ),
+            ("glass", "cam style liquid-glass morphism"),
+            ("bubble", "cam style soap-film bubbles"),
+            (
+                "optical",
+                "optical blur TX as /watch surface (jawta + embed · o = OS display)",
+            ),
+            (
+                "optical-blur",
+                "alias · /watch optical blur",
+            ),
+            ("jawta", "optical light pulse mode on /watch"),
             ("popout", "external ffplay window (stream · not TTY half-block)"),
             ("out", "alias for popout"),
             ("x", "X.com live hub — paste broadcast/status URL"),
@@ -161,11 +180,70 @@ impl SlashCommand for WatchCommand {
             };
         }
 
+        // `/watch optical` · `/watch popout optical` — optical as main display.
+        let lower_full_pre = raw.to_ascii_lowercase();
+        if lower_full_pre.split_whitespace().any(|t| {
+            crate::live_demux::is_optical_token(t) || t.starts_with("optical://")
+        }) {
+            let (mode, text) = crate::live_demux::parse_optical_args(&lower_full_pre);
+            // SAFETY: single-threaded slash dispatch.
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_OPTICAL_MODE", mode.id());
+                std::env::set_var("LIVE_DEMUX_OPTICAL_TEXT", &text);
+            }
+            let url = crate::live_demux::optical_url(mode);
+            if popout {
+                // OS browser optical display (+ keep TTY watch open).
+                let toast = crate::live_demux::launch_optical_popout_async(mode, &text);
+                eprintln!("[fc-optical] {toast}");
+                return CommandResult::Action(Action::OpenLiveWatch { url });
+            }
+            return CommandResult::Action(Action::OpenLiveWatch { url });
+        }
+
         // Bare `/watch popout` (no channel) still goes to default VEVO via empty string.
         if popout {
             return CommandResult::Action(Action::PopOutLiveWatch {
                 url: channel,
             });
+        }
+
+        // `/watch star` · `/watch style glass` · `/watch camstyle bubble`
+        // → open TTY watch + GPU optic cam style (same as /cam star).
+        let lower_full = raw.to_ascii_lowercase();
+        if lower_full.split_whitespace().any(|t| {
+            crate::live_demux::is_cam_style_token(t) || t == "style" || t == "camstyle"
+        }) {
+            let style_arg = lower_full
+                .split_whitespace()
+                .find(|t| crate::live_demux::is_cam_style_token(t) && *t != "style")
+                .unwrap_or("star");
+            let (profile, _) = crate::live_demux::parse_lens_args(style_arg);
+            let profile = if profile.is_optic_style() {
+                profile
+            } else {
+                crate::live_demux::LensProfile::OpticStar
+            };
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_CAM_STYLE", profile.id());
+            }
+            let toast = crate::live_demux::launch_lens_async(
+                profile,
+                crate::live_demux::LensInput::Webcam,
+            );
+            eprintln!("[fc-cam-style] {toast}");
+            crate::live_demux::apply_cam_profile("large");
+            // Remaining channel after style token (e.g. `/watch star bloomberg`)
+            let channel = lower_full
+                .split_whitespace()
+                .filter(|t| {
+                    !crate::live_demux::is_cam_style_token(t)
+                        && *t != "style"
+                        && *t != "camstyle"
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            return CommandResult::Action(Action::OpenLiveWatch { url: channel });
         }
 
         // Pass the raw token (or empty / URL) through. LiveWatchState::open

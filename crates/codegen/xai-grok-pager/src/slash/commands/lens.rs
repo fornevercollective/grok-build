@@ -79,7 +79,35 @@ impl SlashCommand for LensCommand {
             ),
             (
                 "planet",
-                "tiny planet · stereographic HDRI (equirect polar / OpenCV-style)",
+                "tiny planet · bare FaceTime flat→sg (not stretch-smear)",
+            ),
+            (
+                "star",
+                "GPU optic star · glass orb · /cam star · S in /watch",
+            ),
+            (
+                "glass",
+                "GPU Apple liquid-glass morphism · /cam glass",
+            ),
+            (
+                "bubble",
+                "GPU soap-film bubbles · /cam bubble",
+            ),
+            (
+                "optic",
+                "alias → star (winning /cam style via watch)",
+            ),
+            (
+                "style",
+                "cam filter styles · star · glass · bubble",
+            ),
+            (
+                "optic planet",
+                "ffmpeg clip-on planet path (legacy shell)",
+            ),
+            (
+                "optic rabbit",
+                "ffmpeg clip-on rabbit path (legacy shell)",
             ),
             (
                 "rabbit",
@@ -143,14 +171,13 @@ impl SlashCommand for LensCommand {
         // Help
         if matches!(raw.to_ascii_lowercase().as_str(), "help" | "?" | "keys") {
             return CommandResult::Message(
-                "/lens · live bug / planet / rabbit HDRI (fc-lens-bug-v1)\n\
-                 profiles: bug · planet · rabbit · 360 · anamorphic · tiny · hdri\n\
-                 planet = stereographic tiny globe · rabbit = inverted hole\n\
-                 inputs:   dual · phone · you  (default follows /cam source)\n\
-                 in /watch: L = bug lens · Y = clean dual cam\n\
+                "/lens · live bug / planet / rabbit · star GPU style (fc-lens-bug-v1)\n\
+                 profiles: bug · planet · rabbit · star · glass · bubble · 360 · tiny · hdri\n\
+                 /cam star · /cam glass · /cam style star  → /watch + GPU optic\n\
+                 in /watch: L = lens (or LIVE_DEMUX_CAM_STYLE) · S = star style · Y dual\n\
+                 GPU: python3 scripts/live-demux/optic-tinyworld.py star\n\
                  shell: bash scripts/live-demux/lens-popout.sh planet dual\n\
-                 still: python3 scripts/live-demux/tiny-planet.py pano.jpg\n\
-                 360 cam: LIVE_DEMUX_LENS_360=1 /lens planet"
+                 still: python3 scripts/live-demux/tiny-planet.py pano.jpg"
                     .into(),
             );
         }

@@ -27,7 +27,7 @@ use std::thread;
 pub const FEATURE_ID: &str = "fc-lens-bug-v1";
 
 pub const TOAST_LENS: &str =
-    "LENS · bug / planet / rabbit HDRI (L · /lens planet · /lens rabbit)";
+    "LENS · bug / planet / star (L bug · S star · /cam star · /lens star)";
 
 /// Named live-lens look.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,6 +47,13 @@ pub enum LensProfile {
     TinyPlanet,
     /// **Rabbit hole** — inverted planet (sky center, ground outward).
     RabbitHole,
+    /// **Optic star** — GPU glass orb + voice rim (`optic-tinyworld.py star`).
+    /// Style for `/cam star` · `/watch style star` · capital **S** while watching.
+    OpticStar,
+    /// **Optic glass** — Apple liquid-glass morphism (`optic-tinyworld.py glass`).
+    OpticGlass,
+    /// **Optic bubble** — soap-film cluster (`optic-tinyworld.py bubble`).
+    OpticBubble,
 }
 
 impl LensProfile {
@@ -59,6 +66,9 @@ impl LensProfile {
             LensProfile::Hdri => "hdri",
             LensProfile::TinyPlanet => "planet",
             LensProfile::RabbitHole => "rabbit",
+            LensProfile::OpticStar => "star",
+            LensProfile::OpticGlass => "glass",
+            LensProfile::OpticBubble => "bubble",
         }
     }
 
@@ -71,12 +81,33 @@ impl LensProfile {
             LensProfile::Hdri => "HDRI tone map",
             LensProfile::TinyPlanet => "tiny planet · stereographic HDRI",
             LensProfile::RabbitHole => "rabbit hole · inverted planet HDRI",
+            LensProfile::OpticStar => "optic star · GPU glass orb · /cam style",
+            LensProfile::OpticGlass => "optic glass · Apple liquid glass morphism",
+            LensProfile::OpticBubble => "optic bubble · soap-film cluster",
         }
     }
 
     /// Square output preferred (planet / rabbit).
     pub fn prefers_square(self) -> bool {
         matches!(self, LensProfile::TinyPlanet | LensProfile::RabbitHole)
+    }
+
+    /// GPU Python workspace (`optic-tinyworld.py`) rather than ffmpeg lens graphs.
+    pub fn is_optic_style(self) -> bool {
+        matches!(
+            self,
+            LensProfile::OpticStar | LensProfile::OpticGlass | LensProfile::OpticBubble
+        )
+    }
+
+    /// CLI mode arg for `optic-tinyworld.py`.
+    pub fn optic_mode(self) -> Option<&'static str> {
+        match self {
+            LensProfile::OpticStar => Some("star"),
+            LensProfile::OpticGlass => Some("glass"),
+            LensProfile::OpticBubble => Some("bubble"),
+            _ => None,
+        }
     }
 }
 
@@ -98,8 +129,34 @@ pub fn parse_lens_args(raw: &str) -> (LensProfile, LensInput) {
     let t = raw.trim().to_ascii_lowercase();
     let tokens: Vec<&str> = t.split_whitespace().collect();
 
-    // planet / rabbit before "tiny" so "tinyplanet" and "planet" win.
+    // star/glass/bubble (optic GPU) before planet so "star" ≠ stereographic planet.
     let profile = if tokens.iter().any(|x| {
+        matches!(
+            *x,
+            "star"
+                | "stars"
+                | "starfield"
+                | "optic-star"
+                | "vibe"
+                | "voice"
+                | "xai"
+                | "x.ai"
+        )
+    }) {
+        LensProfile::OpticStar
+    } else if tokens.iter().any(|x| {
+        matches!(
+            *x,
+            "glass" | "liquid" | "liquidglass" | "liquid-glass" | "morphism" | "optic-glass"
+        )
+    }) {
+        LensProfile::OpticGlass
+    } else if tokens
+        .iter()
+        .any(|x| matches!(*x, "bubble" | "soap" | "bubbles" | "optic-bubble"))
+    {
+        LensProfile::OpticBubble
+    } else if tokens.iter().any(|x| {
         matches!(
             *x,
             "rabbit"
@@ -151,6 +208,12 @@ pub fn parse_lens_args(raw: &str) -> (LensProfile, LensInput) {
         .any(|x| matches!(*x, "hdri" | "hdr" | "tone" | "irradiance"))
     {
         LensProfile::Hdri
+    } else if tokens
+        .iter()
+        .any(|x| matches!(*x, "optic" | "style" | "camstyle" | "cam-style"))
+    {
+        // bare `/lens optic` / style → star (winning cam filter)
+        LensProfile::OpticStar
     } else {
         // bug / insect / default
         LensProfile::BugWorld
@@ -242,8 +305,10 @@ fn lens_fps() -> u32 {
 /// Matches OpenCV polar remap geometry:
 /// - θ (angle) → panorama X  
 /// - R (radius) → panorama Y  
-/// True equirect uses `v360 … output=sg`. Flat cams are stretched into a
-/// 2:1 canvas then treated as equirect (common “phone planet” approximation).
+/// True equirect uses `v360 input=e output=sg`.
+/// Bare FaceTime/laptop uses `input=flat` with real FOV — **not** stretch→fake
+/// equirect (that produces vertical color-smear bands).
+/// Clip-on optical fisheye: `LIVE_DEMUX_LENS_OPTIC=1` → `input=fisheye`.
 fn planet_vf(invert: bool, equirect: bool, size: u32) -> String {
     let s = size.max(512);
     // HDRI grade after geometry (same spirit as bug grade, slightly cooler sky).
@@ -254,17 +319,35 @@ curves=all='0/0 0.2/0.18 0.5/0.52 0.8/0.85 1/1'";
     // pitch=-90 → ground center (planet); +90 → sky center (rabbit hole).
     // OpenCV invert flips source vertically first — pitch flip is equivalent.
     let pitch = if invert { "90" } else { "-90" };
-    let sg = format!(
-        "v360=input=e:output=sg:yaw=0:pitch={pitch}:roll=0:h_fov=360:v_fov=180,scale={s}:{s}"
+    let optic = matches!(
+        std::env::var("LIVE_DEMUX_LENS_OPTIC").as_deref(),
+        Ok("1") | Ok("true") | Ok("yes") | Ok("clip") | Ok("glass")
     );
     if equirect {
         // True 360 equirect → stereographic globe + HDRI.
-        format!("{sg},{grade}")
-    } else {
-        // Flat webcam/phone: force 2:1 canvas as pseudo-equirect, then planet.
-        // Same idea as “pinch to planet” on non-360 phone pans.
         format!(
-            "scale=2048:1024:force_original_aspect_ratio=increase,crop=2048:1024,{sg},{grade}"
+            "v360=input=e:output=sg:yaw=0:pitch={pitch}:roll=0:h_fov=360:v_fov=180,scale={s}:{s},{grade}"
+        )
+    } else if optic {
+        // Physical clip-on fisheye glass: HDRI path
+        //   fisheye → equirect latlong → HDRI grade → stereographic
+        // pitch=-90 planet (ground) · pitch=+90 rabbit (other way / sky).
+        let ih = std::env::var("LIVE_DEMUX_LENS_OPTIC_IH_FOV").unwrap_or_else(|_| "170".into());
+        let iv = std::env::var("LIVE_DEMUX_LENS_OPTIC_IV_FOV").unwrap_or_else(|_| "170".into());
+        let grade_hdri = "eq=contrast=1.18:brightness=0.015:saturation=1.62:gamma=1.02,\
+colorbalance=rs=-0.05:gs=0.08:bs=-0.02:rm=0.02:gm=0.05:bm=0.01,\
+curves=all='0/0 0.15/0.12 0.4/0.42 0.65/0.72 0.85/0.92 1/1',\
+unsharp=5:5:0.65:5:5:0.0";
+        format!(
+            "v360=input=fisheye:ih_fov={ih}:iv_fov={iv}:output=e,{grade_hdri},\
+v360=input=e:output=sg:yaw=0:pitch={pitch}:roll=0:h_fov=360:v_fov=180,scale={s}:{s}"
+        )
+    } else {
+        // Bare rectilinear FaceTime (~78×55°). Never stretch to fake equirect.
+        let ih = std::env::var("LIVE_DEMUX_LENS_IH_FOV").unwrap_or_else(|_| "78".into());
+        let iv = std::env::var("LIVE_DEMUX_LENS_IV_FOV").unwrap_or_else(|_| "55".into());
+        format!(
+            "v360=input=flat:ih_fov={ih}:iv_fov={iv}:output=sg:yaw=0:pitch={pitch}:roll=0:h_fov=360:v_fov=180,scale={s}:{s},{grade}"
         )
     }
 }
@@ -369,6 +452,11 @@ unsharp=5:5:0.6:5:5:0.0";
         }
         // Handled above.
         (LensProfile::TinyPlanet | LensProfile::RabbitHole, _) => unreachable!(),
+        // GPU optic styles never use ffmpeg -vf; placeholder only.
+        (
+            LensProfile::OpticStar | LensProfile::OpticGlass | LensProfile::OpticBubble,
+            _,
+        ) => format!("{base_scale},{grade},vignette=PI/4"),
     }
 }
 
@@ -516,8 +604,90 @@ pub fn spawn_lens_still(profile: LensProfile, equirect: bool) -> Result<u32, Str
     Ok(child.id())
 }
 
+/// Locate `optic-tinyworld.py` (GPU cam style for /cam · /watch · /lens star).
+fn optic_tinyworld_script() -> Option<std::path::PathBuf> {
+    let home = std::env::var("HOME").ok()?;
+    let candidates = [
+        std::path::PathBuf::from(&home)
+            .join("Projects/grok-build/scripts/live-demux/optic-tinyworld.py"),
+        std::path::PathBuf::from(&home).join(
+            "Projects/fornevercollective/grok-build/scripts/live-demux/optic-tinyworld.py",
+        ),
+    ];
+    if let Ok(root) = std::env::var("FC_GROK_ROOT") {
+        let p = std::path::PathBuf::from(root).join("scripts/live-demux/optic-tinyworld.py");
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+    candidates.into_iter().find(|p| p.is_file())
+}
+
+/// Launch GPU optic style (star / glass / bubble) — same workspace as manual python.
+pub fn launch_optic_style_blocking(profile: LensProfile) -> Result<String, String> {
+    let mode = profile
+        .optic_mode()
+        .ok_or_else(|| "not an optic style profile".to_string())?;
+    let script = optic_tinyworld_script()
+        .ok_or_else(|| "optic-tinyworld.py missing — expected scripts/live-demux/".to_string())?;
+
+    // Prefer /cam device registry written by optic UI or Continuity.
+    let device = std::env::var("LIVE_DEMUX_CAM_DEVICE").unwrap_or_else(|_| cam_device());
+    let mut cmd = Command::new("python3");
+    cmd.arg(&script).arg(mode);
+    cmd.env("LIVE_DEMUX_CAM_DEVICE", &device);
+    cmd.env("LIVE_DEMUX_LENS_SHADER", "1");
+    // Session look defaults (user-tuned) unless already set.
+    if std::env::var("LIVE_DEMUX_LENS_OPTIC_ZOOM").is_err() {
+        cmd.env("LIVE_DEMUX_LENS_OPTIC_ZOOM", "0.873");
+    }
+    if std::env::var("LIVE_DEMUX_LENS_GLASS").is_err() {
+        cmd.env("LIVE_DEMUX_LENS_GLASS", "1.4");
+    }
+    if std::env::var("LIVE_DEMUX_LENS_CHROMA").is_err() {
+        cmd.env("LIVE_DEMUX_LENS_CHROMA", "1.921");
+    }
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    xai_tty_utils::detach_std_command(&mut cmd);
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("optic style spawn failed: {e}"))?;
+    // Persist as active cam style for /watch · /cam
+    if let Ok(home) = std::env::var("HOME") {
+        let dir = std::path::PathBuf::from(home).join(".panda/vision/cast");
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::write(
+            dir.join("cam-style.env"),
+            format!(
+                "export LIVE_DEMUX_CAM_STYLE={mode}\nexport LIVE_DEMUX_CAM_DEVICE={device}\n"
+            ),
+        );
+        let _ = std::fs::write(
+            dir.join("cam-style.json"),
+            format!(
+                "{{\"schema\":\"fc-cam-style-v1\",\"style\":\"{mode}\",\"device\":\"{device}\",\"t\":{}}}\n",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+            ),
+        );
+    }
+    Ok(format!(
+        "cam style · {mode} · optic-tinyworld pid {} · device {device}",
+        child.id()
+    ))
+}
+
 /// Blocking launch for profile + input.
 pub fn launch_lens_blocking(profile: LensProfile, input: LensInput) -> Result<String, String> {
+    // GPU optic styles bypass ffmpeg graphs entirely.
+    if profile.is_optic_style() {
+        return launch_optic_style_blocking(profile);
+    }
+
     let equirect = matches!(input, LensInput::Equirect360)
         || matches!(
             std::env::var("LIVE_DEMUX_LENS_360").as_deref(),
@@ -582,7 +752,14 @@ pub fn launch_lens_async(profile: LensProfile, input: LensInput) -> String {
                 }
             }
         });
-    format!("lens pop-out · {label} · launching bug-world / HDRI anamorphic…")
+    if profile.is_optic_style() {
+        format!(
+            "cam style · {} · launching GPU optic (hot pipe)…",
+            profile.id()
+        )
+    } else {
+        format!("lens pop-out · {label} · launching bug-world / HDRI anamorphic…")
+    }
 }
 
 /// Tokens that mean lens pop-out (for /watch args or keys).
@@ -606,6 +783,33 @@ pub fn is_lens_token(tok: &str) -> bool {
             | "rabbit"
             | "rabbithole"
             | "globe"
+            | "star"
+            | "stars"
+            | "starfield"
+            | "glass"
+            | "bubble"
+            | "optic"
+            | "vibe"
+            | "style"
+    )
+}
+
+/// True when `/cam` / `/watch` args request the GPU optic cam style.
+pub fn is_cam_style_token(tok: &str) -> bool {
+    matches!(
+        tok.to_ascii_lowercase().as_str(),
+        "star"
+            | "stars"
+            | "starfield"
+            | "glass"
+            | "bubble"
+            | "optic"
+            | "vibe"
+            | "style"
+            | "camstyle"
+            | "cam-style"
+            | "liquid"
+            | "voice"
     )
 }
 

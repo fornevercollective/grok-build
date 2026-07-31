@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Optical Transfer — send · live mix + TX</title>
+    <link rel="stylesheet" href="../shared/style.css" />
+  </head>
+  <body class="tv-fuzz live-mix">
+    <h1>DECIMEN <small>— broadcast isolates + fountain TX</small></h1>
+    <div class="hint" id="specs">loading payload…</div>
+    <details class="settings" open>
+      <summary>Settings</summary>
+      <div class="row">
+        <label>
+          payload
+          <select id="cfg-payload">
+            <option value="/success.png" selected>512 KB image</option>
+            <option value="/success-2mb.png">2 MB image</option>
+          </select>
+        </label>
+        <label>
+          mix layer
+          <select id="cfg-mix">
+            <option value="watch" selected>watch pipe · ffplay bloomberg (/mix.jpg)</option>
+            <option value="demo">demo live (synthetic color pipe)</option>
+            <option value="display">pipe screen / window…</option>
+            <option value="camera">webcam Continuity</option>
+            <option value="none">none (classic white QR)</option>
+          </select>
+        </label>
+        <label>
+          mix URL
+          <input id="cfg-mixurl" type="text" size="36"
+            value="http://127.0.0.1:8790/mix.jpg"
+            title="from mix-pipe.sh bloomberg" />
+        </label>
+        <label>
+          composite
+          <select id="cfg-comp">
+            <option value="broadcast" selected>broadcast · L3/pillars + occlude talent</option>
+            <option value="underlay">underlay · full-frame (legacy)</option>
+            <option value="multiply">multiply · full-frame</option>
+            <option value="soft">soft light</option>
+            <option value="stack">stack</option>
+            <option value="pip">pip · TX corner</option>
+          </select>
+        </label>
+        <label>
+          mix strength
+          <input id="cfg-mixstr" type="range" min="0" max="100" value="72" />
+        </label>
+        <label>
+          TX strength
+          <input id="cfg-txstr" type="range" min="40" max="100" value="88" />
+        </label>
+        <label>
+          color bleed
+          <input id="cfg-bleed" type="range" min="0" max="100" value="28" />
+        </label>
+        <label>
+          QR region color
+          <select id="cfg-qr-color">
+            <option value="inverse" selected>inverse · high viz (tuning)</option>
+            <option value="match">match · auto area palette</option>
+            <option value="bw">bw · classic modules</option>
+          </select>
+        </label>
+        <label>
+          logo bug
+          <select id="cfg-strobe">
+            <option value="glow" selected>glow · slow pulse</option>
+            <option value="burst">burst · spikes</option>
+            <option value="strobe">strobe · fast</option>
+            <option value="double">double flash</option>
+            <option value="heartbeat">heartbeat</option>
+            <option value="morse">morse pulse</option>
+            <option value="off">off</option>
+          </select>
+        </label>
+        <label>
+          bug shape
+          <select id="cfg-strobe-shape">
+            <option value="bug" selected>bug · small plate (logo size)</option>
+            <option value="lens">lens · tiny optic star core</option>
+          </select>
+        </label>
+        <label>
+          bug intensity
+          <input id="cfg-strobe-int" type="range" min="10" max="100" value="78" />
+        </label>
+        <label>
+          glow period (s)
+          <input id="cfg-strobe-period" type="range" min="8" max="80" value="28" title="×0.1s" />
+        </label>
+        <label>
+          burst Hz
+          <input id="cfg-strobe-hz" type="range" min="2" max="20" value="8" />
+        </label>
+        <label>
+          fuzz rate
+          <select id="cfg-fps">
+            <option value="29.97" selected>29.97 · NTSC frame</option>
+            <option value="59.94">59.94 · NTSC field</option>
+            <option value="30">30 · NTSC rounded</option>
+            <option value="60">60 · field rounded</option>
+            <option value="25">25 · PAL frame</option>
+            <option value="50">50 · PAL field</option>
+            <option value="24">24 · cinema</option>
+          </select>
+        </label>
+        <label>
+          field look
+          <select id="cfg-field">
+            <option value="progressive" selected>progressive</option>
+            <option value="interlace">interlace 2-field</option>
+            <option value="snow">snow quiet-zone</option>
+          </select>
+        </label>
+        <label>
+          bytes / frame
+          <select id="cfg-bytes">
+            <option>500</option>
+            <option>1000</option>
+            <option selected>1465</option>
+            <option>1850</option>
+            <option>2331</option>
+            <option>2953</option>
+          </select>
+        </label>
+        <label>
+          error correction
+          <select id="cfg-ecc">
+            <option selected>L</option>
+            <option>M</option>
+            <option>Q</option>
+            <option>H</option>
+          </select>
+        </label>
+        <label>
+          display size
+          <input id="cfg-size" type="range" min="300" max="1200" step="50" value="900" />
+        </label>
+      </div>
+      <div class="hint" style="text-align: left; padding-top: 8px">
+        <b>Two layers:</b> <i>mix</i> = live pipe (demo color field, webcam, or
+        <b>Share screen</b> the Grok <code>/watch bloomberg</code> window) ·
+        <i>transmission</i> = fountain QR at TV fuzz rate.
+        White modules show the mix; black modules stay dark with slight live color bleed
+        so patterning tracks the pipe without killing decode.
+      </div>
+      <div class="row" style="margin-top: 8px">
+        <button type="button" id="btn-watch" class="ghost">Start bloomberg mix-pipe</button>
+        <button type="button" id="btn-pipe" class="ghost">Screen share…</button>
+        <button type="button" id="btn-cam" class="ghost">Webcam</button>
+        <button type="button" id="btn-burst" class="ghost primary-ghost">⚡ Quick burst</button>
+      </div>
+      <div class="hint" style="text-align:left;padding-top:8px" id="mix-hint">
+        Shell: <code>bash scripts/live-demux/optical-transfer/mix-pipe.sh bloomberg</code>
+        → ffplay + <code>http://127.0.0.1:8790/mix.jpg</code> (same stream as
+        <code>/watch bloomberg</code> pop-out).
+      </div>
+    </details>
+    <div class="layer-legend">
+      <span class="leg mix">mix · bloomberg</span>
+      <span class="leg tx">TX · L3 / pillars</span>
+      <span class="leg strobe">bug · logo</span>
+      <span class="leg out">occlude · talent</span>
+    </div>
+    <div class="stage stage-tv">
+      <div class="tv-bezel">
+        <video id="mix-video" playsinline muted autoplay hidden></video>
+        <canvas id="mix" width="16" height="16" hidden></canvas>
+        <canvas id="qr" width="16" height="16"></canvas>
+        <div class="scanlines" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="hint">
+      <b>Recommended:</b> run mix-pipe bloomberg (ffplay + local MJPEG), leave mix
+      layer on <b>watch pipe</b>, composite <b>underlay</b>. Same bytes as
+      <code>/watch bloomberg</code> → ffplay. Max brightness helps RX.
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

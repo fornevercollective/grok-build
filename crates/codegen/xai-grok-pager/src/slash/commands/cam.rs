@@ -131,6 +131,22 @@ impl SlashCommand for CamCommand {
                 "popout",
                 "primary cam → OS ffplay window (Zoom self-view)",
             ),
+            (
+                "star",
+                "GPU optic star style · glass orb + voice rim (via /watch)",
+            ),
+            (
+                "style",
+                "cam filter styles: star · glass · bubble (optic-tinyworld)",
+            ),
+            (
+                "glass",
+                "Apple liquid-glass cam style (GPU)",
+            ),
+            (
+                "bubble",
+                "soap-film bubble cam style (GPU)",
+            ),
             ("cameras", "all local cams · one OS window each"),
             ("mosaic", "all cams · one gallery grid window"),
             ("out", "alias for popout"),
@@ -321,6 +337,46 @@ impl SlashCommand for CamCommand {
                 raw.to_string()
             };
             return CommandResult::Action(Action::PopOutLiveWatch { url: src });
+        }
+
+        // GPU optic cam styles (star / glass / bubble) — open /watch + style window.
+        // `/cam star` · `/cam style star` · `/cam glass` · `/cam vibe`
+        let style_tok = lower
+            .split_whitespace()
+            .find(|t| crate::live_demux::is_cam_style_token(t) || *t == "style")
+            .map(|s| s.to_string());
+        if let Some(tok) = style_tok {
+            let style_arg = if tok == "style" {
+                // `/cam style` or `/cam style glass`
+                let rest = lower
+                    .split_whitespace()
+                    .skip_while(|t| *t != "style")
+                    .nth(1)
+                    .unwrap_or("star");
+                rest
+            } else {
+                tok.as_str()
+            };
+            let (profile, _) = crate::live_demux::parse_lens_args(style_arg);
+            let profile = if profile.is_optic_style() {
+                profile
+            } else {
+                crate::live_demux::LensProfile::OpticStar
+            };
+            // Remember style for L key while /watch is open.
+            // SAFETY: single-threaded slash dispatch before watch loop.
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_CAM_STYLE", profile.id());
+            }
+            let toast = crate::live_demux::launch_lens_async(
+                profile,
+                crate::live_demux::LensInput::Webcam,
+            );
+            eprintln!("[fc-cam-style] {toast}");
+            crate::live_demux::apply_cam_profile("large");
+            return CommandResult::Action(Action::OpenLiveWatch {
+                url: String::new(), // default stream under large cam
+            });
         }
 
         // `/cam [profile] [channel…]` — default profile = large side tile.

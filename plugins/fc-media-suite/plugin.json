@@ -47,7 +47,12 @@
     "fc-cam-talk-v1",
     "fc-timesync-v1",
     "fc-maptrace-v1",
-    "fc-halfblock-tty-video"
+    "fc-halfblock-tty-video",
+    "optical",
+    "optical-blur",
+    "jawta",
+    "fountain-qr",
+    "fc-optical-transfer-v1"
   ],
   "category": "media",
   "skills": ["./skills"],

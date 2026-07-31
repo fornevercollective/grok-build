@@ -12,16 +12,18 @@ description: >
 /cam                 # large side self-view + default stream
 # After `/cam ` the dropdown lists:
 #   phone · dual · tether · large · xl · max · pip · lean
+#   star · glass · bubble · style   ← GPU optic styles (via /watch)
 #   popout · cameras · mosaic · bloomberg · vevo · trailers · …
 #   keys · mic · talk · hub  (in-modal tips)
+/cam star            # /watch + GPU optic star (glass orb · voice rim)
+/cam glass · /cam bubble
+/cam style star      # same family
 /cam xl · /cam pip
 /cam phone           # DESK: fullscreen laptop | phone (NO yt-dlp / VEVO)
 /cam dual            # same as phone
-/cam tether          # alias of phone
-/cam phone bloomberg # dual cam rail + news stream (desk off)
-/cam bloomberg       # large local cam + news stream
 /cam popout          # primary webcam → OS ffplay window
-/phone               # Continuity helpers + desk dual you|phone
+/watch star          # same style from /watch
+# In /watch:  S = star style · L = lens (or LIVE_DEMUX_CAM_STYLE)
 ```
 
 Shell:
@@ -34,9 +36,12 @@ bash scripts/live-demux/continuity-phone.sh dual
 bash scripts/live-demux/phone-tether.sh start  # optional still-pipe hub only
 ```
 
-While `/watch` / desk open: **c** cam · **m** mirror · **a** mic · **t** talk · **H** cycle local→dual→phone · **Y** dual pop-out · **L** lens · **O** all webcams.  
+While `/watch` / desk open: **c** cam · **m** mirror · **a** mic · **t** talk · **H** cycle local→dual→phone · **Y** dual pop-out · **L** lens · **S** star style · **O** all webcams.  
 
-Lens (tiny bug world · 360 webcam): `/lens` · `/lens bug dual` · `bash scripts/live-demux/lens-popout.sh`  
+Lens: `/lens` · `/lens star` · `/lens glass` · `/lens bubble`  
+GPU style: `python3 scripts/live-demux/optic-tinyworld.py star`  
+Style registry: `~/.panda/vision/cast/cam-style.json` · device: `cam-device.json`  
+
 
 AVFoundation exclusive lock: turn off TTY cam before OS pop-out on the **same webcam** device.
 

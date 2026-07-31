@@ -785,11 +785,15 @@ pub fn launch_cam_popout_async(mode: CamPopMode) -> String {
     format!("cam pop-out · {mode_label} · launching ffplay… (Zoom-style OS window)")
 }
 
-/// Route a pop-out channel string: camera → cam windows, else stream.
+/// Route a pop-out channel string: camera → cam windows, optical → browser, else stream.
 pub fn launch_popout_smart_async(input: &str) -> String {
     if is_cam_popout_source(input) {
         let mode = parse_cam_pop_mode(input);
         return launch_cam_popout_async(mode);
+    }
+    if super::optical::is_optical_source(input) {
+        let (mode, text) = super::optical::parse_optical_args(input);
+        return super::optical::launch_optical_popout_async(mode, &text);
     }
     // Empty with bare `/watch popout` stays stream (VEVO default).
     launch_popout_async(input)

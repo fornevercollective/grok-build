@@ -209,43 +209,129 @@ const CITIES: &[City] = &[
 // Simple land mask (coarse equirectangular continents)
 // ---------------------------------------------------------------------------
 
-/// Very coarse land test: rectangles approximating major landmasses.
+/// Coarse land test for the ASCII world map.
+///
+/// Avoids the old “whale under” artifact: a solid Antarctica bar fused with a
+/// single Americas rectangle that read as one blob under the hop list.
 fn is_land(lat: f64, lon: f64) -> bool {
-    // Americas
-    if lat > -55.0 && lat < 72.0 && lon > -168.0 && lon < -52.0 {
-        // carve gulf/caribbean approx
-        if lat > 15.0 && lat < 32.0 && lon > -100.0 && lon < -80.0 {
-            return lat > 24.0 || lon < -95.0;
+    // ── North America (not fused to SA as one slab) ─────────────────────
+    if lat > 15.0 && lat < 72.0 && lon > -168.0 && lon < -52.0 {
+        // Hudson Bay / Canadian Arctic ocean
+        if lat > 50.0 && lat < 70.0 && lon > -95.0 && lon < -70.0 {
+            return lat > 62.0 || lon < -88.0;
+        }
+        // Gulf of Mexico / Caribbean
+        if lat > 15.0 && lat < 32.0 && lon > -100.0 && lon < -78.0 {
+            return lat > 25.0 && lon < -90.0; // Gulf coast / Florida stub only
+        }
+        // Baja / Pacific carve
+        if lat > 22.0 && lat < 33.0 && lon > -120.0 && lon < -109.0 {
+            return lon > -115.0;
+        }
+        return true;
+    }
+    // Central America / Mexico bridge (narrow)
+    if lat > 7.0 && lat <= 15.0 && lon > -105.0 && lon < -77.0 {
+        return lon < -82.0 || lat > 12.0;
+    }
+    // ── South America (tapered cone — not a whale body) ─────────────────
+    if lat > -56.0 && lat <= 12.0 && lon > -82.0 && lon < -34.0 {
+        // West of Andes is Pacific — keep a thin strip only near coast
+        if lon < -78.0 {
+            return lat > -45.0 && lat < 5.0;
+        }
+        // Amazon/east bulge, taper south
+        let south = lat < -20.0;
+        if south {
+            // cone: longitude range shrinks toward Tierra del Fuego
+            let t = ((-20.0 - lat) / 36.0).clamp(0.0, 1.0);
+            let west = -75.0 + 8.0 * t;
+            let east = -40.0 - 12.0 * t;
+            return lon > west && lon < east;
+        }
+        // northern SA
+        if lat > 5.0 && lon > -62.0 {
+            return false; // Caribbean sea east of Colombia
         }
         return true;
     }
     // Greenland
     if lat > 60.0 && lat < 84.0 && lon > -55.0 && lon < -15.0 {
-        return true;
+        // ice sheet, not a filled rectangle to the pole line
+        return lon > -50.0 || lat < 78.0;
     }
-    // Europe + Africa + W Asia
-    if lat > -35.0 && lat < 72.0 && lon > -12.0 && lon < 60.0 {
-        // Mediterranean carve (ocean strip)
-        if lat > 33.0 && lat < 44.0 && lon > -5.0 && lon < 36.0 && lat < 36.0 {
-            return lon < 5.0 || lon > 30.0;
+    // ── Europe ──────────────────────────────────────────────────────────
+    if lat > 36.0 && lat < 72.0 && lon > -12.0 && lon < 40.0 {
+        // North Sea / Baltic light carve
+        if lat > 50.0 && lat < 60.0 && lon > -2.0 && lon < 10.0 {
+            return lon > 4.0 || lat < 54.0;
         }
         return true;
     }
-    // Asia
-    if lat > 5.0 && lat < 75.0 && lon > 60.0 && lon < 145.0 {
+    // ── Africa ──────────────────────────────────────────────────────────
+    if lat > -35.0 && lat < 37.0 && lon > -18.0 && lon < 52.0 {
+        // Mediterranean = ocean between Europe and Africa
+        if lat > 30.0 && lat < 37.0 && lon > -6.0 && lon < 36.0 {
+            return lat < 32.5 && (lon < 12.0 || lon > 28.0); // Maghreb / Levant only
+        }
+        // Gulf of Guinea / west carve
+        if lat > -5.0 && lat < 12.0 && lon > -20.0 && lon < 5.0 {
+            return lon > -10.0;
+        }
+        // Madagascar separate
+        if lon > 42.0 && lon < 51.0 && lat > -26.0 && lat < -11.0 {
+            return true;
+        }
+        if lon > 42.0 {
+            return lat > -5.0 && lat < 15.0 && lon < 48.0; // Horn
+        }
         return true;
     }
-    // SE Asia / Indonesia band
-    if lat > -10.0 && lat < 20.0 && lon > 95.0 && lon < 140.0 {
+    // ── Asia ────────────────────────────────────────────────────────────
+    if lat > 5.0 && lat < 75.0 && lon > 40.0 && lon < 145.0 {
+        // Arabian Sea / Bay of Bengal carves (rough)
+        if lat > 5.0 && lat < 25.0 && lon > 55.0 && lon < 100.0 {
+            // India subcontinent
+            if lon > 68.0 && lon < 90.0 {
+                return lat > 8.0;
+            }
+            // Arabia
+            if lon > 40.0 && lon < 60.0 {
+                return lat > 12.0 && lat < 32.0;
+            }
+            return lon > 95.0; // SE Asia mainland
+        }
         return true;
     }
-    // Australia
-    if lat > -44.0 && lat < -10.0 && lon > 112.0 && lon < 154.0 {
+    // SE Asia islands band (not a solid block into Australia)
+    if lat > -8.0 && lat < 20.0 && lon > 95.0 && lon < 140.0 {
+        // leave open water corridors
+        if lat < 0.0 && lon > 105.0 && lon < 125.0 {
+            return (lon as i32 % 7) < 4; // speckled archipelago
+        }
         return true;
     }
-    // Antarctica strip
-    if lat < -62.0 {
+    // Australia (island — gap from Asia)
+    if lat > -44.0 && lat < -11.0 && lon > 113.0 && lon < 154.0 {
+        // Tasman carve / inland not a rectangle to ocean
+        if lat < -38.0 && lon > 145.0 {
+            return lon < 149.0; // Tasmania-ish
+        }
         return true;
+    }
+    // New Zealand
+    if lat > -48.0 && lat < -34.0 && lon > 166.0 && lon < 179.0 {
+        return true;
+    }
+    // ── Antarctica: coastal rim only (NOT a solid whale bar under the map) ─
+    // Previous `lat < -62` filled the entire bottom of the equirectangular
+    // canvas as one fat land strip — read as a whale under the continents.
+    if lat < -62.0 && lat > -82.0 {
+        // ring of ice shelves; open polar ocean hole at extreme south for ASCII
+        let lon_n = ((lon + 180.0) / 15.0).floor() as i32;
+        // scalloped coast so it doesn't read as one horizontal sausage
+        let coast = -63.5 - 3.0 * ((lon_n.rem_euclid(5) as f64) * 0.35);
+        return lat < coast && lat > -78.0;
     }
     false
 }
@@ -925,7 +1011,13 @@ impl MapState {
                         let lon = -180.0 + (x as f64 + 0.5) / w as f64 * 360.0;
                         let lat = 90.0 - (y as f64 + 0.5) / h as f64 * 180.0;
                         if is_land(lat, lon) {
-                            '·'
+                            // Antarctica rim uses a softer glyph so the bottom
+                            // strip doesn't read as a solid “whale under” bar.
+                            if lat < -62.0 {
+                                '░'
+                            } else {
+                                '·'
+                            }
                         } else {
                             ' '
                         }
@@ -1045,8 +1137,10 @@ pub fn render_map_overlay(
     let hop_rows = (inner_h / 4).clamp(2, 8);
     let map_h = inner_h.saturating_sub(hop_rows).max(4);
     let rows = state.render_map_rows(inner_w, map_h);
-    let land_style = Style::default().fg(Color::Rgb(120, 160, 120)).bg(bg);
-    let water_style = Style::default().fg(Color::Rgb(40, 60, 90)).bg(bg);
+    let land_style = Style::default().fg(Color::Rgb(110, 155, 115)).bg(bg);
+    // Quieter ocean so southern water doesn't fuse into a dark “whale” band
+    let water_style = Style::default().fg(Color::Rgb(45, 70, 100)).bg(bg);
+    let ice_style = Style::default().fg(Color::Rgb(160, 180, 200)).bg(bg);
     let mark_style = Style::default()
         .fg(Color::Rgb(255, 200, 80))
         .bg(bg)
@@ -1074,6 +1168,8 @@ pub fn render_map_overlay(
                 mark_style
             } else if ch == '·' {
                 land_style
+            } else if ch == '░' || ch == '▒' {
+                ice_style
             } else {
                 water_style
             };
@@ -1222,6 +1318,17 @@ mod tests {
         assert_eq!(rows[0].chars().count(), 40);
         // SBX glyph somewhere on canvas
         assert!(rows.iter().any(|r| r.contains('X')));
+    }
+
+    #[test]
+    fn antarctica_is_not_a_solid_bottom_whale_bar() {
+        // Mid-south polar open water should exist; ice is a rim, not lat<-62 fill.
+        assert!(!is_land(-85.0, 0.0), "extreme south open in ASCII mask");
+        assert!(is_land(-70.0, 0.0) || is_land(-68.0, 90.0), "some ice rim remains");
+        // Pacific south of equator is ocean (not fused land slab)
+        assert!(!is_land(-20.0, -150.0));
+        // Gap between SA tip and Antarctica (Drake Passage)
+        assert!(!is_land(-58.0, -65.0));
     }
 
     #[test]

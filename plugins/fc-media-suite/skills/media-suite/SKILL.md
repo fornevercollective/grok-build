@@ -36,6 +36,7 @@ bash plugins/fc-media-suite/scripts/update.sh
 | `fc-timesync-v1` | `/timesync` `/clock` |
 | `fc-maptrace-v1` | `/map` |
 | `fc-halfblock-tty-video` | paint path for watch + `/gboom` |
+| `fc-optical-transfer-v1` | `/optical` · jawta light · blur fountain |
 
 ```bash
 bash plugins/fc-media-suite/scripts/doctor.sh

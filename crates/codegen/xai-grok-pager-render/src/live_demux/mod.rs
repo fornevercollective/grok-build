@@ -22,6 +22,7 @@ mod channels;
 mod layout;
 mod lens;
 mod mic;
+mod optical;
 mod popout;
 mod x_live;
 
@@ -50,13 +51,19 @@ pub use popout::{
     spawn_ffplay_camera, spawn_ffplay_popout, CamPopMode, TOAST_CAM_POPOUT, TOAST_POPOUT,
 };
 pub use lens::{
-    is_lens_token, launch_lens_async, launch_lens_blocking, lens_vf, parse_lens_args, LensInput,
-    LensProfile, FEATURE_ID as LENS_FEATURE_ID, TOAST_LENS,
+    is_cam_style_token, is_lens_token, launch_lens_async, launch_lens_blocking,
+    launch_optic_style_blocking, lens_vf, parse_lens_args, LensInput, LensProfile,
+    FEATURE_ID as LENS_FEATURE_ID, TOAST_LENS,
 };
 pub use x_live::{
     is_go_live_token, is_x_hub_token, is_x_locator, is_x_page_url, is_x_user_media_feed,
     launch_go_live_async, normalize_x_url, open_x_studio, parse_go_live_args, x_user_media_handle,
     HINT_PASTE_X, TOAST_GO_LIVE,
+};
+pub use optical::{
+    is_optical_source, is_optical_token, launch_optical_popout_async, optical_url,
+    parse_optical_args, OpticalFeed, OpticalMode, FEATURE_ID as OPTICAL_FEATURE_ID, OPTICAL_URL,
+    TOAST_OPTICAL,
 };
 
 use std::collections::{HashMap, VecDeque};
@@ -85,6 +92,8 @@ pub const TOAST_OPEN: &str =
 /// Toast when opening dual cam desk (you|phone only — no yt-dlp).
 pub const TOAST_DESK: &str =
     "DESK · you | phone  · no VEVO  · H cycle · L lens · Y pop dual (fc-cam-talk-v1)";
+/// Toast when `/watch optical` opens the optical blur surface.
+pub const TOAST_OPTICAL_WATCH: &str = optical::TOAST_OPTICAL;
 
 /// Default Friday-stream playlist when `/watch` is bare (= VEVO music TV).
 pub const DEFAULT_URL: &str = VEVO_FRIDAY_URL;
@@ -933,6 +942,8 @@ pub struct LiveWatchState {
     playing: bool,
     phase: Phase,
     demux: Option<LiveDemux>,
+    /// Optical blur / jawta light feed — **main stream pane** (`/watch optical`).
+    optical: Option<OpticalFeed>,
     /// Optional local camera (left half when dual). Toggle with `c`.
     camera: Option<CameraFeed>,
     /// Optional phone still-pipe feed (right half when dual / `/cam phone`).
@@ -1059,8 +1070,16 @@ impl LiveWatchState {
             || channel_id.as_deref() == Some("desk")
             || camera::is_desk_source(&clean_input)
             || layout::dual_cam_desk();
+        let optical_src = optical::is_optical_source(&clean_input)
+            || source_url.starts_with("optical://")
+            || channel_id.as_deref() == Some("optical");
+        let (optical_mode, optical_text) = if optical_src {
+            optical::parse_optical_args(&clean_input)
+        } else {
+            (optical::OpticalMode::Blur, String::new())
+        };
         let (tx, rx) = std::sync::mpsc::channel();
-        let worker_rx = if x_hub || desk {
+        let worker_rx = if x_hub || desk || optical_src {
             None
         } else {
             let url_c = source_url.clone();
@@ -1106,7 +1125,13 @@ impl LiveWatchState {
         };
 
         let shuf = if shuffle { " · shuffle on" } else { "" };
-        let status = if desk {
+        let status = if optical_src {
+            format!(
+                "optical · {} · o OS pop-out · Esc  ({})",
+                optical_mode.id(),
+                optical_text.chars().take(32).collect::<String>()
+            )
+        } else if desk {
             "desk · you | phone  · H cycle · L lens · Y pop dual · a mic · t talk · Esc".into()
         } else if x_hub {
             x_live::HINT_PASTE_X.to_string()
@@ -1150,13 +1175,14 @@ impl LiveWatchState {
             entries: Vec::new(),
             idx: 0,
             seek_secs: 0,
-            playing: !x_hub && !desk,
-            phase: if x_hub || desk {
+            playing: optical_src || (!x_hub && !desk),
+            phase: if x_hub || desk || optical_src {
                 Phase::Ready
             } else {
                 Phase::Resolving
             },
             demux: None,
+            optical: None,
             camera: None,
             camera_phone: None,
             camera_on: false,
@@ -1198,9 +1224,39 @@ impl LiveWatchState {
             search_focused: x_hub,
             shuffle,
         };
+        // Optical surface: main pane is jawta/blur RGB (not yt-dlp).
+        if optical_src {
+            let (ow, oh) = demux_dims();
+            // Prefer larger optical field when roomy (half-block scales).
+            let (ow, oh) = (
+                ow.max(64).min(160),
+                oh.max(48).min(120),
+            );
+            state.optical = Some(OpticalFeed::start(
+                optical_mode,
+                ow,
+                oh,
+                &optical_text,
+            ));
+            state.playing = true;
+            state.phase = Phase::Ready;
+            state.paint_w = ow;
+            state.paint_h = oh;
+            state.status = format!(
+                "optical · {} · o OS display · Esc · {}",
+                optical_mode.id(),
+                optical_text.chars().take(40).collect::<String>()
+            );
+            // Persist mode for L/o helpers
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_OPTICAL_MODE", optical_mode.id());
+                std::env::set_var("LIVE_DEMUX_OPTICAL_TEXT", &optical_text);
+            }
+        }
         // Auto-open local camera side pane (launch-watch.sh camera · LIVE_DEMUX_CAM_ON=1).
         // Desk dual always forces cam on (you|phone is the whole surface).
-        if camera::cam_auto_on() || desk {
+        // Optical mode: cam off by default (display is the optical field).
+        if !optical_src && (camera::cam_auto_on() || desk) {
             state.camera_on = true;
             state.start_camera();
             if desk {
@@ -1212,6 +1268,13 @@ impl LiveWatchState {
             }
         }
         state
+    }
+
+    /// True when this modal is the optical TX surface (not a stream).
+    pub fn is_optical(&self) -> bool {
+        self.optical.is_some()
+            || self.source_url.starts_with("optical://")
+            || self.channel_id.as_deref() == Some("optical")
     }
 
     /// Jump to a random other playlist entry (one-shot shuffle zap).
@@ -1650,6 +1713,19 @@ impl LiveWatchState {
     /// Re-resolves with an audio-capable format (higher quality than the TTY pipe).
     /// In-TTY demux keeps running; Esc only closes the modal, not the OS window.
     pub fn pop_out(&mut self) -> Result<String, String> {
+        // Optical surface → OS browser (send.html), not yt-dlp/ffplay.
+        if self.is_optical() {
+            let mode = self
+                .optical
+                .as_ref()
+                .map(|o| o.mode())
+                .unwrap_or(OpticalMode::Blur);
+            let text = std::env::var("LIVE_DEMUX_OPTICAL_TEXT")
+                .unwrap_or_else(|_| "FC OPTICAL".into());
+            let msg = optical::launch_optical_popout_async(mode, &text);
+            self.status = msg.clone();
+            return Ok(msg);
+        }
         let page = self
             .current_page_url
             .clone()
@@ -2029,6 +2105,18 @@ impl LiveWatchState {
     }
 
     fn hud_status(&self) -> String {
+        if self.is_optical() {
+            let mode = self
+                .optical
+                .as_ref()
+                .map(|o| o.mode().id())
+                .unwrap_or("blur");
+            let play = if self.playing { "▶" } else { "⏸" };
+            return format!(
+                "{play} optical · {mode} · half-block TX  · o OS pop-out  · Esc  · {}",
+                self.channel_label
+            );
+        }
         let n = self.entries.len().max(1);
         let title = self
             .entries
@@ -2243,10 +2331,26 @@ impl LiveWatchState {
             }
         }
 
-        if !self.playing && !self.camera_on && !self.mic_on {
+        // Optical surface frames (main stream pane) — always when feed present.
+        if let Some(ref opt) = self.optical {
+            let frame_gen = opt.frame_generation();
+            if frame_gen != self.paint_gen
+                && let Some((rgb, w, h)) = opt.snapshot_rgb()
+            {
+                self.paint_rgb = Some(rgb);
+                self.paint_w = w;
+                self.paint_h = h;
+                self.paint_gen = frame_gen;
+                self.last_frame_time = Instant::now();
+                self.status = self.hud_status();
+                dirty = true;
+            }
+        }
+
+        if !self.playing && !self.camera_on && !self.mic_on && self.optical.is_none() {
             return dirty;
         }
-        if !self.playing {
+        if !self.playing && self.optical.is_none() {
             return dirty;
         }
 
@@ -2353,8 +2457,19 @@ impl LiveWatchState {
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('o') => {
-                // External ffplay window — current stream (first-class pop-out).
-                let _ = self.pop_out();
+                // Optical: OS browser display (send.html). Else stream ffplay pop-out.
+                if self.is_optical() {
+                    let (mode, text) = optical::parse_optical_args(&self.source_url);
+                    let mode = self
+                        .optical
+                        .as_ref()
+                        .map(|o| o.mode())
+                        .unwrap_or(mode);
+                    let text = std::env::var("LIVE_DEMUX_OPTICAL_TEXT").unwrap_or(text);
+                    self.status = optical::launch_optical_popout_async(mode, &text);
+                } else {
+                    let _ = self.pop_out();
+                }
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('O') => {
@@ -2380,14 +2495,31 @@ impl LiveWatchState {
             // Capital L only — lowercase `l` is scrub-forward (with Right / .).
             KeyCode::Char('L') => {
                 // Live lens pop-out — tiny bug world / HDRI anamorphic (360-capable).
-                let (profile, input) = lens::parse_lens_args("bug");
-                // Prefer dual when both feeds are live.
-                let input = if camera::cam_source().is_dual() {
+                // If LIVE_DEMUX_CAM_STYLE is set (star/glass/bubble), open that GPU style.
+                let style = std::env::var("LIVE_DEMUX_CAM_STYLE")
+                    .unwrap_or_default()
+                    .trim()
+                    .to_ascii_lowercase();
+                let (profile, input) = if !style.is_empty() {
+                    lens::parse_lens_args(&style)
+                } else {
+                    lens::parse_lens_args("bug")
+                };
+                let input = if camera::cam_source().is_dual() && !profile.is_optic_style() {
                     lens::LensInput::Dual
                 } else {
                     input
                 };
                 self.status = lens::launch_lens_async(profile, input);
+                LiveWatchKeyOutcome::Changed
+            }
+            // Capital S — cam style star (GPU optic) while /watch is open.
+            // (lowercase `s` remains shuffle zap.)
+            KeyCode::Char('S') => {
+                self.status = lens::launch_lens_async(
+                    lens::LensProfile::OpticStar,
+                    lens::LensInput::Webcam,
+                );
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('U') => {
@@ -2400,12 +2532,9 @@ impl LiveWatchState {
                 LiveWatchKeyOutcome::Changed
             }
             // Shuffle zap (before letter-hop so 's' is not a station hop).
+            // Capital S is cam style star (above). Toggle shuffle: /watch shuffle.
             KeyCode::Char('s') => {
                 self.shuffle_next();
-                LiveWatchKeyOutcome::Changed
-            }
-            KeyCode::Char('S') => {
-                self.toggle_shuffle();
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char(' ') => {

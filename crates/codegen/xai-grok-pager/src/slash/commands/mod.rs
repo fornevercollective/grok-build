@@ -30,6 +30,7 @@ pub mod cam;
 pub mod phone;
 pub mod lens;
 pub mod cast;
+pub mod optical;
 pub mod gboom;
 pub mod gy;
 pub mod map;
@@ -167,6 +168,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(lens::LensCommand),
         // Cast desk/stream/mosaic to TCL Google TV / Chromecast (explicit).
         Arc::new(cast::CastCommand),
+        // Optical blur · jawta light · Decimen fountain (screen→camera).
+        Arc::new(optical::OpticalCommand),
         // fornevercollective broadcast timesync world clock inside Grok.
         Arc::new(timesync::TimesyncCommand),
         // fornevercollective maptrace · in-Grok + pop-out.
@@ -304,13 +307,23 @@ mod tests {
             "fullscreen",
             "a-la-carte",
             "allacarte",
+            "anamorphic",
+            "bug",
+            "bugworld",
+            "cam",
+            "camera",
+            "cast",
+            "chromecast",
             "clock",
+            "compound",
             "epoch",
+            "fleet",
             "gboom",
             "geomap",
             "gmux",
             "guides",
             "gy",
+            "hdri",
             "help",
             "history",
             "home",
@@ -319,7 +332,11 @@ mod tests {
             "imagine",
             "imagine-video",
             "import-claude",
+            "insect",
+            "jawta-light",
             "jump",
+            "lens",
+            "light-tx",
             "live",
             "login",
             "logout",
@@ -330,14 +347,21 @@ mod tests {
             "maptrace",
             "marketplace",
             "mcps",
+            "mgphone",
             "minimal",
+            "mirror",
             "ml",
             "model",
             "monitor",
             "multiline",
             "new",
             "onboarding",
+            "optical",
+            "optical-blur",
+            "optic",
             "personas",
+            "phone",
+            "phonecam",
             "plan",
             "plan-view",
             "plugins",
@@ -353,22 +377,28 @@ mod tests {
             "resume",
             "rewind",
             "scroll-debug",
+            "selfie",
             "session-info",
             "sessions",
             "settings",
             "share",
             "show-plan",
             "skills",
+            "still-pipe",
+            "stillpipe",
             "summarize",
             "tasks",
+            "term-status",
             "terminal-check",
             "terminal-info",
             "terminal-setup",
             "terminals",
+            "tether",
             "theme",
             "timeline",
             "timestamps",
             "timesync",
+            "tinyworld",
             "title",
             "toggle-mouse-reporting",
             "tour",
@@ -382,12 +412,17 @@ mod tests {
             "vim-mode",
             "voice",
             "watch",
+            "webcam",
             "welcome",
+            "who",
             "workflows",
             "worldclock",
             "yolo",
             "zulu",
         ];
+        // Registry construction panics on builtin alias collisions — smoke the
+        // full set before the shell-reserved contract so startup stays green.
+        let _reg = CommandRegistry::new(builtin_commands());
         for command in builtin_commands() {
             for key in std::iter::once(command.name()).chain(command.aliases().iter().copied()) {
                 assert!(SHELL_RESERVED.contains(&key), "unreserved pager key {key}");
