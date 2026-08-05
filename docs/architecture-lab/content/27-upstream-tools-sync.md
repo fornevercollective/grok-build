@@ -2,10 +2,14 @@
 
 **Policy:** path-checkout from `xai-org/grok-build` · **keep** `docs/architecture-lab` + `experiments/` · never force-merge · never refork-wipe Lab.
 
-## What we pulled (xai-org tip `8adf901`)
+## What we pulled (fork pin era · pager `0.2.111`)
+
+This fork’s monorepo pin is **`SOURCE_REV` `95d84f44…`** (same monorepo rev as public upstream at `69f0ba8`).  
+xAI tip has since moved to **`ed6d543` / 0.2.120** — full 20-commit list + theme buckets: [Fork leverage map](#/19-fork-leverage).
 
 ```bash
-./scripts/sync-upstream-path-checkout.sh    # or pass a SHA
+./scripts/sync-upstream-path-checkout.sh            # tip
+./scripts/sync-upstream-path-checkout.sh ed6d543    # pin tip explicitly
 # checks out: crates/ Cargo.* SOURCE_REV README bin/ third_party/ prod/ …
 ```
 

@@ -9,8 +9,9 @@ Single map for **how this lab is built**, **what versions mean**, **where code d
 
 | Pin | Meaning |
 |-----|---------|
-| `SOURCE_REV` | Monorepo SHA baked into public tree |
-| `upstream/main` tip | e.g. `8adf901` *Synced from monorepo* |
+| `SOURCE_REV` | Monorepo SHA baked into public tree (fork: `95d84f44…` · xAI tip: `d6937fe…`) |
+| `upstream/main` tip | e.g. `ed6d543` *Synced from monorepo* · pager **0.2.120** |
+| This fork pager | **0.2.111** — full delta: [Fork leverage](#/19-fork-leverage) |
 | Lab `lab_semver` | `docs/architecture-lab/version.json` (float shell + docs) |
 | DotSlash | Required for `cargo build -p xai-grok-pager-bin` (not Lab native) |
 
