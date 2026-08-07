@@ -4,11 +4,12 @@
  * v24: iPhone still-pipe camera flip — no double-mirror skeleton (inverted controller)
  * v25: full-body IK hooks (body-pose.js MediaPipe Pose) + hand camflip
  * v26: inspect audio waveform L/R/M under main video feed
+ * v27: defers to acoustic-scope.js (FFT · isolation · speech · RGB parade · 3d maze)
  */
 (function () {
   "use strict";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
-  var VER = "live-v27-wave-levels";
+  var VER = "live-v28-acoustic-scope";
   var MAX_FACES = 4;
   var PATH_MAX = 96; /* fencing trail length (samples) */
   var PATH_MIN_DIST = 0.0018; /* ignore micro-jitter in norm space */
@@ -453,8 +454,27 @@
     window.__mgInspectSetAxis = function () {};
   }
 
-  /* ── Audio waveform L/R/M under main video feed ── */
+  /* ── Audio waveform L/R/M under main video feed ──
+   * Prefer acoustic-scope.js (FFT spectrum · band isolation · speech VAD ·
+   * RGB parade · 3d acoustic maze). Fall back to rock L/R/M if scope absent. */
   function ensureAudioWave() {
+    /* acoustic-scope owns #mg-wave when injected (product-core + hot_module) */
+    if (window.__mgAcousticScope && window.__mgAcousticScope.mount) {
+      try {
+        HP._waveVer = "mg-wave-v4-acoustic-delegate";
+        if (!document.getElementById("mg-wave") || !document.getElementById("mg-wave").classList.contains("mg-acoustic")) {
+          window.__mgAcousticScope.mount();
+        } else if (window.__mgAcousticScope.kick) {
+          window.__mgAcousticScope.kick();
+        }
+        ok("audio acoustic-scope · " + (window.__mgAcousticScope.ver || "v1"));
+        return;
+      } catch (eAc) {
+        try {
+          warn("acoustic-scope " + eAc);
+        } catch (e2) {}
+      }
+    }
     var WVER = "mg-wave-v3-rock";
     if (HP._waveVer === WVER && document.getElementById("mg-wave") && window.__mgAudioWave) {
       try {

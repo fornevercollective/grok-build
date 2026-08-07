@@ -468,7 +468,7 @@ fn main() {
         budget.label, budget.w, budget.h, budget.fps, budget.bitrate_k, use_vt
     );
     let pose_url = if args.crazy && args.pose_url.is_empty() {
-        "http://127.0.0.1:8765/api/viewer".into()
+        "http://127.0.0.1:8791/api/viewer".into()
     } else {
         args.pose_url.clone()
     };

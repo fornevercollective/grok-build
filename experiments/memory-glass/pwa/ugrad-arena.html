@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#0f1419"/>
+<title>μgrad Arena · WebGrid · Go · Chess multilayer · Rubik prep</title>
+<meta name="description" content="Unified lab: WebGrid chase, Go, Chess (live + predictive under-layers), model performance, Rubik language prep. go-ugrad / chess-ugrad look."/>
+<link rel="stylesheet" href="ugrad/ugrad-go-board-theme.css"/>
+<link rel="stylesheet" href="ugrad/ugrad-game-chrome.css"/>
+<style>
+:root{
+  --bg:#0a0c10;--elev:#10141a;--panel:#141a22;--ink:#e8ecf1;--mut:#8b93a0;
+  --line:#2a3038;--acc:#7dd3fc;--good:#4ade80;--hot:#f87171;--warn:#fbbf24;
+  /* sleek grey/black boards (not wood / not beige) */
+  --board:#0c0e12;--grid-line:rgba(255,255,255,0.055);
+  --sq-l:#1c2128;--sq-d:#0e1116;--sq-ink:#e6edf3;--sq-ink-d:#9aa4b2;
+  --go-bg:#12161c;--go-line:#3a424e;--go-black:#0a0a0c;--go-white:#d8dee8;
+  --blue:#38bdf8;--teal:#2dd4bf;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+code{font:600 11px ui-monospace,Menlo,monospace}
+
+/* ── header (go-ugrad chrome) ── */
+.gu-header{border-bottom:1px solid var(--line);background:var(--elev)}
+.gu-header-brand{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px 4px}
+.gu-header-brand strong{font:800 14px/1 system-ui;letter-spacing:.02em}
+.gu-header-brand .tag{font:600 10px system-ui;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.gu-bar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:6px 14px 10px}
+.gu-bar label{font:600 10px system-ui;color:var(--mut);display:inline-flex;align-items:center;gap:4px}
+.gu-bar select,.gu-bar input[type=number],.gu-bar input[type=text]{
+  background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:600 11px system-ui}
+.gu-bar button,.tab-btn,.btn{
+  appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);
+  border-radius:999px;padding:5px 11px;font:650 11px system-ui;cursor:pointer}
+.gu-bar button.gu-primary,.btn.primary,.tab-btn.on{
+  background:var(--acc);border-color:var(--acc);color:#0d1117}
+.tab-btn.on{background:rgba(63,185,80,.22);border-color:rgba(63,185,80,.5);color:var(--good)}
+
+/* ── layout ── */
+.gu-main{display:grid;grid-template-columns:minmax(300px,1fr) minmax(280px,360px);gap:14px;padding:14px;max-width:1200px;margin:0 auto}
+@media(max-width:900px){.gu-main{grid-template-columns:1fr}}
+.gu-board-wrap{
+  background:var(--elev);border:1px solid var(--line);border-radius:14px;padding:14px;
+  display:flex;flex-direction:column;gap:10px;contain:layout
+}
+.gu-board-wrap h2{margin:0;font:700 1.05rem/1.2 system-ui;letter-spacing:-.02em}
+.gu-board-wrap h2 span{color:var(--mut);font-weight:600;font-size:.9rem}
+.gu-side{display:flex;flex-direction:column;gap:10px;contain:layout style}
+.panel{
+  background:var(--elev);border:1px solid var(--line);border-radius:12px;padding:12px;contain:layout
+}
+.panel h3{margin:0 0 8px;font:700 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+
+/* ── clocks ── */
+.gu-clock-strip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.22);font:600 11px ui-monospace,Menlo,monospace
+}
+.gu-clock-face{padding:6px 10px;border-radius:8px;border:1px solid var(--line);min-width:5rem;text-align:center;color:var(--mut)}
+.gu-clock-face.hot{border-color:rgba(88,166,255,.55);color:var(--ink)}
+
+/* ── webgrid board (sleek graphite) ── */
+#wg-canvas{width:100%;max-width:min(92vw,480px);aspect-ratio:1;display:block;margin:0 auto;
+  background:var(--board);border-radius:10px;cursor:crosshair;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06),0 16px 48px rgba(0,0,0,.55)}
+
+/* ── go board (slate, not wood) ── */
+#go-svg{width:100%;max-width:min(92vw,480px);height:auto;display:block;margin:0 auto;
+  background:var(--go-bg);border-radius:10px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06),0 16px 48px rgba(0,0,0,.55)}
+
+/* ── chess board (grey/black sleek) ── */
+.ch-stage{position:relative;width:100%;max-width:min(92vw,480px);margin:0 auto;aspect-ratio:1}
+#ch-board{
+  display:grid;grid-template-columns:repeat(8,1fr);width:100%;height:100%;
+  border-radius:10px;overflow:hidden;user-select:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),0 16px 48px rgba(0,0,0,.55);
+  background:var(--board)
+}
+#ch-board .sq{display:flex;align-items:center;justify-content:center;
+  font-size:clamp(22px,5.5vw,40px);cursor:pointer;line-height:1;position:relative}
+#ch-board .sq.l{background:var(--sq-l);color:var(--sq-ink)}
+#ch-board .sq.d{background:var(--sq-d);color:var(--sq-ink-d)}
+#ch-board .sq.sel{outline:2px solid var(--teal);outline-offset:-2px;z-index:1}
+#ch-board .sq.hi{box-shadow:inset 0 0 0 2px rgba(45,212,191,.7)}
+#ch-board .sq.last{box-shadow:inset 0 0 0 2px rgba(125,211,252,.45)}
+#ch-board .sq .ghost{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  opacity:.32;font-size:inherit;pointer-events:none;color:var(--teal)
+}
+#ch-board .sq .pv-dot{
+  position:absolute;width:26%;height:26%;border-radius:50%;
+  background:rgba(45,212,191,.5);left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none
+}
+
+/* ── glyph / DINOv3 pixel lab ── */
+.glyph-stage{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+@media(max-width:700px){.glyph-stage{grid-template-columns:1fr}}
+#glyph-src,#glyph-heat{
+  width:100%;max-width:100%;aspect-ratio:1;display:block;border-radius:10px;
+  background:var(--board);box-shadow:0 0 0 1px rgba(255,255,255,.06);
+  image-rendering:auto
+}
+#glyph-src{cursor:crosshair}
+.glyph-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;font:600 11px ui-monospace,Menlo,monospace}
+.glyph-stats .m{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;padding:8px}
+.glyph-stats .k{font:600 9px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.glyph-stats .v{color:var(--teal);font-size:1.05rem;margin-top:2px}
+.glyph-controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.glyph-controls label.note select,
+.glyph-controls label.note input{
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:2px 4px;
+  font:600 11px ui-monospace,Menlo,monospace
+}
+.glyph-swatch{
+  display:inline-flex;gap:2px;align-items:center;height:14px;margin-left:4px;vertical-align:middle
+}
+.glyph-swatch i{display:block;width:10px;height:10px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.dino-note{font-size:11px;color:var(--mut);line-height:1.45;margin:0}
+.dino-note b{color:var(--ink)}
+
+/* predictive layers (under live play) */
+.pred-layers{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+.pred-layer{
+  border:1px solid var(--line);border-radius:10px;padding:8px;background:rgba(0,0,0,.25);
+  font:600 11px ui-monospace,Menlo,monospace
+}
+.pred-layer .pl-hd{display:flex;justify-content:space-between;gap:8px;color:var(--mut);margin-bottom:4px}
+.pred-layer .pl-hd b{color:var(--acc)}
+.pred-layer .pv{color:var(--ink);line-height:1.4;word-break:break-word}
+.pred-layer .bar{height:4px;border-radius:2px;background:var(--line);margin-top:6px;overflow:hidden}
+.pred-layer .bar i{display:block;height:100%;background:var(--acc);border-radius:2px}
+.pred-layer.best{border-color:rgba(63,185,80,.45)}
+.pred-meta{font:500 10px system-ui;color:var(--mut);margin:0 0 6px}
+
+/* metrics */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.metrics .m{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;padding:8px}
+.metrics .m .k{font:600 9px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.metrics .m .v{font:800 1.15rem/1.15 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;margin-top:2px}
+.metrics .m.hero{grid-column:1/-1}.metrics .m.hero .v{font-size:1.6rem;color:var(--good)}
+.metrics .v.hot{color:var(--hot)}
+
+/* model performance */
+.runs-wrap{max-width:1200px;margin:0 auto;padding:0 14px 24px}
+.runs-card{background:var(--elev);border:1px solid var(--line);border-radius:14px;padding:14px;overflow:auto}
+.runs-card h2{margin:0 0 4px;font:700 1.05rem system-ui}
+.runs-card .lede{margin:0 0 10px;color:var(--mut);font-size:.82rem}
+table.perf{width:100%;border-collapse:collapse;font-size:.84rem}
+table.perf th,table.perf td{text-align:left;padding:.5rem;border-bottom:1px solid var(--line)}
+table.perf th{font:650 10px system-ui;letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}
+table.perf td.score{font-weight:800;color:var(--good)}
+table.perf .tag{display:inline-block;font:650 9px system-ui;border:1px solid rgba(210,153,34,.4);color:var(--warn);border-radius:999px;padding:1px 6px;margin-left:6px}
+.replay-btn{appearance:none;border:1px solid var(--line);background:transparent;color:var(--acc);border-radius:6px;padding:2px 8px;font:650 12px system-ui;cursor:pointer}
+
+.note{font-size:11px;color:var(--mut);margin:0}
+.honesty{margin:0;padding:8px 10px;border-radius:8px;border:1px solid rgba(210,153,34,.35);background:rgba(210,153,34,.08);font-size:11px;color:#e8d5a3}
+.log{font:11px/1.35 ui-monospace,Menlo,monospace;max-height:120px;overflow:auto;color:var(--mut);background:rgba(0,0,0,.3);border-radius:8px;padding:8px}
+.mode-panel{display:none}.mode-panel.on{display:flex;flex-direction:column;gap:10px}
+.mini9{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:72px}
+.mini9 i{aspect-ratio:1;border-radius:3px;background:#21262d;border:1px solid var(--line)}
+.mini9 i.on{background:var(--blue)}
+footer{max-width:1200px;margin:0 auto;padding:8px 14px 28px;font-size:11px;color:var(--mut);border-top:1px solid var(--line)}
+.controls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+</style>
+</head>
+<body class="ugb-surface">
+<header class="gu-header">
+  <div class="gu-header-brand">
+    <strong>μgrad Arena</strong>
+    <span class="tag">go-ugrad · chess-ugrad look</span>
+    <span class="tag" id="mode-pill">webgrid</span>
+    <span class="gu-bar-out">
+      <a class="gu-bar-link" href="webgrid-ugrad.html">WebGrid lab</a>
+      <a class="gu-bar-link" href="lite-arena.html">lite-arena</a>
+      <a class="gu-bar-link" href="cube-viewer.html">Rubik cube-viewer</a>
+      <a class="gu-bar-link" href="http://127.0.0.1:8765/#arc-prize">#arc-prize</a>
+      <a class="gu-bar-link" href="https://mueee.qbitos.ai/go-ugrad.html" target="_blank" rel="noopener">go-ugrad ↗</a>
+      <a class="gu-bar-link" href="https://mueee.qbitos.ai/chess-ugrad.html" target="_blank" rel="noopener">chess-ugrad ↗</a>
+    </span>
+  </div>
+  <div class="gu-bar" role="toolbar">
+    <button type="button" class="tab-btn on" data-mode="webgrid">WebGrid</button>
+    <button type="button" class="tab-btn" data-mode="go">Go</button>
+    <button type="button" class="tab-btn" data-mode="chess">Chess multilayer</button>
+    <button type="button" class="tab-btn" data-mode="glyph">Glyph · DINOv3</button>
+    <button type="button" class="tab-btn" data-mode="rubik">Rubik prep</button>
+    <span style="width:1px;height:18px;background:var(--line)"></span>
+    <button type="button" class="gu-primary" id="btn-start">Start / New</button>
+    <button type="button" id="btn-agent">Agent</button>
+    <button type="button" id="btn-pred" title="Chess: spawn predictive under-layers">Predict layers</button>
+    <label>Model <input type="text" id="inp-model" value="perfect-agent" maxlength="48" style="max-width:9rem"/></label>
+    <label><input type="checkbox" id="chk-bc" checked/> BC</label>
+  </div>
+</header>
+
+<div class="gu-main">
+  <!-- BOARD -->
+  <div class="gu-board-wrap" id="board-wrap">
+    <h2 id="board-title">WebGrid chase · <span id="board-status">lab instrument</span></h2>
+    <!-- Score clock (WebGrid round) — SpaceX launches timer look -->
+    <div id="sx-score-cd" style="margin-bottom:8px"></div>
+    <!-- Dual player clocks (chess/go calibration) -->
+    <div id="sx-player-cd" style="margin-bottom:8px"></div>
+    <div class="gu-clock-strip" id="clock-strip">
+      <span class="gu-cs-muted">Calibrate</span>
+      <label><input type="checkbox" id="clk-on" checked/> Clocks on</label>
+      <label>Min/side <input type="number" id="clk-min" value="5" min="1" max="120"/></label>
+      <label>Inc s <input type="number" id="clk-inc" value="0" min="0" max="60" title="Fischer after move"/></label>
+      <label>Layers <input type="number" id="pred-n" value="5" min="1" max="12" title="Predictive PVs under live chess"/></label>
+      <label>Depth <input type="number" id="pred-d" value="2" min="1" max="3" title="Search depth per layer"/></label>
+      <button type="button" id="clk-pause">Pause</button>
+      <button type="button" class="gu-primary" id="clk-reset">Reset clocks</button>
+    </div>
+
+    <!-- WEBGRID -->
+    <div class="mode-panel on" id="panel-webgrid">
+      <canvas id="wg-canvas" width="480" height="480" aria-label="WebGrid"></canvas>
+      <div class="controls">
+        <label class="note">N <select id="wg-n"><option value="12">12</option><option value="30" selected>30</option></select></label>
+        <label class="note">s <input type="number" id="wg-dur" value="70" min="5" max="600" style="width:3.5rem;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:3px"/></label>
+        <label class="note">seed <input type="number" id="wg-seed" value="42" style="width:4rem;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:3px"/></label>
+        <label class="note"><input type="checkbox" id="wg-sim" checked/> sim-tick</label>
+      </div>
+      <p class="honesty">WebGrid chase = paint / actions lab · <b>not ARC %</b> · peak BPS is lab score. Full presentation: <a href="webgrid-ugrad.html">webgrid-ugrad.html</a></p>
+    </div>
+
+    <!-- GO -->
+    <div class="mode-panel" id="panel-go">
+      <svg id="go-svg" viewBox="-0.5 -0.5 19 19" aria-label="Go board"></svg>
+      <div class="controls">
+        <label class="note">Board <select id="go-n"><option value="9">9</option><option value="13">13</option><option value="19" selected>19</option></select></label>
+        <button type="button" class="btn" id="go-pass">Pass</button>
+        <button type="button" class="btn" id="go-ai">Engine move</button>
+      </div>
+      <p class="note">Capture + suicide block · go-ugrad pattern · 9-cell slice for tensor lane</p>
+      <div class="mini9" id="go-mini9"></div>
+    </div>
+
+    <!-- CHESS MULTILAYER -->
+    <div class="mode-panel" id="panel-chess">
+      <div class="ch-stage">
+        <div id="ch-board" aria-label="Chess board live"></div>
+      </div>
+      <div class="controls">
+        <button type="button" class="btn" id="ch-undo">Undo</button>
+        <button type="button" class="btn primary" id="ch-ai">Engine reply</button>
+        <button type="button" class="btn" id="ch-hint">Hint PV</button>
+        <label class="note"><input type="checkbox" id="ch-live-pred" checked/> Live predict on every move</label>
+      </div>
+      <p class="note">Live board = human / engine. <b>Under-layers</b> spawn multipv trees (depth 1–3) as moves happen — chess.com-style analysis under live play. Lab: no castling / en passant · promo→Q.</p>
+    </div>
+
+    <!-- GLYPH · DINOv3-aligned dense pixel estimation -->
+    <div class="mode-panel" id="panel-glyph">
+      <p class="dino-note">
+        <b>DINOv3</b> (Meta SSL) — dense visual features without labels · scale data/model ·
+        <b>Gram anchoring</b> keeps patch maps stable on long schedules · post-hoc resolution/text align.
+        <a href="https://ai.meta.com/research/publications/dinov3/" target="_blank" rel="noopener">paper</a> ·
+        <a href="https://github.com/facebookresearch/dinov3" target="_blank" rel="noopener">github.com/facebookresearch/dinov3</a>.
+        <br/>Live lab: dense <b>pixel estimation</b> for glyph peel (patch energy + Sobel + chroma · Gram proxy).
+        Higher-res: up to <b>64²</b> patches · 960px working plane · hybrid color scoring.
+        Not full DINOv3 weights in WK — hook <code>window.__dinoInfer(ImageData)</code> when ONNX is loaded.
+      </p>
+      <div class="glyph-stage">
+        <div>
+          <canvas id="glyph-src" width="640" height="640" aria-label="glyph source"></canvas>
+          <div class="controls glyph-controls">
+            <button type="button" class="btn primary" id="glyph-cam">Cam</button>
+            <button type="button" class="btn" id="glyph-synth">Synth glyph</button>
+            <button type="button" class="btn" id="glyph-file">File</button>
+            <input type="file" id="glyph-file-in" accept="image/*" style="display:none"/>
+            <label class="note">patches <input type="number" id="glyph-patches" value="32" min="4" max="64" step="1" title="grid n×n (4–64)" style="width:3.2rem"/></label>
+            <label class="note">res <select id="glyph-res" title="working canvas resolution">
+              <option value="320">320</option>
+              <option value="480">480</option>
+              <option value="640" selected>640</option>
+              <option value="768">768</option>
+              <option value="960">960</option>
+            </select></label>
+            <label class="note">color <select id="glyph-color" title="dense color scoring">
+              <option value="hybrid" selected>hybrid</option>
+              <option value="luma">luma</option>
+              <option value="rgb">rgb</option>
+              <option value="chroma">chroma</option>
+            </select></label>
+          </div>
+        </div>
+        <div>
+          <canvas id="glyph-heat" width="640" height="640" aria-label="dense feature heat"></canvas>
+          <div class="glyph-stats" style="margin-top:8px">
+            <div class="m"><div class="k">Patch energy μ</div><div class="v" id="g-energy">—</div></div>
+            <div class="m"><div class="k">Grad dense</div><div class="v" id="g-grad">—</div></div>
+            <div class="m"><div class="k">Gram proxy</div><div class="v" id="g-gram">—</div></div>
+            <div class="m"><div class="k">Chroma μ</div><div class="v" id="g-chroma">—</div></div>
+            <div class="m"><div class="k">Hz · live</div><div class="v" id="g-hz">—</div></div>
+            <div class="m"><div class="k">Grid · res</div><div class="v" id="g-grid">—</div></div>
+          </div>
+          <p class="note" style="margin-top:6px">
+            Heatmap
+            <span class="glyph-swatch" aria-hidden="true">
+              <i style="background:#0b1020"></i><i style="background:#12305a"></i>
+              <i style="background:#1a7f4a"></i><i style="background:#c4d42a"></i>
+              <i style="background:#ff7a1a"></i><i style="background:#ff3d6e"></i>
+            </span>
+            energy↑ · chroma shifts hue (hybrid/chroma modes)
+          </p>
+        </div>
+      </div>
+      <p class="note" style="margin-top:8px">
+        Heat = per-patch dense score (luma/RGB/chroma hybrid). Glyph path: frame → dense map → threshold tickets → fountain QR (soak).
+        BC <code>ugrad-glyph-dense</code>.
+      </p>
+      <div id="glyph-tools-host" style="margin-top:12px"></div>
+    </div>
+
+    <!-- RUBIK PREP -->
+    <div class="mode-panel" id="panel-rubik">
+      <p class="honesty">
+        Rubik language solve prep · full nets live on
+        <a href="cube-viewer.html">cube-viewer</a> (L0–L7 AIR→DISCOURSE · 36 langs · 15 boards).
+        Arena posts pathway ticks to <code>ugrad-rubik-lang</code> for dual-seat solve.
+      </p>
+      <div class="controls">
+        <button type="button" class="btn primary" id="rubik-open">Open cube-viewer</button>
+        <button type="button" class="btn" id="rubik-ping">Ping rubik BC</button>
+        <label class="note">Token <input type="text" id="rubik-tok" value="water" maxlength="24" style="width:6rem;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:3px"/></label>
+      </div>
+      <div id="rubik-status" class="note">idle</div>
+    </div>
+  </div>
+
+  <!-- SIDE -->
+  <div class="gu-side">
+    <div class="panel">
+      <h3>Live metrics</h3>
+      <div class="metrics">
+        <div class="m hero"><div class="k">Score / peak</div><div class="v" id="m-score">—</div></div>
+        <div class="m"><div class="k">Actions</div><div class="v" id="m-act">0</div></div>
+        <div class="m"><div class="k">Hits/s · CPS</div><div class="v" id="m-rate">0</div></div>
+        <div class="m"><div class="k">Miss / flag</div><div class="v hot" id="m-miss">0</div></div>
+        <div class="m"><div class="k">Mode</div><div class="v" id="m-mode" style="font-size:.95rem">webgrid</div></div>
+        <div class="m"><div class="k">Status</div><div class="v" id="m-status" style="font-size:.85rem;font-weight:600">idle</div></div>
+      </div>
+    </div>
+
+    <div class="panel" id="pred-panel">
+      <h3>Predictive layers · under live chess</h3>
+      <p class="pred-meta" id="pred-meta">Layers idle · enable Chess + Live predict</p>
+      <div class="pred-layers" id="pred-layers"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Tensor · 9-cell</h3>
+      <div class="mini9" id="side-mini9"></div>
+      <p class="note" style="margin-top:6px">BC <code>ugrad-tensor-lane</code> · <code>ugrad-webgrid-race</code> · <code>ugrad-lite-arena</code></p>
+    </div>
+
+    <div class="panel">
+      <h3>Event log</h3>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<section class="runs-wrap">
+  <div class="runs-card">
+    <h2>Model performance</h2>
+    <p class="lede">
+      Shared run log (WebGrid chase + Arena) · ARC task shape: Model · Score · Actions · Replay · Published.
+      Lab score = peak BPS (WebGrid) or eval (chess layers). ARC ref row is comparison only.
+    </p>
+    <table class="perf">
+      <thead><tr><th>Model</th><th>Score</th><th>Actions</th><th>Surface</th><th>Replay</th><th>Published</th></tr></thead>
+      <tbody id="perf-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  ugrad-arena v1 · unifies <b>webgrid-chase</b> (presentation lab) + <b>gamedev arena</b> (multi-game) ·
+  board design after <a href="https://mueee.qbitos.ai/go-ugrad.html">go-ugrad</a> /
+  <a href="https://mueee.qbitos.ai/chess-ugrad.html">chess-ugrad</a> ·
+  multilayer chess: live users on top · iterative PV trees under ·
+  Rubik language path via cube-viewer
+</footer>
+
+<script src="ugrad/ugrad-chess-lab.js"></script>
+<script src="ugrad/sx-countdown.js"></script>
+<script src="ugrad/board-crosshair.js"></script>
+<script src="ugrad/glyph-tools-form.js"></script>
+<script>
+(function () {
+  "use strict";
+  var VER = "ugrad-arena-v1.6-glyph-hires-color";
+  var bcx = { wg: null, go: null, ch: null, glyph: null };
+  var glyphTools = null;
+  var RUNS_KEY = "mg.ugrad.arena.runs";
+  var WG_RUNS = "mg.webgrid.ugrad.runs";
+  var mode = "webgrid";
+  var agentOn = false;
+  var bcArena = null, bcWg = null, bcLane = null, bcRubik = null;
+  try {
+    bcArena = new BroadcastChannel("ugrad-lite-arena");
+    bcWg = new BroadcastChannel("ugrad-webgrid-race");
+    bcLane = new BroadcastChannel("ugrad-tensor-lane");
+    bcRubik = new BroadcastChannel("ugrad-rubik-lang");
+  } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+  function log(msg) {
+    var el = $("log");
+    if (!el) return;
+    el.textContent = new Date().toISOString().slice(11, 19) + " · " + msg + "\n" + el.textContent.slice(0, 2500);
+  }
+  function setStatus(s) {
+    $("m-status").textContent = s;
+    $("board-status").textContent = s;
+  }
+  function fmtMs(ms) {
+    ms = Math.max(0, ms | 0);
+    var s = (ms / 1000) | 0, m = (s / 60) | 0;
+    s = s % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  /* ── clocks: SpaceX-timer look for SCORE (round) + CHESS players ── */
+  var clock = {
+    on: true,
+    paused: false,
+    last: 0,
+    active: "a",
+    fischer: 0,
+    dual: null,
+    score: null,
+  };
+
+  function ensureGameClocks() {
+    if (!window.SxCountdown) return;
+    var min = parseInt($("clk-min").value, 10) || 5;
+    var mainMs = min * 60 * 1000;
+    clock.fischer = parseInt(($("clk-inc") && $("clk-inc").value) || "0", 10) || 0;
+    if (!clock.dual) {
+      clock.dual = window.SxCountdown.mountDual($("sx-player-cd"), {
+        min: min,
+        labelA: "WHITE",
+        labelB: "BLACK",
+      });
+    } else {
+      clock.dual.setMainMs(mainMs);
+      clock.dual.white.setLabel(mode === "go" ? "BLACK" : "WHITE");
+      clock.dual.black.setLabel(mode === "go" ? "WHITE" : "BLACK");
+    }
+    if (!clock.score) {
+      clock.score = window.SxCountdown.mountScore($("sx-score-cd"), {
+        remainingMs: 70 * 1000,
+        label: "SCORE",
+        sub: "round · webgrid",
+        compact: true,
+      });
+    }
+    /* visibility: score for webgrid; dual for chess/go */
+    if ($("sx-score-cd"))
+      $("sx-score-cd").style.display = mode === "webgrid" ? "" : "none";
+    if ($("sx-player-cd"))
+      $("sx-player-cd").style.display =
+        mode === "chess" || mode === "go" ? "" : "none";
+    clock.dual && clock.dual.setActiveSide("a");
+    clock.dual && clock.dual.setPaused(clock.paused || !clock.on);
+  }
+
+  function resetClocks() {
+    clock.paused = false;
+    clock.last = performance.now();
+    clock.active = "a";
+    if ($("clk-pause")) $("clk-pause").textContent = "Pause";
+    ensureGameClocks();
+    var min = parseInt($("clk-min").value, 10) || 5;
+    if (clock.dual) {
+      clock.dual.setMainMs(min * 60 * 1000);
+      clock.dual.setActiveSide("a");
+      clock.dual.setPaused(false);
+      clock.dual.white.setLabel(mode === "go" ? "BLACK" : "WHITE");
+      clock.dual.black.setLabel(mode === "go" ? "WHITE" : "BLACK");
+      clock.dual.white.setMeta("player clock · calibration");
+      clock.dual.black.setMeta("player clock · calibration");
+    }
+    if (clock.score && mode === "webgrid") {
+      var dur = parseInt($("wg-dur").value, 10) || 70;
+      clock.score.setRemaining(dur * 1000);
+      clock.score.setLabel("SCORE");
+      clock.score.setSub("round · " + dur + "s");
+      clock.score.setPaused(false);
+    }
+  }
+
+  function paintClocks() {
+    /* SxCountdown faces self-paint */
+    if (clock.dual) {
+      clock.dual.setActiveSide(clock.active === "a" ? "a" : "b");
+      clock.dual.setPaused(clock.paused || !clock.on);
+    }
+    if (clock.score) clock.score.setPaused(clock.paused || !clock.on || !wg.running);
+  }
+
+  function tickClocks(now) {
+    if (!clock.last) clock.last = now;
+    var dt = now - clock.last;
+    clock.last = now;
+    if (!clock.on || clock.paused) return;
+    if ((mode === "go" || mode === "chess") && clock.dual) {
+      clock.dual.burnActive(dt);
+    }
+    if (mode === "webgrid" && wg.running && clock.score) {
+      /* score clock tracks remaining round time */
+      var left = Math.max(0, wg.tEnd - now);
+      clock.score.setRemaining(left);
+      clock.score.setActive(true);
+    }
+  }
+
+  function switchClock() {
+    /* Fischer: credit side that just moved */
+    if (clock.dual && clock.fischer > 0) {
+      var side = clock.active === "a" ? clock.dual.white : clock.dual.black;
+      side.setRemaining(side.getRemaining() + clock.fischer * 1000);
+    }
+    clock.active = clock.active === "a" ? "b" : "a";
+    clock.last = performance.now();
+    paintClocks();
+  }
+
+  /* ── model performance (merge old webgrid + arena) ── */
+  function loadRuns() {
+    var out = [];
+    try {
+      var a = JSON.parse(localStorage.getItem(RUNS_KEY) || "[]");
+      if (Array.isArray(a)) out = out.concat(a);
+    } catch (e) {}
+    try {
+      var w = JSON.parse(localStorage.getItem(WG_RUNS) || "[]");
+      if (Array.isArray(w)) {
+        w.forEach(function (r) {
+          out.push(Object.assign({ surface: "webgrid-chase" }, r));
+        });
+      }
+    } catch (e2) {}
+    out.sort(function (x, y) { return (y.t || 0) - (x.t || 0); });
+    return out.slice(0, 50);
+  }
+  function pushRun(r) {
+    r.t = r.t || Date.now();
+    r.surface = r.surface || mode;
+    r.model = r.model || ($("inp-model").value.trim() || "agent");
+    r.published = r.published || new Date(r.t).toLocaleString();
+    try {
+      var arr = JSON.parse(localStorage.getItem(RUNS_KEY) || "[]");
+      if (!Array.isArray(arr)) arr = [];
+      arr.unshift(r);
+      localStorage.setItem(RUNS_KEY, JSON.stringify(arr.slice(0, 40)));
+    } catch (e) {}
+    renderRuns();
+  }
+  function renderRuns() {
+    var body = $("perf-body");
+    if (!body) return;
+    body.innerHTML = "";
+    function row(r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="model">' +
+        (r.model || "—") +
+        (r.ref ? '<span class="tag">ARC ref</span>' : "") +
+        "</td><td class='score'>" +
+        (r.scoreLabel || "—") +
+        "</td><td>" +
+        (r.actions != null ? r.actions : "—") +
+        "</td><td>" +
+        (r.surface || "—") +
+        "</td><td>" +
+        (r.ref
+          ? '<a class="replay-btn" href="' + (r.replayUrl || "https://arcprize.org/tasks/ls20") + '" target="_blank">Replay</a>'
+          : '<button type="button" class="replay-btn" data-surface="' +
+            (r.surface || "") +
+            '">Replay</button>') +
+        "</td><td>" +
+        (r.published || "—") +
+        "</td>";
+      body.appendChild(tr);
+    }
+    row({
+      model: "xai-grok-4-20-beta-0309-reasoning",
+      scoreLabel: "0%",
+      actions: 110,
+      surface: "arc-agi-3",
+      published: "Apr 14, 2026 at 10:43 AM",
+      ref: true,
+      replayUrl: "https://arcprize.org/tasks/ls20",
+    });
+    loadRuns().forEach(row);
+  }
+
+  /* ═══════════════════════ WEBGRID ═══════════════════════ */
+  var wg = {
+    N: 30, dur: 70, seed: 42, rng: null, blue: -1, hits: 0, miss: 0,
+    peak: 0, peakNtpm: 0, running: false, t0: 0, tEnd: 0, trials: [], timer: null,
+  };
+  function mulberry32(a) {
+    return function () {
+      var t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function bpsFrom(N, ntpm) {
+    if (!ntpm || N < 2) return 0;
+    return Math.max((Math.log(N * N - 1) / Math.LN2) * (ntpm / 60), 0);
+  }
+  function ntpmNow() {
+    var cut = performance.now() - 60000, n = 0;
+    for (var i = wg.trials.length - 1; i >= 0; i--) {
+      if (wg.trials[i].t < cut) break;
+      n += wg.trials[i].hit ? 1 : -1;
+    }
+    return n;
+  }
+  function paintWg() {
+    var c = $("wg-canvas"), ctx = c.getContext("2d");
+    var W = c.width, N = wg.N, cell = W / N, r, col;
+    ctx.fillStyle = "#0c0e12";
+    ctx.fillRect(0, 0, W, W);
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    for (r = 0; r <= N; r++) {
+      ctx.beginPath(); ctx.moveTo(r * cell, 0); ctx.lineTo(r * cell, W); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, r * cell); ctx.lineTo(W, r * cell); ctx.stroke();
+    }
+    if (wg.blue >= 0) {
+      col = wg.blue % N; r = (wg.blue / N) | 0;
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(col * cell + 1, r * cell + 1, cell - 2, cell - 2);
+    }
+  }
+  function spawnBlue() {
+    var n = wg.N * wg.N, b = (wg.rng() * n) | 0;
+    if (b === wg.blue) b = (b + 1) % n;
+    wg.blue = b;
+  }
+  function wgHit(i) {
+    if (!wg.running) return;
+    var hit = i === wg.blue;
+    wg.trials.push({ t: performance.now(), hit: hit });
+    if (hit) { wg.hits++; spawnBlue(); }
+    else wg.miss++;
+    var ntpm = ntpmNow(), bps = bpsFrom(wg.N, ntpm);
+    if (bps > wg.peak) { wg.peak = bps; wg.peakNtpm = ntpm; }
+    if (!$("wg-sim").checked || wg.hits % 16 === 0) paintWg();
+    if (wg.hits % 8 === 0) updateMetrics();
+  }
+  function startWebgrid() {
+    wg.N = parseInt($("wg-n").value, 10) || 30;
+    wg.dur = parseInt($("wg-dur").value, 10) || 70;
+    wg.seed = parseInt($("wg-seed").value, 10) || 42;
+    if (bcx.wg && bcx.wg.setGrid) bcx.wg.setGrid(wg.N);
+    wg.rng = mulberry32(wg.seed);
+    wg.hits = wg.miss = 0; wg.peak = 0; wg.trials = [];
+    wg.running = true;
+    wg.t0 = performance.now();
+    wg.tEnd = wg.t0 + wg.dur * 1000;
+    spawnBlue();
+    paintWg();
+    if (clock.score) {
+      clock.score.setRemaining(wg.dur * 1000);
+      clock.score.setSub("round · " + wg.dur + "s · N=" + wg.N);
+      clock.score.setPaused(false);
+      clock.score.setActive(true);
+    }
+    setStatus("playing · webgrid");
+    log("webgrid start N=" + wg.N + " sim=" + $("wg-sim").checked);
+    if (wg.timer) clearInterval(wg.timer);
+    wg.timer = setInterval(function () {
+      if (!wg.running) return;
+      if (performance.now() >= wg.tEnd) endWebgrid();
+      else if (agentOn) {
+        var batch = $("wg-sim").checked ? 64 : 1;
+        while (batch-- > 0 && wg.running && agentOn) wgHit(wg.blue);
+        paintWg();
+        updateMetrics();
+      } else updateMetrics();
+    }, $("wg-sim").checked ? 8 : 16);
+  }
+  function endWebgrid() {
+    wg.running = false;
+    if (wg.timer) { clearInterval(wg.timer); wg.timer = null; }
+    var el = Math.max(0.01, (performance.now() - wg.t0) / 1000);
+    var actions = wg.hits + wg.miss;
+    setStatus("ended · " + wg.peak.toFixed(1) + " BPS");
+    updateMetrics();
+    paintWg();
+    pushRun({
+      model: $("inp-model").value.trim() || "perfect-agent",
+      scoreLabel: wg.peak.toFixed(1) + " BPS",
+      actions: actions,
+      surface: "webgrid-chase",
+      peakBps: wg.peak,
+      hits: wg.hits,
+      misses: wg.miss,
+      elapsed_s: el,
+      seed: wg.seed,
+      N: wg.N,
+    });
+    if ($("chk-bc").checked && bcWg) {
+      try {
+        bcWg.postMessage({
+          kind: "agent_end", ver: VER, offline: true, lab: "ugrad-arena",
+          peakBps: wg.peak, hits: wg.hits, actions: actions, N: wg.N,
+        });
+      } catch (e) {}
+    }
+    log("webgrid end peak=" + wg.peak.toFixed(1) + " actions=" + actions);
+  }
+
+  /* ═══════════════════════ GO ═══════════════════════ */
+  var go = { N: 19, board: [], turn: 1, history: [] };
+  function goInit() {
+    go.N = parseInt($("go-n").value, 10) || 19;
+    go.board = new Array(go.N * go.N).fill(0);
+    go.turn = 1;
+    go.history = [];
+    if (bcx.go && bcx.go.setGrid) bcx.go.setGrid(go.N);
+    paintGo();
+    clock.running = true;
+    resetClocks();
+    setStatus("go · black to play");
+    setTimeout(attachCrosshairs, 30);
+  }
+  function paintGo() {
+    var svg = $("go-svg"), N = go.N;
+    svg.setAttribute("viewBox", "-0.5 -0.5 " + N + " " + N);
+    var html = "";
+    var i, r, c;
+    for (i = 0; i < N; i++) {
+      html += '<line x1="0" y1="' + i + '" x2="' + (N - 1) + '" y2="' + i + '" stroke="#3a424e" stroke-width="0.035"/>';
+      html += '<line x1="' + i + '" y1="0" x2="' + i + '" y2="' + (N - 1) + '" stroke="#3a424e" stroke-width="0.035"/>';
+    }
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++) {
+      var v = go.board[c + N * r];
+      if (!v) continue;
+      html +=
+        '<circle cx="' + c + '" cy="' + r + '" r="0.42" fill="' +
+        (v === 1 ? "#0a0a0c" : "#d8dee8") +
+        '" stroke="#2a3038" stroke-width="0.03"/>';
+    }
+    svg.innerHTML = html;
+  }
+  function goPlace(c, r) {
+    var N = go.N, i = c + N * r;
+    if (go.board[i]) return;
+    go.history.push(go.board.slice());
+    go.board[i] = go.turn;
+    go.turn = -go.turn;
+    switchClock();
+    paintGo();
+    setStatus(go.turn === 1 ? "black" : "white" + " to play");
+  }
+
+  /* ═══════════════════════ CHESS MULTILAYER ═══════════════════════ */
+  var chess = null;
+  var chSel = -1;
+  var chLast = { from: -1, to: -1 };
+  var predBusy = false;
+  var predToken = 0;
+  var lastPVs = [];
+  var PIECES = {
+    K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
+    k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
+  };
+  var VAL = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+  function ensureChess() {
+    if (!window.UgradChess) {
+      log("UgradChess missing — load ugrad/ugrad-chess-lab.js");
+      return null;
+    }
+    if (!chess) {
+      chess = new window.UgradChess();
+      chess.reset();
+    }
+    return chess;
+  }
+  function paintChess(ghosts) {
+    var g = ensureChess();
+    if (!g) return;
+    var board = g.state.board;
+    var el = $("ch-board");
+    var html = "";
+    var r, c, i, p, cls;
+    ghosts = ghosts || {};
+    for (r = 0; r < 8; r++) {
+      for (c = 0; c < 8; c++) {
+        i = r * 8 + c;
+        p = board[i];
+        cls = ((r + c) % 2 === 0 ? "l" : "d");
+        if (i === chSel) cls += " sel";
+        if (i === chLast.from || i === chLast.to) cls += " last";
+        if (ghosts.hi && ghosts.hi[i]) cls += " hi";
+        html += '<div class="sq ' + cls + '" data-i="' + i + '">';
+        if (p && p !== ".") html += PIECES[p] || p;
+        if (ghosts.piece && ghosts.piece[i]) {
+          html += '<span class="ghost">' + (PIECES[ghosts.piece[i]] || ghosts.piece[i]) + "</span>";
+        }
+        if (ghosts.dot && ghosts.dot[i]) html += '<span class="pv-dot"></span>';
+        html += "</div>";
+      }
+    }
+    el.innerHTML = html;
+  }
+  function materialEval(board, side) {
+    /* side = +1 black to move in UgradChess? state.side: -1 white, +1 black */
+    var score = 0, i, p, t, col;
+    for (i = 0; i < 64; i++) {
+      p = board[i];
+      if (!p || p === ".") continue;
+      t = p.toLowerCase();
+      col = p === p.toUpperCase() ? -1 : 1; /* white upper? FEN uses white upper */
+      /* UgradChess: white is uppercase typically */
+      score += (col === -1 ? 1 : -1) * (VAL[t] || 0);
+    }
+    return side === -1 ? score : -score;
+  }
+  function cloneState(st) {
+    return { board: st.board.slice(), side: st.side };
+  }
+  function applyEnc(st, enc) {
+    var from = enc >> 8, to = enc & 255;
+    var nb = st.board.slice();
+    nb[to] = nb[from];
+    nb[from] = ".";
+    /* promo */
+    if (nb[to] === "P" && (to / 8 | 0) === 0) nb[to] = "Q";
+    if (nb[to] === "p" && (to / 8 | 0) === 7) nb[to] = "q";
+    return { board: nb, side: -st.side };
+  }
+  function legalFrom(st) {
+    /* use UgradChess internal via temp */
+    var g = ensureChess();
+    if (!g) return [];
+    var save = { board: g.state.board, side: g.state.side };
+    g.state.board = st.board;
+    g.state.side = st.side;
+    var m = g.getLegalMoves().slice();
+    g.state.board = save.board;
+    g.state.side = save.side;
+    return m;
+  }
+  function negamax(st, depth) {
+    var moves = legalFrom(st);
+    if (depth <= 0 || !moves.length) return { score: materialEval(st.board, st.side), pv: [] };
+    var best = -1e9, bestPv = [], i, child, sc, line;
+    /* order captures first roughly */
+    for (i = 0; i < moves.length; i++) {
+      child = applyEnc(st, moves[i]);
+      line = negamax(child, depth - 1);
+      sc = -line.score;
+      if (sc > best) {
+        best = sc;
+        bestPv = [moves[i]].concat(line.pv || []);
+      }
+    }
+    return { score: best, pv: bestPv };
+  }
+  function multiPV(st, k, depth) {
+    var moves = legalFrom(st);
+    var scored = [];
+    var i, child, line;
+    for (i = 0; i < moves.length; i++) {
+      child = applyEnc(st, moves[i]);
+      line = negamax(child, Math.max(0, depth - 1));
+      scored.push({
+        move: moves[i],
+        score: -line.score,
+        pv: [moves[i]].concat(line.pv || []),
+      });
+    }
+    scored.sort(function (a, b) { return b.score - a.score; });
+    return scored.slice(0, k);
+  }
+  function encToUci(enc) {
+    var from = enc >> 8, to = enc & 255;
+    function sq(i) {
+      return String.fromCharCode(97 + (i % 8)) + (8 - ((i / 8) | 0));
+    }
+    return sq(from) + sq(to);
+  }
+  function spawnPredictiveLayers() {
+    var g = ensureChess();
+    if (!g || mode !== "chess") return;
+    var n = parseInt($("pred-n").value, 10) || 5;
+    var d = parseInt($("pred-d").value, 10) || 2;
+    d = Math.max(1, Math.min(3, d));
+    n = Math.max(1, Math.min(12, n));
+    var token = ++predToken;
+    var st = cloneState(g.state);
+    $("pred-meta").textContent = "Searching multipv n=" + n + " depth=" + d + "…";
+    /* yield so UI stays live */
+    setTimeout(function () {
+      if (token !== predToken) return;
+      var t0 = performance.now();
+      var pvs = multiPV(st, n, d);
+      lastPVs = pvs;
+      var ms = (performance.now() - t0).toFixed(0);
+      renderPredLayers(pvs, ms);
+      paintGhostsFromPV(pvs[0]);
+      $("pred-meta").textContent =
+        "Under-layer trees · " + pvs.length + " PVs · depth " + d + " · " + ms + "ms · live board untouched";
+      log("predict " + pvs.length + " layers in " + ms + "ms");
+    }, 0);
+  }
+  function renderPredLayers(pvs, ms) {
+    var el = $("pred-layers");
+    if (!el) return;
+    var maxAbs = 1;
+    pvs.forEach(function (p) {
+      maxAbs = Math.max(maxAbs, Math.abs(p.score));
+    });
+    el.innerHTML = pvs
+      .map(function (p, i) {
+        var uci = (p.pv || []).slice(0, 8).map(encToUci).join(" ");
+        var pct = Math.min(100, (Math.abs(p.score) / maxAbs) * 100);
+        return (
+          '<div class="pred-layer' +
+          (i === 0 ? " best" : "") +
+          '"><div class="pl-hd"><span>L' +
+          i +
+          (i === 0 ? " · principal" : " · alt") +
+          '</span><b>' +
+          (p.score / 100).toFixed(2) +
+          "</b></div><div class='pv'>" +
+          uci +
+          '</div><div class="bar"><i style="width:' +
+          pct +
+          '%"></i></div></div>'
+        );
+      })
+      .join("");
+  }
+  function paintGhostsFromPV(top) {
+    if (!top || !top.pv || !top.pv.length) {
+      paintChess();
+      return;
+    }
+    var g = ensureChess();
+    var st = cloneState(g.state);
+    var ghosts = { dot: {}, piece: {}, hi: {} };
+    var enc = top.pv[0];
+    var from = enc >> 8, to = enc & 255;
+    ghosts.dot[to] = 1;
+    ghosts.hi[from] = 1;
+    ghosts.hi[to] = 1;
+    /* show predicted piece on destination as ghost if empty */
+    var p = st.board[from];
+    if (st.board[to] === "." || st.board[to]) ghosts.piece[to] = p;
+    paintChess(ghosts);
+  }
+  function chessClick(i) {
+    var g = ensureChess();
+    if (!g) return;
+    if (chSel < 0) {
+      if (g.state.board[i] === ".") return;
+      chSel = i;
+      paintChess();
+      return;
+    }
+    if (chSel === i) {
+      chSel = -1;
+      paintChess();
+      return;
+    }
+    var res = g.applyMove(chSel, i);
+    if (res.ok) {
+      chLast = { from: chSel, to: i };
+      chSel = -1;
+      switchClock();
+      paintChess();
+      setStatus((g.state.side === -1 ? "White" : "Black") + " to move");
+      updateMetrics();
+      if ($("ch-live-pred").checked) spawnPredictiveLayers();
+      if (agentOn) setTimeout(function () { chessEngineMove(); }, 40);
+    } else {
+      chSel = i;
+      paintChess();
+    }
+  }
+  function chessEngineMove() {
+    var g = ensureChess();
+    if (!g) return;
+    var pvs = multiPV(cloneState(g.state), 1, 2);
+    if (!pvs.length) return;
+    var enc = pvs[0].move;
+    var from = enc >> 8, to = enc & 255;
+    var res = g.applyMove(from, to);
+    if (res.ok) {
+      chLast = { from: from, to: to };
+      switchClock();
+      paintChess();
+      setStatus((g.state.side === -1 ? "White" : "Black") + " to move");
+      if ($("ch-live-pred").checked) spawnPredictiveLayers();
+      updateMetrics();
+      log("engine " + encToUci(enc));
+    }
+  }
+  function startChess() {
+    var g = ensureChess();
+    if (!g) return;
+    g.reset();
+    chSel = -1;
+    chLast = { from: -1, to: -1 };
+    resetClocks();
+    paintChess();
+    setStatus("White to move · multilayer on");
+    if ($("ch-live-pred").checked) spawnPredictiveLayers();
+    log("chess new · predictive layers armed");
+  }
+
+  /* ── metrics / mode ── */
+  function updateMetrics() {
+    if (mode === "webgrid") {
+      var el = wg.running ? Math.max(0.01, (performance.now() - wg.t0) / 1000) : 0.01;
+      $("m-score").textContent = (wg.peak || bpsFrom(wg.N, ntpmNow())).toFixed(1) + " BPS";
+      $("m-act").textContent = String(wg.hits + wg.miss);
+      $("m-rate").textContent = (wg.hits / el).toFixed(1);
+      $("m-miss").textContent = String(wg.miss);
+    } else if (mode === "chess") {
+      $("m-score").textContent = lastPVs[0] ? (lastPVs[0].score / 100).toFixed(2) : "0.00";
+      $("m-act").textContent = String(chLast.to >= 0 ? "live" : "0");
+      $("m-rate").textContent = lastPVs.length + " PV";
+      $("m-miss").textContent = "—";
+    } else if (mode === "go") {
+      $("m-score").textContent = "GO";
+      $("m-act").textContent = String(go.history.length);
+      $("m-rate").textContent = "—";
+      $("m-miss").textContent = "—";
+    } else if (mode === "glyph") {
+      $("m-score").textContent = $("g-energy") ? $("g-energy").textContent : "—";
+      $("m-act").textContent = $("glyph-patches") ? $("glyph-patches").value + "²" : "—";
+      $("m-rate").textContent = glyph.hz ? glyph.hz.toFixed(1) + " Hz" : "—";
+      $("m-miss").textContent = $("g-gram") ? $("g-gram").textContent : "—";
+    } else {
+      $("m-score").textContent = "RUBIK";
+      $("m-act").textContent = "—";
+      $("m-rate").textContent = "—";
+      $("m-miss").textContent = "—";
+    }
+    $("m-mode").textContent = mode;
+  }
+
+  /* ═══════════════════════ GLYPH · DINOv3-aligned dense (hi-res + color) ═══════════════════════ */
+  var glyph = {
+    stream: null,
+    raf: 0,
+    lastT: 0,
+    frames: 0,
+    hz: 0,
+    bc: null,
+    colorMode: "hybrid",
+    res: 640,
+  };
+  try {
+    glyph.bc = new BroadcastChannel("ugrad-glyph-dense");
+  } catch (eG) {}
+
+  /** Resize both canvases to working resolution (keeps CSS display size). */
+  function glyphApplyRes(res) {
+    res = parseInt(res, 10) || 640;
+    res = Math.max(160, Math.min(1280, res));
+    glyph.res = res;
+    ["glyph-src", "glyph-heat"].forEach(function (id) {
+      var c = $(id);
+      if (!c) return;
+      if (c.width !== res || c.height !== res) {
+        c.width = res;
+        c.height = res;
+      }
+    });
+    return res;
+  }
+
+  function glyphColorMode() {
+    var el = $("glyph-color");
+    var m = el ? el.value : "hybrid";
+    if (m !== "luma" && m !== "rgb" && m !== "chroma" && m !== "hybrid") m = "hybrid";
+    glyph.colorMode = m;
+    return m;
+  }
+
+  /** Rec.709 luma */
+  function glyphLuma(r, g, b) {
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  /** Chroma distance from gray (RGB space, 0–~255 scale). */
+  function glyphChroma(r, g, b, yv) {
+    var dr = r - yv, dg = g - yv, db = b - yv;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  }
+
+  /**
+   * Multi-stop heat colormap: deep navy → teal → lime → amber → magenta.
+   * t in [0,1]; chromaBoost [0,1] shifts hue toward warm/magenta for high chroma.
+   */
+  function glyphHeatColor(t, chromaBoost) {
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    var c = chromaBoost < 0 ? 0 : chromaBoost > 1 ? 1 : chromaBoost;
+    /* base ramp stops */
+    var stops = [
+      [11, 16, 32],
+      [18, 48, 90],
+      [26, 127, 74],
+      [196, 212, 42],
+      [255, 122, 26],
+      [255, 61, 110],
+    ];
+    var x = t * (stops.length - 1);
+    var i0 = Math.min(stops.length - 2, x | 0);
+    var f = x - i0;
+    var a = stops[i0], b = stops[i0 + 1];
+    var r = a[0] + (b[0] - a[0]) * f;
+    var g = a[1] + (b[1] - a[1]) * f;
+    var bl = a[2] + (b[2] - a[2]) * f;
+    /* chroma boost: lift R/B (magenta) and reduce mid green a touch */
+    r = Math.min(255, r + c * 55);
+    g = Math.max(0, g - c * 25);
+    bl = Math.min(255, bl + c * 40);
+    return [(r + 0.5) | 0, (g + 0.5) | 0, (bl + 0.5) | 0];
+  }
+
+  function glyphSynth() {
+    glyphApplyRes(($("glyph-res") && $("glyph-res").value) || glyph.res);
+    var c = $("glyph-src"), ctx = c.getContext("2d", { willReadFrequently: true });
+    var W = c.width, i, x, y, s, hue;
+    ctx.fillStyle = "#0c0e12";
+    ctx.fillRect(0, 0, W, W);
+    /* color-rich synthetic field — stress chroma + high-res patches */
+    var nMods = Math.max(64, (W * W) / 2800 | 0);
+    for (i = 0; i < nMods; i++) {
+      x = (Math.random() * W) | 0;
+      y = (Math.random() * W) | 0;
+      s = Math.max(3, ((4 + Math.random() * 22) * W) / 640 | 0);
+      hue = (Math.random() * 360) | 0;
+      if (Math.random() > 0.55) {
+        ctx.fillStyle = "hsl(" + hue + " 78% " + (42 + Math.random() * 36) + "%)";
+      } else {
+        ctx.fillStyle = Math.random() > 0.5 ? "#e8ecf1" : "#38bdf8";
+      }
+      ctx.globalAlpha = 0.5 + Math.random() * 0.5;
+      ctx.fillRect(x, y, s, s);
+    }
+    ctx.globalAlpha = 1;
+    /* finder-ish corners at scale */
+    var m = Math.max(24, (32 * W) / 640 | 0);
+    var pad = Math.max(6, (8 * W) / 640 | 0);
+    ctx.strokeStyle = "#2dd4bf";
+    ctx.lineWidth = Math.max(2, (3 * W) / 640);
+    [[pad, pad], [W - m - pad, pad], [pad, W - m - pad]].forEach(function (p) {
+      ctx.strokeRect(p[0], p[1], m, m);
+      ctx.strokeRect(p[0] + m * 0.25, p[1] + m * 0.25, m * 0.5, m * 0.5);
+    });
+    /* thin color bars for chroma calibration strip */
+    var barH = Math.max(4, (8 * W) / 640 | 0);
+    for (i = 0; i < 12; i++) {
+      ctx.fillStyle = "hsl(" + ((i * 30) % 360) + " 90% 50%)";
+      ctx.fillRect((i * W) / 12, W - barH - 2, W / 12 + 1, barH);
+    }
+    glyphEstimate();
+  }
+
+  /**
+   * Dense patch estimation — DINOv3-inspired, hi-res + color-aware:
+   *  · patch grid up to 64² (ViT-style tokens)
+   *  · luma energy + Sobel grad + RGB variance + chroma
+   *  · Gram proxy on patch-mean vector
+   * Optional: window.__dinoInfer(ImageData) → { heat: Float32Array[n*n], meta }
+   */
+  function glyphEstimate() {
+    var src = $("glyph-src"), heat = $("glyph-heat");
+    if (!src || !heat) return;
+    var n = parseInt($("glyph-patches").value, 10) || 32;
+    n = Math.max(4, Math.min(64, n));
+    var colorMode = glyphColorMode();
+    var ctx = src.getContext("2d", { willReadFrequently: true });
+    var W = src.width, H = src.height;
+    if (heat.width !== W || heat.height !== H) {
+      heat.width = W;
+      heat.height = H;
+    }
+    var img = ctx.getImageData(0, 0, W, H);
+    var data = img.data;
+    var external = null;
+    try {
+      if (typeof window.__dinoInfer === "function") {
+        external = window.__dinoInfer(img);
+      }
+    } catch (eD) {
+      external = null;
+    }
+
+    var pw = Math.max(1, (W / n) | 0);
+    var ph = Math.max(1, (H / n) | 0);
+    /* subsample step inside large patches to keep live cam ≤ ~60 Hz on 64²×960 */
+    var step = 1;
+    if (n >= 48 && W >= 768) step = 2;
+    else if (n >= 56) step = 2;
+    else if (n * n * pw * ph > 1.2e6) step = 2;
+
+    var scores = new Float32Array(n * n);
+    var means = new Float32Array(n * n);
+    var chromas = new Float32Array(n * n);
+    var i, j, x0, y0, x, y, idx, r, g, b, yv, chv;
+    var sumY, sumY2, sumR, sumG, sumB, sumR2, sumG2, sumB2, sumCh, sumCh2, cnt, gx, gy, grad;
+    var maxS = 1e-6, sumS = 0, sumGrad = 0, sumChAll = 0;
+    var stride = W * 4;
+
+    for (j = 0; j < n; j++) {
+      for (i = 0; i < n; i++) {
+        x0 = i * pw;
+        y0 = j * ph;
+        sumY = sumY2 = sumR = sumG = sumB = sumR2 = sumG2 = sumB2 = sumCh = sumCh2 = cnt = grad = 0;
+        var yMax = Math.min(y0 + ph, H - 1);
+        var xMax = Math.min(x0 + pw, W - 1);
+        for (y = y0; y < yMax; y += step) {
+          for (x = x0; x < xMax; x += step) {
+            idx = y * stride + x * 4;
+            r = data[idx];
+            g = data[idx + 1];
+            b = data[idx + 2];
+            yv = glyphLuma(r, g, b);
+            chv = glyphChroma(r, g, b, yv);
+            sumY += yv;
+            sumY2 += yv * yv;
+            sumR += r;
+            sumG += g;
+            sumB += b;
+            sumR2 += r * r;
+            sumG2 += g * g;
+            sumB2 += b * b;
+            sumCh += chv;
+            sumCh2 += chv * chv;
+            /* forward differences (luma) */
+            var yR = glyphLuma(data[idx + 4], data[idx + 5], data[idx + 6]);
+            var yD = glyphLuma(
+              data[idx + stride],
+              data[idx + stride + 1],
+              data[idx + stride + 2]
+            );
+            gx = yR - yv;
+            gy = yD - yv;
+            grad += Math.sqrt(gx * gx + gy * gy);
+            cnt++;
+          }
+        }
+        if (!cnt) cnt = 1;
+        var muY = sumY / cnt;
+        var varY = Math.max(0, sumY2 / cnt - muY * muY);
+        var muR = sumR / cnt, muGch = sumG / cnt, muB = sumB / cnt;
+        var varR = Math.max(0, sumR2 / cnt - muR * muR);
+        var varGc = Math.max(0, sumG2 / cnt - muGch * muGch);
+        var varB = Math.max(0, sumB2 / cnt - muB * muB);
+        var rgbVar = (Math.sqrt(varR) + Math.sqrt(varGc) + Math.sqrt(varB)) / 3;
+        var muCh = sumCh / cnt;
+        var varCh = Math.max(0, sumCh2 / cnt - muCh * muCh);
+        var gMean = grad / cnt;
+        var lumaSc = Math.sqrt(varY) * 0.65 + gMean * 0.35;
+        var rgbSc = rgbVar * 0.7 + gMean * 0.3;
+        var chromaSc = Math.sqrt(varCh) * 0.55 + muCh * 0.25 + gMean * 0.2;
+        var sc;
+        if (colorMode === "luma") sc = lumaSc;
+        else if (colorMode === "rgb") sc = rgbSc;
+        else if (colorMode === "chroma") sc = chromaSc;
+        else sc = lumaSc * 0.45 + rgbSc * 0.3 + chromaSc * 0.25; /* hybrid */
+
+        if (external && external.heat && external.heat[j * n + i] != null) {
+          sc = 0.35 * sc + 0.65 * external.heat[j * n + i];
+        }
+        scores[j * n + i] = sc;
+        means[j * n + i] = muY / 255;
+        chromas[j * n + i] = muCh / 180; /* ~normalize */
+        sumS += sc;
+        sumGrad += gMean;
+        sumChAll += muCh;
+        if (sc > maxS) maxS = sc;
+      }
+    }
+
+    /* Gram proxy on patch-mean luma vector */
+    var gram = 0;
+    for (i = 0; i < n * n; i++) gram += means[i] * means[i];
+    gram = Math.sqrt(gram / (n * n));
+
+    /* color Gram: include chroma means for stability under recolor */
+    var gramC = 0;
+    for (i = 0; i < n * n; i++) gramC += chromas[i] * chromas[i];
+    gramC = Math.sqrt(gramC / (n * n));
+    if (colorMode !== "luma") gram = 0.65 * gram + 0.35 * gramC;
+
+    var hctx = heat.getContext("2d");
+    /* paint heat via ImageData for hi-res grids (faster than fillRect per cell) */
+    var hout = hctx.createImageData(heat.width, heat.height);
+    var hd = hout.data;
+    var hW = heat.width, hH = heat.height;
+    var maxCh = 1e-6;
+    for (i = 0; i < n * n; i++) if (chromas[i] > maxCh) maxCh = chromas[i];
+    for (j = 0; j < hH; j++) {
+      var pj = Math.min(n - 1, ((j * n) / hH) | 0);
+      for (i = 0; i < hW; i++) {
+        var pi = Math.min(n - 1, ((i * n) / hW) | 0);
+        var t = scores[pj * n + pi] / maxS;
+        var cb =
+          colorMode === "luma" ? 0 : chromas[pj * n + pi] / maxCh;
+        var rgb = glyphHeatColor(t, colorMode === "chroma" ? Math.max(cb, t * 0.5) : cb * 0.85);
+        var o = (j * hW + i) * 4;
+        hd[o] = rgb[0];
+        hd[o + 1] = rgb[1];
+        hd[o + 2] = rgb[2];
+        hd[o + 3] = 255;
+      }
+    }
+    hctx.putImageData(hout, 0, 0);
+    /* grid only when patches not too fine (readable) */
+    if (n <= 40) {
+      var cw = hW / n, ch = hH / n;
+      hctx.strokeStyle = "rgba(0,0,0,0.28)";
+      hctx.lineWidth = 1;
+      for (i = 0; i <= n; i++) {
+        hctx.beginPath();
+        hctx.moveTo(i * cw, 0);
+        hctx.lineTo(i * cw, hH);
+        hctx.stroke();
+        hctx.beginPath();
+        hctx.moveTo(0, i * ch);
+        hctx.lineTo(hW, i * ch);
+        hctx.stroke();
+      }
+    }
+
+    $("g-energy").textContent = (sumS / (n * n)).toFixed(2);
+    $("g-grad").textContent = (sumGrad / (n * n)).toFixed(2);
+    $("g-gram").textContent = gram.toFixed(3);
+    if ($("g-chroma")) $("g-chroma").textContent = (sumChAll / (n * n)).toFixed(2);
+    $("g-hz").textContent = glyph.hz ? glyph.hz.toFixed(1) : "—";
+    if ($("g-grid"))
+      $("g-grid").textContent = n + "² · " + W + " · " + colorMode;
+
+    if ($("chk-bc").checked && glyph.bc) {
+      try {
+        glyph.bc.postMessage({
+          schema: "ugrad-glyph-dense-v1",
+          t: Date.now(),
+          n: n,
+          res: W,
+          color_mode: colorMode,
+          energy: sumS / (n * n),
+          grad: sumGrad / (n * n),
+          chroma: sumChAll / (n * n),
+          gram: gram,
+          dino_hook: !!(external && external.heat),
+          note: "dense hi-res · color-aware · DINOv3 path via __dinoInfer",
+        });
+      } catch (eB) {}
+    }
+    return scores;
+  }
+
+  function glyphLoop(now) {
+    if (mode !== "glyph") {
+      glyph.raf = 0;
+      return;
+    }
+    glyph.frames++;
+    if (!glyph.lastT) glyph.lastT = now;
+    if (now - glyph.lastT >= 1000) {
+      glyph.hz = glyph.frames / ((now - glyph.lastT) / 1000);
+      glyph.frames = 0;
+      glyph.lastT = now;
+    }
+    if (glyph.video && glyph.video.readyState >= 2) {
+      var c = $("glyph-src"),
+        ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(glyph.video, 0, 0, c.width, c.height);
+    }
+    glyphEstimate();
+    glyph.raf = requestAnimationFrame(glyphLoop);
+  }
+
+  function glyphStartCam() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      log("cam unavailable");
+      glyphSynth();
+      return;
+    }
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then(function (stream) {
+        glyph.stream = stream;
+        var v = document.createElement("video");
+        v.playsInline = true;
+        v.muted = true;
+        v.srcObject = stream;
+        v.play();
+        glyph.video = v;
+        if (!glyph.raf) glyph.raf = requestAnimationFrame(glyphLoop);
+        setStatus("glyph · cam dense");
+        log("glyph cam live · DINOv3-aligned dense patches");
+      })
+      .catch(function (err) {
+        log("cam err " + err);
+        glyphSynth();
+      });
+  }
+
+  function glyphStopCam() {
+    if (glyph.stream) {
+      try {
+        glyph.stream.getTracks().forEach(function (t) {
+          t.stop();
+        });
+      } catch (e) {}
+      glyph.stream = null;
+      glyph.video = null;
+    }
+  }
+
+  function setMode(m) {
+    mode = m;
+    if (m !== "glyph") glyphStopCam();
+    document.querySelectorAll(".tab-btn").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-mode") === m);
+    });
+    ["webgrid", "go", "chess", "glyph", "rubik"].forEach(function (id) {
+      var p = $("panel-" + id);
+      if (p) p.classList.toggle("on", id === m);
+    });
+    $("mode-pill").textContent = m;
+    if (m === "webgrid") {
+      $("board-title").innerHTML = 'WebGrid chase · <span id="board-status">lab</span>';
+      paintWg();
+    } else if (m === "go") {
+      $("board-title").innerHTML = 'Go lab · <span id="board-status">black to play</span>';
+      if (!go.board.length) goInit();
+      else paintGo();
+    } else if (m === "chess") {
+      $("board-title").innerHTML = 'Chess multilayer · <span id="board-status">live + under-trees</span>';
+      startChess();
+    } else if (m === "glyph") {
+      $("board-title").innerHTML = 'Glyph · DINOv3 dense · <span id="board-status">tools form + video lift</span>';
+      glyphSynth();
+      if (!glyph.raf) glyph.raf = requestAnimationFrame(glyphLoop);
+      if (!glyphTools && window.GlyphToolsForm && $("glyph-tools-host")) {
+        glyphTools = window.GlyphToolsForm.mount($("glyph-tools-host"), {
+          onApply: function (s) {
+            if ($("glyph-patches") && s.peels) {
+              var pn = parseInt(s.peels.patches, 10) || 32;
+              $("glyph-patches").value = String(Math.max(4, Math.min(64, pn)));
+            }
+            if ($("glyph-color") && s.peels && s.peels.color_mode)
+              $("glyph-color").value = s.peels.color_mode;
+            if ($("glyph-res") && s.peels && s.peels.res) {
+              $("glyph-res").value = String(s.peels.res);
+              glyphApplyRes(s.peels.res);
+            }
+            glyphEstimate();
+            log(
+              "glyph tools applied · mode=" +
+                (s.peels && s.peels.mode) +
+                " · patches=" +
+                ($("glyph-patches") && $("glyph-patches").value) +
+                " · color=" +
+                glyphColorMode()
+            );
+          },
+        });
+      }
+    } else {
+      $("board-title").innerHTML = 'Rubik language prep · <span id="board-status">cube-viewer path</span>';
+    }
+    ensureGameClocks();
+    resetClocks();
+    updateMetrics();
+    log("mode " + m);
+  }
+
+  function start() {
+    if (mode === "webgrid") startWebgrid();
+    else if (mode === "go") goInit();
+    else if (mode === "chess") startChess();
+    else log("rubik: open cube-viewer for full solve");
+  }
+
+  /* ── wire UI ── */
+  document.querySelectorAll(".tab-btn").forEach(function (b) {
+    b.onclick = function () { setMode(b.getAttribute("data-mode")); };
+  });
+  $("btn-start").onclick = start;
+  $("btn-agent").onclick = function () {
+    agentOn = !agentOn;
+    $("btn-agent").textContent = agentOn ? "Agent ON" : "Agent";
+    $("btn-agent").classList.toggle("gu-primary", agentOn);
+    log("agent " + (agentOn ? "ON" : "OFF"));
+    if (agentOn && mode === "chess") chessEngineMove();
+    if (agentOn && mode === "webgrid" && !wg.running) startWebgrid();
+  };
+  $("btn-pred").onclick = spawnPredictiveLayers;
+  $("clk-reset").onclick = resetClocks;
+  $("clk-pause").onclick = function () {
+    clock.paused = !clock.paused;
+    clock.last = performance.now();
+    $("clk-pause").textContent = clock.paused ? "Resume" : "Pause";
+    paintClocks();
+  };
+  $("clk-on").onchange = function () {
+    clock.on = $("clk-on").checked;
+    paintClocks();
+  };
+  if ($("clk-min")) $("clk-min").onchange = resetClocks;
+  if ($("clk-inc"))
+    $("clk-inc").onchange = function () {
+      clock.fischer = parseInt($("clk-inc").value, 10) || 0;
+    };
+
+  $("wg-canvas").addEventListener("pointerup", function (ev) {
+    if (mode !== "webgrid" || !wg.running) return;
+    var rect = $("wg-canvas").getBoundingClientRect();
+    var x = ((ev.clientX - rect.left) / rect.width) * wg.N;
+    var y = ((ev.clientY - rect.top) / rect.height) * wg.N;
+    var c = Math.min(wg.N - 1, Math.max(0, x | 0));
+    var r = Math.min(wg.N - 1, Math.max(0, y | 0));
+    wgHit(c + wg.N * r);
+    paintWg();
+    updateMetrics();
+  });
+
+  $("go-svg").addEventListener("click", function (ev) {
+    if (mode !== "go") return;
+    var svg = $("go-svg");
+    var pt = svg.createSVGPoint();
+    pt.x = ev.clientX; pt.y = ev.clientY;
+    var ctm = svg.getScreenCTM().inverse();
+    var p = pt.matrixTransform(ctm);
+    var c = Math.round(p.x), r = Math.round(p.y);
+    if (c >= 0 && r >= 0 && c < go.N && r < go.N) goPlace(c, r);
+  });
+  $("go-n").onchange = goInit;
+  $("go-pass").onclick = function () {
+    go.turn = -go.turn;
+    switchClock();
+    setStatus((go.turn === 1 ? "black" : "white") + " to play");
+  };
+  $("go-ai").onclick = function () {
+    /* random legal empty */
+    var empties = [];
+    for (var i = 0; i < go.board.length; i++) if (!go.board[i]) empties.push(i);
+    if (!empties.length) return;
+    var pick = empties[(Math.random() * empties.length) | 0];
+    goPlace(pick % go.N, (pick / go.N) | 0);
+  };
+
+  $("ch-board").addEventListener("click", function (ev) {
+    var t = ev.target.closest(".sq");
+    if (!t || mode !== "chess") return;
+    chessClick(parseInt(t.getAttribute("data-i"), 10));
+  });
+  $("ch-ai").onclick = chessEngineMove;
+  $("ch-undo").onclick = function () {
+    /* simple: reset for lab */
+    startChess();
+  };
+  $("ch-hint").onclick = spawnPredictiveLayers;
+
+  $("glyph-synth").onclick = function () {
+    glyphStopCam();
+    glyphSynth();
+    if (!glyph.raf && mode === "glyph") glyph.raf = requestAnimationFrame(glyphLoop);
+  };
+  $("glyph-cam").onclick = glyphStartCam;
+  $("glyph-file").onclick = function () {
+    $("glyph-file-in").click();
+  };
+  $("glyph-file-in").onchange = function () {
+    var f = $("glyph-file-in").files && $("glyph-file-in").files[0];
+    if (!f) return;
+    glyphStopCam();
+    var url = URL.createObjectURL(f);
+    var im = new Image();
+    im.onload = function () {
+      glyphApplyRes(($("glyph-res") && $("glyph-res").value) || glyph.res);
+      var c = $("glyph-src"),
+        ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.fillStyle = "#0c0e12";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      var s = Math.min(c.width / im.width, c.height / im.height);
+      var w = im.width * s,
+        h = im.height * s;
+      ctx.drawImage(im, (c.width - w) / 2, (c.height - h) / 2, w, h);
+      URL.revokeObjectURL(url);
+      glyphEstimate();
+      if (!glyph.raf && mode === "glyph") glyph.raf = requestAnimationFrame(glyphLoop);
+    };
+    im.src = url;
+  };
+  $("glyph-patches").onchange = function () {
+    if (mode === "glyph") glyphEstimate();
+  };
+  if ($("glyph-res"))
+    $("glyph-res").onchange = function () {
+      var prev = $("glyph-src");
+      var snap = null;
+      try {
+        if (prev && prev.width)
+          snap = prev
+            .getContext("2d")
+            .getImageData(0, 0, prev.width, prev.height);
+      } catch (eS) {}
+      glyphApplyRes($("glyph-res").value);
+      if (snap) {
+        /* scale previous frame into new res */
+        var tmp = document.createElement("canvas");
+        tmp.width = snap.width;
+        tmp.height = snap.height;
+        tmp.getContext("2d").putImageData(snap, 0, 0);
+        var c = $("glyph-src"),
+          ctx = c.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(tmp, 0, 0, c.width, c.height);
+      }
+      if (mode === "glyph") glyphEstimate();
+    };
+  if ($("glyph-color"))
+    $("glyph-color").onchange = function () {
+      if (mode === "glyph") glyphEstimate();
+    };
+
+  $("rubik-open").onclick = function () {
+    location.href = "cube-viewer.html";
+  };
+  $("rubik-ping").onclick = function () {
+    var tok = $("rubik-tok").value.trim() || "water";
+    var msg = {
+      schema: "ugrad-rubik-origin-tree-v2",
+      source: "ugrad-arena",
+      t: Date.now(),
+      token: tok,
+      pathway: "prep",
+      note: "arena ping · open cube-viewer for full L0–L7 solve",
+    };
+    try {
+      if (bcRubik) bcRubik.postMessage(msg);
+    } catch (e) {}
+    $("rubik-status").textContent = "pinged ugrad-rubik-lang · token=" + tok;
+    log("rubik ping " + tok);
+  };
+
+  /* main rAF for clocks only */
+  function frame(now) {
+    tickClocks(now);
+    requestAnimationFrame(frame);
+  }
+
+  /* public API */
+  window.glyphEstimate = glyphEstimate;
+
+  /* ── MG glyph flow control · postMessage + BC mg-glyph-flow / ugrad-glyph-tools ── */
+  function applyMgGlyphControl(msg) {
+    if (!msg || typeof msg !== "object") return false;
+    var t = msg.type || msg.schema;
+    if (
+      t !== "mg.glyph.control.v1" &&
+      t !== "mg-glyph-control" &&
+      !(msg.form && msg.form.peels && (msg.schema || "").indexOf("glyph") >= 0)
+    ) {
+      /* allow bare peels envelope from tools bus */
+      if (!(msg.peels || (msg.form && msg.form.peels))) return false;
+      if (t && String(t).indexOf("glyph") < 0 && t !== "mg.glyph.control.v1") return false;
+    }
+    try {
+      setMode("glyph");
+      var peels = msg.peels || (msg.form && msg.form.peels) || {};
+      if (peels.patches != null && $("glyph-patches")) {
+        var pn = Math.max(4, Math.min(64, parseInt(peels.patches, 10) || 32));
+        $("glyph-patches").value = String(pn);
+      }
+      if (peels.color_mode && $("glyph-color")) {
+        $("glyph-color").value = peels.color_mode;
+        glyph.colorMode = peels.color_mode;
+      }
+      if (peels.res != null && $("glyph-res")) {
+        $("glyph-res").value = String(peels.res);
+        glyphApplyRes(peels.res);
+      }
+      var act = msg.action || "apply";
+      if (act === "cam") glyphStartCam();
+      else if (act === "synth") glyphSynth();
+      else if (act === "stop" || act === "stop_cam") glyphStopCam();
+      else if (act === "mode" || act === "open") {
+        /* setMode already */
+      } else {
+        try {
+          glyphEstimate();
+        } catch (eE) {}
+      }
+      if (msg.context) {
+        window.__mgGlyphContext = msg.context;
+        try {
+          localStorage.setItem("mg.glyph.context.v1", JSON.stringify(msg.context));
+        } catch (eC) {}
+      }
+      if (msg.tools || peels.patches != null) {
+        try {
+          var st = {};
+          try {
+            st = JSON.parse(localStorage.getItem("mg.glyph.tools.form.v1") || "{}");
+          } catch (e0) {
+            st = {};
+          }
+          if (!st.peels) st.peels = {};
+          Object.keys(peels).forEach(function (k) {
+            st.peels[k] = peels[k];
+          });
+          if (msg.tools && msg.tools.one_hot_path != null) st.one_hot_path = msg.tools.one_hot_path;
+          if (msg.one_hot_path != null) st.one_hot_path = msg.one_hot_path;
+          localStorage.setItem("mg.glyph.tools.form.v1", JSON.stringify(st));
+        } catch (eL) {}
+      }
+      var status = {
+        schema: "mg.glyph.status.v1",
+        type: "mg.glyph.status.v1",
+        ok: true,
+        t: Date.now(),
+        action: act,
+        mode: "glyph",
+        peels: {
+          patches: $("glyph-patches") && $("glyph-patches").value,
+          res: $("glyph-res") && $("glyph-res").value,
+          color_mode: $("glyph-color") && $("glyph-color").value,
+        },
+        context_id:
+          (window.__mgGlyphContext &&
+            (window.__mgGlyphContext.lane_id || window.__mgGlyphContext.id)) ||
+          null,
+      };
+      try {
+        if (glyph.bc) glyph.bc.postMessage(status);
+      } catch (eB) {}
+      try {
+        new BroadcastChannel("mg-glyph-flow").postMessage(status);
+      } catch (eF) {}
+      try {
+        if (msg._replySource && msg._replySource.postMessage)
+          msg._replySource.postMessage(status, "*");
+      } catch (eS) {}
+      if (typeof log === "function") log("mg glyph control · " + act);
+      return true;
+    } catch (e) {
+      if (typeof log === "function") log("mg glyph control fail · " + e);
+      return false;
+    }
+  }
+  window.addEventListener("message", function (ev) {
+    if (!ev.data || typeof ev.data !== "object") return;
+    var payload = Object.assign({}, ev.data, { _replySource: ev.source });
+    applyMgGlyphControl(payload);
+  });
+  try {
+    var bcFlow = new BroadcastChannel("mg-glyph-flow");
+    bcFlow.onmessage = function (ev) {
+      applyMgGlyphControl(ev.data);
+    };
+  } catch (eFlow) {}
+  try {
+    var bcTools = new BroadcastChannel("ugrad-glyph-tools");
+    bcTools.onmessage = function (ev) {
+      var d = ev.data;
+      if (!d) return;
+      if (d.type === "mg.glyph.control.v1" || d.schema === "mg.glyph.control.v1")
+        applyMgGlyphControl(d);
+      else if (d.form && d.form.peels)
+        applyMgGlyphControl({
+          type: "mg.glyph.control.v1",
+          action: "apply",
+          peels: d.form.peels,
+          tools: d.form,
+          context: d.context,
+        });
+    };
+  } catch (eT) {}
+
+  window.UgradArena = {
+    ver: VER,
+    setMode: setMode,
+    start: start,
+    spawnPredictiveLayers: spawnPredictiveLayers,
+    getChess: ensureChess,
+    pushRun: pushRun,
+    glyphEstimate: glyphEstimate,
+    glyphApplyRes: glyphApplyRes,
+    applyGlyphControl: applyMgGlyphControl,
+    glyphStartCam: glyphStartCam,
+    glyphSynth: glyphSynth,
+    glyphStopCam: glyphStopCam,
+  };
+
+  /* go-ugrad / game-hub precision crosshair on boards */
+  function attachCrosshairs() {
+    if (!window.BoardCrosshair) return;
+    try {
+      if (!bcx.wg && $("wg-canvas")) {
+        var w = window.BoardCrosshair.wrapCanvas($("wg-canvas"));
+        bcx.wg = window.BoardCrosshair.attach(w, {
+          grid: wg.N || 30,
+          snap: true,
+          showCell: true,
+        });
+      } else if (bcx.wg && bcx.wg.setGrid) bcx.wg.setGrid(wg.N || 30);
+    } catch (eW) {}
+    try {
+      if (!bcx.go && $("go-svg")) {
+        var goHost = $("go-svg").parentNode;
+        if (goHost) {
+          /* wrap svg for overlay */
+          if (!goHost.classList.contains("bcx-wrap")) {
+            var gw = document.createElement("div");
+            gw.className = "bcx-wrap";
+            gw.style.cssText =
+              "position:relative;width:100%;max-width:min(92vw,480px);margin:0 auto;aspect-ratio:1";
+            $("go-svg").style.width = "100%";
+            $("go-svg").style.height = "100%";
+            goHost.insertBefore(gw, $("go-svg"));
+            gw.appendChild($("go-svg"));
+            goHost = gw;
+          }
+          bcx.go = window.BoardCrosshair.attach(goHost, {
+            grid: go.N || 19,
+            snap: true,
+            showCell: false, /* intersections feel like go-ugrad lines-only */
+          });
+        }
+      } else if (bcx.go && bcx.go.setGrid) bcx.go.setGrid(go.N || 19);
+    } catch (eG) {}
+    try {
+      if (!bcx.ch && $("ch-board")) {
+        bcx.ch = window.BoardCrosshair.attach($("ch-board"), {
+          grid: 8,
+          snap: true,
+          showCell: true,
+        });
+      }
+    } catch (eC) {}
+    try {
+      if (!bcx.glyph && $("glyph-src")) {
+        var gh = window.BoardCrosshair.wrapCanvas($("glyph-src"));
+        bcx.glyph = window.BoardCrosshair.attach(gh, {
+          grid: 0,
+          snap: false,
+          showCell: false,
+        });
+      }
+    } catch (eY) {}
+  }
+
+  /* boot */
+  wg.rng = mulberry32(42);
+  spawnBlue();
+  paintWg();
+  ensureGameClocks();
+  resetClocks();
+  renderRuns();
+  setMode("webgrid");
+  setTimeout(attachCrosshairs, 50);
+  requestAnimationFrame(frame);
+  log(
+    VER +
+      " ready · go-ugrad crosshair on boards · score/chess clocks"
+  );
+
+  /* ?mode=chess&pred=1 */
+  try {
+    var q = new URLSearchParams(location.search || "");
+    var m = q.get("mode");
+    if (m === "webgrid" || m === "go" || m === "chess" || m === "glyph" || m === "rubik") setMode(m);
+    if (q.get("auto") === "1" && mode === "webgrid") {
+      agentOn = true;
+      $("btn-agent").textContent = "Agent ON";
+      setTimeout(startWebgrid, 200);
+    }
+  } catch (eQ) {}
+})();
+</script>
+</body>
+</html>

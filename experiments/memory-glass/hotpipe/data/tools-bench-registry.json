@@ -3,10 +3,10 @@
   "ver": "bench-v3-local",
   "note": "Working tools from disk via loopback — no freya.world / pages.dev / remote iframes",
   "localRoot": "/Volumes/qbitOS/00.dev/projects/uvspeed/web",
-  "localHttp": "http://127.0.0.1:8765",
-  "serve": "cd /Volumes/qbitOS/00.dev/projects/uvspeed/web && python3 -m http.server 8765 --bind 127.0.0.1",
+  "localHttp": "http://127.0.0.1:8790",
+  "serve": "cd /Volumes/qbitOS/00.dev/projects/uvspeed/web && python3 -m http.server 8790 --bind 127.0.0.1",
   "hubs": {
-    "local": "http://127.0.0.1:8765/",
+    "local": "http://127.0.0.1:8790/",
     "disk": "file:///Volumes/qbitOS/00.dev/projects/uvspeed/web/"
   },
   "trades": [

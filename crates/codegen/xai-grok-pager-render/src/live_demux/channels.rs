@@ -435,6 +435,26 @@ pub const CHANNELS: &[ChannelDef] = &[
         kind: ChannelKind::LiveNews,
         region: ChannelRegion::Specialty,
     },
+    ChannelDef {
+        id: "square",
+        aliases: &[
+            "thesquare",
+            "the-square",
+            "thesquarepdx",
+            "squarepdx",
+            "pioneer",
+            "pioneersquare",
+            "pcs",
+            "skycam",
+            "portland-square",
+        ],
+        label: "Pioneer Courthouse Square Live · PDX SkyCam",
+        // ipcamlive alias=thesquarelive → s60 HLS (stream id from getcamerastreamstate).
+        // Page: https://www.thesquarepdx.org/see-the-square-live/
+        url: "https://s60.ipcamlive.com/streams/3cw7ivsjfwve6kxdy/stream.m3u8",
+        kind: ChannelKind::LiveNews,
+        region: ChannelRegion::Specialty,
+    },
     // --- X.com (Twitter) live hub ---
     // Bare `x` / `twitter` does not demux a homepage — open() focuses search
     // prefilled for broadcast/status paste (see x_live + LiveWatchState::open).
@@ -701,6 +721,50 @@ pub fn resolve_watch_source(input: &str) -> ResolvedSource {
         };
     }
 
+    // Plant glyph control plane — `/watch glyph [URL]` (not optical TX).
+    // Custom pop-out: quantum-lift ffplay + arena Glyph tools form.
+    if super::glyph_watch::is_glyph_watch_source(raw)
+        || matches!(
+            key0.as_str(),
+            "glyph"
+                | "glyph-live"
+                | "glyph-watch"
+                | "q-lift"
+                | "qlift"
+                | "quantum-lift"
+                | "peel-live"
+                | "glyph-tools"
+        )
+    {
+        let (mode, stream_url, label) = super::glyph_watch::parse_glyph_watch_args(raw);
+        // If a page/stream URL was given, demux that; else synthetic glyph:// surface.
+        let url = stream_url
+            .clone()
+            .unwrap_or_else(|| super::glyph_watch::glyph_url(mode));
+        return ResolvedSource {
+            url,
+            label,
+            kind: ChannelKind::Generic,
+            channel_id: Some("glyph".into()),
+            open_guide: false,
+            guide_filter: GuideFilter::All,
+        };
+    }
+
+    // Offline webgrid-ugrad — toolchain / `/webgrid` only (not a /watch channel).
+    // Matches `webgrid://…` and free-form `webgrid human 16` from OpenLiveWatch.
+    if super::webgrid::is_webgrid_source(raw) {
+        let (mode, n, _turbo, label) = super::webgrid::parse_webgrid_args(raw);
+        return ResolvedSource {
+            url: super::webgrid::webgrid_url(mode),
+            label: format!("{label} · N={n}"),
+            kind: ChannelKind::Generic,
+            channel_id: Some("webgrid".into()),
+            open_guide: false,
+            guide_filter: GuideFilter::All,
+        };
+    }
+
     // X.com / Twitter / Periscope: normalize broadcast/status/pscp /media URLs.
     if let Some(xurl) = super::x_live::normalize_x_url(raw) {
         // Profile Media tabs are multi-item video feeds (zap like music TV).
@@ -952,6 +1016,21 @@ mod tests {
         let nasa = resolve_watch_source("nasatv");
         assert_eq!(nasa.channel_id.as_deref(), Some("nasa"));
         assert_eq!(nasa.kind, ChannelKind::LiveNews);
+    }
+
+    #[test]
+    fn square_skycam_aliases() {
+        // Pioneer Courthouse Square Live · ipcamlive alias=thesquarelive
+        for a in ["square", "pioneer", "pcs", "skycam", "thesquarepdx"] {
+            let s = resolve_watch_source(a);
+            assert_eq!(s.channel_id.as_deref(), Some("square"), "alias {a}");
+            assert!(
+                s.url.contains("ipcamlive.com") && s.url.contains("m3u8"),
+                "alias {a} url={}",
+                s.url
+            );
+            assert_eq!(s.kind, ChannelKind::LiveNews);
+        }
     }
 
     #[test]

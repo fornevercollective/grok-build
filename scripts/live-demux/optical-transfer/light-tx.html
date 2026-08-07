@@ -23,11 +23,11 @@
 <div id="morse"></div>
 <div id="hud">
   <span>jawta light · optical TX</span>
-  <input id="text" size="28" value="SOS" />
+  <input id="text" size="36" value="" placeholder="timesync · Zulu feed" />
   <label>wpm <input id="wpm" type="number" value="15" style="width:48px" /></label>
   <button id="tx" class="primary">Transmit</button>
   <button id="stop">Stop</button>
-  <span id="status">idle</span>
+  <span id="status">idle · timesync feed</span>
 </div>
 <script src="shared.js"></script>
 <script>
@@ -39,7 +39,25 @@
   const beam = document.getElementById("beam");
   const status = document.getElementById("status");
   const morseEl = document.getElementById("morse");
-  if (params.get("text")) textEl.value = decodeURIComponent(params.get("text"));
+  /** Live timesync string (morse-safe) — replaces legacy SOS default. */
+  function timesyncText() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const zulu = pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+    const mon = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][d.getUTCMonth()];
+    const day = pad(d.getUTCDate());
+    const year = d.getUTCFullYear();
+    const unix = Math.floor(d.getTime() / 1000);
+    return "Z " + zulu + " " + day + " " + mon + " " + year + " U " + unix;
+  }
+  if (params.get("text")) {
+    let t = decodeURIComponent(params.get("text"));
+    // sos / timesync keys → live clock
+    if (/^(sos|timesync|zulu|clock|utc|sync)$/i.test(t.trim())) t = timesyncText();
+    textEl.value = t;
+  } else {
+    textEl.value = timesyncText();
+  }
   if (params.get("wpm")) wpmEl.value = params.get("wpm");
   let timers = [];
   let looping = params.get("loop") === "1";
@@ -48,17 +66,22 @@
     timers.forEach(clearTimeout);
     timers = [];
     beam.style.background = "#050510";
-    status.textContent = "idle";
+    status.textContent = "idle · timesync feed";
   }
 
   function tx() {
     stop();
-    const text = textEl.value || "V";
+    // refresh clock each loop so feed tracks wall time
+    let text = textEl.value || timesyncText();
+    if (/^(sos|timesync|zulu|clock|utc|sync)$/i.test(text.trim()) || !text.trim()) {
+      text = timesyncText();
+      textEl.value = text;
+    }
     const wpm = Number(wpmEl.value) || 15;
     const morse = OT.textToMorse(text);
     const events = OT.morseTimeline(morse, wpm);
     morseEl.textContent = morse;
-    status.textContent = `TX · ${text} · ${events.length} marks`;
+    status.textContent = `TX · timesync · ${text} · ${events.length} marks`;
     const t0 = performance.now();
     events.forEach((e) => {
       timers.push(setTimeout(() => {
@@ -74,7 +97,7 @@
       ? events[events.length - 1].start + events[events.length - 1].dur
       : 0;
     timers.push(setTimeout(() => {
-      status.textContent = "done";
+      status.textContent = "done · " + text;
       if (looping || params.get("loop") === "1") tx();
     }, total + 50));
   }

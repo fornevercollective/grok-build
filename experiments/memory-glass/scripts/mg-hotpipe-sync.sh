@@ -50,6 +50,8 @@ bake_companion() {
     fi
   fi
 }
+# Acoustic scope (FFT · isolation · speech · RGB parade · 3d maze) on live wave rail
+bake_companion "live.js" "acoustic-scope.js" "COMPANION_ACOUSTIC_SCOPE" "acoustic-scope→live"
 bake_companion "lark-governance.js" "gt-flow-plane.js" "COMPANION_GT_FLOW_PLANE" "gt-flow"
 # quantum host gets tensor + qbit stack (order: tensor first, then stack)
 bake_companion "quantum-webgrid.js" "ugrad-ladder.js" "COMPANION_UGRAD_LADDER" "ugrad-ladder"

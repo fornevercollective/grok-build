@@ -26,8 +26,8 @@ Serves:
   GET  /health
 
 Usage:
-  python3 align-hub.py --bind 0.0.0.0 --port 8765
-  # then: catt -d 'Smart TV' cast_site 'http://LAN:8765/?tv=1'
+  python3 align-hub.py --bind 0.0.0.0 --port 8791  # Soft Path owns 8765
+  # then: catt -d 'Smart TV' cast_site 'http://LAN:8791/?tv=1'
 """
 from __future__ import annotations
 
@@ -310,7 +310,7 @@ def lan_ip() -> str:
 
 
 def https_port() -> int:
-    return int(os.environ.get("LIVE_DEMUX_CAST_HTTPS_PORT", "8766"))
+    return int(os.environ.get("LIVE_DEMUX_CAST_HTTPS_PORT", "8792"))
 
 
 def glyph_addresses(port: int | None = None) -> dict:
@@ -321,7 +321,7 @@ def glyph_addresses(port: int | None = None) -> dict:
 
     Whitespace / binary glyph codec is separate (GrokYtalkY) — not kbatch.
     """
-    port = int(port or os.environ.get("LIVE_DEMUX_CAST_PORT", "8765"))
+    port = int(port or os.environ.get("LIVE_DEMUX_CAST_PORT", "8791"))
     hport = https_port()
     ip = lan_ip()
     hub_http = f"http://{ip}:{port}"
@@ -1836,7 +1836,7 @@ class Handler(BaseHTTPRequestHandler):
             except json.JSONDecodeError:
                 body = {}
             device = body.get("device") or os.environ.get("LIVE_DEMUX_CAST_DEVICE", "Smart TV")
-            port = int(os.environ.get("LIVE_DEMUX_CAST_PORT", "8765"))
+            port = int(os.environ.get("LIVE_DEMUX_CAST_PORT", "8791"))
             # discover LAN IP for cast URL
             lan = "127.0.0.1"
             try:
@@ -2026,11 +2026,11 @@ def _maybe_ssl(httpd, port: int) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bind", default=os.environ.get("LIVE_DEMUX_CAST_BIND", "0.0.0.0"))
-    ap.add_argument("--port", type=int, default=int(os.environ.get("LIVE_DEMUX_CAST_PORT", "8765")))
+    ap.add_argument("--port", type=int, default=int(os.environ.get("LIVE_DEMUX_CAST_PORT", "8791")))
     ap.add_argument(
         "--https-port",
         type=int,
-        default=int(os.environ.get("LIVE_DEMUX_CAST_HTTPS_PORT", "8766")),
+        default=int(os.environ.get("LIVE_DEMUX_CAST_HTTPS_PORT", "8792")),
         help="HTTPS for phone PWA (0=disable). TV DashCast stays on --port HTTP.",
     )
     args = ap.parse_args()

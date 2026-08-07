@@ -75,7 +75,7 @@
   const el = document.getElementById('ctx');
   el.innerHTML = secure
     ? '<span class="ok">Secure context ✓</span> · mediaDevices ' + (md ? '<span class="ok">✓</span>' : '<span class="warn">pending permission</span>')
-    : '<span class="warn">NOT secure</span> · open the <code>https://</code> URL from the TV QR (port 8766), not plain http.';
+    : '<span class="warn">NOT secure</span> · open the <code>https://</code> URL from the TV QR (port 8792), not plain http.';
 
   if ('serviceWorker' in navigator && secure) {
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});

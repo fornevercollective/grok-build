@@ -36,7 +36,8 @@ PROFILE_JSON="${LIVE_DEMUX_CAST_PROFILE:-$ROOT/scripts/live-demux/devices/${PROF
 # Default to discovered TCL friendly name when env unset
 DEFAULT_DEVICE="Smart TV"
 BIND="${LIVE_DEMUX_CAST_BIND:-0.0.0.0}"
-PORT="${LIVE_DEMUX_CAST_PORT:-8765}"
+# Soft Path owns 8765/8766 — cast hub parks on 8791 (+ HTTPS 8792).
+PORT="${LIVE_DEMUX_CAST_PORT:-8791}"
 FPS="${LIVE_DEMUX_CAST_FPS:-30}"
 W="${LIVE_DEMUX_CAST_W:-1920}"
 H="${LIVE_DEMUX_CAST_H:-1080}"

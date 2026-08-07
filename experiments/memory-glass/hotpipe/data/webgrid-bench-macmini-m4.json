@@ -1,5 +1,5 @@
 {
-  "t": 1784396460596,
+  "t": 1785616029614,
   "iso": "2026-07-18T18:00:00Z",
   "machine": {
     "model": "Mac16,10",
@@ -10,10 +10,37 @@
     "label": "Mac mini M4",
     "chip": "Apple M4",
     "display": "2560x1440 DELL U2715H",
-    "gpus": ["Apple M4"]
+    "gpus": [
+      "Apple M4"
+    ]
   },
-  "source": "play.jsonl agent_end + live-summary + human ANALYSIS on this host",
+  "source": "play.jsonl agent_end race shell + live-summary",
   "runs": [
+    {
+      "id": "fleet-mini-agent-30-turbo-588",
+      "kind": "agent_end",
+      "game": "webgrid",
+      "player": "agent",
+      "grid": "30x30",
+      "peakBps": 588.4,
+      "peakNtpm": 3598,
+      "clicks": 4080,
+      "note": "v34-turbo race-shell sleep1 early-exit blue \u00b7 Mac mini M4 \u00b7 beat 554.39",
+      "iso": "2026-08-01T20:28:00Z"
+    },
+    {
+      "id": "fleet-mini-agent-30-race-554",
+      "kind": "agent_end",
+      "game": "webgrid",
+      "player": "agent",
+      "grid": "30x30",
+      "peakBps": 554.39,
+      "peakNtpm": 3390,
+      "clicks": 3962,
+      "hitsGuess": 3962,
+      "note": "race v33 no-maze pace 2/20 \u00b7 Mac mini M4 \u00b7 beat prior 483.58",
+      "iso": "2026-08-01T20:27:09Z"
+    },
     {
       "id": "fleet-mini-agent-30-peak",
       "kind": "agent_end",
@@ -24,7 +51,7 @@
       "peakNtpm": 2957,
       "clicks": 3377,
       "hitsGuess": 3377,
-      "note": "page peak score on Mac mini (agent) · soak agent-30x30"
+      "note": "page peak score on Mac mini (agent) \u00b7 soak agent-30x30"
     },
     {
       "id": "fleet-mini-agent-12-peak",
@@ -36,7 +63,7 @@
       "peakNtpm": 3369,
       "clicks": 3900,
       "hitsGuess": 3900,
-      "note": "MINI 12×12 agent peak · play.jsonl"
+      "note": "MINI 12\u00d712 agent peak \u00b7 play.jsonl"
     },
     {
       "id": "fleet-mini-agent-30-live98",
@@ -96,7 +123,7 @@
     },
     "neuralink_marketing_n1": {
       "bps": 10.39,
-      "note": "N1 implant clinical participant — not agent"
+      "note": "N1 implant clinical participant \u2014 not agent"
     }
   }
 }

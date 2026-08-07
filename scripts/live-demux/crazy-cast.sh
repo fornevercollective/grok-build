@@ -12,8 +12,9 @@ export PATH="${HOME}/.local/bin:${PATH}"
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DEVICE="${LIVE_DEMUX_CAST_DEVICE:-Smart TV}"
-PORT="${LIVE_DEMUX_CAST_PORT:-8765}"
-HTTPS_PORT="${LIVE_DEMUX_CAST_HTTPS_PORT:-8766}"
+# Soft Path owns 8765/8766 — cast parks on 8791 / 8792.
+PORT="${LIVE_DEMUX_CAST_PORT:-8791}"
+HTTPS_PORT="${LIVE_DEMUX_CAST_HTTPS_PORT:-8792}"
 PIPE_DIR="$ROOT/scripts/live-demux/gpu-pipe"
 PIPE_BIN="$PIPE_DIR/target/release/fc-gpu-pipe"
 HUB="$ROOT/scripts/live-demux/cast-align/align-hub.py"

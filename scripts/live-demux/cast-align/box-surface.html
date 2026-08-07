@@ -903,7 +903,7 @@
     }
     // if already on https, use self; if http (TV), still show https port default
     if (location.protocol === 'https:') return location.origin + '/box?pwa=1';
-    return 'https://' + location.hostname + ':8766/box?pwa=1';
+    return 'https://' + location.hostname + ':8792/box?pwa=1';
   }
 
   function renderGlyphQr() {
@@ -920,7 +920,7 @@
       const secure = glyphAddrs && glyphAddrs.secure;
       modeEl.textContent = secure
         ? 'HTTPS PWA · secure streaming context'
-        : 'scan → phone · prefer https://…:8766';
+        : 'scan → phone · prefer https://…:8792';
     }
     if (typeof qrcode !== 'function') {
       host.innerHTML = '<p style="padding:8px;font:11px system-ui;color:#900">qr lib missing</p>';
@@ -955,17 +955,17 @@
     } catch (e) {
       // fallback: prefer https phone port when page is TV http
       const host = location.hostname || '192.168.0.89';
-      const httpsOrigin = 'https://' + host + ':8766';
+      const httpsOrigin = 'https://' + host + ':8792';
       glyphAddrs = {
         scan: httpsOrigin + '/box?pwa=1',
         direct: httpsOrigin + '/box?pwa=1',
         ctrl: httpsOrigin + '/box?pwa=1',
-        hub: 'http://' + host + ':8765',
+        hub: 'http://' + host + ':8791',
         hub_https: httpsOrigin,
-        tv: 'http://' + host + ':8765/box?tv=1',
+        tv: 'http://' + host + ':8791/box?tv=1',
         lan: host,
-        port: 8765,
-        https_port: 8766,
+        port: 8791,
+        https_port: 8792,
         secure: true,
         glyph_codec: 'whitespace · blank coins · glyph-in-spaces · pcap',
       };
@@ -1770,7 +1770,7 @@
     ban.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:60;background:#163848;border:1px solid #2a6a96;border-radius:10px;padding:.55rem .75rem;font:600 12px system-ui;color:#cfefff';
     ban.innerHTML = window.isSecureContext
       ? 'Secure ✓ · Share → <b>Add to Home Screen</b> for app chrome · then Allow Camera'
-      : 'Open the <b>https://</b> QR (port 8766) — http is not a streaming app context';
+      : 'Open the <b>https://</b> QR (port 8792) — http is not a streaming app context';
     document.body.appendChild(ban);
     setTimeout(function () { try { ban.remove(); } catch (_) {} }, 12000);
   }

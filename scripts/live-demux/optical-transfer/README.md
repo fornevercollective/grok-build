@@ -32,6 +32,29 @@ Optical TX is a **first-class live-watch surface** (half-block inside Grok), not
 # in modal: o = OS display · Esc closes TTY
 ```
 
+## Layered rebroadcast (Bloomberg + SAM + multi-channel fuzz)
+
+Mac Mini / M4 path for **human live re-broadcast** + **machine-readable side channels**
+(anaglyph, L3 modules, side bars, pulse, soft watermark noise, alt still in free mask):
+
+```bash
+bash scripts/live-demux/optical-transfer/mini-layered-test.sh bloomberg --seconds=45
+# mix:     http://127.0.0.1:8790/mix.mjpg   (+ optional ffplay)
+# layered: http://127.0.0.1:8791/preview.mjpg
+# budget:  http://127.0.0.1:8791/budget.json
+# stop:    bash scripts/live-demux/optical-transfer/mini-layered-test.sh stop
+```
+
+Whitespace / glyph capacity (prompts & documents):
+
+```bash
+python3 scripts/live-demux/optical-transfer/whitespace_steno.py matrix
+python3 scripts/live-demux/optical-transfer/whitespace_steno.py budget
+```
+
+Capacity tables + watermark class notes:  
+`docs/fornever-ledger/LAYERED-OPTICAL-REBROADCAST.md`
+
 ## Quick start (shell)
 
 ```bash

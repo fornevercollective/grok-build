@@ -16,7 +16,7 @@ url_for() {
     r0|ugrad|tensor) echo "https://mueee.qbitos.ai/ugrad-r0.html" ;;
     letter-grid|lg) echo "https://kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid.html?v=pipe8" ;;
     cage) echo "https://kbatch.ugrad.ai/labs/declaration-digital-edition/cage-litmus.html" ;;
-    persona) echo "http://127.0.0.1:8765/persona-tensor-scaffold.html" ;;
+    persona) echo "http://127.0.0.1:8787/persona-tensor-scaffold.html" ;;
     webgrid|wg) echo "https://neuralink.com/webgrid/" ;;
     dojo) echo "https://kbatch.ugrad.ai/dojo/" ;;
     pipe) echo "https://kbatch.ugrad.ai/labs/declaration-digital-edition/letter-grid-pipe.html?mode=smoke" ;;

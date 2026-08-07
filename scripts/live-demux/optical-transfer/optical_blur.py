@@ -19,7 +19,7 @@ Decimen: https://github.com/bashalarmistalt/decimen-optical-transfer
 
 Usage:
   python3 optical_blur.py blur --text 'hello from light'
-  python3 optical_blur.py light --pulse sos --wpm 20
+  python3 optical_blur.py light --pulse timesync --wpm 20
   python3 optical_blur.py light --text 'CQ CQ DE FC' --fullscreen
   python3 optical_blur.py qr --file ./note.bin --block 200
   python3 optical_blur.py glyph --file ./note.bin
@@ -54,6 +54,8 @@ from protocol import (  # noqa: E402
     LTDecoder,
     LTEncoder,
     PULSE_LIBRARY,
+    resolve_pulse,
+    timesync_pulse_text,
     bytes_to_ook_bits,
     dit_ms,
     fnv1a,
@@ -256,7 +258,10 @@ def shutil_which(cmd: str) -> Optional[str]:
 def cmd_light(args: argparse.Namespace) -> int:
     text = args.text
     if args.pulse:
-        text = PULSE_LIBRARY.get(args.pulse, args.pulse)
+        text = resolve_pulse(args.pulse)
+    elif not text:
+        # default feed = timesync (replaces legacy SOS default)
+        text = timesync_pulse_text()
     if not text:
         print("need --text or --pulse", file=sys.stderr)
         return 2
@@ -356,7 +361,7 @@ def cmd_blur(args: argparse.Namespace) -> int:
     """
     text = args.text or "FC OPTICAL BLUR"
     if args.pulse:
-        text = PULSE_LIBRARY.get(args.pulse, args.pulse)
+        text = resolve_pulse(args.pulse)
     payload = text.encode("utf-8")
     if args.file:
         payload = Path(args.file).read_bytes()

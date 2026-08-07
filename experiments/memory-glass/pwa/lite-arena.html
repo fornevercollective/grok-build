@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lite Arena · GAMEDEV · WebGrid / Go / Chess · /clock</title>
+<meta name="description" content="Pure game-dev arena: WebGrid rules, Go/Chess turn clocks + /clock Zulu, no inspect floats, agent off by default."/>
+<style>
+:root{
+  --bg:#0b0f14;--panel:#12181f;--ink:#e8eef5;--mut:#8b949e;--line:#2a3340;
+  --acc:#5eead4;--blue:#1f6feb;--blue-cell:#0a84ff;--warn:#d29922;--hot:#f85149;
+  --chip:#1a222c;--go-wood:#12161c;--go-line:#3a424e;
+  --sq-l:#1c2128;--sq-d:#0e1116;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{display:flex;flex-direction:column;min-height:100vh}
+a{color:#58a6ff}
+/* ── top bar (in-page window chrome — not OS floats) ── */
+#bar{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:8px 12px;background:linear-gradient(180deg,#1a1f26,#12161c);
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+#bar .brand{font-weight:800;letter-spacing:.04em;margin-right:6px}
+#bar .brand span{color:var(--acc);font-weight:600;font-size:11px;margin-left:6px}
+.tab{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);
+  border-radius:8px;padding:6px 12px;cursor:pointer;font:650 12px/1 system-ui}
+.tab.on{background:rgba(63,185,80,.2);border-color:rgba(63,185,80,.5);color:var(--acc)}
+.btn{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);
+  border-radius:8px;padding:6px 10px;cursor:pointer;font:600 12px system-ui}
+.btn.primary{background:rgba(31,111,235,.35);border-color:rgba(88,166,255,.5)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.mut{color:var(--mut);font-size:11px}
+/* ── layout: game + built-in side (no float windows) ── */
+#layout{flex:1;display:grid;grid-template-columns:1fr min(340px,38vw);min-height:0}
+@media(max-width:900px){#layout{grid-template-columns:1fr}}
+#stage{min-height:0;display:flex;flex-direction:column;padding:12px;gap:10px;overflow:auto}
+#side{border-left:1px solid var(--line);background:var(--panel);padding:12px;overflow:auto;
+  display:flex;flex-direction:column;gap:12px;contain:layout style;will-change:auto}
+#side .panel{contain:layout}
+#hud-bps,#hud-ntpm,#hud-timer,#hud-hm,#hud-peak{font-variant-numeric:tabular-nums;min-width:4ch}
+.panel{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:10px;padding:10px}
+.panel h3{margin:0 0 8px;font:700 11px/1 system-ui;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+/* metrics always in-page */
+#hud-bps{font:800 28px/1.1 ui-monospace,Menlo,monospace;color:var(--acc)}
+#hud-sub{font:600 12px ui-monospace,Menlo,monospace;color:var(--mut);margin-top:4px}
+.row{display:flex;justify-content:space-between;gap:8px;font:600 12px ui-monospace,Menlo,monospace;margin:3px 0}
+.row .k{color:var(--mut)}
+/* clocks */
+.clocks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.clock{border:1px solid var(--line);border-radius:10px;padding:10px;background:#0d1117}
+.clock.active{border-color:var(--acc);box-shadow:0 0 0 1px rgba(63,185,80,.3)}
+.clock .who{font:700 10px system-ui;letter-spacing:.1em;color:var(--mut)}
+.clock .time{font:800 22px/1.2 ui-monospace,Menlo,monospace;margin-top:4px}
+.clock.flag .time{color:var(--hot)}
+/* engines */
+.engines{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.eng{border:1px solid var(--line);border-radius:10px;padding:8px;background:#0d1117}
+.eng h4{margin:0 0 6px;font:700 11px system-ui;color:var(--acc)}
+.eng select,.eng input{width:100%;margin:2px 0;background:var(--chip);border:1px solid var(--line);
+  color:var(--ink);border-radius:6px;padding:5px;font:12px system-ui}
+/* webgrid */
+#wg-wrap{display:none;flex-direction:column;align-items:center;gap:8px;flex:1}
+body.mode-webgrid #wg-wrap{display:flex}
+#wg-canvas{background:#1a1a1e;border-radius:8px;cursor:crosshair;box-shadow:0 8px 32px rgba(0,0,0,.4);
+  max-width:min(92vw,min(88vh,720px));width:100%;aspect-ratio:1;touch-action:none}
+#wg-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+/* go */
+#go-wrap{display:none;flex-direction:column;align-items:center;gap:8px;flex:1}
+body.mode-go #go-wrap{display:flex}
+#go-svg{width:min(92vw,min(88vh,640px));height:auto;background:var(--go-wood);border-radius:6px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35)}
+/* chess */
+#ch-wrap{display:none;flex-direction:column;align-items:center;gap:8px;flex:1}
+body.mode-chess #ch-wrap{display:flex}
+#ch-board{display:grid;grid-template-columns:repeat(8,1fr);width:min(92vw,min(88vh,560px));
+  aspect-ratio:1;border:2px solid #444;border-radius:4px;overflow:hidden;user-select:none}
+#ch-board .sq{display:flex;align-items:center;justify-content:center;font-size:clamp(18px,4.5vw,36px);
+  cursor:pointer;line-height:1}
+#ch-board .sq.light{background:var(--sq-l,#1c2128);color:#e6edf3}
+#ch-board .sq.dark{background:var(--sq-d,#0e1116);color:#9aa4b2}
+#ch-board .sq.sel{outline:3px solid var(--blue);outline-offset:-3px}
+#ch-board .sq.hi{box-shadow:inset 0 0 0 3px rgba(63,185,80,.7)}
+/* glyph arch panel */
+#glyph-wrap{display:none;padding:8px;overflow:auto;flex:1}
+body.mode-glyph #glyph-wrap{display:block}
+#glyph-wrap pre{white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,monospace;background:#0d1117;
+  border:1px solid var(--line);border-radius:8px;padding:12px;color:var(--mut)}
+#log{font:11px/1.35 ui-monospace,Menlo,monospace;max-height:160px;overflow:auto;color:var(--mut)}
+#log .e{margin:2px 0;border-bottom:1px solid rgba(255,255,255,.04);padding-bottom:2px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--chip);
+  border:1px solid var(--line);font:650 10px system-ui;margin-right:4px}
+/* /clock strip — Zulu · epoch · markets · turn context */
+#clock-bar{
+  flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+  padding:6px 12px;background:#0a0e12;border-bottom:1px solid var(--line);
+  font:600 11px/1.2 ui-monospace,Menlo,monospace;color:var(--mut)
+}
+#clock-bar b{color:var(--acc);font-weight:700}
+#clock-bar .clk-seg{display:inline-flex;align-items:baseline;gap:5px}
+#clock-bar .clk-seg em{font-style:normal;opacity:.55;font-size:9px;letter-spacing:.06em;text-transform:uppercase}
+#clock-bar .mkt-open{color:#3fb950} #clock-bar .mkt-closed{color:#8b949e}
+#clock-bar .turn-live{color:var(--acc)}
+body.gamedev #bar .brand span{color:var(--acc)}
+body.gamedev #side{border-left-color:rgba(94,234,212,.2)}
+.note-pure{font:600 11px system-ui;color:var(--warn);margin:0}
+</style>
+</head>
+<body class="mode-webgrid gamedev">
+<header id="bar">
+  <div class="brand">GAMEDEV ARENA <span>pure</span> · <a href="ugrad-arena.html" style="color:var(--acc)">μgrad Arena ↗</a></div>
+  <button type="button" class="tab on" data-mode="webgrid">WebGrid</button>
+  <button type="button" class="tab" data-mode="go">Go</button>
+  <button type="button" class="tab" data-mode="chess">Chess</button>
+  <button type="button" class="tab" data-mode="glyph">Glyph / 4K</button>
+  <div class="sep"></div>
+  <button type="button" class="btn primary" id="btn-start">Start / Reset</button>
+  <button type="button" class="btn" id="btn-agent">Agent OFF</button>
+  <button type="button" class="btn" id="btn-pause-clock">Clock pause</button>
+  <button type="button" class="btn" id="btn-auto-turns-top" title="Go/Chess dual engines">Auto turns</button>
+  <div class="sep"></div>
+  <span class="mut" id="bc-status">BC · connecting…</span>
+  <span class="mut" id="path-hint">:8765/lite-arena.html?gamedev=1</span>
+</header>
+<div id="clock-bar" title="/clock · timesync style · chess/go turn clocks below">
+  <div class="clk-seg"><em>Zulu</em><b id="clk-zulu">—</b></div>
+  <div class="clk-seg"><em>Local</em><span id="clk-local">—</span></div>
+  <div class="clk-seg"><em>Unix</em><span id="clk-unix">—</span></div>
+  <div class="clk-seg"><em>NY</em><span id="clk-ny" class="mkt-closed">—</span></div>
+  <div class="clk-seg"><em>LDN</em><span id="clk-ldn" class="mkt-closed">—</span></div>
+  <div class="clk-seg"><em>TYO</em><span id="clk-tyo" class="mkt-closed">—</span></div>
+  <div class="clk-seg"><em>Turn</em><span id="clk-turn" class="turn-live">idle</span></div>
+  <div class="clk-seg"><em>Inc</em><span id="clk-inc">+0s</span></div>
+</div>
+
+<div id="layout">
+  <main id="stage">
+    <!-- WEBGRID -->
+    <div id="wg-wrap">
+      <div id="wg-toolbar">
+        <label class="mut">N <select id="wg-n"><option value="12">12×12</option><option value="30" selected>30×30</option></select></label>
+        <label class="mut">Round s <input id="wg-dur" type="number" value="70" min="10" max="180" style="width:4rem;background:var(--chip);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px"/></label>
+        <label class="mut"><input type="checkbox" id="wg-sim" checked/> sim-tick (uncap 60Hz)</label>
+      </div>
+      <canvas id="wg-canvas" width="600" height="600" aria-label="WebGrid offline"></canvas>
+      <p class="mut">BPS = log₂(N²−1)×NTPM/60 · blue = rgb(10,132,255) · offline rules · agent owns tick when sim on</p>
+    </div>
+
+    <!-- GO -->
+    <div id="go-wrap">
+      <div id="wg-toolbar">
+        <label class="mut">Board <select id="go-n"><option value="9">9×9</option><option value="13">13×13</option><option value="19" selected>19×19</option></select></label>
+        <button type="button" class="btn" id="go-pass">Pass</button>
+        <button type="button" class="btn" id="go-undo">Undo</button>
+        <button type="button" class="btn" id="go-ai-a">Engine A move</button>
+        <button type="button" class="btn" id="go-ai-b">Engine B move</button>
+      </div>
+      <svg id="go-svg" viewBox="-0.5 -0.5 19 19" preserveAspectRatio="xMidYMid meet" aria-label="Go board"></svg>
+      <p class="mut" id="go-status">Black to play · capture + suicide block · simple ko off (lab)</p>
+    </div>
+
+    <!-- CHESS -->
+    <div id="ch-wrap">
+      <div id="wg-toolbar">
+        <button type="button" class="btn" id="ch-undo">Undo</button>
+        <button type="button" class="btn" id="ch-ai-a">Engine A move</button>
+        <button type="button" class="btn" id="ch-ai-b">Engine B move</button>
+        <span class="mut" id="ch-status">White to move</span>
+      </div>
+      <div id="ch-board" aria-label="Chess board"></div>
+      <p class="mut">Lite chess: pseudo-legal + own-king check filter · no castling/en passant (lab) · dual AI seats</p>
+    </div>
+
+    <!-- GLYPH ARCH -->
+    <div id="glyph-wrap">
+      <h2 style="margin-top:0">Glyph cast · 4K TV stenography · product architecture</h2>
+      <p class="mut">Source of truth: <code>experiments/memory-glass/docs/WEBGRID-GLYPH-CAPTURE.md</code> · debate <code>#wg-glyph</code></p>
+      <pre id="glyph-arch-pre"></pre>
+    </div>
+  </main>
+
+  <aside id="side">
+    <div class="panel">
+      <h3>Score · disclosure</h3>
+      <div id="hud-bps">— BPS</div>
+      <div id="hud-sub">offline instrument · agent ≠ implant</div>
+      <div class="row"><span class="k">NTPM</span><span id="hud-ntpm">—</span></div>
+      <div class="row"><span class="k">timer</span><span id="hud-timer">—</span></div>
+      <div class="row"><span class="k">hits / miss</span><span id="hud-hm">0 / 0</span></div>
+      <div class="row"><span class="k">grid / mode</span><span id="hud-mode">webgrid</span></div>
+      <div class="row"><span class="k">peak</span><span id="hud-peak">—</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Clocks · /clock · chess / go turns</h3>
+      <p class="note-pure">Same rules as chess clocks: only active side burns. WebGrid uses run timer (70s).</p>
+      <div class="clocks">
+        <div class="clock" id="clk-a"><div class="who" id="clk-a-lbl">BLACK / WHITE</div><div class="time" id="clk-a-t">5:00</div></div>
+        <div class="clock" id="clk-b"><div class="who" id="clk-b-lbl">WHITE / BLACK</div><div class="time" id="clk-b-t">5:00</div></div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <label class="mut">Min/side <input id="clk-min" type="number" value="5" min="1" max="180" style="width:3.5rem;background:var(--chip);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px"/></label>
+        <label class="mut">Inc s <input id="clk-inc-in" type="number" value="0" min="0" max="60" style="width:3rem;background:var(--chip);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px" title="Fischer increment after each move"/></label>
+        <button type="button" class="btn" id="clk-reset">Reset clocks</button>
+      </div>
+      <p class="mut" style="margin:6px 0 0">Fischer: +inc after move. Zulu bar = /clock timesync. Pause freezes both.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Dual AI seats · toward kbatch</h3>
+      <div class="engines">
+        <div class="eng">
+          <h4>Engine A</h4>
+          <select id="eng-a">
+            <option value="random">random legal</option>
+            <option value="greedy">greedy heuristic</option>
+            <option value="remote">remote BC seat</option>
+            <option value="human">human only</option>
+          </select>
+          <input id="eng-a-name" value="Engine-A" maxlength="24" placeholder="label"/>
+        </div>
+        <div class="eng">
+          <h4>Engine B</h4>
+          <select id="eng-b">
+            <option value="random">random legal</option>
+            <option value="greedy" selected>greedy heuristic</option>
+            <option value="remote">remote BC seat</option>
+            <option value="human">human only</option>
+          </select>
+          <input id="eng-b-name" value="Engine-B" maxlength="24" placeholder="label"/>
+        </div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn primary" id="btn-auto-turns">Auto dual turns</button>
+        <button type="button" class="btn" id="btn-stop-auto">Stop</button>
+      </div>
+      <p class="mut" style="margin:6px 0 0">Two engines alternate. Remote seat listens on BC <code>ugrad-lite-engine</code> for move proposals (kbatch / rubik math path).</p>
+    </div>
+
+    <div class="panel">
+      <h3>Broadcast · tensor lane</h3>
+      <label class="mut"><input type="checkbox" id="bc-send" checked/> Publish state</label>
+      <label class="mut"><input type="checkbox" id="bc-recv" checked/> Follow remote</label>
+      <div class="row"><span class="k">channels</span><span class="mut">ugrad-lite-arena · ugrad-webgrid-race · ugrad-lite-engine</span></div>
+      <div class="row"><span class="k">last RX</span><span id="bc-rx">—</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Event log</h3>
+      <div id="log"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var VER = "lite-arena-v2.1-stable-hotpath";
+  var TARGET_R = 10, TARGET_G = 132, TARGET_B = 255;
+  var BC_ARENA = "ugrad-lite-arena";
+  var BC_WG = "ugrad-webgrid-race";
+  var BC_ENG = "ugrad-lite-engine";
+  var mode = "webgrid";
+  /* GAMEDEV default: agent OFF — no random clicking until user arms it */
+  var agentOn = false;
+  var autoTurns = false;
+  var clockPaused = false;
+  var fischerIncS = 0;
+
+  function $(id) { return document.getElementById(id); }
+  function qParam(name) {
+    try {
+      return new URLSearchParams(location.search || "").get(name);
+    } catch (e) {
+      return null;
+    }
+  }
+  /* URL: ?gamedev=1&agent=0|1&mode=webgrid|go|chess&clock=5&inc=2&auto=1 */
+  (function applyUrlBoot() {
+    var g = qParam("gamedev");
+    if (g === "0") document.body.classList.remove("gamedev");
+    else document.body.classList.add("gamedev");
+    var a = qParam("agent");
+    if (a === "1" || a === "on") agentOn = true;
+    if (a === "0" || a === "off") agentOn = false;
+    var m = qParam("mode");
+    if (m === "webgrid" || m === "go" || m === "chess" || m === "glyph") mode = m;
+    var c = parseInt(qParam("clock") || qParam("min") || "", 10);
+    if (c >= 1 && c <= 180 && $("clk-min")) $("clk-min").value = String(c);
+    var inc = parseInt(qParam("inc") || "0", 10);
+    if (inc >= 0 && inc <= 60) {
+      fischerIncS = inc;
+      if ($("clk-inc-in")) $("clk-inc-in").value = String(inc);
+    }
+  })();
+  function log(msg) {
+    var el = $("log");
+    if (!el) return;
+    var d = document.createElement("div");
+    d.className = "e";
+    d.textContent = new Date().toISOString().slice(11, 19) + " · " + msg;
+    el.insertBefore(d, el.firstChild);
+    while (el.children.length > 80) el.removeChild(el.lastChild);
+  }
+
+  /* ── product arch text ── */
+  $("glyph-arch-pre").textContent = [
+    "PRODUCT ARCHITECTURE · WebGrid timing × Glyph 4K stenography",
+    "Source: experiments/memory-glass/docs/WEBGRID-GLYPH-CAPTURE.md",
+    "Debate: http://127.0.0.1:8765/#wg-glyph",
+    "",
+    "Shared loop:",
+    "  source → frame clock → detect/target → act → score → log → fleet",
+    "",
+    "Lite Arena (this page) = offline ownership of tick:",
+    "  · WebGrid: sim-tick can uncap Neuralink 60Hz paint wall",
+    "  · Go / Chess: dual AI seats + chess clocks",
+    "  · Built-in side panel = disclosure (no float z-index wars)",
+    "",
+    "4K TV glyph cast stenography (live layering):",
+    "  Resolution: 3840×2160 · module grid over safe-title",
+    "  Profiles:",
+    "    RGB full/limited  ·  Rec.709 / Rec.2020  ·  HDR PQ optional",
+    "    Alpha: premultiplied RGBA overlay on compositor",
+    "    Chroma-key: green/magenta holdout for talent + free-mask",
+    "  Layers (bottom→top):",
+    "    0 plate / program  ·  1 free-mask / matte  ·  2 glyph 13×13 tickets",
+    "    3 fountain QR (bulk, soak only)  ·  4 disclosure HUD (thin)",
+    "  One hot path: race instrument XOR dense peel soak",
+    "  Stenography use cases:",
+    "    · session tickets in glyph (control plane, low B/frame)",
+    "    · steno budget path toward kbatch.ugrad.ai language plane",
+    "    · rubik-language math as multi-face state over glyph frames",
+    "    · dual-engine adjudication (Engine A vs B) logged in JSONL",
+    "",
+    "BPS parity (offline = Neuralink formula):",
+    "  BPS = log2(N*N-1) * NTPM/60",
+    "  NTPM = net hits in last 60s window (+1 hit, -1 miss)",
+    "",
+    "BroadcastChannel:",
+    "  ugrad-lite-arena   full state snapshot",
+    "  ugrad-webgrid-race score ticks (MG race-shell compatible)",
+    "  ugrad-lite-engine  dual AI move proposals",
+  ].join("\n");
+
+  /* ── clocks (chess/go turn + /clock Zulu strip) ── */
+  var clock = {
+    mainMs: 5 * 60 * 1000,
+    a: 5 * 60 * 1000,
+    b: 5 * 60 * 1000,
+    active: "a", /* a = black/white depending on game */
+    lastT: 0,
+    running: false,
+  };
+  function fmtMs(ms) {
+    ms = Math.max(0, ms | 0);
+    var s = Math.floor(ms / 1000);
+    var m = Math.floor(s / 60);
+    s = s % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function fmtTz(d, tz) {
+    try {
+      return d.toLocaleTimeString("en-GB", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+    } catch (e) {
+      return "—";
+    }
+  }
+  function marketOpen(d, tz, openH, closeH) {
+    try {
+      var parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz,
+        weekday: "short",
+        hour: "numeric",
+        hour12: false,
+      }).formatToParts(d);
+      var wd = "",
+        h = 0;
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].type === "weekday") wd = parts[i].value;
+        if (parts[i].type === "hour") h = parseInt(parts[i].value, 10);
+      }
+      if (wd === "Sat" || wd === "Sun") return false;
+      return h >= openH && h < closeH;
+    } catch (e) {
+      return false;
+    }
+  }
+  function paintClockBar() {
+    var d = new Date();
+    var zulu = d.toISOString().slice(11, 19) + "Z";
+    if ($("clk-zulu")) $("clk-zulu").textContent = zulu;
+    if ($("clk-local"))
+      $("clk-local").textContent = d.toLocaleTimeString(undefined, { hour12: false });
+    if ($("clk-unix")) $("clk-unix").textContent = String(Math.floor(d.getTime() / 1000));
+    function setMkt(id, tz, openH, closeH) {
+      var el = $(id);
+      if (!el) return;
+      var open = marketOpen(d, tz, openH, closeH);
+      el.textContent = fmtTz(d, tz) + (open ? " · open" : " · closed");
+      el.className = open ? "mkt-open" : "mkt-closed";
+    }
+    setMkt("clk-ny", "America/New_York", 9, 16);
+    setMkt("clk-ldn", "Europe/London", 8, 16);
+    setMkt("clk-tyo", "Asia/Tokyo", 9, 15);
+    var turnEl = $("clk-turn");
+    if (turnEl) {
+      if (mode === "webgrid") {
+        turnEl.textContent = wg.running
+          ? "WG " + (agentOn ? "agent" : "human") + " · " + wg.hits + "h"
+          : "WG idle";
+      } else if (mode === "go") {
+        turnEl.textContent =
+          (clock.active === "a" ? "Black" : "White") +
+          (clockPaused ? " · PAUSE" : clock.running ? " · live" : "");
+      } else if (mode === "chess") {
+        turnEl.textContent =
+          (clock.active === "a" ? "White" : "Black") +
+          (clockPaused ? " · PAUSE" : clock.running ? " · live" : "");
+      } else turnEl.textContent = mode;
+    }
+    if ($("clk-inc")) $("clk-inc").textContent = "+" + fischerIncS + "s";
+  }
+  function paintClocks() {
+    $("clk-a-t").textContent = fmtMs(clock.a);
+    $("clk-b-t").textContent = fmtMs(clock.b);
+    $("clk-a").classList.toggle("active", clock.running && clock.active === "a" && !clockPaused);
+    $("clk-b").classList.toggle("active", clock.running && clock.active === "b" && !clockPaused);
+    $("clk-a").classList.toggle("flag", clock.a <= 0);
+    $("clk-b").classList.toggle("flag", clock.b <= 0);
+    if (mode === "go") {
+      $("clk-a-lbl").textContent = "BLACK";
+      $("clk-b-lbl").textContent = "WHITE";
+    } else if (mode === "chess") {
+      $("clk-a-lbl").textContent = "WHITE";
+      $("clk-b-lbl").textContent = "BLACK";
+    } else {
+      $("clk-a-lbl").textContent = "RUN";
+      $("clk-b-lbl").textContent = "IDLE";
+    }
+    paintClockBar();
+  }
+  function resetClocks() {
+    var min = parseInt($("clk-min").value, 10) || 5;
+    fischerIncS = parseInt(($("clk-inc-in") && $("clk-inc-in").value) || "0", 10) || 0;
+    if (fischerIncS < 0) fischerIncS = 0;
+    clock.mainMs = min * 60 * 1000;
+    clock.a = clock.mainMs;
+    clock.b = clock.mainMs;
+    clock.lastT = performance.now();
+    clock.running = mode === "go" || mode === "chess";
+    clock.active = "a";
+    clockPaused = false;
+    paintClocks();
+  }
+  function tickClocks(now) {
+    if (!clock.running || clockPaused || (mode !== "go" && mode !== "chess")) return;
+    var dt = now - clock.lastT;
+    clock.lastT = now;
+    if (clock.active === "a") clock.a -= dt;
+    else clock.b -= dt;
+    if (clock.a < 0) clock.a = 0;
+    if (clock.b < 0) clock.b = 0;
+    paintClocks();
+  }
+  function switchClockSide() {
+    /* Fischer: credit the side that just moved before flip */
+    if (fischerIncS > 0) {
+      if (clock.active === "a") clock.a += fischerIncS * 1000;
+      else clock.b += fischerIncS * 1000;
+    }
+    clock.active = clock.active === "a" ? "b" : "a";
+    clock.lastT = performance.now();
+    paintClocks();
+  }
+
+  /* ── BroadcastChannel ── */
+  var bcArena = null, bcWg = null, bcEng = null;
+  try {
+    bcArena = new BroadcastChannel(BC_ARENA);
+    bcWg = new BroadcastChannel(BC_WG);
+    bcEng = new BroadcastChannel(BC_ENG);
+  } catch (e) {}
+  function bcSend(ch, msg) {
+    if (!$("bc-send").checked) return;
+    try {
+      ch && ch.postMessage(Object.assign({ t: Date.now(), ver: VER, source: "lite-arena" }, msg));
+    } catch (e) {}
+  }
+  function wireBc() {
+    $("bc-status").textContent = bcArena ? "BC · live" : "BC · unavailable";
+    if (bcArena) {
+      bcArena.onmessage = function (ev) {
+        if (!$("bc-recv").checked) return;
+        var d = ev.data || {};
+        $("bc-rx").textContent = (d.type || "?") + " · " + new Date(d.t || Date.now()).toISOString().slice(11, 19);
+      };
+    }
+    if (bcEng) {
+      bcEng.onmessage = function (ev) {
+        var d = ev.data || {};
+        if (d.type !== "propose-move") return;
+        log("engine RX " + (d.engine || "?") + " " + JSON.stringify(d.move || {}).slice(0, 80));
+        applyRemoteMove(d);
+      };
+    }
+  }
+
+  /* ════════════════════════════════════════════
+     WEBGRID OFFLINE
+     ════════════════════════════════════════════ */
+  var wg = {
+    N: 30,
+    dur: 70,
+    running: false,
+    t0: 0,
+    tEnd: 0,
+    blue: -1,
+    hits: 0,
+    miss: 0,
+    peakBps: 0,
+    peakNtpm: 0,
+    hitTimes: [],
+    agentTimer: null,
+  };
+  function bpsFromNtpm(ntpm, N) {
+    if (!ntpm || ntpm <= 0 || !N) return 0;
+    return Math.max((Math.log(N * N - 1) / Math.LN2) * (ntpm / 60), 0);
+  }
+  function ntpmNow() {
+    var cut = performance.now() - 60000;
+    wg.hitTimes = wg.hitTimes.filter(function (e) {
+      return e && e.t > cut;
+    });
+    var net = 0;
+    for (var i = 0; i < wg.hitTimes.length; i++) {
+      net += wg.hitTimes[i].s || 0;
+    }
+    return net;
+  }
+  function spawnBlue() {
+    var n = wg.N * wg.N;
+    if (n <= 1) { wg.blue = 0; return; }
+    var b = (Math.random() * n) | 0;
+    if (b === wg.blue) b = (b + 1) % n;
+    wg.blue = b;
+  }
+  function paintWg() {
+    var c = $("wg-canvas");
+    var ctx = c.getContext("2d");
+    var W = c.width, H = c.height;
+    var N = wg.N;
+    var cell = W / N;
+    ctx.fillStyle = "#1a1a1e";
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 1;
+    for (var i = 0; i <= N; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * cell, 0);
+      ctx.lineTo(i * cell, H);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * cell);
+      ctx.lineTo(W, i * cell);
+      ctx.stroke();
+    }
+    if (wg.blue >= 0 && wg.running) {
+      var col = wg.blue % N;
+      var row = (wg.blue / N) | 0;
+      ctx.fillStyle = "rgb(" + TARGET_R + "," + TARGET_G + "," + TARGET_B + ")";
+      ctx.fillRect(col * cell + 1, row * cell + 1, cell - 2, cell - 2);
+    }
+  }
+  function wgScoreHud() {
+    var left = wg.running ? Math.max(0, (wg.tEnd - performance.now()) / 1000) : 0;
+    var mm = Math.floor(left / 60);
+    var ss = Math.floor(left % 60);
+    var timer = (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss;
+    var ntpm = ntpmNow();
+    var bps = bpsFromNtpm(ntpm, wg.N);
+    if (bps > wg.peakBps) {
+      wg.peakBps = bps;
+      wg.peakNtpm = ntpm;
+    }
+    $("hud-bps").textContent = bps.toFixed(2) + " BPS";
+    $("hud-ntpm").textContent = String(Math.round(ntpm));
+    $("hud-timer").textContent = timer;
+    $("hud-hm").textContent = wg.hits + " / " + wg.miss;
+    $("hud-mode").textContent = wg.N + "×" + wg.N + " · " + (agentOn ? "agent" : "human");
+    $("hud-peak").textContent = wg.peakBps.toFixed(1) + " / " + Math.round(wg.peakNtpm);
+    bcSend(bcWg, {
+      type: "score",
+      kind: "agent_tick",
+      bps: bps,
+      ntpm: ntpm,
+      timer: timer,
+      grid: wg.N + "x" + wg.N,
+      clicks: wg.hits,
+      peak: { bps: wg.peakBps, ntpm: wg.peakNtpm },
+      offline: true,
+    });
+  }
+  function wgHit(index) {
+    if (!wg.running) return;
+    if (index === wg.blue) {
+      wg.hits++;
+      wg.hitTimes.push({ t: performance.now(), s: 1 });
+      spawnBlue();
+      /* sim-tick: next blue immediate in same turn — uncap 60Hz paint wall */
+    } else {
+      wg.miss++;
+      wg.hitTimes.push({ t: performance.now(), s: -1 });
+    }
+    paintWg();
+    wgScoreHud();
+  }
+  function wgClick(ev) {
+    var c = $("wg-canvas");
+    var r = c.getBoundingClientRect();
+    var x = ((ev.clientX - r.left) / r.width) * c.width;
+    var y = ((ev.clientY - r.top) / r.height) * c.height;
+    var N = wg.N;
+    var cell = c.width / N;
+    var col = Math.min(N - 1, Math.max(0, (x / cell) | 0));
+    var row = Math.min(N - 1, Math.max(0, (y / cell) | 0));
+    wgHit(col + N * row);
+  }
+  function wgAgentStep() {
+    if (!wg.running || !agentOn || mode !== "webgrid") return;
+    if (wg.blue >= 0) wgHit(wg.blue);
+  }
+  function startWebgrid() {
+    wg.N = parseInt($("wg-n").value, 10) || 30;
+    wg.dur = parseInt($("wg-dur").value, 10) || 70;
+    wg.hits = 0;
+    wg.miss = 0;
+    wg.hitTimes = [];
+    wg.peakBps = 0;
+    wg.peakNtpm = 0;
+    wg.running = true;
+    wg.t0 = performance.now();
+    wg.tEnd = wg.t0 + wg.dur * 1000;
+    spawnBlue();
+    paintWg();
+    wgScoreHud();
+    log("webgrid start N=" + wg.N + " dur=" + wg.dur + "s sim=" + $("wg-sim").checked);
+    bcSend(bcArena, { type: "webgrid-start", N: wg.N, dur: wg.dur });
+  }
+
+  /* ════════════════════════════════════════════
+     GO (lite)
+     ════════════════════════════════════════════ */
+  var go = {
+    N: 19,
+    board: [], /* 0 empty, 1 black, -1 white */
+    turn: 1,
+    history: [],
+    passes: 0,
+  };
+  function goInit() {
+    go.N = parseInt($("go-n").value, 10) || 19;
+    go.board = [];
+    for (var i = 0; i < go.N * go.N; i++) go.board.push(0);
+    go.turn = 1;
+    go.history = [];
+    go.passes = 0;
+    paintGo();
+    $("go-status").textContent = "Black to play · " + go.N + "×" + go.N;
+    resetClocks();
+  }
+  function goIdx(x, y) { return y * go.N + x; }
+  function goNeighbors(i) {
+    var N = go.N, x = i % N, y = (i / N) | 0, o = [];
+    if (x > 0) o.push(i - 1);
+    if (x < N - 1) o.push(i + 1);
+    if (y > 0) o.push(i - N);
+    if (y < N - 1) o.push(i + N);
+    return o;
+  }
+  function goGroup(i, color) {
+    var seen = {}, stack = [i], stones = [], libs = {};
+    seen[i] = 1;
+    while (stack.length) {
+      var cur = stack.pop();
+      stones.push(cur);
+      goNeighbors(cur).forEach(function (n) {
+        if (go.board[n] === 0) libs[n] = 1;
+        else if (go.board[n] === color && !seen[n]) {
+          seen[n] = 1;
+          stack.push(n);
+        }
+      });
+    }
+    return { stones: stones, libs: Object.keys(libs).length };
+  }
+  function goTryPlace(i, dry) {
+    if (go.board[i] !== 0) return false;
+    var color = go.turn;
+    var prev = go.board.slice();
+    go.board[i] = color;
+    var captured = [];
+    goNeighbors(i).forEach(function (n) {
+      if (go.board[n] === -color) {
+        var g = goGroup(n, -color);
+        if (g.libs === 0) {
+          g.stones.forEach(function (s) {
+            go.board[s] = 0;
+            captured.push(s);
+          });
+        }
+      }
+    });
+    var self = goGroup(i, color);
+    if (self.libs === 0 && captured.length === 0) {
+      go.board = prev;
+      return false; /* suicide */
+    }
+    if (dry) {
+      go.board = prev;
+      return true;
+    }
+    go.history.push({ board: prev, turn: color, i: i });
+    go.turn = -color;
+    go.passes = 0;
+    switchClockSide();
+    paintGo();
+    $("go-status").textContent = (go.turn === 1 ? "Black" : "White") + " to play · cap " + captured.length;
+    bcSend(bcArena, { type: "go-state", N: go.N, board: go.board, turn: go.turn });
+    return true;
+  }
+  function paintGo() {
+    var svg = $("go-svg");
+    var N = go.N;
+    svg.setAttribute("viewBox", "-0.5 -0.5 " + N + " " + N);
+    var html = "";
+    var i, x, y;
+    for (i = 0; i < N; i++) {
+      html += '<line x1="0" y1="' + i + '" x2="' + (N - 1) + '" y2="' + i + '" stroke="#3d2914" stroke-width="0.04"/>';
+      html += '<line x1="' + i + '" y1="0" x2="' + i + '" y2="' + (N - 1) + '" stroke="#3d2914" stroke-width="0.04"/>';
+    }
+    /* star points */
+    var stars = N === 19 ? [3, 9, 15] : N === 13 ? [3, 6, 9] : [2, 4, 6];
+    stars.forEach(function (sy) {
+      stars.forEach(function (sx) {
+        html += '<circle cx="' + sx + '" cy="' + sy + '" r="0.08" fill="#3d2914"/>';
+      });
+    });
+    for (y = 0; y < N; y++) {
+      for (x = 0; x < N; x++) {
+        var v = go.board[goIdx(x, y)];
+        if (v === 1)
+          html += '<circle cx="' + x + '" cy="' + y + '" r="0.42" fill="#111" stroke="#000" stroke-width="0.03"/>';
+        else if (v === -1)
+          html += '<circle cx="' + x + '" cy="' + y + '" r="0.42" fill="#f5f5f5" stroke="#333" stroke-width="0.03"/>';
+      }
+    }
+    /* click targets */
+    for (y = 0; y < N; y++) {
+      for (x = 0; x < N; x++) {
+        html +=
+          '<rect data-i="' +
+          goIdx(x, y) +
+          '" x="' +
+          (x - 0.45) +
+          '" y="' +
+          (y - 0.45) +
+          '" width="0.9" height="0.9" fill="transparent" style="cursor:pointer"/>';
+      }
+    }
+    svg.innerHTML = html;
+    svg.querySelectorAll("rect[data-i]").forEach(function (r) {
+      r.addEventListener("click", function () {
+        var i = parseInt(r.getAttribute("data-i"), 10);
+        if (goTryPlace(i)) log("go place " + i);
+      });
+    });
+  }
+  function goLegalMoves() {
+    var m = [];
+    for (var i = 0; i < go.board.length; i++) {
+      if (go.board[i] !== 0) continue;
+      if (goTryPlace(i, true)) m.push(i);
+    }
+    return m;
+  }
+  function goAi(engine) {
+    var moves = goLegalMoves();
+    if (!moves.length) {
+      go.passes++;
+      go.turn = -go.turn;
+      switchClockSide();
+      $("go-status").textContent = "Pass · " + (go.turn === 1 ? "Black" : "White") + " to play";
+      return;
+    }
+    var pick = moves[(Math.random() * moves.length) | 0];
+    if (engine === "greedy") {
+      /* prefer center */
+      var mid = (go.N / 2) | 0;
+      moves.sort(function (a, b) {
+        var ax = a % go.N, ay = (a / go.N) | 0;
+        var bx = b % go.N, by = (b / go.N) | 0;
+        return Math.abs(ax - mid) + Math.abs(ay - mid) - (Math.abs(bx - mid) + Math.abs(by - mid));
+      });
+      pick = moves[0];
+    }
+    goTryPlace(pick);
+    log("go AI " + engine + " → " + pick);
+  }
+
+  /* ════════════════════════════════════════════
+     CHESS (lite)
+     ════════════════════════════════════════════ */
+  var PIECES = {
+    K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
+    k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
+  };
+  var ch = {
+    board: [], /* 64, uppercase white */
+    turn: "w",
+    sel: -1,
+    history: [],
+  };
+  function chStart() {
+    var fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+    ch.board = [];
+    fen.split("/").forEach(function (row) {
+      for (var i = 0; i < row.length; i++) {
+        var c = row[i];
+        if (c >= "1" && c <= "8") {
+          for (var k = 0; k < parseInt(c, 10); k++) ch.board.push("");
+        } else ch.board.push(c);
+      }
+    });
+    ch.turn = "w";
+    ch.sel = -1;
+    ch.history = [];
+    paintChess();
+    $("ch-status").textContent = "White to move";
+    resetClocks();
+  }
+  function chColor(p) {
+    if (!p) return null;
+    return p === p.toUpperCase() ? "w" : "b";
+  }
+  function chXY(i) { return { x: i % 8, y: (i / 8) | 0 }; }
+  function chAt(x, y) {
+    if (x < 0 || y < 0 || x > 7 || y > 7) return null;
+    return ch.board[y * 8 + x];
+  }
+  function chPseudoMoves(i) {
+    var p = ch.board[i];
+    if (!p) return [];
+    var col = chColor(p);
+    var { x, y } = chXY(i);
+    var out = [];
+    var add = function (nx, ny, capOnly, quietOnly) {
+      if (nx < 0 || ny < 0 || nx > 7 || ny > 7) return false;
+      var t = chAt(nx, ny);
+      if (t && chColor(t) === col) return false;
+      if (capOnly && !t) return true;
+      if (quietOnly && t) return false;
+      out.push(ny * 8 + nx);
+      return !t;
+    };
+    var ray = function (dx, dy) {
+      var nx = x + dx, ny = y + dy;
+      while (nx >= 0 && ny >= 0 && nx < 8 && ny < 8) {
+        var t = chAt(nx, ny);
+        if (!t) out.push(ny * 8 + nx);
+        else {
+          if (chColor(t) !== col) out.push(ny * 8 + nx);
+          break;
+        }
+        nx += dx;
+        ny += dy;
+      }
+    };
+    var pl = p.toLowerCase();
+    if (pl === "p") {
+      var dir = col === "w" ? -1 : 1;
+      var start = col === "w" ? 6 : 1;
+      if (add(x, y + dir, false, true) && y === start) add(x, y + 2 * dir, false, true);
+      add(x - 1, y + dir, true, false);
+      add(x + 1, y + dir, true, false);
+    } else if (pl === "n") {
+      [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]].forEach(function (d) {
+        add(x + d[0], y + d[1]);
+      });
+    } else if (pl === "b") {
+      ray(1, 1); ray(1, -1); ray(-1, 1); ray(-1, -1);
+    } else if (pl === "r") {
+      ray(1, 0); ray(-1, 0); ray(0, 1); ray(0, -1);
+    } else if (pl === "q") {
+      ray(1, 0); ray(-1, 0); ray(0, 1); ray(0, -1);
+      ray(1, 1); ray(1, -1); ray(-1, 1); ray(-1, -1);
+    } else if (pl === "k") {
+      for (var dx = -1; dx <= 1; dx++)
+        for (var dy = -1; dy <= 1; dy++)
+          if (dx || dy) add(x + dx, y + dy);
+    }
+    return out;
+  }
+  function chFindKing(side) {
+    var k = side === "w" ? "K" : "k";
+    for (var i = 0; i < 64; i++) if (ch.board[i] === k) return i;
+    return -1;
+  }
+  function chInCheck(side) {
+    var ki = chFindKing(side);
+    if (ki < 0) return true;
+    var enemy = side === "w" ? "b" : "w";
+    for (var i = 0; i < 64; i++) {
+      if (chColor(ch.board[i]) !== enemy) continue;
+      var ms = chPseudoMoves(i);
+      if (ms.indexOf(ki) >= 0) return true;
+    }
+    return false;
+  }
+  function chLegalFrom(i) {
+    var p = ch.board[i];
+    if (chColor(p) !== ch.turn) return [];
+    var raw = chPseudoMoves(i);
+    var legal = [];
+    raw.forEach(function (j) {
+      var snap = ch.board.slice();
+      ch.board[j] = ch.board[i];
+      ch.board[i] = "";
+      if (!chInCheck(ch.turn)) legal.push(j);
+      ch.board = snap;
+    });
+    return legal;
+  }
+  function chAllMoves(side) {
+    var m = [];
+    for (var i = 0; i < 64; i++) {
+      if (chColor(ch.board[i]) !== side) continue;
+      chLegalFrom(i).forEach(function (j) {
+        m.push({ from: i, to: j });
+      });
+    }
+    return m;
+  }
+  function chMove(from, to) {
+    var legal = chLegalFrom(from);
+    if (legal.indexOf(to) < 0) return false;
+    ch.history.push({ board: ch.board.slice(), turn: ch.turn });
+    ch.board[to] = ch.board[from];
+    ch.board[from] = "";
+    /* promo */
+    var p = ch.board[to];
+    if (p === "P" && (to / 8 | 0) === 0) ch.board[to] = "Q";
+    if (p === "p" && (to / 8 | 0) === 7) ch.board[to] = "q";
+    ch.turn = ch.turn === "w" ? "b" : "w";
+    ch.sel = -1;
+    switchClockSide();
+    paintChess();
+    $("ch-status").textContent = (ch.turn === "w" ? "White" : "Black") + " to move" + (chInCheck(ch.turn) ? " · check" : "");
+    bcSend(bcArena, { type: "chess-state", board: ch.board, turn: ch.turn });
+    return true;
+  }
+  function paintChess() {
+    var el = $("ch-board");
+    var html = "";
+    for (var y = 0; y < 8; y++) {
+      for (var x = 0; x < 8; x++) {
+        var i = y * 8 + x;
+        var light = (x + y) % 2 === 0;
+        var cls = "sq " + (light ? "light" : "dark");
+        if (i === ch.sel) cls += " sel";
+        var p = ch.board[i];
+        html +=
+          '<div class="' +
+          cls +
+          '" data-i="' +
+          i +
+          '">' +
+          (p ? PIECES[p] || p : "") +
+          "</div>";
+      }
+    }
+    el.innerHTML = html;
+    if (ch.sel >= 0) {
+      chLegalFrom(ch.sel).forEach(function (j) {
+        var n = el.querySelector('[data-i="' + j + '"]');
+        if (n) n.classList.add("hi");
+      });
+    }
+    el.querySelectorAll(".sq").forEach(function (sq) {
+      sq.addEventListener("click", function () {
+        var i = parseInt(sq.getAttribute("data-i"), 10);
+        if (ch.sel < 0) {
+          if (chColor(ch.board[i]) === ch.turn) {
+            ch.sel = i;
+            paintChess();
+          }
+        } else if (ch.sel === i) {
+          ch.sel = -1;
+          paintChess();
+        } else if (chMove(ch.sel, i)) {
+          log("chess " + ch.sel + "→" + i);
+        } else if (chColor(ch.board[i]) === ch.turn) {
+          ch.sel = i;
+          paintChess();
+        } else {
+          ch.sel = -1;
+          paintChess();
+        }
+      });
+    });
+  }
+  function chAi(engine) {
+    var moves = chAllMoves(ch.turn);
+    if (!moves.length) {
+      $("ch-status").textContent = "No moves · " + (ch.turn === "w" ? "White" : "Black") + " stuck";
+      return;
+    }
+    var pick = moves[(Math.random() * moves.length) | 0];
+    if (engine === "greedy") {
+      /* prefer captures */
+      moves.sort(function (a, b) {
+        var ca = ch.board[a.to] ? 1 : 0;
+        var cb = ch.board[b.to] ? 1 : 0;
+        return cb - ca;
+      });
+      pick = moves[0];
+    }
+    chMove(pick.from, pick.to);
+    log("chess AI " + engine + " " + pick.from + "→" + pick.to);
+  }
+
+  /* ── dual AI auto turns ── */
+  var autoTimer = null;
+  function engineForSide(side) {
+    /* go: black=a white=b ; chess: white=a black=b */
+    if (mode === "go") return side === 1 ? $("eng-a").value : $("eng-b").value;
+    if (mode === "chess") return side === "w" ? $("eng-a").value : $("eng-b").value;
+    return "human";
+  }
+  function autoStep() {
+    if (!autoTurns) return;
+    if (mode === "go") {
+      var eng = engineForSide(go.turn);
+      if (eng === "human" || eng === "remote") return;
+      goAi(eng);
+      bcSend(bcEng, { type: "move-played", game: "go", engine: eng, turn: go.turn });
+    } else if (mode === "chess") {
+      var e2 = engineForSide(ch.turn);
+      if (e2 === "human" || e2 === "remote") return;
+      chAi(e2);
+      bcSend(bcEng, { type: "move-played", game: "chess", engine: e2, turn: ch.turn });
+    }
+  }
+  function applyRemoteMove(d) {
+    if (d.game === "go" && typeof d.move === "number") goTryPlace(d.move);
+    if (d.game === "chess" && d.move && d.move.from != null) chMove(d.move.from, d.move.to);
+  }
+
+  /* ── mode switch ── */
+  function setMode(m) {
+    mode = m;
+    document.body.className = "mode-" + m;
+    document.querySelectorAll(".tab").forEach(function (t) {
+      t.classList.toggle("on", t.getAttribute("data-mode") === m);
+    });
+    if (m === "webgrid") {
+      clock.running = false;
+      paintWg();
+      wgScoreHud();
+    } else if (m === "go") {
+      if (!go.board.length) goInit();
+      else paintGo();
+      resetClocks();
+      $("hud-bps").textContent = "GO";
+      $("hud-sub").textContent = "dual AI · chess clock";
+    } else if (m === "chess") {
+      if (!ch.board.length) chStart();
+      else paintChess();
+      resetClocks();
+      $("hud-bps").textContent = "CHESS";
+      $("hud-sub").textContent = "dual AI · chess clock";
+    } else {
+      clock.running = false;
+      $("hud-bps").textContent = "GLYPH";
+      $("hud-sub").textContent = "4K · alpha/chroma · product arch";
+    }
+    $("hud-mode").textContent = m;
+    log("mode " + m);
+  }
+
+  /* ── main loop (hot path: board only; side HUD throttled — no panel thrash) ── */
+  var _lastHudT = 0;
+  var _lastClockT = 0;
+  function frame(now) {
+    /* clocks ≤ 10 Hz text updates (prevents side-panel flicker) */
+    if (!_lastClockT || now - _lastClockT > 100) {
+      tickClocks(now);
+      _lastClockT = now;
+    }
+    if (mode === "webgrid" && wg.running) {
+      if (now >= wg.tEnd) {
+        wg.running = false;
+        wgScoreHud();
+        log("webgrid end peak " + wg.peakBps.toFixed(2) + " BPS");
+        bcSend(bcWg, {
+          type: "agent_end",
+          peak: { bps: wg.peakBps, ntpm: wg.peakNtpm },
+          clicks: wg.hits,
+          offline: true,
+        });
+      } else {
+        if (agentOn) {
+          /* batch agent steps without per-step HUD */
+          var n = $("wg-sim") && $("wg-sim").checked ? 48 : 1;
+          while (n-- > 0 && wg.running && agentOn) wgAgentStep();
+        }
+        if (!_lastHudT || now - _lastHudT > 50) {
+          wgScoreHud();
+          _lastHudT = now;
+        }
+      }
+    }
+    if (autoTurns && (mode === "go" || mode === "chess")) {
+      if (!autoTimer || now - autoTimer > 350) {
+        autoTimer = now;
+        autoStep();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ── wire UI ── */
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.addEventListener("click", function () {
+      setMode(t.getAttribute("data-mode"));
+    });
+  });
+  $("btn-start").onclick = function () {
+    if (mode === "webgrid") startWebgrid();
+    else if (mode === "go") goInit();
+    else if (mode === "chess") chStart();
+  };
+  $("btn-agent").onclick = function () {
+    agentOn = !agentOn;
+    $("btn-agent").textContent = agentOn ? "Agent ON" : "Agent OFF";
+    $("btn-agent").classList.toggle("primary", agentOn);
+    log("agent " + (agentOn ? "ON (opt-in)" : "OFF · no auto-click"));
+  };
+  if ($("btn-auto-turns-top")) {
+    $("btn-auto-turns-top").onclick = function () {
+      if (mode !== "go" && mode !== "chess") {
+        log("auto turns only for go/chess — switch mode");
+        return;
+      }
+      autoTurns = !autoTurns;
+      $("btn-auto-turns-top").textContent = autoTurns ? "Auto ON" : "Auto turns";
+      $("btn-auto-turns-top").classList.toggle("primary", autoTurns);
+      log("auto dual turns " + (autoTurns ? "ON" : "OFF"));
+    };
+  }
+  $("btn-pause-clock").onclick = function () {
+    clockPaused = !clockPaused;
+    clock.lastT = performance.now();
+    $("btn-pause-clock").textContent = clockPaused ? "Clock resume" : "Clock pause";
+  };
+  $("clk-reset").onclick = resetClocks;
+  $("wg-canvas").addEventListener("pointerup", wgClick);
+  $("wg-n").onchange = function () {
+    wg.N = parseInt($("wg-n").value, 10) || 30;
+    paintWg();
+  };
+  $("go-n").onchange = goInit;
+  $("go-pass").onclick = function () {
+    go.passes++;
+    go.turn = -go.turn;
+    switchClockSide();
+    $("go-status").textContent = "Pass · " + (go.turn === 1 ? "Black" : "White") + " to play";
+  };
+  $("go-undo").onclick = function () {
+    var h = go.history.pop();
+    if (!h) return;
+    go.board = h.board;
+    go.turn = h.turn;
+    paintGo();
+  };
+  $("go-ai-a").onclick = function () { goAi($("eng-a").value === "human" ? "random" : $("eng-a").value); };
+  $("go-ai-b").onclick = function () { goAi($("eng-b").value === "human" ? "random" : $("eng-b").value); };
+  $("ch-undo").onclick = function () {
+    var h = ch.history.pop();
+    if (!h) return;
+    ch.board = h.board;
+    ch.turn = h.turn;
+    paintChess();
+  };
+  $("ch-ai-a").onclick = function () { chAi($("eng-a").value === "human" ? "random" : $("eng-a").value); };
+  $("ch-ai-b").onclick = function () { chAi($("eng-b").value === "human" ? "random" : $("eng-b").value); };
+  $("btn-auto-turns").onclick = function () {
+    autoTurns = true;
+    autoTimer = 0;
+    log("auto dual turns ON");
+  };
+  $("btn-stop-auto").onclick = function () {
+    autoTurns = false;
+    log("auto dual turns OFF");
+  };
+
+  /* public API for MG / tests */
+  window.LiteArena = {
+    ver: VER,
+    mode: function () { return mode; },
+    setMode: setMode,
+    startWebgrid: startWebgrid,
+    bpsFormula: function (ntpm, N) { return bpsFromNtpm(ntpm, N || 30); },
+    webgrid: function () {
+      return {
+        hits: wg.hits,
+        miss: wg.miss,
+        peakBps: wg.peakBps,
+        N: wg.N,
+        blue: wg.blue,
+        running: wg.running,
+        agentOn: agentOn,
+      };
+    },
+    go: function () { return { board: go.board.slice(), turn: go.turn, N: go.N }; },
+    chess: function () { return { board: ch.board.slice(), turn: ch.turn }; },
+    agentStep: wgAgentStep,
+    setAgent: function (on) {
+      agentOn = !!on;
+      $("btn-agent").textContent = agentOn ? "Agent ON" : "Agent OFF";
+      $("btn-agent").classList.toggle("primary", agentOn);
+    },
+    clocks: function () {
+      return {
+        a: clock.a,
+        b: clock.b,
+        active: clock.active,
+        running: clock.running,
+        paused: clockPaused,
+        fischer: fischerIncS,
+      };
+    },
+  };
+
+  wireBc();
+  paintWg();
+  goInit();
+  chStart();
+  resetClocks();
+  setMode(mode);
+  $("btn-agent").textContent = agentOn ? "Agent ON" : "Agent OFF";
+  $("btn-agent").classList.toggle("primary", agentOn);
+  requestAnimationFrame(frame);
+  setInterval(paintClockBar, 1000);
+  log(
+    VER +
+      " ready · GAMEDEV pure · agent=" +
+      (agentOn ? "ON" : "OFF") +
+      " · /clock Zulu · mode=" +
+      mode
+  );
+
+  /* Optional: ?auto=1 starts webgrid once (still needs agent=1 for auto-click) */
+  if (qParam("auto") === "1" && mode === "webgrid") {
+    setTimeout(function () {
+      startWebgrid();
+      log("auto start webgrid (agent still " + (agentOn ? "ON" : "OFF") + ")");
+    }, 300);
+  }
+  if (qParam("auto") === "1" && (mode === "go" || mode === "chess") && qParam("turns") === "1") {
+    setTimeout(function () {
+      autoTurns = true;
+      log("auto dual turns from URL");
+    }, 400);
+  }
+})();
+</script>
+</body>
+</html>

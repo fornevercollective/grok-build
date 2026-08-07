@@ -37,6 +37,7 @@ pub mod map;
 pub mod monitor;
 pub mod timesync;
 pub mod watch;
+pub mod webgrid;
 pub mod help;
 pub mod history;
 pub mod home;
@@ -160,6 +161,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(gy::GyCommand),
         // fornevercollective live demux → half-block inside Grok.
         Arc::new(watch::WatchCommand),
+        // Offline webgrid-ugrad chase · own surface (not nested under /watch).
+        Arc::new(webgrid::WebgridCommand),
         // Large camera self-view (side tile) under short `/cam` name.
         Arc::new(cam::CamCommand),
         // Memory Glass phone PWA tether → still-pipe → /cam.
@@ -413,6 +416,11 @@ mod tests {
             "voice",
             "watch",
             "webcam",
+            "webgrid",
+            "webgrid-ugrad",
+            "wg",
+            "ugrad-webgrid",
+            "grid-chase",
             "welcome",
             "who",
             "workflows",
@@ -840,6 +848,22 @@ mod tests {
         let mut ctx = make_ctx(&models);
         match gboom::GboomCommand.run(&mut ctx, "guide me") {
             CommandResult::PassThrough(text) => assert_eq!(text, "/gboom guide me"),
+            other => panic!("expected PassThrough, got {other:?}"),
+        }
+    }
+    #[test]
+    fn webgrid_command_is_registered() {
+        let reg = CommandRegistry::new(builtin_commands());
+        assert!(reg.get("webgrid").is_some(), "/webgrid must be registered");
+        assert!(reg.get("wg").is_some(), "/wg alias must resolve");
+    }
+    #[test]
+    fn gboom_webgrid_args_pass_through_not_open_watch() {
+        // Webgrid is /webgrid only — /gboom webgrid must not hijack the easter egg.
+        let models = ModelState::default();
+        let mut ctx = make_ctx(&models);
+        match gboom::GboomCommand.run(&mut ctx, "webgrid") {
+            CommandResult::PassThrough(text) => assert_eq!(text, "/gboom webgrid"),
             other => panic!("expected PassThrough, got {other:?}"),
         }
     }

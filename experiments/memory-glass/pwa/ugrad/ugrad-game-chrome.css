@@ -1,0 +1,53 @@
+/* ugrad-game-chrome.css — shared header Hub link + chess clock strip + fullscreen row for μgrad arena pages */
+.gu-header-brand .gu-bar-out{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
+a.gu-bar-link{font:600 10px ui-monospace,monospace;color:var(--qp-fg-primary,#e8edf4);text-decoration:none;border-bottom:1px solid var(--qp-border,#30363d);padding:2px 0;white-space:nowrap}
+a.gu-bar-link:hover{border-bottom-color:var(--qp-fg-muted,#8d97a6)}
+.gu-clock-strip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:8px 10px;margin:0 0 10px;
+  border:1px solid var(--qp-border,#30363d);border-radius:10px;background:rgba(0,0,0,.22);font:600 10px ui-monospace,monospace;
+}
+.gu-clock-strip .gu-clock-pair{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.gu-clock-face{
+  padding:6px 10px;border-radius:8px;border:1px solid var(--qp-border);min-width:5.2rem;text-align:center;
+  background:rgba(0,0,0,.2);color:var(--qp-fg-muted,#8d97a6);
+}
+.gu-clock-face.gu-clock-hot{border-color:rgba(88,166,255,.55);color:var(--qp-fg-body,#e8edf4);box-shadow:0 0 0 1px rgba(88,166,255,.12)}
+[data-theme="light"] .gu-clock-face.gu-clock-hot{border-color:rgba(31,35,40,.35)}
+.gu-clock-strip label,.gu-clock-strip span.gu-cs-muted{font-size:10px;color:var(--qp-fg-muted);display:inline-flex;align-items:center;gap:6px}
+.gu-clock-strip input[type="number"]{width:3.2rem;padding:3px 6px;border-radius:6px;border:1px solid var(--qp-border);background:var(--qp-bg-base,#161b22);color:inherit;font:inherit}
+.gu-clock-strip button{font:600 9px ui-monospace,monospace;padding:5px 10px;border-radius:999px;border:1px solid var(--qp-border);background:transparent;cursor:pointer;color:var(--qp-fg-primary)}
+.gu-clock-strip button.gu-primary{background:var(--qp-fg-primary);color:var(--qp-bg-base,#161b22)}
+.gu-board-fs-row{display:flex;justify-content:flex-end;align-items:center;margin:0 0 6px;min-height:28px}
+.gu-board-wrap:fullscreen .gu-board-fs-row{justify-content:center;margin:0 0 10px}
+/* Sans + symbol fonts — ui-monospace often has no glyph for U+26F6 (⛶) / ✕ */
+.gu-fs-btn{
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI Symbol","Apple Symbols","Noto Sans Symbols 2",sans-serif;
+  font-weight:600;font-size:14px;line-height:1;padding:6px 12px;border-radius:999px;border:1px solid var(--qp-border);
+  background:transparent;color:var(--qp-fg-primary);cursor:pointer;min-width:2.25rem;min-height:2.25rem;display:inline-flex;align-items:center;justify-content:center;
+}
+.gu-fs-btn.gu-primary{background:var(--qp-fg-primary);color:var(--qp-bg-base,#161b22)}
+.gu-board-wrap{position:relative}
+.gu-board-wrap:fullscreen{
+  padding:16px;display:flex;flex-direction:column;box-sizing:border-box;background:var(--qp-bg-elevated,#0f1419);border-radius:0;border:none;overflow:auto;
+}
+.gu-board-wrap:-webkit-full-screen{padding:16px;display:flex;flex-direction:column;background:var(--qp-bg-elevated,#0f1419)}
+.gu-board-wrap:fullscreen .wg-scroll{max-height:min(88vh,900px)!important}
+.gu-board-wrap:fullscreen #ch-svg{width:min(96vmin,96vw)!important;max-height:min(96vmin,96vh)}
+.gu-board-wrap:fullscreen #pg-canvas{max-width:min(96vmin,960px)!important;width:100%!important;height:auto!important}
+
+/* Fullscreen main row: board + activity log (set id="ugc-fs-target" on wrapping .gu-main) */
+#ugc-fs-target:fullscreen,#ugc-fs-target:-webkit-full-screen{
+  padding:16px;box-sizing:border-box;background:var(--qp-bg-elevated,#0f1419);overflow:auto;width:100%;min-height:100%;
+  display:flex;flex-wrap:wrap;gap:16px;align-items:stretch;
+}
+#ugc-fs-target:fullscreen .gu-board-wrap,#ugc-fs-target:-webkit-full-screen .gu-board-wrap{flex:1 1 300px;min-width:min(100%,280px)}
+#ugc-fs-target:fullscreen .gu-side,#ugc-fs-target:-webkit-full-screen .gu-side{flex:1 1 260px;min-width:min(100%,260px)}
+#ugc-fs-target:fullscreen .gu-log,#ugc-fs-target:-webkit-full-screen .gu-log{max-height:min(42vh,360px);min-height:min(28vh,200px)}
+#ugc-fs-target:fullscreen #ch-svg,#ugc-fs-target:-webkit-full-screen #ch-svg{width:min(96vmin,96vw)!important;max-height:min(96vmin,96vh)}
+#ugc-fs-target:fullscreen .wg-scroll,#ugc-fs-target:-webkit-full-screen .wg-scroll{max-height:min(72vh,900px)!important}
+#ugc-fs-target:fullscreen #pg-canvas,#ugc-fs-target:-webkit-full-screen #pg-canvas{max-width:min(96vmin,960px)!important;width:100%!important;height:auto!important}
+
+/* Light theme: primary pills keep contrast (theme toggle vs --qp-* swaps) */
+[data-theme="light"] .gu-bar button.gu-primary,
+[data-theme="light"] .gu-clock-strip button.gu-primary{background:#1a1f26;color:#f6f8fa;border-color:#30363d}
+[data-theme="light"] .gu-fs-btn.gu-primary{background:#1a1f26;color:#f6f8fa}

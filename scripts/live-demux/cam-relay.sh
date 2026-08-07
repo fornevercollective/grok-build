@@ -37,12 +37,13 @@ list_cams() {
       /AVFoundation video devices:/ { v=1; next }
       /AVFoundation audio devices:/ { v=0 }
       v && /\[[0-9]+\]/ {
-        if (match($0, /\[([0-9]+)\][[:space:]]*(.*)/, a)) {
-          idx=a[1]; name=a[2]
-          gsub(/\r/, "", name)
-          if (name ~ /[Cc]apture [Ss]creen/) next
-          printf "%s\t%s\n", idx, name
-        }
+        line=$0
+        sub(/^[^[]*\[/, "", line)
+        idx=line; sub(/\].*/, "", idx)
+        name=line; sub(/^[0-9]+\][[:space:]]*/, "", name)
+        gsub(/\r/, "", name)
+        if (name ~ /[Cc]apture [Ss]creen/) next
+        printf "%s\t%s\n", idx, name
       }
     '
 }

@@ -159,6 +159,61 @@ pick_bin() {
 
 BIN="$(pick_bin || true)"
 
+# Pure glyph / webgrid pop-out does not need the TUI binary.
+# Allow `launch-watch.sh popout glyph [URL]` and `popout webgrid` offline.
+if [[ "$POPOUT" -eq 1 && "${GROK_LIVE_WATCH_POPOUT_TTY:-0}" != "1" ]]; then
+  _ch_early="$(printf '%s' "${CHANNEL:-}" | tr '[:upper:]' '[:lower:]')"
+  _gk="${_ch_early%% *}"
+  case "$_gk" in
+    glyph|glyph-live|glyph-watch|glyphlive|q-lift|qlift|quantum-lift|peel-live|glyph-tools|glyph:*|glyph://*)
+      GLYPH_POP="$ROOT/scripts/live-demux/glyph-watch-popout.sh"
+      GLYPH_URL="${GROK_LIVE_WATCH_URL:-}"
+      _rest="${CHANNEL#* }"
+      if [[ "$_rest" != "$CHANNEL" && "$_rest" == http* ]]; then
+        GLYPH_URL="$_rest"
+      fi
+      for a in "${PAGER_ARGS[@]+"${PAGER_ARGS[@]}"}"; do
+        case "$a" in
+          http*|*youtube*|*youtu.be*|*m3u8|*.mp4|rtsp*|rtmp*|file:*)
+            GLYPH_URL="$a"
+            break
+            ;;
+        esac
+      done
+      echo "glyph pop-out · quantum-lift · arena :8787 mode=glyph (MG PWA; Soft Path owns :8765)"
+      if [[ -f "$GLYPH_POP" ]]; then
+        if [[ -n "$GLYPH_URL" ]]; then
+          exec bash "$GLYPH_POP" "$GLYPH_URL"
+        else
+          exec bash "$GLYPH_POP" --arena-only
+        fi
+      fi
+      ;;
+    webgrid|webgrif|wg|webgrid-ugrad|ugrad-webgrid|grid-chase|gridchase|webgrid:*|webgrid://*)
+      WG_URL="${LIVE_DEMUX_WEBGRID_URL:-http://127.0.0.1:8790/webgrid-ugrad.html?gamedev=1&tick=sim&N=30&dur=20&auto=1}"
+      echo "webgrid pop-out · offline ugrad · $WG_URL"
+      # Ensure site if possible
+      SITE="${MG_SITE:-$HOME/.panda/vision/cast/paper/site}"
+      PWA="$ROOT/experiments/memory-glass/pwa"
+      if [[ -f "$PWA/webgrid-ugrad.html" ]]; then
+        mkdir -p "$SITE"
+        cp -f "$PWA/webgrid-ugrad.html" "$SITE/webgrid-ugrad.html" 2>/dev/null || true
+      fi
+      if ! curl -sf -o /dev/null --connect-timeout 1 "http://127.0.0.1:8790/" 2>/dev/null; then
+        if [[ -d "$SITE" ]]; then
+          (cd "$SITE" && python3 -m http.server 8790 >/dev/null 2>&1 &)
+          sleep 0.4
+        fi
+      fi
+      open "$WG_URL" 2>/dev/null || true
+      if [[ -d "$HOME/Applications/Memory Glass.app" ]]; then
+        open -a "Memory Glass" "$WG_URL" 2>/dev/null || true
+      fi
+      exit 0
+      ;;
+  esac
+fi
+
 if [[ -z "${BIN:-}" ]]; then
   echo "error: no xai-grok-pager binary found."
   echo "build:  cargo build -p xai-grok-pager-bin"
@@ -182,8 +237,24 @@ if [[ "$POPOUT" -eq 0 ]] && [[ ! -t 0 || ! -t 1 ]]; then
   exit 6
 fi
 
-command -v yt-dlp >/dev/null || { echo "error: need yt-dlp on PATH"; exit 1; }
-command -v ffmpeg >/dev/null || { echo "error: need ffmpeg on PATH"; exit 1; }
+# Synthetic TTY surfaces (webgrid / optical / glyph dense) do not need yt-dlp.
+_ch_need="$(printf '%s' "${CHANNEL:-}" | tr '[:upper:]' '[:lower:]')"
+_ch_need_key="${_ch_need%% *}"
+_SYNTHETIC=0
+case "$_ch_need_key" in
+  webgrid|webgrif|wg|webgrid-ugrad|ugrad-webgrid|grid-chase|gridchase|webgrid:*|webgrid://*)
+    _SYNTHETIC=1 ;;
+  optical|optic|jawta|optical-blur|fountain|decimen|optical:*|optical://*)
+    _SYNTHETIC=1 ;;
+  glyph|glyph-live|glyph-watch|glyphlive|q-lift|qlift|quantum-lift|peel-live|glyph-tools|glyph:*|glyph://*)
+    _SYNTHETIC=1 ;;
+esac
+if [[ "$_SYNTHETIC" -eq 0 ]]; then
+  command -v yt-dlp >/dev/null || { echo "error: need yt-dlp on PATH"; exit 1; }
+  command -v ffmpeg >/dev/null || { echo "error: need ffmpeg on PATH"; exit 1; }
+else
+  command -v ffmpeg >/dev/null 2>&1 || true
+fi
 # X status / media feeds usually need browser cookies.
 if [[ -z "${YTDLP_COOKIES:-}" && -z "${YTDLP_COOKIES_FROM_BROWSER:-}" ]]; then
   case "${CHANNEL:-}" in
@@ -236,14 +307,64 @@ fi
 if [[ "$POPOUT" -eq 1 && "${GROK_LIVE_WATCH_POPOUT_TTY:-0}" != "1" ]]; then
   echo "binary: $BIN (pop-out only · no TUI modal)"
   echo "auto-popout: '${CHANNEL:-vevo (default)}'"
+
+  # Plant glyph / quantum-lift custom handler (not plain stream ffplay).
+  #   launch-watch.sh popout glyph
+  #   launch-watch.sh popout glyph 'https://…'
+  #   launch-watch.sh popout q-lift URL
+  _ch_low="$(printf '%s' "${CHANNEL:-}" | tr '[:upper:]' '[:lower:]')"
+  _glyph_key="${_ch_low%% *}"
+  case "$_glyph_key" in
+    glyph|glyph-live|glyph-watch|glyphlive|q-lift|qlift|quantum-lift|peel-live|glyph-tools|glyph:*|glyph://*)
+      GLYPH_POP="$ROOT/scripts/live-demux/glyph-watch-popout.sh"
+      GLYPH_URL="${GROK_LIVE_WATCH_URL:-}"
+      # URL may be 2nd word of CHANNEL or in PAGER_ARGS
+      _rest="${CHANNEL#* }"
+      if [[ "$_rest" != "$CHANNEL" && "$_rest" == http* ]]; then
+        GLYPH_URL="$_rest"
+      fi
+      for a in "${PAGER_ARGS[@]+"${PAGER_ARGS[@]}"}"; do
+        case "$a" in
+          http*|*youtube*|*youtu.be*|*m3u8|*.mp4|rtsp*|rtmp*|file:*)
+            GLYPH_URL="$a"
+            break
+            ;;
+        esac
+      done
+      echo "glyph pop-out · quantum-lift · arena :8787 mode=glyph (MG PWA)"
+      if [[ -f "$GLYPH_POP" ]]; then
+        if [[ -n "$GLYPH_URL" ]]; then
+          exec bash "$GLYPH_POP" "$GLYPH_URL"
+        else
+          exec bash "$GLYPH_POP" --arena-only
+        fi
+      fi
+      MG_LIFT="$ROOT/experiments/memory-glass/scripts/mg-quantum-video-lift.sh"
+      if [[ -f "$MG_LIFT" && -n "$GLYPH_URL" ]]; then
+        bash "$MG_LIFT" lift "$GLYPH_URL" &
+        sleep 0.35
+      fi
+      open "${LIVE_DEMUX_GLYPH_ARENA:-http://127.0.0.1:8787/ugrad-arena.html?mode=glyph}" 2>/dev/null || true
+      exit 0
+      ;;
+  esac
+
   echo "resolving + launching ffplay…"
   ROOT_URL=""
   case "${CHANNEL:-}" in
     ""|vevo|friday|music) ROOT_URL="https://www.youtube.com/watch?v=jaCxgxTScjc&list=PLbAbqvKSxmj4" ;;
     bloomberg|bbg|bloom|business) ROOT_URL="https://www.youtube.com/@business/live" ;;
+    square|thesquare|the-square|thesquarepdx|squarepdx|pioneer|pioneersquare|pcs|skycam|portland-square)
+      # Pioneer Courthouse Square SkyCam (ipcamlive alias=thesquarelive)
+      RESOLVE_IPC="$ROOT/scripts/live-demux/resolve-ipcamlive.sh"
+      if [[ -x "$RESOLVE_IPC" ]] || [[ -f "$RESOLVE_IPC" ]]; then
+        ROOT_URL="$(bash "$RESOLVE_IPC" thesquarelive 2>/dev/null || true)"
+      fi
+      ROOT_URL="${ROOT_URL:-https://s60.ipcamlive.com/streams/3cw7ivsjfwve6kxdy/stream.m3u8}"
+      ;;
     *) ROOT_URL="${CHANNEL}" ;;
   esac
-  if [[ "$ROOT_URL" != http* ]]; then
+  if [[ "$ROOT_URL" != http* && "$ROOT_URL" != ytsearch* ]]; then
     # Named channel other than bloomberg/vevo — let yt-dlp search live.
     ROOT_URL="ytsearch1:${CHANNEL} live"
   fi
@@ -276,14 +397,23 @@ if [[ "$POPOUT" -eq 1 && "${GROK_LIVE_WATCH_POPOUT_TTY:-0}" != "1" ]]; then
       ;;
   esac
 
-  STREAM="$(yt-dlp -g -f 'b[height<=720]/best[height<=720]/b/best' --no-playlist --no-warnings \
-    "${YT_COOKIE_ARGS[@]+"${YT_COOKIE_ARGS[@]}"}" "$ROOT_URL" 2>/dev/null | head -1 || true)"
-  if [[ -z "${STREAM:-}" ]]; then
-    echo "error: yt-dlp resolve failed for $ROOT_URL"
-    exit 1
-  fi
-  TITLE="$(yt-dlp --print '%(title)s' --no-playlist --no-warnings \
-    "${YT_COOKIE_ARGS[@]+"${YT_COOKIE_ARGS[@]}"}" "$ROOT_URL" 2>/dev/null | head -1 || echo "$CHANNEL")"
+  # Direct HLS / media: skip yt-dlp (ipcamlive m3u8, local files, etc.).
+  case "$ROOT_URL" in
+    *.m3u8|*.mp4|*.mkv|*.webm|*.mov|rtsp://*|rtmp://*|file:*)
+      STREAM="$ROOT_URL"
+      TITLE="${CHANNEL:-stream}"
+      ;;
+    *)
+      STREAM="$(yt-dlp -g -f 'b[height<=720]/best[height<=720]/b/best' --no-playlist --no-warnings \
+        "${YT_COOKIE_ARGS[@]+"${YT_COOKIE_ARGS[@]}"}" "$ROOT_URL" 2>/dev/null | head -1 || true)"
+      if [[ -z "${STREAM:-}" ]]; then
+        echo "error: yt-dlp resolve failed for $ROOT_URL"
+        exit 1
+      fi
+      TITLE="$(yt-dlp --print '%(title)s' --no-playlist --no-warnings \
+        "${YT_COOKIE_ARGS[@]+"${YT_COOKIE_ARGS[@]}"}" "$ROOT_URL" 2>/dev/null | head -1 || echo "$CHANNEL")"
+      ;;
+  esac
   # bash 3.2 + set -u: empty array expand is fine only when guarded above
   command -v ffplay >/dev/null || { echo "error: need ffplay (brew install ffmpeg)"; exit 1; }
   exec ffplay -hide_banner -loglevel error -autoexit \
@@ -308,11 +438,14 @@ echo "Commands once at the agent prompt:"
 echo "  /watch                 # VEVO Friday music TV (TTY half-block)"
 echo "  /gmux                  # same"
 echo "  /watch bloomberg       # Bloomberg live (TTY)"
+echo "  /webgrid               # offline ugrad chase (own slash · not a /watch channel)"
 echo "  /watch popout bloomberg  # external ffplay pop-out (stream)"
+echo "  /watch glyph | popout glyph [URL]  # plant glyph + quantum-lift + arena"
 echo "  /watch camout | cameras | mosaic  # Zoom-style cam OS windows"
 echo "  /watch out cnn | list | …"
 echo "  c PiP · m mirror · o stream · Y you-cam · O all cams · Esc quit"
 echo "  shell: bash scripts/live-demux/cam-popout.sh all|mosaic|0 1"
+echo "  webgrid launcher: bash scripts/launch-webgrid.sh"
 echo ""
 
 # Fullscreen agent TUI (not minimal dashboard). Cwd = repo so paths resolve;

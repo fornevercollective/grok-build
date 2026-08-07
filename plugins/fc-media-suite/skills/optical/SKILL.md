@@ -21,12 +21,21 @@ References:
 
 ```text
 /optical                 # open /watch optical blur surface
-/optical light sos       # jawta light mode on /watch
+/optical light timesync  # jawta light = live Zulu/unix (sos → same)
+/optical light sos       # alias of timesync (not distress Morse)
 /optical popout hello    # /watch + OS browser send.html
 /watch optical           # same surface from /watch
 /watch popout optical    # /watch + OS display
 # while /watch optical open:  o = OS browser pop-out · Esc closes TTY
 ```
+
+Pulse feed (jawta OOK) carries **timesync** by default:
+
+```text
+Z 230358Z 31 JUL 2026 U 1785539018
+```
+
+Keys: `timesync` · `zulu` · `clock` · `utc` · `sync` · `sos` (all resolve live).
 
 ## Decimen fountain QR (load-tested browser)
 
@@ -70,9 +79,30 @@ http://<LAN>:8767/receive.html → Start camera
 
 ## Pulse library
 
-`sos` `cq` `sync` `beacon` `ack` `nack` `ping` `heartbeat` `73` `88` …
+`timesync` / `sos` / `zulu` / `clock` (live Zulu+unix) · `cq` `beacon` `ack` `nack` `ping` `heartbeat` `73` `88` …
 
 ## See also
 
 `scripts/live-demux/optical-transfer/README.md`  
-Skills: cam · cast · lens · phone  
+Skills: cam · cast · lens · phone
+
+## Layered rebroadcast (Mac Mini)
+
+Bloomberg (or any channel) + SAM-lite mask + multi-layer fuzz TX for phone/glasses RX:
+
+```bash
+bash scripts/live-demux/optical-transfer/mini-layered-test.sh bloomberg --seconds=45
+# preview: http://127.0.0.1:8791/preview.mjpg
+# budget:  http://127.0.0.1:8791/budget.json
+# stop:    bash scripts/live-demux/optical-transfer/mini-layered-test.sh stop
+```
+
+Whitespace / glyph capacity (prompts & docs):
+
+```bash
+python3 scripts/live-demux/optical-transfer/whitespace_steno.py matrix
+python3 scripts/live-demux/optical-transfer/whitespace_steno.py budget
+```
+
+Plan + tables: `docs/fornever-ledger/LAYERED-OPTICAL-REBROADCAST.md`
+

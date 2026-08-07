@@ -103,7 +103,7 @@ impl SlashCommand for OpticalCommand {
     }
 
     fn arg_placeholder(&self) -> Option<&str> {
-        Some("blur | light sos | popout | serve | test | help")
+        Some("blur | light timesync | popout | serve | test | help")
     }
 
     fn visible(&self, _ctx: &AppCtx) -> bool {
@@ -158,7 +158,7 @@ impl SlashCommand for OpticalCommand {
                 "/optical · fc-optical-transfer-v1 · **primary surface = /watch**\n\
                  /optical                 open /watch optical blur (half-block TX)\n\
                  /optical blur [text]     soft field + jawta OOK + corner embed\n\
-                 /optical light sos       jawta full-field light pulse on /watch\n\
+                 /optical light timesync  jawta light pulse = Zulu/unix (sos alias)\n\
                  /optical bloomberg       mix-pipe = /watch bloomberg ffplay stream + Decimen\n\
                  /optical qr              **Decimen** load-tested browser QR (BashAlarmist)\n\
                  /optical decimen         same · HTTPS Vite · phone RX /receive/\n\

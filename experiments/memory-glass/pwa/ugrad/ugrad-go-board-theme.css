@@ -1,0 +1,38 @@
+/**
+ * ugrad-go-board-theme.css — Go lab board palette (black/grey field, blue hover, white/black pieces).
+ * Link after quantum-theme.css on μgrad game surfaces.
+ */
+:root {
+  --ugb-page: #0a0d12;
+  --ugb-panel: rgba(0, 0, 0, 0.22);
+  --ugb-line: rgba(250, 250, 252, 0.1);
+  /* Cool neutral greys (no brown/olive cast) — matches Go lab field + chess/checkers 8×8 */
+  --ugb-cell-light: #2a3038;
+  --ugb-cell-dark: #12161c;
+  --ugb-hover: rgba(56, 139, 253, 0.28);
+  --ugb-hover-ring: #58a6ff;
+  --ugb-piece-w: #f0f2f5;
+  --ugb-piece-b: #0d0d0d;
+  --ugb-accent: #58a6ff;
+}
+[data-theme='light'] {
+  --ugb-page: #f0f2f5;
+  --ugb-panel: rgba(255, 255, 255, 0.85);
+  --ugb-line: rgba(31, 35, 40, 0.15);
+  --ugb-cell-light: #f4f6f9;
+  --ugb-cell-dark: #dce1e8;
+  --ugb-hover: rgba(9, 105, 218, 0.18);
+  --ugb-hover-ring: #0969da;
+  --ugb-piece-w: #ffffff;
+  --ugb-piece-b: #24292f;
+}
+
+.ugb-surface {
+  background: var(--ugb-page) !important;
+}
+.ugb-board-wrap {
+  border-color: var(--ugb-line) !important;
+  background: var(--ugb-panel) !important;
+}
+
+/* Chess / checkers 8×8: --ugb-cell-* = cool neutral greys (aligned with Go lab, not wood tones). */

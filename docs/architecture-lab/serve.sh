@@ -4,7 +4,7 @@
 # If preferred port is busy (e.g. native grok-build-lab on :8765), auto-picks next free.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-WANT_PORT="${1:-8765}"
+WANT_PORT="${1:-8790}"
 HOST="${HOST:-127.0.0.1}"
 cd "$ROOT"
 command -v python3 >/dev/null || { echo "python3 required" >&2; exit 1; }
@@ -29,7 +29,7 @@ CHK
 
 PORT="$WANT_PORT"
 if ! port_free "$PORT"; then
-  echo "  note: :$PORT busy (native Lab often holds 8765) — searching free port…"
+  echo "  note: :$PORT busy (Soft Path owns 8765; lab parks 8790+) — searching free port…"
   found=""
   for try in $(seq "$WANT_PORT" $((WANT_PORT + 40))); do
     if port_free "$try"; then

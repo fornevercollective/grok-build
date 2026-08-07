@@ -19,11 +19,13 @@
 
 mod camera;
 mod channels;
+mod glyph_watch;
 mod layout;
 mod lens;
 mod mic;
 mod optical;
 mod popout;
+mod webgrid;
 mod x_live;
 
 pub use camera::{
@@ -65,6 +67,16 @@ pub use optical::{
     parse_optical_args, OpticalFeed, OpticalMode, FEATURE_ID as OPTICAL_FEATURE_ID, OPTICAL_URL,
     TOAST_OPTICAL,
 };
+pub use glyph_watch::{
+    arena_glyph_url, glyph_url, is_glyph_watch_source, is_glyph_watch_token,
+    launch_glyph_popout_async, parse_glyph_watch_args, GlyphWatchMode,
+    FEATURE_ID as GLYPH_WATCH_FEATURE_ID, GLYPH_URL, TOAST_GLYPH,
+};
+pub use webgrid::{
+    is_webgrid_source, is_webgrid_token, launch_webgrid_popout_async, parse_webgrid_args,
+    webgrid_page_url, webgrid_url, WebgridFeed, WebgridMode,
+    FEATURE_ID as WEBGRID_FEATURE_ID, TOAST_WEBGRID, WEBGRID_URL,
+};
 
 use std::collections::{HashMap, VecDeque};
 use std::io::{Read, Write};
@@ -94,6 +106,10 @@ pub const TOAST_DESK: &str =
     "DESK · you | phone  · no VEVO  · H cycle · L lens · Y pop dual (fc-cam-talk-v1)";
 /// Toast when `/watch optical` opens the optical blur surface.
 pub const TOAST_OPTICAL_WATCH: &str = optical::TOAST_OPTICAL;
+/// Toast when `/watch glyph` opens the plant glyph control-plane surface.
+pub const TOAST_GLYPH_WATCH: &str = glyph_watch::TOAST_GLYPH;
+/// Toast when `/watch webgrid` opens the offline ugrad chase surface.
+pub const TOAST_WEBGRID_WATCH: &str = webgrid::TOAST_WEBGRID;
 
 /// Default Friday-stream playlist when `/watch` is bare (= VEVO music TV).
 pub const DEFAULT_URL: &str = VEVO_FRIDAY_URL;
@@ -944,6 +960,8 @@ pub struct LiveWatchState {
     demux: Option<LiveDemux>,
     /// Optical blur / jawta light feed — **main stream pane** (`/watch optical`).
     optical: Option<OpticalFeed>,
+    /// Offline webgrid-ugrad chase feed — **main stream pane** (`/watch webgrid`).
+    webgrid: Option<WebgridFeed>,
     /// Optional local camera (left half when dual). Toggle with `c`.
     camera: Option<CameraFeed>,
     /// Optional phone still-pipe feed (right half when dual / `/cam phone`).
@@ -1073,13 +1091,42 @@ impl LiveWatchState {
         let optical_src = optical::is_optical_source(&clean_input)
             || source_url.starts_with("optical://")
             || channel_id.as_deref() == Some("optical");
+        // Offline webgrid-ugrad chase (our build) — synthetic TTY, not yt-dlp.
+        let webgrid_src = !optical_src
+            && (webgrid::is_webgrid_source(&clean_input)
+                || source_url.starts_with("webgrid://")
+                || channel_id.as_deref() == Some("webgrid"));
+        let (webgrid_mode, webgrid_n, webgrid_turbo, _webgrid_label) = if webgrid_src {
+            webgrid::parse_webgrid_args(&clean_input)
+        } else {
+            (webgrid::WebgridMode::Agent, 12, false, String::new())
+        };
+        // Plant glyph: synthetic TTY when no stream URL; stream demux when URL given.
+        let glyph_src = !optical_src
+            && !webgrid_src
+            && (glyph_watch::is_glyph_watch_source(&clean_input)
+                || source_url.starts_with("glyph://")
+                || channel_id.as_deref() == Some("glyph"));
+        let (glyph_mode, glyph_stream_url, _glyph_label) = if glyph_src {
+            glyph_watch::parse_glyph_watch_args(&clean_input)
+        } else {
+            (glyph_watch::GlyphWatchMode::Dense, None, String::new())
+        };
+        // Synthetic glyph pane only when no concrete stream page.
+        let glyph_synthetic = glyph_src
+            && (source_url.starts_with("glyph://")
+                || glyph_stream_url.is_none()
+                    && !source_url.starts_with("http")
+                    && !source_url.starts_with("rtsp")
+                    && !source_url.starts_with("rtmp")
+                    && !source_url.starts_with("file:"));
         let (optical_mode, optical_text) = if optical_src {
             optical::parse_optical_args(&clean_input)
         } else {
             (optical::OpticalMode::Blur, String::new())
         };
         let (tx, rx) = std::sync::mpsc::channel();
-        let worker_rx = if x_hub || desk || optical_src {
+        let worker_rx = if x_hub || desk || optical_src || glyph_synthetic || webgrid_src {
             None
         } else {
             let url_c = source_url.clone();
@@ -1125,7 +1172,14 @@ impl LiveWatchState {
         };
 
         let shuf = if shuffle { " · shuffle on" } else { "" };
-        let status = if optical_src {
+        let status = if webgrid_src {
+            format!(
+                "webgrid · {} · {}×{} · arrows+space hit · a agent · o browser · Esc",
+                webgrid_mode.id(),
+                webgrid_n,
+                webgrid_n
+            )
+        } else if optical_src {
             format!(
                 "optical · {} · o OS pop-out · Esc  ({})",
                 optical_mode.id(),
@@ -1175,14 +1229,15 @@ impl LiveWatchState {
             entries: Vec::new(),
             idx: 0,
             seek_secs: 0,
-            playing: optical_src || (!x_hub && !desk),
-            phase: if x_hub || desk || optical_src {
+            playing: optical_src || webgrid_src || (!x_hub && !desk),
+            phase: if x_hub || desk || optical_src || webgrid_src {
                 Phase::Ready
             } else {
                 Phase::Resolving
             },
             demux: None,
             optical: None,
+            webgrid: None,
             camera: None,
             camera_phone: None,
             camera_on: false,
@@ -1253,10 +1308,71 @@ impl LiveWatchState {
                 std::env::set_var("LIVE_DEMUX_OPTICAL_TEXT", &optical_text);
             }
         }
+        // Plant glyph synthetic surface: dense grid TTY + o → quantum-lift pop-out.
+        if glyph_synthetic {
+            let (ow, oh) = demux_dims();
+            let (ow, oh) = (ow.max(64).min(160), oh.max(48).min(120));
+            // Reuse optical RGB generator in Glyph mode for the half-block pane.
+            state.optical = Some(OpticalFeed::start(
+                OpticalMode::Glyph,
+                ow,
+                oh,
+                "FC GLYPH LIVE",
+            ));
+            state.playing = true;
+            state.phase = Phase::Ready;
+            state.paint_w = ow;
+            state.paint_h = oh;
+            state.channel_id = Some("glyph".into());
+            if !state.source_url.starts_with("glyph://") {
+                state.source_url = glyph_watch::glyph_url(glyph_mode);
+            }
+            state.status = format!(
+                "glyph · {} · o quantum-lift+arena · Esc · {}",
+                glyph_mode.id(),
+                glyph_watch::arena_glyph_url()
+            );
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_GLYPH_MODE", glyph_mode.id());
+            }
+        }
+        // Offline webgrid-ugrad chase (our build) — half-block grid instrument.
+        if webgrid_src {
+            let (ow, oh) = demux_dims();
+            // Prefer square-ish board for N×N cells.
+            let side = ow.max(oh).max(96).min(200);
+            let (ow, oh) = (side & !1, side & !1);
+            state.webgrid = Some(WebgridFeed::start(
+                webgrid_mode,
+                webgrid_n,
+                webgrid_turbo,
+                ow,
+                oh,
+            ));
+            state.playing = true;
+            state.phase = Phase::Ready;
+            state.paint_w = ow;
+            state.paint_h = oh;
+            state.channel_id = Some("webgrid".into());
+            if !state.source_url.starts_with("webgrid://") {
+                state.source_url = webgrid::webgrid_url(webgrid_mode);
+            }
+            state.channel_label = format!("webgrid-ugrad · {}×{}", webgrid_n, webgrid_n);
+            state.status = format!(
+                "webgrid · {} · {}×{} · arrows hit · a agent · r restart · o browser · Esc",
+                webgrid_mode.id(),
+                webgrid_n,
+                webgrid_n
+            );
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_WEBGRID_MODE", webgrid_mode.id());
+                std::env::set_var("LIVE_DEMUX_WEBGRID_N", webgrid_n.to_string());
+            }
+        }
         // Auto-open local camera side pane (launch-watch.sh camera · LIVE_DEMUX_CAM_ON=1).
         // Desk dual always forces cam on (you|phone is the whole surface).
-        // Optical mode: cam off by default (display is the optical field).
-        if !optical_src && (camera::cam_auto_on() || desk) {
+        // Optical / synthetic glyph / webgrid: cam off by default (display is the field).
+        if !optical_src && !glyph_synthetic && !webgrid_src && (camera::cam_auto_on() || desk) {
             state.camera_on = true;
             state.start_camera();
             if desk {
@@ -1270,8 +1386,28 @@ impl LiveWatchState {
         state
     }
 
+    /// True when this modal is the plant glyph control-plane surface.
+    ///
+    /// Distinct from optical TX (`/watch optical glyph`). Glyph reuses the
+    /// optical RGB generator for TTY paint but routes **`o`** to quantum-lift.
+    pub fn is_glyph_watch(&self) -> bool {
+        self.channel_id.as_deref() == Some("glyph")
+            || self.source_url.starts_with("glyph://")
+    }
+
+    /// True when this modal is the offline webgrid-ugrad chase (our build).
+    pub fn is_webgrid(&self) -> bool {
+        self.webgrid.is_some()
+            || self.channel_id.as_deref() == Some("webgrid")
+            || self.source_url.starts_with("webgrid://")
+    }
+
     /// True when this modal is the optical TX surface (not a stream).
     pub fn is_optical(&self) -> bool {
+        // Glyph plant path reuses OpticalFeed for paint — exclude it here.
+        if self.is_glyph_watch() || self.is_webgrid() {
+            return false;
+        }
         self.optical.is_some()
             || self.source_url.starts_with("optical://")
             || self.channel_id.as_deref() == Some("optical")
@@ -1378,6 +1514,78 @@ impl LiveWatchState {
         }) {
             self.search_buf = ch.id.to_string();
             self.status = format!("SEARCH · complete → {} ({})", ch.id, ch.label);
+        }
+    }
+
+    /// Keys for offline webgrid-ugrad chase (TTY instrument).
+    fn handle_webgrid_key(&mut self, key: &KeyEvent) -> LiveWatchKeyOutcome {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.webgrid.take();
+                self.optical.take();
+                self.demux.take();
+                self.stop_camera();
+                self.stop_mic();
+                LiveWatchKeyOutcome::Close
+            }
+            KeyCode::Left | KeyCode::Char('h') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.move_cursor(-1, 0);
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Right | KeyCode::Char('l') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.move_cursor(1, 0);
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.move_cursor(0, -1);
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.move_cursor(0, 1);
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.hit_cursor();
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char('a') | KeyCode::Char('A') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.toggle_agent();
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                if let Some(ref wg) = self.webgrid {
+                    wg.restart();
+                }
+                self.status = self.hud_status();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char('o') => {
+                let _ = self.pop_out();
+                LiveWatchKeyOutcome::Changed
+            }
+            KeyCode::Char('/') | KeyCode::Char('f') | KeyCode::Char('F') => {
+                self.focus_search();
+                LiveWatchKeyOutcome::Changed
+            }
+            _ => LiveWatchKeyOutcome::Changed,
         }
     }
 
@@ -1713,6 +1921,23 @@ impl LiveWatchState {
     /// Re-resolves with an audio-capable format (higher quality than the TTY pipe).
     /// In-TTY demux keeps running; Esc only closes the modal, not the OS window.
     pub fn pop_out(&mut self) -> Result<String, String> {
+        // Offline webgrid → browser / Memory Glass (our webgrid-ugrad.html).
+        if self.is_webgrid() {
+            let msg = webgrid::launch_webgrid_popout_async();
+            self.status = msg.clone();
+            return Ok(msg);
+        }
+        // Plant glyph → quantum-lift ffplay + arena Glyph tools (custom handler).
+        if self.is_glyph_watch() {
+            let page = self
+                .current_page_url
+                .clone()
+                .or_else(|| self.entries.get(self.idx).map(|e| e.page_url.clone()))
+                .filter(|s| !s.is_empty() && !s.starts_with("glyph://"));
+            let msg = glyph_watch::launch_glyph_popout_async(page.as_deref(), true);
+            self.status = msg.clone();
+            return Ok(msg);
+        }
         // Optical surface → OS browser (send.html), not yt-dlp/ffplay.
         if self.is_optical() {
             let mode = self
@@ -2105,6 +2330,20 @@ impl LiveWatchState {
     }
 
     fn hud_status(&self) -> String {
+        if self.is_webgrid() {
+            if let Some(ref wg) = self.webgrid {
+                return format!("▶ {}", wg.hud_line());
+            }
+            return format!("▶ webgrid · {}", self.channel_label);
+        }
+        if self.is_glyph_watch() {
+            let play = if self.playing { "▶" } else { "⏸" };
+            let mode = std::env::var("LIVE_DEMUX_GLYPH_MODE").unwrap_or_else(|_| "dense".into());
+            return format!(
+                "{play} glyph · {mode} · o quantum-lift+arena  · Esc  · {}",
+                self.channel_label
+            );
+        }
         if self.is_optical() {
             let mode = self
                 .optical
@@ -2347,10 +2586,31 @@ impl LiveWatchState {
             }
         }
 
-        if !self.playing && !self.camera_on && !self.mic_on && self.optical.is_none() {
+        // Offline webgrid-ugrad chase frames (main stream pane).
+        if let Some(ref wg) = self.webgrid {
+            let frame_gen = wg.frame_generation();
+            if frame_gen != self.paint_gen
+                && let Some((rgb, w, h)) = wg.snapshot_rgb()
+            {
+                self.paint_rgb = Some(rgb);
+                self.paint_w = w;
+                self.paint_h = h;
+                self.paint_gen = frame_gen;
+                self.last_frame_time = Instant::now();
+                self.status = self.hud_status();
+                dirty = true;
+            }
+        }
+
+        if !self.playing
+            && !self.camera_on
+            && !self.mic_on
+            && self.optical.is_none()
+            && self.webgrid.is_none()
+        {
             return dirty;
         }
-        if !self.playing && self.optical.is_none() {
+        if !self.playing && self.optical.is_none() && self.webgrid.is_none() {
             return dirty;
         }
 
@@ -2409,9 +2669,15 @@ impl LiveWatchState {
             return self.handle_guide_key(key);
         }
 
+        // ── Webgrid chase (our offline ugrad) — own key map ────────────
+        if self.is_webgrid() {
+            return self.handle_webgrid_key(key);
+        }
+
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.demux.take();
+                self.webgrid.take();
                 self.stop_camera();
                 self.stop_mic();
                 LiveWatchKeyOutcome::Close
@@ -2457,19 +2723,8 @@ impl LiveWatchState {
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('o') => {
-                // Optical: OS browser display (send.html). Else stream ffplay pop-out.
-                if self.is_optical() {
-                    let (mode, text) = optical::parse_optical_args(&self.source_url);
-                    let mode = self
-                        .optical
-                        .as_ref()
-                        .map(|o| o.mode())
-                        .unwrap_or(mode);
-                    let text = std::env::var("LIVE_DEMUX_OPTICAL_TEXT").unwrap_or(text);
-                    self.status = optical::launch_optical_popout_async(mode, &text);
-                } else {
-                    let _ = self.pop_out();
-                }
+                // Glyph → quantum-lift+arena · Optical → OS browser · else stream ffplay.
+                let _ = self.pop_out();
                 LiveWatchKeyOutcome::Changed
             }
             KeyCode::Char('O') => {
@@ -3402,6 +3657,8 @@ mod tests {
             playing: true,
             phase: Phase::Ready,
             demux: None,
+            optical: None,
+            webgrid: None,
             camera: None,
             camera_phone: None,
             camera_on: false,

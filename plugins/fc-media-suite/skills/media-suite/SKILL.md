@@ -36,6 +36,7 @@ bash plugins/fc-media-suite/scripts/update.sh
 | `fc-timesync-v1` | `/timesync` `/clock` |
 | `fc-maptrace-v1` | `/map` |
 | `fc-halfblock-tty-video` | paint path for watch + `/gboom` |
+| `fc-webgrid-tty-v1` | `/webgrid` offline ugrad chase (own slash) |
 | `fc-optical-transfer-v1` | `/optical` · jawta light · blur fountain |
 
 ```bash
@@ -50,12 +51,25 @@ bash scripts/launch-timesync.sh  # /clock
 bash scripts/launch-map.sh       # /map starbase
 ```
 
+## Ports (Soft Path owns 8765/8766)
+
+| App | Port |
+|-----|------|
+| Soft Path (kid game) | **8765 + 8766 HTTPS** — exclusive |
+| Memory Glass PWA / glyph arena | **8787** |
+| Memory Glass webgrid | **9880** |
+| Cast align / TV hub | **8791 + 8792** |
+| Paper / lab experiments | **8790+** |
+
+Do **not** bind 8765/8766 for cast, paper, or MG. See `docs/fornever-ledger/PORT-HANDOFF.md`.
+
 ## Agent rules
 
 1. Prefer **in-Grok slash** over reimplementing players in chat.
 2. Non-TTY agent shells cannot open the TUI — tell user to run launch scripts in Terminal.app.
 3. Binary must be the **fornevercollective** build (feature stamps). Stock xAI binary will fail doctor.
 4. Do not claim official xAI marketplace listing unless verified; third-party marketplace add is supported.
+5. Never park lab servers on Soft Path ports.
 
 ## Ecosystem discovery keywords
 

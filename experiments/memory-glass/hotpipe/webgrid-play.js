@@ -27,10 +27,15 @@
  * P-004 Canvas FILL: use full window (not cramped Neuralink max-height / min(96vw,96vh)).
  * P-005 Aggressive fill: ~88% of main view square; score column stays readable.
  * P-006 Keep Memory Glass chrome (dragon grabber, tools, tabs, stoplights) VISIBLE.
- * VER: webgrid-play-v32-contrails-live
+ * VER: webgrid-play-v35-hyper
  * Play-safe: freeze canvas geometry mid-run (no resize storms → no grid shake).
  * v32: force contrail overlay+flow + maze during play (was quietPlayChrome killing them);
  *       elevate #mg-contrail-ov; tools-scrim never captures; openPlayFloats actually runs.
+ * v33 race: ?mg_race=1 | mg_pace=race|m4 → no maze/contrails by default; M4 sleep floor 2ms;
+ *       wantsLabFull only with ?mg_lab_full=1 (demo/theater). Beat target 483.58 on mini.
+ * v34 turbo: sleep_ms 1 floor; early-exit blue scan; race-shell bare surface; score TTL 150ms.
+ * v35 hyper: sleep 0; no false-miss adapt-slow; neighborhood-first blue; invalidate cache post-click.
+ * v35.1: fix same-cell tight-loop (only 1 click / round) — re-fire after stall.
  */
 (function () {
   "use strict";
@@ -39,7 +44,7 @@
   } catch (e0) {
     return;
   }
-  var VER = "webgrid-play-v32-contrails-live";
+  var VER = "webgrid-play-v35.7-hyper";
   if (window.__mgWebgridPlayVer === VER) return;
   /* Hot-reload: tear down prior inject (v15 listeners / intervals) */
   if (typeof window.__mgWebgridPlayTeardown === "function") {
@@ -66,18 +71,34 @@
   var _fillTimer = null;
   /* Offline pace (webgrid-pace-advisor.py → collector /pace) */
   var PACE_URL = "http://127.0.0.1:9880/pace";
-  /* Intel UHD + Retina: sleep_ms 4 is too hot → ghost misses + UI lag */
+  /*
+   * Pace profiles:
+   *   race/m4 — Mac mini M4 / Apple Silicon agent race (chase 483.58)
+   *   fast    — general AS / aggressive
+   *   heavy   — large retina desktop
+   *   intel   — Intel UHD laptop buffer (sleep 4 was too hot → ghost misses)
+   */
   var PACE_PROFILES = {
-    fast: { sleep_ms: 4, wait_loops: 16, mode: "fast", source: "profile-fast" },
+    /* sleep 0 starves WK paint (1-click bug). Min reliable yield = 1ms setTimeout. */
+    hyper: { sleep_ms: 1, wait_loops: 5, mode: "m4-hyper", source: "profile-hyper" },
+    turbo: { sleep_ms: 1, wait_loops: 6, mode: "m4-turbo", source: "profile-turbo" },
+    race: { sleep_ms: 1, wait_loops: 6, mode: "m4-race", source: "profile-race" },
+    m4: { sleep_ms: 1, wait_loops: 6, mode: "m4-race", source: "profile-m4" },
+    fast: { sleep_ms: 2, wait_loops: 16, mode: "fast", source: "profile-fast" },
     heavy: { sleep_ms: 9, wait_loops: 13, mode: "heavy-retina", source: "profile-heavy" },
     intel: { sleep_ms: 18, wait_loops: 14, mode: "intel-buffer", source: "profile-intel" },
   };
-  var _pace = Object.assign({}, PACE_PROFILES.intel);
+  var _pace = Object.assign({}, PACE_PROFILES.hyper);
+  var _paceFloor = 1;
+  var _paceCeil = 2; /* race never slows past this */
   var _paceTimer = null;
   var _imgCache = { t: 0, w: 0, h: 0, data: null, c: null };
   var _scoreCache = { t: 0, sc: null };
   var _playBusy = false;
   var _adaptClicks = 0;
+  var _lastBlueIndex = -1;
+  var _lastBlueCol = -1;
+  var _lastBlueRow = -1;
 
   function wantsLocalLlm() {
     try {
@@ -87,23 +108,50 @@
     return false;
   }
 
-  /** Detect laptop class for default agent pace (MacBookPro16,1 Intel bench). */
+  /** Race / agent-only: max BPS, no lab theater. */
+  function wantsRaceMode() {
+    try {
+      if (/[?&]mg_race=1\b/i.test(location.search || "")) return true;
+      if (/[?&]mg_pace=(race|m4|turbo|hyper)\b/i.test(location.search || "")) return true;
+      if (localStorage.getItem("mg.webgrid.race") === "1") return true;
+      if (window.__mgWebgridRace || window.__mgRaceShell) return true;
+      if (
+        _pace &&
+        (_pace.mode === "m4-race" ||
+          _pace.mode === "m4-turbo" ||
+          _pace.mode === "m4-hyper" ||
+          /race|m4|turbo|hyper/i.test(_pace.source || ""))
+      )
+        return true;
+    } catch (e) {}
+    return false;
+  }
+
+  /** Detect class for default agent pace (Intel MBP vs Apple Silicon mini). */
   function detectPaceProfile() {
     try {
-      var q = /[?&]mg_pace=(intel|fast|heavy)\b/i.exec(location.search);
+      var q = /[?&]mg_pace=(intel|fast|heavy|race|m4|turbo|hyper)\b/i.exec(location.search);
       if (q) return q[1].toLowerCase();
     } catch (e0) {}
     try {
+      if (/[?&]mg_race=1\b/i.test(location.search || "")) return "hyper";
+      if (localStorage.getItem("mg.webgrid.race") === "1") return "hyper";
+      if (window.__mgRaceShell) return "hyper";
+    } catch (eR) {}
+    try {
       var ls = localStorage.getItem("mg.webgrid.pace_profile");
-      if (ls && PACE_PROFILES[ls]) return ls;
+      /* Prefer hyper over stale intel left by laptop launchers */
+      if (ls && PACE_PROFILES[ls] && ls !== "intel") return ls;
     } catch (e1) {}
     try {
       var dpr = window.devicePixelRatio || 1;
       var cores = navigator.hardwareConcurrency || 4;
       var area = (window.innerWidth || 1) * (window.innerHeight || 1) * dpr * dpr;
       var ua = navigator.userAgent || "";
-      /* Intel Macs often report "Intel" in UA on older macOS; also high-DPR + ≤8 cores */
+      /* Intel Macs / old MBP16 — buffer pace */
       if (/Intel/i.test(ua) || /MacBookPro1[456]/i.test(ua)) return "intel";
+      /* Apple Silicon with room (M-series mini/pro): hyper race by default */
+      if (cores >= 8 && !/Intel/i.test(ua)) return "hyper";
       if (cores <= 8 && dpr >= 2) return "intel";
       if (area > 3.5e6) return "heavy";
     } catch (e2) {}
@@ -111,13 +159,41 @@
   }
 
   function applyPaceProfile(name, source) {
-    var p = PACE_PROFILES[name] || PACE_PROFILES.intel;
-    _pace.sleep_ms = p.sleep_ms;
+    if (name === "m4") name = "race";
+    var p = PACE_PROFILES[name] || PACE_PROFILES.hyper;
+    /* Never allow sleep_ms 0 — starves getImageData/paint (documented 1-click bug). */
+    _pace.sleep_ms = Math.max(1, p.sleep_ms | 0);
     _pace.wait_loops = p.wait_loops;
     _pace.mode = p.mode;
     _pace.source = source || p.source || name;
+    /* Floor/ceil: hyper/race stay snappy — never climb to intel 11ms */
+    if (name === "hyper" || p.mode === "m4-hyper") {
+      _paceFloor = 1;
+      _paceCeil = 1;
+    } else if (name === "turbo" || p.mode === "m4-turbo") {
+      _paceFloor = 1;
+      _paceCeil = 2;
+    } else if (name === "race" || p.mode === "m4-race") {
+      _paceFloor = 1;
+      _paceCeil = 2;
+    } else if (name === "fast") {
+      _paceFloor = 1;
+      _paceCeil = 6;
+    } else if (name === "heavy") {
+      _paceFloor = 6;
+      _paceCeil = 14;
+    } else if (name === "intel") {
+      _paceFloor = 8;
+      _paceCeil = 22;
+    } else {
+      _paceFloor = 1;
+      _paceCeil = 2;
+    }
+    if (_pace.sleep_ms < _paceFloor) _pace.sleep_ms = _paceFloor;
     try {
       localStorage.setItem("mg.webgrid.pace_profile", name);
+      if (name === "race" || name === "turbo" || name === "hyper" || name === "m4")
+        localStorage.setItem("mg.webgrid.race", "1");
     } catch (e) {}
     return _pace;
   }
@@ -127,12 +203,16 @@
 
   function wantsLabFull() {
     try {
+      /* Race / agent-only always wins — no maze tax while chasing BPS */
+      if (wantsRaceMode()) return false;
+      if (/[?&]mg_lab_full=0\b/i.test(location.search || "")) return false;
+      if (localStorage.getItem("mg.webgrid.lab_full") === "0") return false;
       if (/[?&]mg_lab_full=1\b/i.test(location.search || "")) return true;
       if (localStorage.getItem("mg.webgrid.lab_full") === "1") return true;
       if (window.__mgForcePlayFloats) return true;
     } catch (e) {}
-    /* Default ON for agent play — user expects maze+contrails visible */
-    return true;
+    /* Default OFF — demo theater only when explicitly requested */
+    return false;
   }
 
   function setPlayBusy(on) {
@@ -268,8 +348,39 @@
     }
   }
 
-  /** Full lab parade (CTRL FLOATS / mg_lab_full) — lean: contrail + maze + board pill */
+  /** Full lab parade only when wantsLabFull; race mode keeps board pill optional, no maze. */
   function openPlayFloats() {
+    if (!wantsLabFull()) {
+      try {
+        if (window.__mgFloatLayout && window.__mgFloatLayout.closeHeavy)
+          window.__mgFloatLayout.closeHeavy({
+            keepPlay: false,
+            boardPill: true,
+            ctrlPill: true,
+          });
+      } catch (eH) {}
+      try {
+        /* LIVE RANK metrics pill MUST stay open — not black void */
+        if (window.__mgActivityBoard) {
+          if (window.__mgActivityBoard.mergeFleetSeed)
+            window.__mgActivityBoard.mergeFleetSeed();
+          if (window.__mgActivityBoard.open)
+            window.__mgActivityBoard.open({ collapsed: true });
+        }
+      } catch (eB) {}
+      try {
+        var hud = document.getElementById("mg-race-hud");
+        if (hud) hud.style.setProperty("display", "block", "important");
+      } catch (eH2) {}
+      log(
+        VER +
+          " · race chrome · metrics pill+HUD · pace=" +
+          _pace.sleep_ms +
+          "ms floor=" +
+          _paceFloor
+      );
+      return;
+    }
     ensurePlayContrails();
     try {
       if (window.__mgActivityBoard) {
@@ -284,16 +395,29 @@
 
   function adaptPace(hitsGuess, missGuess) {
     var total = hitsGuess + missGuess;
-    if (total < 12 || total % 10 !== 0) return;
+    if (total < 20 || total % 20 !== 0) return;
     var missRate = missGuess / Math.max(1, total);
+    var floor = typeof _paceFloor === "number" ? _paceFloor : 1;
+    if (floor < 1) floor = 1; /* sleep 0 starves WK paint */
+    var ceil = typeof _paceCeil === "number" ? _paceCeil : 22;
+    var race = wantsRaceMode();
+    /* Race/hyper: never climb past ceil (was 11ms from paint-lag false misses) */
+    if (race) {
+      /* Hold floor — short wait for faster chain (v35.7) */
+      _pace.sleep_ms = Math.max(1, floor);
+      _pace.wait_loops = Math.min(_pace.wait_loops || 5, 5);
+      _pace.mode = "m4-hyper";
+      _pace.source = "lock-hyper";
+      return;
+    }
     if (missRate > 0.28 && _pace.sleep_ms < 22) {
       _pace.sleep_ms = Math.min(22, _pace.sleep_ms + 2);
       _pace.wait_loops = Math.max(10, _pace.wait_loops - 1);
       _pace.mode = "adapt-slow";
       _pace.source = "adapt";
       log("pace adapt slower sleep=" + _pace.sleep_ms + " miss%=" + Math.round(missRate * 100));
-    } else if (missRate < 0.12 && _pace.sleep_ms > 5) {
-      _pace.sleep_ms = Math.max(5, _pace.sleep_ms - 1);
+    } else if (missRate < 0.12 && _pace.sleep_ms > floor) {
+      _pace.sleep_ms = Math.max(floor, _pace.sleep_ms - 1);
       _pace.mode = "adapt-fast";
       _pace.source = "adapt";
     }
@@ -317,11 +441,21 @@
           if (!j || typeof j !== "object") return;
           var s = parseInt(j.sleep_ms, 10);
           var w = parseInt(j.wait_loops, 10);
-          if (isFinite(s) && s >= 2 && s <= 40) _pace.sleep_ms = s;
+          /* sleep 0 starves WK paint (1-click bug). Race floor = 1ms. */
+          if (isFinite(s)) {
+            if (s < 1) s = 1;
+            if (wantsRaceMode()) {
+              if (s >= 1 && s <= 4) _pace.sleep_ms = s;
+            } else if (s >= 1 && s <= 40) {
+              _pace.sleep_ms = s;
+            }
+          }
           if (isFinite(w) && w >= 4 && w <= 30) _pace.wait_loops = w;
           if (j.mode) _pace.mode = String(j.mode);
           if (j.source) _pace.source = String(j.source);
           if (j.note) _pace.note = String(j.note).slice(0, 80);
+          /* re-clamp after external pace */
+          if (wantsRaceMode() && _pace.sleep_ms < _paceFloor) _pace.sleep_ms = _paceFloor;
         })
         .catch(function () {});
     } catch (eP) {}
@@ -983,8 +1117,10 @@
   }
 
   function sleep(ms) {
+    /* Always macrotask — microtask-only starve WK canvas paint (v35 1-click bug) */
+    var t = ms <= 0 ? 0 : ms;
     return new Promise(function (r) {
-      setTimeout(r, ms);
+      setTimeout(r, t);
     });
   }
   function findButton(re) {
@@ -1068,9 +1204,9 @@
    * - Grid N only 12 or 30 (public page); ignore 16/35/40 marketing
    */
   function scrapeScore() {
-    /* Throttle full body.innerText during agent chase (Intel CPU burn) */
+    /* Throttle full body.innerText during agent chase (CPU burn) */
     var now = Date.now();
-    var ttl = _playBusy ? 90 : 40;
+    var ttl = wantsRaceMode() ? (_playBusy ? 150 : 60) : _playBusy ? 90 : 40;
     if (_scoreCache.sc && now - _scoreCache.t < ttl) return _scoreCache.sc;
     var body = ((document.body && document.body.innerText) || "").replace(/\s+/g, " ");
     var bps = null,
@@ -1150,7 +1286,7 @@
 
   /**
    * Scan cell centers for exact Neuralink blue (page draws rgb(10,132,255)).
-   * Canvas is 2D — same-origin inject can read pixels.
+   * Proven path (v33/v34 554–588 BPS): full-grid early-exit center sample.
    */
   function findTargetFromCanvas(N) {
     var c = canvasEl();
@@ -1159,9 +1295,8 @@
       h = c.height;
     if (!w || !h) return null;
     var now = Date.now();
-    /* Cache full-frame read — wait loops called this 12–18× per click */
     var data;
-    var cacheMs = _playBusy ? 12 : 6;
+    var cacheMs = wantsRaceMode() ? (_playBusy ? 5 : 3) : _playBusy ? 12 : 6;
     if (
       _imgCache.data &&
       _imgCache.c === c &&
@@ -1183,14 +1318,15 @@
     var cell = w / N;
     var best = null;
     var bestScore = -1;
-    /* Intel: 1 center sample first pass; only refine if hit */
-    var samplesLite = [[0.5, 0.5]];
-    var samplesFull = [
-      [0.5, 0.5],
-      [0.35, 0.35],
-      [0.65, 0.65],
-    ];
-    var samples = _pace.sleep_ms >= 10 ? samplesLite : samplesFull;
+    var race = wantsRaceMode();
+    var samples = [[0.5, 0.5]];
+    if (!race) {
+      samples = [
+        [0.5, 0.5],
+        [0.35, 0.35],
+        [0.65, 0.65],
+      ];
+    }
     for (var row = 0; row < N; row++) {
       for (var col = 0; col < N; col++) {
         var hits = 0;
@@ -1201,17 +1337,27 @@
           var R = data[i],
             G = data[i + 1],
             B = data[i + 2];
-          if (Math.abs(R - TARGET_R) <= 18 && Math.abs(G - TARGET_G) <= 45 && B >= 200) hits++;
+          if (Math.abs(R - TARGET_R) <= 18 && Math.abs(G - TARGET_G) <= 45 && B >= 200)
+            hits++;
         }
         if (hits > bestScore) {
           bestScore = hits;
-          if (hits > 0) best = { col: col, row: row, index: col + N * row, conf: hits };
+          if (hits > 0) {
+            best = { col: col, row: row, index: col + N * row, conf: hits };
+            if (race && hits >= samples.length) {
+              row = N;
+              break;
+            }
+          }
         }
       }
     }
     if (!best || bestScore < 1) return null;
     var rect = c.getBoundingClientRect();
     var cellCss = rect.width / N;
+    _lastBlueCol = best.col;
+    _lastBlueRow = best.row;
+    _lastBlueIndex = best.index;
     return {
       col: best.col,
       row: best.row,
@@ -1395,12 +1541,30 @@
         (wantsLabFull() ? "on" : "off")
     );
 
+    var raceRun = wantsRaceMode();
+    var sameCellStreak = 0;
     try {
     while (Date.now() < tEnd) {
-      var stepMs = _pace.sleep_ms || 4;
-      var waitMax = _pace.wait_loops || 18;
-      var sc = scrapeScore();
-      if (sc.peak && clicks > 3) {
+      var stepMs = raceRun
+        ? Math.max(1, Math.min(_pace.sleep_ms || 1, _paceCeil || 2))
+        : _pace.sleep_ms || 4;
+      var waitMax = _pace.wait_loops || 12;
+      if (raceRun) waitMax = Math.min(Math.max(waitMax, 4), 6);
+      /* Score scrape is expensive — race: every 12 clicks */
+      var sc =
+        raceRun && clicks > 0 && clicks % 12 !== 0 && _scoreCache.sc
+          ? _scoreCache.sc
+          : scrapeScore();
+      /* Real end card only — never break while timer is counting (false early stop) */
+      var timerLive =
+        sc.timer && /^\d{1,2}:\d{2}$/.test(sc.timer) && sc.timer !== "00:00";
+      if (
+        sc.peak &&
+        clicks > 50 &&
+        sc.peak.bps > 1 &&
+        !timerLive &&
+        (/play again/i.test(sc.body || "") || sc.timer === "00:00" || !sc.timer)
+      ) {
         log("peak screen " + sc.peak.bps + " BPS / " + sc.peak.ntpm + " NTPM");
         if (sc.peak.bps > livePeakBps) {
           livePeakBps = sc.peak.bps;
@@ -1418,43 +1582,72 @@
         });
         break;
       }
-      if (/play again/i.test(sc.body || "") && clicks > 5 && !sc.timer) break;
+      if (/play again/i.test(sc.body || "") && clicks > 50 && !timerLive) break;
 
-      if (sc.grid) {
+      /* Race: NEVER flip 30→12 mid-round (scrape false 12x12 killed v35.3) */
+      if (sc.grid && !raceRun) {
         var gn = parseInt(sc.grid.split("x")[0], 10);
         if (gn === 12 || gn === 30) N = gn;
+      } else if (sc.grid && raceRun && N === 30) {
+        /* only allow confirm 30, never downgrade */
+        var gn2 = parseInt(sc.grid.split("x")[0], 10);
+        if (gn2 === 30) N = 30;
       }
       if (typeof sc.ntpm === "number" && sc.ntpm > bestNtpm) bestNtpm = sc.ntpm;
-      /* track full live BPS (old code wrongly capped at 40) */
       if (typeof sc.bps === "number" && isFinite(sc.bps) && sc.bps > bestBps) bestBps = sc.bps;
 
       var tgt = findTargetFromCanvas(N);
       if (tgt) {
-        /* skip re-click same cell until canvas shows a new blue */
         if (tgt.index === lastIndex) {
-          await sleep(stepMs);
+          /*
+           * Same blue still painted. Must NOT spin forever (v35 bug: 1 click/round).
+           * Brief wait for paint, then re-fire the same cell (hit may not have landed).
+           */
+          sameCellStreak++;
+          _imgCache.t = 0;
+          if (sameCellStreak < 4) {
+            await sleep(raceRun ? 0 : stepMs);
+            continue;
+          }
+          /* re-fire after stall */
+          sameCellStreak = 0;
+          firePointerAt(tgt.clientX, tgt.clientY);
+          clicks++;
+          hitsGuess++;
+          _imgCache.t = 0;
+          await sleep(raceRun ? 0 : stepMs);
           continue;
         }
-        /* ONE pointerup only — page has no isTrusted check */
+        sameCellStreak = 0;
         firePointerAt(tgt.clientX, tgt.clientY);
         clicks++;
         hitsGuess++;
         lastIndex = tgt.index;
+        _lastBlueIndex = tgt.index;
+        _lastBlueCol = tgt.col;
+        _lastBlueRow = tgt.row;
+        _imgCache.t = 0; /* force re-read after hit paint */
         _adaptClicks++;
-        adaptPace(hitsGuess, missGuess);
+        if (!raceRun || clicks % 20 === 0) adaptPace(hitsGuess, missGuess);
         try {
-          /* ugrad tensor every other click on intel — save CPU */
-          if (window.__mgUgradWebgrid && (clicks % 2 === 0 || _pace.sleep_ms < 8)) {
+          if (
+            !raceRun &&
+            window.__mgUgradWebgrid &&
+            (clicks % 2 === 0 || _pace.sleep_ms < 8)
+          ) {
             window.__mgUgradWebgrid.observeCell(tgt.index, N);
           }
         } catch (eOb) {}
         try {
-          /* every hop — dense visible trail (was every 3rd → looked empty) */
-          if (window.__mgContrail && window.__mgContrail.observeAgent) {
+          if (
+            wantsLabFull() &&
+            window.__mgContrail &&
+            window.__mgContrail.observeAgent
+          ) {
             window.__mgContrail.observeAgent(tgt.clientX, tgt.clientY, tgt.index, tgt.conf);
           }
         } catch (eCt) {}
-        if (clicks % 40 === 0) {
+        if (clicks % (raceRun ? 120 : 40) === 0) {
           report("agent_tick", {
             clicks: clicks,
             hitsGuess: hitsGuess,
@@ -1470,8 +1663,6 @@
           log(
             "shot cell=" +
               tgt.index +
-              " conf=" +
-              tgt.conf +
               " bps=" +
               sc.bps +
               " ntpm=" +
@@ -1484,26 +1675,37 @@
               waitMax
           );
         }
-        /* wait until blue moves (hit) or timeout — pace from local LLM advisor */
+        /* Wait for blue to move — race: no miss-tax on paint lag; no chain-fire (hurt accuracy) */
         var moved = false;
         for (var wait = 0; wait < waitMax; wait++) {
           await sleep(stepMs);
+          _imgCache.t = 0;
           var t2 = findTargetFromCanvas(N);
           if (!t2 || t2.index !== lastIndex) {
             moved = true;
             if (!t2) lastIndex = -1;
+            else {
+              lastIndex = -1;
+              _lastBlueCol = t2.col;
+              _lastBlueRow = t2.row;
+              _lastBlueIndex = t2.index;
+            }
             break;
           }
         }
         if (!moved) {
-          missGuess++;
+          if (!raceRun) {
+            missGuess++;
+            await sleep(8);
+          }
           lastIndex = -1;
-          await sleep(8);
+          _imgCache.t = 0;
         }
       } else {
-        missGuess++;
+        if (!raceRun) missGuess++;
         lastIndex = -1;
-        await sleep(6);
+        _imgCache.t = 0;
+        await sleep(raceRun ? 0 : 6);
         if (missGuess > 200 && clicks === 0) {
           var s3 = findButton(/^start game$/i) || findButton(/play again/i);
           if (s3) clickEl(s3);

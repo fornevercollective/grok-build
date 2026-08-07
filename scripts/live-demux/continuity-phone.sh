@@ -30,18 +30,20 @@ need ffmpeg
 need ffplay
 
 list_cams() {
-  # Real cameras only — skip non-camera AVFoundation entries
+  # Real cameras only — skip non-camera AVFoundation entries.
+  # BSD awk (macOS /usr/bin/awk) has no match(..., array); use portable split.
   ffmpeg -f avfoundation -list_devices true -i "" 2>&1 \
     | awk '
       /AVFoundation video devices:/ { v=1; next }
       /AVFoundation audio devices:/ { v=0 }
       v && /\[[0-9]+\]/ {
-        if (match($0, /\[([0-9]+)\][[:space:]]*(.*)/, a)) {
-          idx=a[1]; name=a[2]
-          gsub(/\r/, "", name)
-          if (name ~ /[Cc]apture [Ss]creen/) next
-          printf "%s\t%s\n", idx, name
-        }
+        line=$0
+        sub(/^[^[]*\[/, "", line)
+        idx=line; sub(/\].*/, "", idx)
+        name=line; sub(/^[0-9]+\][[:space:]]*/, "", name)
+        gsub(/\r/, "", name)
+        if (name ~ /[Cc]apture [Ss]creen/) next
+        printf "%s\t%s\n", idx, name
       }
     '
 }

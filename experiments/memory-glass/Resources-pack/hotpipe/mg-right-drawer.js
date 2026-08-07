@@ -952,7 +952,7 @@
     var miss = document.createElement("p");
     miss.className = "hint";
     miss.textContent =
-      "Bench missing — inject mg-data-bench.js (⌘⇧R). Local: http://127.0.0.1:8765/";
+      "Bench missing — inject mg-data-bench.js (⌘⇧R). Local: http://127.0.0.1:8790/";
     body.appendChild(miss);
     actRow(body, [
       {
@@ -960,7 +960,7 @@
         hot: true,
         fn: function () {
           try {
-            var u = "http://127.0.0.1:8765/hexbench.html";
+            var u = "http://127.0.0.1:8790/hexbench.html";
             if (window.ipc)
               window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
             else window.open(u, "_blank");
@@ -971,7 +971,7 @@
         label: "OPEN freya (local) ↗",
         fn: function () {
           try {
-            var u = "http://127.0.0.1:8765/freya.html";
+            var u = "http://127.0.0.1:8790/freya.html";
             if (window.ipc)
               window.ipc.postMessage(JSON.stringify({ op: "navigate", url: u }));
             else window.open(u, "_blank");
@@ -1382,9 +1382,9 @@
 /* Memory Glass · DATA Bench v3
  * Working tools from THIS machine — not remote freya.world / pages.dev embeds.
  *   · native panels (load-bal, cable, spectrum, freya calc, BOM)
- *   · local uvspeed apps iframe'd from http://127.0.0.1:8765 (uvspeed/web)
+ *   · local uvspeed apps iframe'd from http://127.0.0.1:8790 (uvspeed/web)
  *   · OPEN FULL → same local URL (or file:// fallback)
- * Serve: python3 -m http.server 8765 --bind 127.0.0.1  (cwd = uvspeed/web)
+ * Serve: python3 -m http.server 8790 --bind 127.0.0.1  (cwd = uvspeed/web)
  * VER: mg-data-bench-v3.1-dual-safe
  */
 (function () {
@@ -1404,7 +1404,7 @@
   /* Loopback so WKWebView can iframe real tools (file:// blocked under https parent). */
   var LOCAL_HTTP =
     window.__mgUvspeedHttp ||
-    "http://127.0.0.1:8765";
+    "http://127.0.0.1:8790";
 
   function log(m) {
     try {
@@ -2066,7 +2066,7 @@
       '" src="' +
       (http || "") +
       '" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"></iframe>' +
-      '<p class="drw-hint" id="mg-loc-hint">If blank: serve uvspeed/web → <code>python3 -m http.server 8765 --bind 127.0.0.1</code></p>';
+      '<p class="drw-hint" id="mg-loc-hint">If blank: serve uvspeed/web → <code>python3 -m http.server 8790 --bind 127.0.0.1</code></p>';
     setTimeout(function () {
       var fr = box.querySelector("#mg-loc-frame");
       box.querySelector("#mg-loc-open").onclick = function () {

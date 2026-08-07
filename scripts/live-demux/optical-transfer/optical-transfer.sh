@@ -2,7 +2,7 @@
 # optical-transfer.sh — jawta light + Decimen fountain + optical blur tool
 #
 #   bash optical-transfer.sh blur "hello"
-#   bash optical-transfer.sh light sos
+#   bash optical-transfer.sh light timesync
 #   bash optical-transfer.sh serve
 #   bash optical-transfer.sh test
 #   bash optical-transfer.sh rx light
@@ -19,7 +19,7 @@ case "$cmd" in
 fc-optical-blur / optical-transfer
 
   blur [text]     Optical blur tool (jawta OOK + corner glyph embed)
-  light [pulse]   Jawta full-screen light pulse (sos|cq|sync|… or free text)
+  light [pulse]   Jawta full-screen light pulse (timesync|sos=zulu|cq|… or free text)
   glyph [file]    Glyph-grid fountain TX (stdlib modules)
   qr              **Decimen** load-tested browser fountain QR (BashAlarmist)
   decimen [dev]   same · vendor/decimen-optical-transfer (HTTPS for phone RX)
@@ -42,8 +42,9 @@ EOF
       --port "${LIVE_DEMUX_OPTICAL_PORT:-8767}"
     ;;
   light)
-    pulse_or_text="${1:-sos}"
-    if [[ "$pulse_or_text" =~ ^(sos|cq|qth|qsl|73|88|qrz|rst|beacon|sync|ack|nack|ping|heartbeat)$ ]]; then
+    # default + sos alias → live timesync (Zulu / unix) jawta feed
+    pulse_or_text="${1:-timesync}"
+    if [[ "$pulse_or_text" =~ ^(sos|timesync|zulu|clock|utc|cq|qth|qsl|73|88|qrz|rst|beacon|sync|ack|nack|ping|heartbeat)$ ]]; then
       exec "$PY" "$ROOT/optical_blur.py" light --pulse "$pulse_or_text" --ffplay --loop
     else
       exec "$PY" "$ROOT/optical_blur.py" light --text "$pulse_or_text" --ffplay --loop

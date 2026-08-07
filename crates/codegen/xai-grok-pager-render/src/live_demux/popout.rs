@@ -785,15 +785,22 @@ pub fn launch_cam_popout_async(mode: CamPopMode) -> String {
     format!("cam pop-out · {mode_label} · launching ffplay… (Zoom-style OS window)")
 }
 
-/// Route a pop-out channel string: camera → cam windows, optical → browser, else stream.
+/// Route a pop-out channel string: camera → cam windows, optical → browser,
+/// glyph → quantum-lift ffplay + arena, else stream.
 pub fn launch_popout_smart_async(input: &str) -> String {
     if is_cam_popout_source(input) {
         let mode = parse_cam_pop_mode(input);
         return launch_cam_popout_async(mode);
     }
+    // Optical first so `/watch popout optical glyph` stays optical TX.
     if super::optical::is_optical_source(input) {
         let (mode, text) = super::optical::parse_optical_args(input);
         return super::optical::launch_optical_popout_async(mode, &text);
+    }
+    // Plant glyph: custom ffmpeg/ffplay via quantum-lift + open arena form.
+    if super::glyph_watch::is_glyph_watch_source(input) {
+        let (_mode, stream_url, _) = super::glyph_watch::parse_glyph_watch_args(input);
+        return super::glyph_watch::launch_glyph_popout_async(stream_url.as_deref(), true);
     }
     // Empty with bare `/watch popout` stays stream (VEVO default).
     launch_popout_async(input)

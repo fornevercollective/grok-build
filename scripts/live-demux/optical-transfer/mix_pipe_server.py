@@ -96,9 +96,14 @@ def spawn_ffmpeg() -> subprocess.Popen:
         STREAM,
         "-an",
         "-vf",
-        "fps=15,scale=960:-2:flags=fast_bilinear",
+        # MIX_FPS / MIX_SCALE / MIX_QV — compress streams for low-RAM multi-mix stacks
+        os.environ.get(
+            "MIX_VF",
+            f"fps={os.environ.get('MIX_FPS', '10')},"
+            f"scale={os.environ.get('MIX_SCALE', '720')}:-2:flags=fast_bilinear",
+        ),
         "-q:v",
-        "7",
+        os.environ.get("MIX_QV", "8"),
         "-f",
         "mjpeg",
         "pipe:1",

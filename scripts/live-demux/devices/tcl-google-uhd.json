@@ -72,7 +72,7 @@
     "localhost": "never cast 127.0.0.1/localhost — serve 0.0.0.0 and use LAN IP",
     "session_stolen": "another phone/app stole Cast — re-run /cast",
     "stall": "shorter segments; check ~/.panda/vision/cast/cast.log; lower bitrate",
-    "black_screen": "codec mismatch or URL unreachable from TV; open http://LAN:8765/… from phone on same Wi-Fi",
+    "black_screen": "codec mismatch or URL unreachable from TV; open http://LAN:8791/… from phone on same Wi-Fi",
     "discovery_empty": "catt scan / dns-sd _googlecast._tcp; wake TV; disable VPN hiding mDNS",
     "exclusive_cam": "release TTY cam / other ffplay before desk encode",
     "wrong_device": "two TVs on LAN (TCL Smart TV + Hisense GoogleTV3065) — set LIVE_DEMUX_CAST_DEVICE='Smart TV'",
@@ -88,7 +88,7 @@
   "wall_content": {
     "feeds": "resolved /watch or yt-dlp URLs re-encoded",
     "mosaics": "ffmpeg xstack / hstack from still-pipe + desk dual",
-    "streams": "HLS/MP4 on LAN HTTP :8765",
+    "streams": "HLS/MP4 on LAN HTTP :8791",
     "optimized": "Rec.709 SDR, high-contrast tiles, avoid 1px chrome (viewing angle)"
   },
   "sibling_devices_lan": [

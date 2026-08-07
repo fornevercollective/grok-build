@@ -1,14 +1,15 @@
-/* Memory Glass hotpipe/live.js v18-hurdles
+/* Memory Glass hotpipe/live.js v18-hurdles · v26-coverfit IK map
  * H1 hands/air + bridge for hurdles.js (H2–H9)
  * Inspect-first · still-pipe only · no main PAGE thrash
  * v24: iPhone still-pipe camera flip — no double-mirror skeleton (inverted controller)
  * v25: full-body IK hooks (body-pose.js MediaPipe Pose) + hand camflip
  * v26: inspect audio waveform L/R/M under main video feed
+ * v27: defers to acoustic-scope.js (FFT · isolation · speech · RGB parade · 3d maze)
  */
 (function () {
   "use strict";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
-  var VER = "live-v27-wave-levels";
+  var VER = "live-v28-acoustic-scope";
   var MAX_FACES = 4;
   var PATH_MAX = 96; /* fencing trail length (samples) */
   var PATH_MIN_DIST = 0.0018; /* ignore micro-jitter in norm space */
@@ -358,7 +359,7 @@
       "#stage{display:flex!important;flex-direction:column!important;gap:6px!important;padding:8px!important;flex-shrink:0!important;}",
       "#pip-wrap{display:block!important;order:1!important;width:100%!important;aspect-ratio:16/10!important;max-height:36vh!important;min-height:200px!important;position:relative!important;border-radius:4px!important;overflow:hidden!important;border:1px solid rgba(180,200,220,0.28)!important;background:#050608!important;cursor:crosshair!important;}",
       "#pip-video{display:none!important;}",
-      "#pip-stream{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center 28%!important;transform:scaleX(-1)!important;z-index:1!important;}",
+      "#pip-stream{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center 42%!important;transform:scaleX(-1)!important;z-index:1!important;}",
       "#pip-overlay{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:4!important;pointer-events:none!important;transform:scaleX(-1)!important;}",
       "#pip-lbl{z-index:6!important;font:600 8px/1.2 ui-monospace,Menlo,monospace!important;letter-spacing:0.06em!important;text-transform:uppercase!important;color:rgba(180,210,230,0.85)!important;}",
       /* control strip — adult, dense; high z so clicks hit buttons not overlays */
@@ -453,8 +454,27 @@
     window.__mgInspectSetAxis = function () {};
   }
 
-  /* ── Audio waveform L/R/M under main video feed ── */
+  /* ── Audio waveform L/R/M under main video feed ──
+   * Prefer acoustic-scope.js (FFT spectrum · band isolation · speech VAD ·
+   * RGB parade · 3d acoustic maze). Fall back to rock L/R/M if scope absent. */
   function ensureAudioWave() {
+    /* acoustic-scope owns #mg-wave when injected (product-core + hot_module) */
+    if (window.__mgAcousticScope && window.__mgAcousticScope.mount) {
+      try {
+        HP._waveVer = "mg-wave-v4-acoustic-delegate";
+        if (!document.getElementById("mg-wave") || !document.getElementById("mg-wave").classList.contains("mg-acoustic")) {
+          window.__mgAcousticScope.mount();
+        } else if (window.__mgAcousticScope.kick) {
+          window.__mgAcousticScope.kick();
+        }
+        ok("audio acoustic-scope · " + (window.__mgAcousticScope.ver || "v1"));
+        return;
+      } catch (eAc) {
+        try {
+          warn("acoustic-scope " + eAc);
+        } catch (e2) {}
+      }
+    }
     var WVER = "mg-wave-v3-rock";
     if (HP._waveVer === WVER && document.getElementById("mg-wave") && window.__mgAudioWave) {
       try {
@@ -1712,10 +1732,11 @@
     for (var i = 0; i < idxs.length; i++) {
       var p = lm[idxs[i] % lm.length];
       if (!p) continue;
+      var px = lmToPx(p.x, p.y, W, H);
       if (!started) {
-        ctx.moveTo(p.x * W, p.y * H);
+        ctx.moveTo(px.x, px.y);
         started = true;
-      } else ctx.lineTo(p.x * W, p.y * H);
+      } else ctx.lineTo(px.x, px.y);
     }
     if (close && started) ctx.closePath();
     if (started) ctx.stroke();
@@ -1850,8 +1871,9 @@
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
-        ctx.moveTo(a0.x * W, a0.y * H);
-        ctx.lineTo(a1.x * W, a1.y * H);
+        var __q0 = lmToPx(a0.x, a0.y, W, H), __q1 = lmToPx(a1.x, a1.y, W, H);
+        ctx.moveTo(__q0.x, __q0.y);
+        ctx.lineTo(__q1.x, __q1.y);
         ctx.stroke();
       }
       /* tip head (fencing tip) */
@@ -1931,14 +1953,16 @@
       ctx.lineWidth = baseW * (0.4 + age);
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(a0.x * W, a0.y * H);
-      ctx.lineTo(a1.x * W, a1.y * H);
+      var __p0 = lmToPx(a0.x, a0.y, W, H), __p1 = lmToPx(a1.x, a1.y, W, H);
+      ctx.moveTo(__p0.x, __p0.y);
+      ctx.lineTo(__p1.x, __p1.y);
       ctx.stroke();
     }
     var tip = handPath[handPath.length - 1];
     ctx.fillStyle = speedColor(tip.v || 0, alpha);
     ctx.beginPath();
-    ctx.arc(tip.x * W, tip.y * H, 3.2, 0, Math.PI * 2);
+    var __pt = lmToPx(tip.x, tip.y, W, H);
+    ctx.arc(__pt.x, __pt.y, 3.2, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -2353,7 +2377,9 @@
           /* sparse point cloud (every 2nd) so face pixels show through */
           for (var j = 0; j < lm.length; j += 2) {
             var p = lm[j];
+            if (!p) continue;
             var zz = p.z || 0;
+            var pp = lmToPx(p.x, p.y, W, H);
             ctx.fillStyle =
               "rgba(" +
               Math.floor(90 + zz * 100) +
@@ -2362,7 +2388,7 @@
               ",255," +
               (mA * (0.12 + Math.min(0.28, Math.abs(zz) * 1.6))) +
               ")";
-            ctx.fillRect(p.x * W - 0.4, p.y * H - 0.4, 0.9 + Math.max(0, zz) * 1.4, 0.9 + Math.max(0, zz) * 1.4);
+            ctx.fillRect(pp.x - 0.4, pp.y - 0.4, 0.9 + Math.max(0, zz) * 1.4, 0.9 + Math.max(0, zz) * 1.4);
           }
           ctx.lineWidth = 0.4;
           ctx.strokeStyle = hexA(col, mA * 0.14);
@@ -2373,16 +2399,20 @@
               var idx = gy * cols + gx;
               if (idx >= lm.length) continue;
               var a0 = lm[idx];
+              if (!a0) continue;
+              var a0p = lmToPx(a0.x, a0.y, W, H);
               if (gx + 1 < cols && lm[idx + 1]) {
+                var a1p = lmToPx(lm[idx + 1].x, lm[idx + 1].y, W, H);
                 ctx.beginPath();
-                ctx.moveTo(a0.x * W, a0.y * H);
-                ctx.lineTo(lm[idx + 1].x * W, lm[idx + 1].y * H);
+                ctx.moveTo(a0p.x, a0p.y);
+                ctx.lineTo(a1p.x, a1p.y);
                 ctx.stroke();
               }
               if (gy + 1 < rows && lm[idx + cols]) {
+                var a2p = lmToPx(lm[idx + cols].x, lm[idx + cols].y, W, H);
                 ctx.beginPath();
-                ctx.moveTo(a0.x * W, a0.y * H);
-                ctx.lineTo(lm[idx + cols].x * W, lm[idx + cols].y * H);
+                ctx.moveTo(a0p.x, a0p.y);
+                ctx.lineTo(a2p.x, a2p.y);
                 ctx.stroke();
               }
             }
@@ -2408,9 +2438,12 @@
           L = lm[TOPO.L],
           R = lm[TOPO.R];
         if (N && L && R) {
-          var ox = N.x * W,
-            oy = N.y * H;
-          var axisLen = Math.hypot(R.x - L.x, R.y - L.y) * W * 0.5;
+          var Np = lmToPx(N.x, N.y, W, H);
+          var Lp = lmToPx(L.x, L.y, W, H);
+          var Rp = lmToPx(R.x, R.y, W, H);
+          var ox = Np.x,
+            oy = Np.y;
+          var axisLen = Math.hypot(Rp.x - Lp.x, Rp.y - Lp.y) * 0.5;
           var sp = spatialPose({
             yaw: tr.yaw,
             pitch: tr.pitch,
@@ -2429,8 +2462,8 @@
           ctx.strokeStyle = "rgba(140,200,255,0.85)";
           ctx.lineWidth = 1.3;
           ctx.beginPath();
-          ctx.moveTo(L.x * W, L.y * H);
-          ctx.lineTo(R.x * W, R.y * H);
+          ctx.moveTo(Lp.x, Lp.y);
+          ctx.lineTo(Rp.x, Rp.y);
           ctx.stroke();
           ctx.globalAlpha = 1;
         }
@@ -2975,6 +3008,10 @@
       } catch (eLens) {}
       /* full-body pose kit (throttled inside body-pose.js) */
       try {
+        if (window.__mgBodyPose) {
+          window.__mgBodyPose._srcW = vw;
+          window.__mgBodyPose._srcH = vh;
+        }
         if (typeof window.__mgOnStillFrame === "function") window.__mgOnStillFrame(img);
       } catch (eBody) {}
       /* H1: alternate / throttle hands send so face path stays primary */
@@ -3078,4 +3115,132 @@
     saveAll();
     paintControls();
   };
+})();
+
+/* === letter-grid laptop speed agent (appended) === */
+/* Memory Glass · Letter-Grid laptop speed agent
+ * Forces one timed agent round when on declaration letter-grid.
+ * VER: lg-speed-v1
+ */
+(function () {
+  "use strict";
+  var VER = "lg-speed-v1";
+  if (window.__mgLgSpeedAgentVer === VER) return;
+  window.__mgLgSpeedAgentVer = VER;
+  try {
+    if (!/letter-grid/i.test(location.href || location.pathname || "")) return;
+  } catch (e0) {
+    return;
+  }
+  if (window.__mgLgSpeedRunning) return;
+  window.__mgLgSpeedRunning = true;
+
+  function log(m) {
+    try {
+      if (window.__mgDevLog) window.__mgDevLog("ok", String(m), "lg-speed");
+    } catch (e) {}
+    try {
+      console.info("[lg-speed]", m);
+    } catch (e2) {}
+  }
+
+  function postReport(rep, source) {
+    var body = {
+      kind: "letter_grid_score_report",
+      ver: VER,
+      source: source || "mg-inject",
+      href: (location.href || "").slice(0, 200),
+      machine: {
+        model: "MacBookPro16,1",
+        arch: "x86_64",
+        class: "older-intel-laptop",
+        host: "qbits-MacBook-Pro.local",
+      },
+      report: rep,
+    };
+    try {
+      fetch("http://127.0.0.1:9880/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        mode: "cors",
+      }).catch(function () {});
+    } catch (e) {}
+    try {
+      if (window.ipc)
+        window.ipc.postMessage(
+          JSON.stringify({
+            op: "smoke_probe",
+            json: JSON.stringify({
+              letterGridSpeed: true,
+              peakBps: rep && (rep.peakBps || (rep.metrics && rep.metrics.peakBps)),
+              peakNtpm: rep && (rep.peakNtpm || (rep.metrics && rep.metrics.peakNtpm)),
+              metrics: rep && rep.metrics,
+              hopMs: rep && rep.hopMs,
+              grid: rep && rep.grid,
+              title: rep && rep.title,
+              live: rep && rep.live,
+            }),
+          })
+        );
+    } catch (e2) {}
+  }
+
+  function hopFromUrl() {
+    try {
+      var m = /[?&]hop=(\d+)/i.exec(location.search || "");
+      if (m) return Math.max(1, parseInt(m[1], 10));
+      var p = /[?&]pace=(\d+)/i.exec(location.search || "");
+      if (p) return Math.max(1, parseInt(p[1], 10));
+    } catch (e) {}
+    return 16; /* laptop turbo-ish */
+  }
+
+  function run() {
+    var api =
+      window.__letterGridApi ||
+      window.__mgLetterGridApi ||
+      window.letterGrid ||
+      null;
+    if (!api) {
+      setTimeout(run, 400);
+      return;
+    }
+    var hop = hopFromUrl();
+    log("api ready · hop=" + hop + "ms · agent timed round");
+    var p;
+    try {
+      if (typeof api.playRound === "function") {
+        p = api.playRound({ size: 12, hopMs: hop, agent: true });
+      } else if (typeof api.agentPlay === "function") {
+        p = api.agentPlay({ paceMs: hop });
+      } else {
+        log("no playRound/agentPlay on api");
+        return;
+      }
+    } catch (e) {
+      log("start fail " + e);
+      return;
+    }
+    Promise.resolve(p)
+      .then(function (res) {
+        var rep = (res && res.report) || res || {};
+        if (!rep.peakBps && res && res.metrics) rep = res;
+        log(
+          "done peak " +
+            (rep.peakBps != null ? rep.peakBps : "?") +
+            " BPS / " +
+            (rep.peakNtpm != null ? rep.peakNtpm : "?") +
+            " NTPM"
+        );
+        postReport(rep, "playRound");
+        window.__mgLgSpeedLast = rep;
+      })
+      .catch(function (e) {
+        log("agent err " + e);
+      });
+  }
+
+  /* wait for mount (data fetch) */
+  setTimeout(run, 800);
 })();

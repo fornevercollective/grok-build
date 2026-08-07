@@ -410,7 +410,12 @@ MORSE_TABLE = {
 REVERSE_MORSE = {v: k for k, v in MORSE_TABLE.items() if v != " "}
 
 PULSE_LIBRARY = {
-    "sos": "SOS",
+    # sos feed = timesync (Zulu / unix) — not distress Morse
+    "sos": "__TIMESYNC__",
+    "timesync": "__TIMESYNC__",
+    "zulu": "__TIMESYNC__",
+    "clock": "__TIMESYNC__",
+    "utc": "__TIMESYNC__",
     "cq": "CQ CQ CQ DE FC K",
     "qth": "QTH",
     "qsl": "QSL",
@@ -419,12 +424,48 @@ PULSE_LIBRARY = {
     "qrz": "QRZ?",
     "rst": "RST 599",
     "beacon": "VVV DE FC",
-    "sync": "SYNC",
+    "sync": "__TIMESYNC__",  # sync pulse carries clock stamp
     "ack": "R",
     "nack": "QRT",
     "ping": "V",
     "heartbeat": "H",
 }
+
+
+def timesync_pulse_text() -> str:
+    """fc-timesync pulse body for jawta light / optical OOK (morse-safe charset).
+
+    Example: Z 230358 JUL 31 2026 U 1785539018
+    Prefer ASCII/morse-friendly tokens (no colon in time — use compact Zulu).
+    """
+    import time
+    from datetime import datetime, timezone
+
+    now = time.time()
+    dt = datetime.fromtimestamp(now, tz=timezone.utc)
+    # 230358Z style + day mon year + unix
+    zulu = dt.strftime("%H%M%SZ")
+    day = dt.strftime("%d")
+    mon = dt.strftime("%b").upper()
+    year = dt.strftime("%Y")
+    unix = int(now)
+    return f"Z {zulu} {day} {mon} {year} U {unix}"
+
+
+def resolve_pulse(key_or_text: str) -> str:
+    """Resolve pulse library keys; sos/timesync/zulu → live clock string."""
+    k = (key_or_text or "").strip()
+    if not k:
+        return timesync_pulse_text()
+    low = k.lower()
+    if low in PULSE_LIBRARY:
+        val = PULSE_LIBRARY[low]
+        if val == "__TIMESYNC__":
+            return timesync_pulse_text()
+        return val
+    if low in ("sos", "timesync", "zulu", "clock", "utc", "sync"):
+        return timesync_pulse_text()
+    return k
 
 
 def text_to_morse(text: str) -> str:

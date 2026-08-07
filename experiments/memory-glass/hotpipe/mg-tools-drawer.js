@@ -1524,8 +1524,8 @@
             "Persona",
             "muted",
             function () {
-              nav("http://127.0.0.1:8765/persona-tensor-scaffold.html");
-              setStatus("persona-tensor scaffold · :8765");
+              nav("http://127.0.0.1:8787/persona-tensor-scaffold.html");
+              setStatus("persona-tensor scaffold · :8787");
             },
             { ico: "♟", sub: "L0–L5 map", keepStatus: true }
           )
@@ -1685,6 +1685,66 @@
         );
         r.appendChild(
           act(
+            "GOV HUB",
+            "hot",
+            function () {
+              var url = "http://127.0.0.1:9876/gov-tree-hub.html";
+              try {
+                if (window.ipc)
+                  window.ipc.postMessage(
+                    JSON.stringify({ op: "navigate", url: url })
+                  );
+                else location.href = url;
+              } catch (e) {
+                location.href = url;
+              }
+              setStatus("Super gov hub · map+lane+hops :9876");
+            },
+            { ico: "◈", sub: "map · lane · hops", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "MAP BOARD",
+            "ok",
+            function () {
+              var url = "http://127.0.0.1:9876/map-hub.html";
+              try {
+                if (window.ipc)
+                  window.ipc.postMessage(
+                    JSON.stringify({ op: "navigate", url: url })
+                  );
+                else location.href = url;
+              } catch (e2) {
+                location.href = url;
+              }
+              setStatus("Map hub · cables · ops :9876");
+            },
+            { ico: "🗺", sub: "cables · tracemap", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "LANE TREE",
+            "ok",
+            function () {
+              var url = "http://127.0.0.1:9876/lane-line-tree.html";
+              try {
+                if (window.ipc)
+                  window.ipc.postMessage(
+                    JSON.stringify({ op: "navigate", url: url })
+                  );
+                else location.href = url;
+              } catch (e3) {
+                location.href = url;
+              }
+              setStatus("Lane tree · governance nest :9876");
+            },
+            { ico: "〰", sub: "LAN · Lumen · ICANN", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
             "EXPORT",
             "hot",
             function () {
@@ -1817,6 +1877,58 @@
               if (window.__mgVideo) window.__mgVideo.ytdlp();
             },
             { ico: "⬇" }
+          )
+        );
+        r.appendChild(
+          act(
+            "GLYPH TOOLS",
+            "hot",
+            function () {
+              try {
+                if (window.ipc)
+                  window.ipc.postMessage(
+                    JSON.stringify({
+                      op: "navigate",
+                      url: "http://127.0.0.1:8787/ugrad-arena.html?mode=glyph",
+                    })
+                  );
+                else
+                  location.href =
+                    "http://127.0.0.1:8787/ugrad-arena.html?mode=glyph";
+              } catch (e) {
+                location.href =
+                  "http://127.0.0.1:8787/ugrad-arena.html?mode=glyph";
+              }
+              setStatus("Glyph tools form · DINOv3 · video lift");
+            },
+            { ico: "◈" }
+          )
+        );
+        r.appendChild(
+          act(
+            "Q-LIFT",
+            "primary",
+            function () {
+              var u =
+                (window.__mgVideo && window.__mgVideo.state && window.__mgVideo.state.url) ||
+                "";
+              var gb =
+                "/Volumes/qbitOS/00.dev/projects/grok-build/scripts/live-demux/glyph-watch-popout.sh";
+              var cmd = u
+                ? 'bash "' + gb + '" ' + JSON.stringify(u)
+                : 'bash "' + gb + '" --arena-only  # or: /watch popout glyph [URL]';
+              try {
+                if (navigator.clipboard && navigator.clipboard.writeText)
+                  navigator.clipboard.writeText(cmd);
+              } catch (e) {}
+              if (window.__mgVideo && u) window.__mgVideo.ffplay(u);
+              setStatus(
+                u
+                  ? "glyph pop-out cmd copied · quantum-lift + arena"
+                  : "glyph pop-out arena-only · /watch glyph · /watch popout glyph URL"
+              );
+            },
+            { ico: "ℏ" }
           )
         );
         r.appendChild(

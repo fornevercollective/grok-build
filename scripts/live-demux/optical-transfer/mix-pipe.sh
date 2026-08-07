@@ -33,6 +33,10 @@ channel_url() {
     cnn)  echo "https://www.youtube.com/@CNN/live" ;;
     cnbc) echo "https://www.youtube.com/@CNBC/live" ;;
     nasa) echo "https://www.youtube.com/@NASA/live" ;;
+    vatican|holy-see|basilica)
+      echo "https://www.youtube.com/watch?v=03pYP2Nmreo" ;;
+    venice|rialto|venezia)
+      echo "https://www.youtube.com/watch?v=Kmf_wiTFuXY" ;;
     vevo|friday)
       echo "https://www.youtube.com/@business/live" ;; # fall back to live business if no list
     *)
@@ -99,8 +103,19 @@ mkdir -p "$DIR"
 : >"$LOG_FILE"
 stop_pipe 2>/dev/null || true
 
-PAGE_URL="$(channel_url "$cmd")"
-CHANNEL_ID="$(echo "$cmd" | tr '[:upper:]' '[:lower:]')"
+# Accept channel nicknames OR raw youtube/http page URLs
+if [[ "$cmd" == http://* || "$cmd" == https://* ]]; then
+  PAGE_URL="$cmd"
+  if [[ "$cmd" == *watch?v=* ]]; then
+    CHANNEL_ID="yt-${cmd##*v=}"
+    CHANNEL_ID="${CHANNEL_ID%%&*}"
+  else
+    CHANNEL_ID="yt-custom"
+  fi
+else
+  PAGE_URL="$(channel_url "$cmd")"
+  CHANNEL_ID="$(echo "$cmd" | tr '[:upper:]' '[:lower:]')"
+fi
 echo "==> mix-pipe · channel=$CHANNEL_ID  (same source as /watch $CHANNEL_ID)"
 echo "    page: $PAGE_URL"
 

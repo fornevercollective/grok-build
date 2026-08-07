@@ -89,7 +89,83 @@ pub fn is_optical_source(input: &str) -> bool {
         ) && t.to_ascii_lowercase().contains("optical")
 }
 
-/// Parse mode + free text from `/watch optical light sos` style args.
+/// Live timesync pulse body (morse-safe). Replaces legacy SOS default feed.
+pub fn timesync_pulse_text() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // Format via chrono-free UTC from unix — simple manual UTC breakdown
+    // Use local formatting via HTTP-date style: prefer gmtime via libc-less math
+    let days = now / 86400;
+    let rem = now % 86400;
+    let hh = rem / 3600;
+    let mm = (rem % 3600) / 60;
+    let ss = rem % 60;
+    // Civil date from days since 1970-01-01 (Howard Hinnant algorithm)
+    let z = days as i64 + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    let mon = match m {
+        1 => "JAN",
+        2 => "FEB",
+        3 => "MAR",
+        4 => "APR",
+        5 => "MAY",
+        6 => "JUN",
+        7 => "JUL",
+        8 => "AUG",
+        9 => "SEP",
+        10 => "OCT",
+        11 => "NOV",
+        _ => "DEC",
+    };
+    format!(
+        "Z {hh:02}{mm:02}{ss:02}Z {d:02} {mon} {y} U {now}",
+        hh = hh,
+        mm = mm,
+        ss = ss,
+        d = d,
+        mon = mon,
+        y = y,
+        now = now
+    )
+}
+
+/// Resolve pulse library keys: sos/timesync/zulu/clock/sync → live timesync.
+pub fn resolve_optical_text(raw: &str, mode: OpticalMode) -> String {
+    let t = raw.trim();
+    let low = t.to_ascii_lowercase();
+    let timesync_keys = [
+        "sos",
+        "timesync",
+        "zulu",
+        "clock",
+        "utc",
+        "sync",
+        "time",
+    ];
+    if timesync_keys.contains(&low.as_str()) {
+        return timesync_pulse_text();
+    }
+    if t.is_empty() {
+        return match mode {
+            OpticalMode::Light => timesync_pulse_text(),
+            _ => std::env::var("LIVE_DEMUX_OPTICAL_TEXT").unwrap_or_else(|_| "FC OPTICAL".into()),
+        };
+    }
+    t.to_string()
+}
+
+/// Parse mode + free text from `/watch optical light timesync` style args.
 pub fn parse_optical_args(input: &str) -> (OpticalMode, String) {
     let lower = input.trim().to_ascii_lowercase();
     let mut mode = OpticalMode::Blur;
@@ -115,11 +191,12 @@ pub fn parse_optical_args(input: &str) -> (OpticalMode, String) {
             other => text_parts.push(other),
         }
     }
-    let text = if text_parts.is_empty() {
-        std::env::var("LIVE_DEMUX_OPTICAL_TEXT").unwrap_or_else(|_| "FC OPTICAL".into())
+    let raw = if text_parts.is_empty() {
+        String::new()
     } else {
         text_parts.join(" ")
     };
+    let text = resolve_optical_text(&raw, mode);
     (mode, text)
 }
 
@@ -378,20 +455,40 @@ impl OpticalFeed {
         let join = thread::Builder::new()
             .name("live-demux-optical".into())
             .spawn(move || {
-                let morse = text_to_morse(&text_owned);
-                let events = morse_events(&morse, wpm);
-                let cycle = events
+                // Refresh timesync pulse each cycle so light feed tracks wall clock
+                let mut text_live = resolve_optical_text(&text_owned, mode);
+                let mut morse = text_to_morse(&text_live);
+                let mut events = morse_events(&morse, wpm);
+                let mut cycle = events
                     .last()
                     .map(|(s, d)| s + d)
                     .unwrap_or(1000.0)
                     .max(1.0);
-                let text_hash = text_owned.bytes().fold(0u32, |a, b| a.wrapping_mul(31).wrapping_add(b as u32));
+                let mut text_hash = text_live
+                    .bytes()
+                    .fold(0u32, |a, b| a.wrapping_mul(31).wrapping_add(b as u32));
                 let t0 = Instant::now();
                 let mut seq = 0u32;
+                let mut cycle_anchor = 0.0f32;
                 let period = Duration::from_secs_f32(1.0 / fps.max(1.0));
                 while !stop_c.load(Ordering::Relaxed) {
                     let elapsed = t0.elapsed().as_secs_f32();
-                    let ms = (elapsed * 1000.0) % cycle;
+                    // new timesync body every morse cycle for light mode
+                    if mode == OpticalMode::Light && elapsed - cycle_anchor >= cycle {
+                        cycle_anchor = elapsed;
+                        text_live = timesync_pulse_text();
+                        morse = text_to_morse(&text_live);
+                        events = morse_events(&morse, wpm);
+                        cycle = events
+                            .last()
+                            .map(|(s, d)| s + d)
+                            .unwrap_or(1000.0)
+                            .max(1.0);
+                        text_hash = text_live
+                            .bytes()
+                            .fold(0u32, |a, b| a.wrapping_mul(31).wrapping_add(b as u32));
+                    }
+                    let ms = ((elapsed - cycle_anchor) * 1000.0) % cycle;
                     let on = if on_at(&events, ms) { 1.0f32 } else { 0.0 };
                     let frame = render_frame(w, h, elapsed, on, mode, seq, text_hash);
                     if let Ok(mut g) = shared_c.lock() {

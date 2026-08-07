@@ -93,6 +93,18 @@ impl SlashCommand for WatchCommand {
                 "alias · /watch optical blur",
             ),
             ("jawta", "optical light pulse mode on /watch"),
+            (
+                "glyph",
+                "plant glyph control plane · o = quantum-lift ffplay + arena form",
+            ),
+            (
+                "glyph-live",
+                "alias · /watch glyph (dense seat + Q-lift pop-out)",
+            ),
+            (
+                "q-lift",
+                "alias · /watch glyph · quantum video lift path",
+            ),
             ("popout", "external ffplay window (stream · not TTY half-block)"),
             ("out", "alias for popout"),
             ("x", "X.com live hub — paste broadcast/status URL"),
@@ -181,6 +193,7 @@ impl SlashCommand for WatchCommand {
         }
 
         // `/watch optical` · `/watch popout optical` — optical as main display.
+        // Must run before glyph so `/watch optical glyph` stays optical TX.
         let lower_full_pre = raw.to_ascii_lowercase();
         if lower_full_pre.split_whitespace().any(|t| {
             crate::live_demux::is_optical_token(t) || t.starts_with("optical://")
@@ -199,6 +212,31 @@ impl SlashCommand for WatchCommand {
                 return CommandResult::Action(Action::OpenLiveWatch { url });
             }
             return CommandResult::Action(Action::OpenLiveWatch { url });
+        }
+
+        // Webgrid is its own slash: `/webgrid` (not a /watch channel).
+        // Toolchain may still open via OpenLiveWatch { url: "webgrid://…" }.
+
+        // `/watch glyph` · `/watch popout glyph [URL]` — plant glyph + quantum-lift.
+        if lower_full_pre.split_whitespace().any(|t| {
+            crate::live_demux::is_glyph_watch_token(t) || t.starts_with("glyph://")
+        }) {
+            let (mode, stream_url, _) =
+                crate::live_demux::parse_glyph_watch_args(&lower_full_pre);
+            unsafe {
+                std::env::set_var("LIVE_DEMUX_GLYPH_MODE", mode.id());
+            }
+            if popout {
+                let toast = crate::live_demux::launch_glyph_popout_async(
+                    stream_url.as_deref(),
+                    true,
+                );
+                eprintln!("[fc-glyph-watch] {toast}");
+                return CommandResult::Message(toast);
+            }
+            // TTY surface: glyph:// when no URL; raw args when stream attached.
+            let open_url = stream_url.unwrap_or_else(|| crate::live_demux::glyph_url(mode));
+            return CommandResult::Action(Action::OpenLiveWatch { url: open_url });
         }
 
         // Bare `/watch popout` (no channel) still goes to default VEVO via empty string.

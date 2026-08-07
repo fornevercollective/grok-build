@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#0d1117"/>
+<title>webgrid-chase · lab task · not ARC score</title>
+<style>
+  :root {
+    --bg: #0a0c10; --card: #12151c; --ink: #e8ecf1; --mut: #8b93a0;
+    --line: #252a33; --acc: #6ea8fe; --good: #3dd68c; --hot: #f07178;
+    --blue: #38bdf8; --warn: #e0b341; --soft: #1a1f28;
+    --board: #0c0e12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--ink); min-height: 100vh;
+  }
+  a { color: var(--acc); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ARC-task style chrome */
+  .topnav {
+    display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center;
+    padding: .65rem 1.1rem; border-bottom: 1px solid var(--line);
+    background: #0e1117; font-size: .82rem; color: var(--mut);
+  }
+  .topnav .crumb { color: var(--mut); }
+  .topnav .crumb b { color: var(--ink); font-weight: 700; }
+  .topnav .links { margin-left: auto; display: flex; flex-wrap: wrap; gap: .75rem; }
+
+  .task-head {
+    max-width: 1040px; margin: 0 auto; padding: 1.25rem 1.1rem .5rem;
+  }
+  .task-head .dataset {
+    font: 600 11px/1 system-ui; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--mut); margin-bottom: .35rem;
+  }
+  .task-head h1 {
+    margin: 0; font: 800 1.75rem/1.15 system-ui; letter-spacing: -.03em;
+  }
+  .task-head .sub {
+    margin: .4rem 0 0; color: var(--mut); font-size: .88rem; max-width: 62ch;
+  }
+  .honesty {
+    margin: .75rem 0 0; padding: .65rem .8rem; border-radius: 10px;
+    border: 1px solid rgba(224,179,65,.35); background: rgba(224,179,65,.08);
+    font-size: .8rem; color: #e8d5a3; max-width: 62ch;
+  }
+  .honesty b { color: #f5e6b8; }
+
+  .stage-wrap {
+    max-width: 1040px; margin: 0 auto; padding: .75rem 1.1rem 1rem;
+    display: grid; grid-template-columns: minmax(280px, 1fr) 300px; gap: 1rem;
+  }
+  @media (max-width: 900px) { .stage-wrap { grid-template-columns: 1fr; } }
+
+  .play-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1rem; display: flex; flex-direction: column; gap: .75rem;
+  }
+  .play-card .level {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font: 600 12px system-ui; color: var(--mut);
+  }
+  .play-card .level strong { color: var(--ink); font-size: 1rem; }
+  canvas#grid {
+    width: 100%; max-width: 520px; aspect-ratio: 1; display: block;
+    margin: 0 auto; background: #000; border-radius: 10px; cursor: crosshair;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 16px 40px rgba(0,0,0,.45);
+  }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center;
+  }
+  .controls button, .bar button, .panel button {
+    appearance: none; border: 1px solid var(--line); background: var(--soft); color: var(--ink);
+    border-radius: 8px; padding: .4rem .7rem; font: 650 12px system-ui; cursor: pointer;
+  }
+  .controls button.primary, .bar button.primary {
+    background: #2563eb; border-color: #2563eb; color: #fff;
+  }
+  .controls button:disabled, .bar button:disabled { opacity: .4; cursor: not-allowed; }
+  .status-line {
+    text-align: center; font: 600 12px ui-monospace, Menlo, monospace; color: var(--mut);
+  }
+  .status-line.live { color: var(--good); }
+  .status-line.ended { color: var(--warn); }
+
+  .metrics {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: .45rem;
+  }
+  .metrics .m {
+    background: var(--soft); border: 1px solid var(--line); border-radius: 10px;
+    padding: .55rem .65rem;
+  }
+  .metrics .m .k {
+    font: 600 10px/1 system-ui; letter-spacing: .06em; text-transform: uppercase; color: var(--mut);
+  }
+  .metrics .m .v {
+    margin-top: .2rem; font: 800 1.2rem/1.15 ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .metrics .m .v.good { color: var(--good); }
+  .metrics .m .v.hot { color: var(--hot); }
+  .metrics .m.hero { grid-column: 1 / -1; }
+  .metrics .m.hero .v { font-size: 1.85rem; letter-spacing: -.03em; }
+
+  .bar {
+    display: flex; flex-wrap: wrap; gap: .45rem .6rem; align-items: center;
+    padding: .35rem 0 0; font-size: .78rem; color: var(--mut);
+  }
+  .bar label { display: inline-flex; gap: .25rem; align-items: center; }
+  .bar select, .bar input[type="number"], .bar input[type="text"] {
+    background: #0a0c10; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: .25rem .4rem; font: 600 12px system-ui; max-width: 9rem;
+  }
+
+  .side {
+    display: flex; flex-direction: column; gap: .75rem;
+    /* freeze layout during play — no reflow thrash */
+    contain: layout style;
+  }
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: .85rem .9rem;
+    contain: layout;
+  }
+  body.playing .side .etym-grid,
+  body.playing .research-body {
+    pointer-events: none;
+  }
+  body.playing .metrics .v {
+    /* tabular only — no width thrash */
+    font-variant-numeric: tabular-nums;
+    min-width: 4ch;
+  }
+  .panel h2 {
+    margin: 0 0 .55rem; font: 700 13px/1.2 system-ui; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--mut);
+  }
+  .panel p, .panel li { margin: 0 0 .4rem; color: var(--mut); font-size: .8rem; }
+  .panel ul { margin: 0; padding-left: 1.1rem; }
+
+  /* Model performance table — ARC Prize shape */
+  .runs-wrap { max-width: 1040px; margin: 0 auto; padding: 0 1.1rem 1.5rem; }
+  .runs-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1rem 1.1rem 1.15rem; overflow: auto;
+  }
+  .runs-card h2 {
+    margin: 0 0 .25rem; font: 700 1.05rem/1.25 system-ui; letter-spacing: -.01em;
+  }
+  .runs-card .lede { margin: 0 0 .85rem; color: var(--mut); font-size: .82rem; }
+  table.perf {
+    width: 100%; border-collapse: collapse; font-size: .84rem;
+  }
+  table.perf th, table.perf td {
+    text-align: left; padding: .55rem .5rem; border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  table.perf th {
+    font: 650 11px/1 system-ui; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--mut); white-space: nowrap;
+  }
+  table.perf td { font-variant-numeric: tabular-nums; }
+  table.perf td.model { font-weight: 650; color: var(--ink); max-width: 14rem; word-break: break-word; }
+  table.perf td.score { font-weight: 800; color: var(--good); }
+  table.perf td.score.zero { color: var(--mut); }
+  table.perf tr:hover td { background: rgba(255,255,255,.02); }
+  table.perf .tag-ref {
+    display: inline-block; font: 650 9px system-ui; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--warn); border: 1px solid rgba(224,179,65,.35);
+    border-radius: 999px; padding: 1px 6px; margin-left: 6px; vertical-align: middle;
+  }
+  .replay-btn {
+    appearance: none; border: 1px solid var(--line); background: transparent;
+    color: var(--acc); border-radius: 6px; padding: .2rem .55rem; font: 650 12px system-ui;
+    cursor: pointer;
+  }
+  .replay-btn:hover { background: rgba(110,168,254,.1); }
+
+  details.research {
+    max-width: 1040px; margin: 0 auto 1.5rem; padding: 0 1.1rem;
+  }
+  details.research > summary {
+    cursor: pointer; font: 650 13px system-ui; color: var(--mut);
+    padding: .5rem 0; list-style: none;
+  }
+  details.research > summary::-webkit-details-marker { display: none; }
+  details.research[open] > summary { color: var(--ink); margin-bottom: .5rem; }
+  .research-body {
+    display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+  }
+  @media (max-width: 800px) { .research-body { grid-template-columns: 1fr; } }
+
+  .etym-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%;
+  }
+  @media (max-width: 900px) { .etym-grid { grid-template-columns: repeat(2, 1fr); } }
+  .etym-card {
+    background: #0d1117; border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 6px 6px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+    min-height: 118px; contain: layout paint;
+  }
+  .etym-card.on {
+    box-shadow: 0 0 0 1px var(--layer-c, #5eead4);
+    border-color: var(--layer-c, #5eead4);
+    background: rgba(94,234,212,.06);
+  }
+  .etym-card.reached { opacity: 1; }
+  .etym-card:not(.reached) { opacity: .55; }
+  .etym-card .lx { font: 800 10px/1 ui-monospace, Menlo, monospace; color: var(--layer-c, #8b949e); letter-spacing: .04em; }
+  .etym-card .kind { font: 700 11px system-ui; color: var(--ink); }
+  .etym-card .ex { font: 600 11px ui-monospace, Menlo, monospace; color: #e6edf3; }
+  .etym-card .note { font: 500 8px/1.25 system-ui; color: var(--mut); text-align: center; }
+
+  /* Full Rubik solve-cross net (from cube-viewer-hotpipe rubikNetHtml) */
+  .rubik-net {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    --hue: 200; user-select: none;
+  }
+  .rubik-net.mini .rubik-face { width: 36px; height: 36px; gap: 1px; }
+  .rubik-net.mini .rubik-face span { font-size: 7px; }
+  .rubik-net-row { display: flex; gap: 2px; justify-content: center; }
+  .rubik-net-mid { gap: 2px; }
+  .rubik-face {
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+    width: 42px; height: 42px; gap: 1px; padding: 1px;
+    background: rgba(0,0,0,.45); border-radius: 3px;
+    border: 1px solid hsla(var(--hue), 55%, 50%, .45);
+  }
+  .rubik-face.face-f { border-color: hsla(var(--hue), 70%, 60%, .85); box-shadow: 0 0 0 1px hsla(var(--hue), 60%, 50%, .25); }
+  .rubik-face.face-locked { opacity: .28; filter: grayscale(.6); }
+  .rubik-face span {
+    display: flex; align-items: center; justify-content: center;
+    background: hsla(var(--hue), 35%, 22%, .9); color: #c9d1d9;
+    font: 700 8px/1 ui-monospace, Menlo, monospace; border-radius: 1px;
+    overflow: hidden;
+  }
+  .rubik-face span.on {
+    background: hsla(var(--hue), 70%, 48%, .95); color: #0d1117;
+  }
+  .rubik-face span.edge { background: hsla(var(--hue), 25%, 18%, .7); color: #6e7681; }
+  .rubik-face span.locked { color: #484f58; background: #161b22; }
+  .face-row, .lang-row { display: flex; flex-wrap: wrap; gap: 4px; margin: .3rem 0; }
+  .face-row button, .lang-row button {
+    appearance: none; border: 1px solid var(--line); background: #161b22; color: var(--mut);
+    border-radius: 6px; padding: 3px 7px; font: 650 10px system-ui; cursor: pointer;
+  }
+  .face-row button.on, .lang-row button.on { border-color: #58a6ff; color: #58a6ff; }
+  .face-row button.locked { opacity: .35; }
+  .pathway-chip {
+    margin: .3rem 0; padding: 6px 8px; border-radius: 8px;
+    background: rgba(94,234,212,.06); border: 1px solid rgba(94,234,212,.18);
+    font: 600 10px/1.3 ui-monospace, Menlo, monospace; color: var(--mut);
+  }
+  .pathway-chip b { color: #5eead4; }
+  .etym { font: 600 10px/1.35 ui-monospace, Menlo, monospace; color: var(--mut); margin-top: .35rem; }
+  .etym b { color: #5eead4; }
+  .log {
+    font: 11px/1.35 ui-monospace, Menlo, monospace; max-height: 140px; overflow: auto;
+    background: #0a0c10; border-radius: 8px; padding: .5rem; color: #8b949e; white-space: pre-wrap;
+  }
+  footer {
+    padding: 1rem 1.1rem 2rem; color: var(--mut); font-size: .75rem;
+    max-width: 1040px; margin: 0 auto; border-top: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+<nav class="topnav">
+  <span class="crumb"><a href="http://127.0.0.1:8795/">Lab</a> / <a href="http://127.0.0.1:8795/#arc-prize">ARC Prize</a> / <b>webgrid-chase</b></span>
+  <span class="links">
+    <a href="http://127.0.0.1:8795/#arc-prize">#arc-prize metrics</a>
+    <a href="https://arcprize.org/tasks/ls20" target="_blank" rel="noopener">ARC task shape (ls20)</a>
+    <a href="ugrad-arena.html">μgrad Arena</a> · <a href="lite-arena.html">Lite Arena</a>
+    <a href="cube-viewer.html">cube-viewer</a>
+  </span>
+</nav>
+
+<div class="task-head">
+  <div class="dataset">Dataset · Offline lab instrument · not ARC-AGI private set</div>
+  <h1>webgrid-chase</h1>
+  <p class="sub">
+    Presentation surface for WebGrid timing (BPS / actions / replay).
+    Same <b>efficiency culture</b> as ARC Prize model tables — different scoreboard.
+    Paint ceiling ~588 BPS / 60 Hz online; offline sim owns the tick.
+  </p>
+  <div class="honesty">
+    <b>Not ARC score.</b> Peak BPS is a <b>lab</b> metric (Neuralink public formula).
+    ARC Prize % / actions live on official games only
+    (<a href="https://arcprize.org/tasks/ls20" target="_blank" rel="noopener">e.g. ls20</a>).
+    Map harness skill → prize path: <a href="http://127.0.0.1:8795/#arc-prize">#arc-prize</a>.
+  </div>
+</div>
+
+<div class="stage-wrap">
+  <div class="play-card">
+    <div class="level">
+      <span>Level <strong id="v-level">—</strong></span>
+      <span id="mode-tag">Idle · press Start</span>
+    </div>
+    <canvas id="grid" width="600" height="600" aria-label="webgrid chase board"></canvas>
+    <div class="controls">
+      <button class="primary" id="btn-start">Start</button>
+      <button id="btn-stop" disabled>Stop</button>
+      <button id="btn-agent" disabled>Run agent</button>
+      <button id="btn-agent-stop" disabled>Stop agent</button>
+      <button id="btn-step" disabled>Step</button>
+    </div>
+    <div class="status-line" id="status-line">Ready · click blue or Run agent</div>
+    <div class="bar">
+      <label>N
+        <select id="sel-n">
+          <option value="12">12×12</option>
+          <option value="30" selected>30×30</option>
+        </select>
+      </label>
+      <label>Duration s
+        <input type="number" id="inp-dur" value="70" min="5" max="600" step="5"/>
+      </label>
+      <label>Seed
+        <input type="number" id="inp-seed" value="42" min="0" max="999999"/>
+      </label>
+      <label title="sim = logic only; turbo = beat Blink (ring NTPM · no paint); render = every hit; raf = 60Hz wall">Tick
+        <select id="sel-tick">
+          <option value="sim">sim</option>
+          <option value="turbo" selected>turbo</option>
+          <option value="render">render</option>
+          <option value="raf">rAF</option>
+        </select>
+      </label>
+      <label>Model
+        <input type="text" id="inp-model" value="perfect-agent" maxlength="48" title="Label for performance table"/>
+      </label>
+      <label><input type="checkbox" id="chk-bc" checked/> BC</label>
+      <label><input type="checkbox" id="chk-lane"/> lane</label>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel">
+      <h2>Live metrics</h2>
+      <div class="metrics">
+        <div class="m hero"><div class="k">Peak BPS · lab score</div><div class="v good" id="v-peak">0.0</div></div>
+        <div class="m"><div class="k">BPS now</div><div class="v good" id="v-bps">0.0</div></div>
+        <div class="m"><div class="k">Actions</div><div class="v" id="v-hits">0</div></div>
+        <div class="m"><div class="k">Misses</div><div class="v hot" id="v-miss">0</div></div>
+        <div class="m"><div class="k">NTPM</div><div class="v" id="v-ntpm">0</div></div>
+        <div class="m"><div class="k">Hits/s</div><div class="v" id="v-hps">0.0</div></div>
+        <div class="m"><div class="k">Time left</div><div class="v" id="v-time">0.0</div></div>
+        <div class="m"><div class="k">Target</div><div class="v" id="v-tgt">—</div></div>
+      </div>
+      <div id="wg-score-cd" style="margin-top:10px" title="Score round clock · SpaceX timer look"></div>
+      <p style="margin-top:.65rem">
+        BPS = log₂(N²−1)×NTPM/60 · score clock = round time (calibration) · agent ≠ implant
+      </p>
+    </div>
+    <div class="panel">
+      <h2>ARC Prize map</h2>
+      <ul>
+        <li><b>This page:</b> harness · actions/time · replay log</li>
+        <li><b>Not:</b> ARC-AGI % on private tasks</li>
+        <li><b>Closest cousin:</b> ARC-AGI-3 interactive agents</li>
+        <li><a href="http://127.0.0.1:8795/#arc-prize">Full map · #arc-prize</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<section class="runs-wrap">
+  <div class="runs-card">
+    <h2>Model performance</h2>
+    <p class="lede">
+      Sortable-style run log (ARC Prize task page shape: Model · Score · Actions · Replay · Published).
+      Lab score = peak BPS. ARC reference rows show official-style % / actions for comparison only.
+    </p>
+    <table class="perf" id="perf-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Score</th>
+          <th>Actions</th>
+          <th>Replay</th>
+          <th>Published</th>
+        </tr>
+      </thead>
+      <tbody id="perf-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<details class="research">
+  <summary>Research · L0–L7 etym / Rubik GEO · agent API · log</summary>
+  <div class="research-body">
+    <div class="panel">
+      <h2>Rubik · origin tree · L0–L7</h2>
+      <p>
+        <a href="cube-viewer.html">local cube-viewer</a> ·
+        <a href="https://kbatch.ugrad.ai/data/declaration/cube-viewer" target="_blank" rel="noopener">prod</a>
+      </p>
+      <div class="lang-row" id="lang-row"></div>
+      <div class="face-row" id="face-row"></div>
+      <div class="pathway-chip" id="pathway-chip">PATH · idle</div>
+      <div class="etym-grid" id="etym-grid"></div>
+      <div class="etym" id="etym-readout">—</div>
+    </div>
+    <div class="panel">
+      <h2>Agent API · log</h2>
+      <p><code>WebgridUgrad.agentStep()</code> · <code>runAgent()</code> · <code>getState()</code></p>
+      <p>Ceiling ~588 BPS online · sim uncaps paint wall</p>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</details>
+
+<footer>
+  webgrid-ugrad · presentation for lab + ARC harness culture ·
+  <a href="http://127.0.0.1:8795/#arc-prize">#arc-prize</a> ·
+  <a href="https://arcprize.org/tasks/ls20" target="_blank" rel="noopener">arcprize.org/tasks/ls20</a> ·
+  docs: WEBGRID-GLYPH-CAPTURE.md
+</footer>
+
+<script src="ugrad/sx-countdown.js"></script>
+<script src="ugrad/board-crosshair.js"></script>
+<script>
+(function () {
+  "use strict";
+  var VER = "webgrid-ugrad-v3.5-chip";
+  var RUNS_KEY = "mg.webgrid.ugrad.runs";
+  var etymBuilt = false; /* gallery built once — no DOM thrash mid-play */
+  var lastHighlightStage = -1;
+  var scoreClock = null;
+
+  /*
+   * kbatch cube-viewer L0–L7 etymology / communication-origin tree
+   * Source: /Volumes/qbitOS/00.dev/uvspeed/web/cube-viewer-hotpipe.js (ETYM_TREE)
+   * Prod:   https://kbatch.ugrad.ai/data/declaration/cube-viewer
+   * Local:  http://127.0.0.1:8795/cube-viewer.html
+   *
+   * Progressive Rubik face unlock (layerFaceMask):
+   *   L0 AIR U · L1 AFFECT U+F · L2 ICON U+F+D · L3 PROSODY U+L+F+R
+   *   L4 PHONE +B · L5–L7 ALL faces · FORM/GEO mesh on F
+   */
+  var ETYM_ERA = {
+    0: "L0 · PRE-LINGUISTIC",
+    1: "L1 · PRE-LINGUISTIC",
+    2: "L2 · SOUND-SYMBOLISM",
+    3: "L3 · PROTO-DISCOURSE",
+    4: "L4 · ARTICULATORY",
+    5: "L5 · SYSTEM",
+    6: "L6 · LANGUAGE",
+    7: "L7 · FULL LANGUAGE",
+  };
+  var ETYM_TREE = [
+    { id: "breath", label: "Breath / airstream", stage: 0, era: "pre-linguistic", color: "#64748b",
+      desc: "Pulmonic egressive airstream — raw energy of speech before contrast.",
+      examples: ["sigh", "huff", "gasp", "hum"],
+      rubik: { faces: "U", kind: "AIR", solve: "airstream energy on U face only" } },
+    { id: "affect", label: "Affective cry / call", stage: 1, era: "pre-linguistic", color: "#f472b6",
+      desc: "Emotion-linked vocalization — pain, joy, alarm, contact calls.",
+      examples: ["ouch", "wow", "hey", "mama"],
+      rubik: { faces: "U F", kind: "AFFECT", solve: "call tokens light F + U" } },
+    { id: "iconic", label: "Iconic / onomatopoeia", stage: 2, era: "sound-symbolism", color: "#fb923c",
+      desc: "Sounds that mimic events — first stable form–meaning links.",
+      examples: ["bang", "buzz", "meow", "splash"],
+      rubik: { faces: "U F D", kind: "ICON", solve: "event-mimic stickers on F cross" } },
+    { id: "prosody", label: "Prosody / chant / ritual", stage: 3, era: "proto-discourse", color: "#c084fc",
+      desc: "Rhythm, tone, group voice — chant before full lexicon.",
+      examples: ["la-la", "om", "yo-heave-ho"],
+      rubik: { faces: "U L F R", kind: "PROSODY", solve: "cadence ring around F (BPM belt)" } },
+    { id: "phone", label: "Phones (articulated sounds)", stage: 4, era: "articulatory", color: "#22d3ee",
+      desc: "Discrete mouth/tongue/lip gestures as physical events.",
+      examples: ["[p]", "[s]", "[a]"],
+      rubik: { faces: "U L F R B", kind: "PHONE", solve: "articulated phones on mid belt" } },
+    { id: "phoneme", label: "Phonemes (contrast)", stage: 5, era: "system", color: "#58a6ff",
+      desc: "Sounds that change meaning in a mother tongue.",
+      examples: ["pat/bat", "ship/sheep"],
+      rubik: { faces: "ALL", kind: "PHONEME", solve: "contrast pair on F · system stickers" } },
+    { id: "morpholex", label: "Morphology · lexicon", stage: 6, era: "language", color: "#3fb950",
+      desc: "Roots, affixes, words of the mother tongue (FORM lives here).",
+      examples: ["water", "hablar", "पानी"],
+      rubik: { faces: "ALL", kind: "FORM", solve: "full Rubik · FORM mesh on F face" } },
+    { id: "discourse", label: "Discourse · community", stage: 7, era: "full language", color: "#f97316",
+      desc: "Sentences, genres, mother-tongue norms — slang / play.",
+      examples: ["conversation", "story", "meme slang"],
+      rubik: { faces: "ALL", kind: "DISCOURSE", solve: "phrase multipath · full 6-face solve" } },
+  ];
+  /* Rubik faces — progressive unlock (same order as cube-viewer layerFaceMask) */
+  var RUBIK_FACES = [
+    { id: "U", name: "up", hue: "#4cc2ff" },
+    { id: "L", name: "left", hue: "#ff7ec4" },
+    { id: "F", name: "front", hue: "#48e0a0" },
+    { id: "R", name: "right", hue: "#50f0d0" },
+    { id: "B", name: "back", hue: "#ffb84a" },
+    { id: "D", name: "down", hue: "#c888ff" },
+  ];
+  /* Pathway + allReady langs (cube-viewer / kbatch-live 36-lang set, compact UI row) */
+  var PATHWAY_LANGS = [
+    { lang: "en", layout: "qwerty", label: "English", script: "Latin", family: "Germanic", hue: 200 },
+    { lang: "is", layout: "qwerty", label: "Icelandic", script: "Latin-IS", family: "Germanic", hue: 190 },
+    { lang: "de", layout: "qwertz", label: "German", script: "Latin-DE", family: "Germanic", hue: 40 },
+    { lang: "fr", layout: "azerty", label: "French", script: "Latin-FR", family: "Romance", hue: 280 },
+    { lang: "es", layout: "qwerty", label: "Spanish", script: "Latin-ES", family: "Romance", hue: 30 },
+    { lang: "it", layout: "qwerty", label: "Italian", script: "Latin-IT", family: "Romance", hue: 160 },
+    { lang: "nl", layout: "qwerty", label: "Dutch", script: "Latin-NL", family: "Germanic", hue: 170 },
+    { lang: "sv", layout: "qwerty", label: "Swedish", script: "Latin-SV", family: "Germanic", hue: 210 },
+    { lang: "pt", layout: "qwerty", label: "Portuguese", script: "Latin-PT", family: "Romance", hue: 25 },
+    { lang: "pl", layout: "qwerty", label: "Polish", script: "Latin-PL", family: "Slavic", hue: 350 },
+    { lang: "tr", layout: "turkish_f", label: "Turkish", script: "Latin-TR", family: "Turkic", hue: 15 },
+    { lang: "vi", layout: "vietnamese", label: "Vietnamese", script: "Latin-VI", family: "Austroasiatic", hue: 90 },
+    { lang: "ar", layout: "arabic", label: "Arabic", script: "Arabic", family: "Semitic", hue: 150 },
+    { lang: "he", layout: "hebrew", label: "Hebrew", script: "Hebrew", family: "Semitic", hue: 45 },
+    { lang: "el", layout: "greek", label: "Greek", script: "Greek", family: "Hellenic", hue: 220 },
+    { lang: "ru", layout: "jcuken", label: "Russian", script: "Cyrillic", family: "Slavic", hue: 0 },
+    { lang: "hi", layout: "hindi", label: "Hindi", script: "Devanagari", family: "Indo-Aryan", hue: 20 },
+    { lang: "zh", layout: "qwerty", label: "Chinese", script: "Han", family: "Sinitic", hue: 10 },
+    { lang: "ja", layout: "japanese", label: "Japanese", script: "Kana/Kanji", family: "Japonic", hue: 330 },
+    { lang: "ko", layout: "korean", label: "Korean", script: "Hangul", family: "Koreanic", hue: 300 },
+    { lang: "th", layout: "thai", label: "Thai", script: "Thai", family: "Tai", hue: 55 },
+    { lang: "nav", layout: "qwerty", label: "Navajo", script: "Latin-NV", family: "Na-Dené", hue: 120 },
+    { lang: "oj", layout: "qwerty", label: "Ojibwe", script: "Latin-OJ", family: "Algic", hue: 100 },
+    { lang: "chr", layout: "qwerty", label: "Cherokee", script: "Cherokee", family: "Iroquoian", hue: 320 },
+  ];
+  /* cube-viewer LANG_CUBE_SEED — full solve-cross sticker pools U L F R B D */
+  var LANG_CUBE_SEED = {
+    en:  { script: "Latin", faces: ["ABCDEFGHI", "JKLMNOPQR", "STUVWXYZ.", "thequickb", "rownfoxj", "umps12345"] },
+    is:  { script: "Latin-IS", faces: ["AÁBDÐEÉFG", "HIÍJKLMNO", "ÓPRSTUÚV", "XYÝÞÆÖ.,", "hallóvatn", "íslandxyz"] },
+    de:  { script: "Latin-DE", faces: ["AÄBCDEFG", "HIJKLMNO", "ÖPQRSTUÜ", "VWXYZẞ.,", "wasserfeu", "qwertzäöü"] },
+    fr:  { script: "Latin-FR", faces: ["AÀÂÆBCDE", "ÉÈÊËFGHI", "IÎÏJKLMN", "OÔŒPQRST", "UÙÛÜVWXY", "eaufeubon"] },
+    it:  { script: "Latin-IT", faces: ["AÀBCDEFG", "HIÌJKLMN", "OÒPQRSTU", "ÙVWXYZ.,", "acquafuo", "ciaoital"] },
+    es:  { script: "Latin-ES", faces: ["AÁBCDEÉF", "GHIÍJKLM", "NÑOÓPQRS", "TUÚÜVWXY", "ZÑ.,agua", "fuegohola"] },
+    nl:  { script: "Latin-NL", faces: ["ABCDEFGHI", "JKLMNOPQR", "STUVWXYZ.", "watervuur", "aardehemel", "hallowereld"] },
+    sv:  { script: "Latin-SV", faces: ["AÅÄBCDEFG", "HIJKLMNOÖ", "PQRSTUÜVX", "YZÅÄÖ.,12", "vatteneld", "hejvärlden"] },
+    pt:  { script: "Latin-PT", faces: ["AÁÀÂÃBCDE", "ÉÊFGHIÍJK", "LMNOÓÔÕPQ", "RSTUÚVWXY", "água fog", "olá mundo"] },
+    pl:  { script: "Latin-PL", faces: ["AĄBCĆDEĘF", "GHIJKLŁMN", "ŃOÓPQRSŚT", "UVWXYZŹŻ.", "wodaoień", "cześćświat"] },
+    tr:  { script: "Latin-TR", faces: ["AÂBCÇDEFG", "ĞHIİJKLMN", "OÖPRSŞTUÜ", "VYZ.,0123", "su ateşyer", "merhabadü"] },
+    vi:  { script: "Latin-VI", faces: ["AĂÂBCDĐEÊ", "GHIKLMNOÔ", "ƠPQRSTUƯV", "XY.,01234", "nướclửađ", "xinchào"] },
+    nav: { script: "Latin-NV", faces: ["AÁĄBCDEĘ", "GHIĮKLMN", "OÓǪPRSST", "TŁWYZąęį", "tókǫnav", "dinebiza"] },
+    oj:  { script: "Latin-OJ", faces: ["AABCCDDE", "EGHIIJKK", "MNOOPPSS", "SHTWYZaa", "nibiishk", "boozhooo"] },
+    ar:  { script: "Arabic", faces: ["ابتثجحخد", "ذرزسشصضط", "ظعغفقكلم", "نهويءآأ", "ماءنارمر", "حباهلالا"] },
+    he:  { script: "Hebrew", faces: ["אבגדהוזחט", "יכלמנסעפצ", "קרשתךםןףץ", "שלוםמיםא", "אהבהעולם", "כןלאשמש"] },
+    el:  { script: "Greek", faces: ["ΑΒΓΔΕΖΗΘ", "ΙΚΛΜΝΞΟΠ", "ΡΣΤΥΦΧΨΩ", "αβγδεζηθ", "ικλμνξοπ", "νερόφωτι"] },
+    ru:  { script: "Cyrillic", faces: ["АБВГДЕЁЖЗ", "ИЙКЛМНОПР", "СТУФХЦЧШЩ", "ЪЫЬЭЮЯ.,", "водаогонь", "приветмир"] },
+    hi:  { script: "Devanagari", faces: ["अआइईउऊए", "ऐओऔकखगघ", "चछजझटठड", "ढणतथदधन", "पफबभमयर", "पानीआगनम"] },
+    zh:  { script: "Han", faces: ["的一是不了人", "我在有他这为", "之大来以个中", "上下们到说国", "和水火天地人", "你好山水日月"] },
+    ja:  { script: "Kana/Kanji", faces: ["あいうえおかき", "くけこさしすせ", "たちつてとなに", "はひふへほまみ", "水火天地人你好", "やゆよらりるれ"] },
+    ko:  { script: "Hangul", faces: ["가나다라마바사", "아자차카타파하", "ㄱㄴㄷㄹㅁㅂㅅ", "ㅇㅈㅊㅋㅌㅍㅎ", "물불하늘땅사람", "안녕세상사랑"] },
+    th:  { script: "Thai", faces: ["กขคงจฉชซฌ", "ญฎฏฐฑฒณดต", "ถทธนบปผฝพ", "ฟภมยรลวศษ", "สหฬอฮะาิ", "น้ำไฟฟ้าดิน"] },
+    chr: { script: "Cherokee", faces: ["ᎠᎡᎢᎣᎤᎥᎦᎧᎨ", "ᎩᎪᎫᎬᎭᎮᎯᎰᎱ", "ᎲᎳᎴᎵᎶᎷᎸᎹᎺ", "ᎻᎼᎽᎾᎿᏀᏁᏂᏃ", "ᏄᏅᏆᏇᏈᏉᏊᏋᏌ", "osiyoamaat"] },
+  };
+  /* curated FORM mesh (kbatch concept mesh — water concept sample) */
+  var FORM_MESH = {
+    water: { en: "water", de: "Wasser", fr: "eau", es: "agua", it: "acqua", nl: "water", sv: "vatten", pt: "água", pl: "woda", tr: "su", vi: "nước", ar: "ماء", he: "מים", el: "νερό", ru: "вода", hi: "पानी", zh: "水", ja: "水", ko: "물", th: "น้ำ", is: "vatn", nav: "tó", la: "aqua" },
+    fire: { en: "fire", de: "Feuer", fr: "feu", es: "fuego", it: "fuoco", ar: "نار", zh: "火", ja: "火", ko: "불", hi: "आग", ru: "огонь" },
+  };
+  var meshToken = "water";
+
+  var etymStage = 0;
+  var etymLock = null;
+  var activeLang = 0;
+  var activeFace = 2;
+  var lastPaintT = 0;
+  var paintEveryMs = 16; /* ~60fps when painting */
+  var bcRubik = null;
+  try { bcRubik = new BroadcastChannel("ugrad-rubik-lang"); } catch (eR) {}
+
+  function layerFaceMask(stage) {
+    if (stage <= 0) return { U: 1, L: 0, F: 0, R: 0, B: 0, D: 0 };
+    if (stage === 1) return { U: 1, L: 0, F: 1, R: 0, B: 0, D: 0 };
+    if (stage === 2) return { U: 1, L: 0, F: 1, R: 0, B: 0, D: 1 };
+    if (stage === 3) return { U: 1, L: 1, F: 1, R: 1, B: 0, D: 0 };
+    if (stage === 4) return { U: 1, L: 1, F: 1, R: 1, B: 1, D: 0 };
+    return { U: 1, L: 1, F: 1, R: 1, B: 1, D: 1 };
+  }
+  function activeEtym() {
+    var s = etymLock != null ? etymLock : etymStage;
+    return ETYM_TREE[Math.max(0, Math.min(7, s))] || ETYM_TREE[7];
+  }
+  function hueCss(h) {
+    return "hsl(" + (h | 0) + " 70% 55%)";
+  }
+
+  /** F-face token per layer — cube-viewer etymLayerSolve shape */
+  function layerActiveToken(stage, lang) {
+    var layer = ETYM_TREE[stage] || ETYM_TREE[7];
+    var form = (FORM_MESH[meshToken] && FORM_MESH[meshToken][lang]) || meshToken;
+    var ex0 = (layer.examples && layer.examples[0]) || "·";
+    if (stage === 0) return "h·····";
+    if (stage === 1) return ex0.slice(0, 6);
+    if (stage === 2) return ex0.slice(0, 5);
+    if (stage === 3) return "♪112" + String(ex0).slice(0, 3);
+    if (stage === 4) return "[" + String(form).charAt(0) + "]";
+    if (stage === 5) return "p/b";
+    if (stage === 6) return form;
+    return form;
+  }
+
+  /**
+   * Full Rubik solve-cross net — ported from cube-viewer-hotpipe.js rubikNetHtml
+   *        U
+   *   L  F  R  B
+   *        D
+   * F = FORM/GEO active string on solve-cross pattern
+   */
+  function sticker3x3Lang(pool, active, isFront) {
+    var p = String(pool || "·········");
+    while (p.length < 9) p += p;
+    var out = [];
+    for (var i = 0; i < 9; i++) {
+      var ch = p.charAt(i) || "·";
+      var on = false;
+      var edge = i === 0 || i === 2 || i === 6 || i === 8;
+      if (isFront && active) {
+        /* place form chars on F cross (solve-cross pattern) */
+        var map = { 4: 0, 1: 1, 7: 2, 3: 3, 5: 4, 0: 5, 2: 6, 6: 7, 8: 8 };
+        var ai = map[i];
+        if (ai != null && ai < active.length) {
+          ch = active.charAt(ai);
+          on = true;
+          edge = false;
+        }
+      }
+      out.push({ ch: ch, on: on, edge: edge && !on });
+    }
+    return out;
+  }
+
+  function rubikNetHtml(hue, active, layoutId, lang, opts) {
+    opts = opts || {};
+    var a = String(active || "").replace(/\s/g, "");
+    var seed = LANG_CUBE_SEED[lang] || LANG_CUBE_SEED.en;
+    var mask = opts.faceMask || { U: 1, L: 1, F: 1, R: 1, B: 1, D: 1 };
+    var faces = {
+      U: sticker3x3Lang(seed.faces[0], a, false),
+      L: sticker3x3Lang(seed.faces[1], a, false),
+      F: sticker3x3Lang(seed.faces[2], a, true),
+      R: sticker3x3Lang(seed.faces[3], a, false),
+      B: sticker3x3Lang(seed.faces[4], a, false),
+      D: sticker3x3Lang(seed.faces[5], a, false),
+    };
+    Object.keys(faces).forEach(function (fid) {
+      if (!mask[fid]) {
+        faces[fid] = faces[fid].map(function () {
+          return { ch: "·", on: false, edge: false, locked: true };
+        });
+      }
+    });
+    function faceEl(id, isF) {
+      var locked = !mask[id];
+      var cells = faces[id]
+        .map(function (s) {
+          return (
+            '<span class="' +
+            (s.on ? "on" : s.edge ? "edge" : "") +
+            (s.locked || locked ? " locked" : "") +
+            '">' +
+            (s.ch || "") +
+            "</span>"
+          );
+        })
+        .join("");
+      return (
+        '<div class="rubik-face' +
+        (isF ? " face-f" : "") +
+        (locked ? " face-locked" : " face-open") +
+        '" data-face="' +
+        id +
+        '" title="' +
+        id +
+        (locked ? " · locked" : " · open") +
+        " · " +
+        (seed.script || lang) +
+        " · " +
+        (layoutId || "") +
+        '" style="--hue:' +
+        hue +
+        '">' +
+        cells +
+        "</div>"
+      );
+    }
+    return (
+      '<div class="rubik-net' +
+      (opts.mini !== false ? " mini" : "") +
+      '" data-rubik-net="1" data-lang-net="' +
+      (lang || "") +
+      '"' +
+      (opts.stage != null ? ' data-etym-stage="' + opts.stage + '"' : "") +
+      (opts.kind ? ' data-kind="' + opts.kind + '"' : "") +
+      ">" +
+      '<div class="rubik-net-row rubik-net-u">' +
+      faceEl("U", false) +
+      "</div>" +
+      '<div class="rubik-net-row rubik-net-mid">' +
+      faceEl("L", false) +
+      faceEl("F", true) +
+      faceEl("R", false) +
+      faceEl("B", false) +
+      "</div>" +
+      '<div class="rubik-net-row rubik-net-d">' +
+      faceEl("D", false) +
+      "</div></div>"
+    );
+  }
+
+  /* ── RNG ── */
+  function mulberry32(a) {
+    return function () {
+      var t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ── BPS (Neuralink public formula) ── */
+  function bpsFrom(N, ntpm) {
+    var cells = N * N;
+    if (cells <= 1) return 0;
+    return Math.max((Math.log(cells - 1) / Math.LN2) * (ntpm / 60), 0);
+  }
+
+  /* ── State ── */
+  var S = {
+    N: 30,
+    durationMs: 70000,
+    seed: 42,
+    rng: mulberry32(42),
+    target: -1,
+    hits: 0,
+    misses: 0,
+    trials: [], // {t, hit}
+    running: false,
+    t0: 0,
+    peakBps: 0,
+    lastHitIdx: -1,
+    agentRunning: false,
+    agentTimer: null,
+    rafId: 0,
+    tickMode: "sim",
+  };
+
+  var canvas = document.getElementById("grid");
+  var ctx = canvas.getContext("2d", { alpha: false });
+  var logEl = document.getElementById("log");
+  var etymGridEl = document.getElementById("etym-grid");
+
+  var bcRace = null;
+  var bcLane = null;
+  try {
+    bcRace = new BroadcastChannel("ugrad-webgrid-race");
+    bcLane = new BroadcastChannel("ugrad-tensor-lane");
+  } catch (e) {}
+
+  function log(msg) {
+    var line = "[" + new Date().toISOString().slice(11, 19) + "] " + msg + "\n";
+    logEl.textContent = (line + logEl.textContent).slice(0, 4000);
+  }
+
+  function ntpmNow() {
+    /* turbo: rate-based (uncapped lab score) — ring count lied at ~21435 BPS */
+    if (S.tickMode === "turbo" && S.hits > 0) {
+      var el = elapsed();
+      if (el > 0.0005) return (S.hits / el) * 60;
+    }
+    var now = performance.now();
+    var cut = now - 60000;
+    var n = 0;
+    for (var i = S.trials.length - 1; i >= 0; i--) {
+      var tr = S.trials[i];
+      if (tr.t < cut) break;
+      n += tr.hit ? 1 : -1;
+    }
+    return n;
+  }
+
+  function elapsed() {
+    if (!S.t0) return 0;
+    /* Keep wall time after stop so endGame hps/elapsed_s stay honest */
+    var end = S.tEnd || performance.now();
+    return Math.max(0, (end - S.t0) / 1000);
+  }
+
+  function setStatus(text, kind) {
+    var el = document.getElementById("status-line");
+    var mt = document.getElementById("mode-tag");
+    if (el) {
+      el.textContent = text;
+      el.className = "status-line" + (kind ? " " + kind : "");
+    }
+    if (mt) mt.textContent = text;
+  }
+
+  function hud() {
+    var ntpm = ntpmNow();
+    var bps = bpsFrom(S.N, ntpm);
+    if (bps > S.peakBps) S.peakBps = bps;
+    var el = elapsed();
+    var hps = el > 0.05 ? S.hits / el : 0;
+    var left = S.running && S.t0
+      ? Math.max(0, (S.durationMs - (performance.now() - S.t0)) / 1000)
+      : 0;
+    document.getElementById("v-bps").textContent = bps.toFixed(1);
+    document.getElementById("v-ntpm").textContent = String(ntpm);
+    document.getElementById("v-hps").textContent = hps.toFixed(1);
+    document.getElementById("v-peak").textContent = S.peakBps.toFixed(1);
+    document.getElementById("v-hits").textContent = String(S.hits + S.misses);
+    document.getElementById("v-miss").textContent = String(S.misses);
+    document.getElementById("v-time").textContent = S.running ? left.toFixed(1) + "s" : el.toFixed(1) + "s";
+    document.getElementById("v-tgt").textContent = S.target >= 0 ? String(S.target) : "—";
+    var lv = document.getElementById("v-level");
+    if (lv) lv.textContent = S.N + "×" + S.N + " · " + S.tickMode;
+    if (scoreClock && S.running) {
+      scoreClock.setRemaining(left * 1000);
+      scoreClock.setActive(true);
+    }
+  }
+
+  function loadRuns() {
+    try {
+      var raw = localStorage.getItem(RUNS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveRuns(arr) {
+    try {
+      localStorage.setItem(RUNS_KEY, JSON.stringify(arr.slice(0, 40)));
+    } catch (e) {}
+  }
+
+  function fmtPub(t) {
+    try {
+      return new Date(t).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch (e) {
+      return "—";
+    }
+  }
+
+  /** ARC Prize–style model performance table */
+  function renderRunsTable() {
+    var body = document.getElementById("perf-body");
+    if (!body) return;
+    var runs = loadRuns();
+    /* Reference row: ARC-AGI-3 public shape (not our lab score) */
+    var ref = {
+      model: "xai-grok-4-20-beta-0309-reasoning",
+      scoreLabel: "0%",
+      actions: 110,
+      published: "Apr 14, 2026 at 10:43 AM",
+      ref: true,
+      note: "ARC-AGI-3 public demo shape (ls20-class) — not webgrid lab",
+      replayUrl: "https://arcprize.org/tasks/ls20",
+    };
+    body.innerHTML = "";
+    function row(r) {
+      var tr = document.createElement("tr");
+      var scoreCls = "score" + (r.scoreLabel === "0%" || r.scoreLabel === "—" ? " zero" : "");
+      var modelHtml =
+        r.model +
+        (r.ref ? '<span class="tag-ref">ARC ref</span>' : "");
+      var replay = r.ref
+        ? '<a class="replay-btn" href="' +
+          (r.replayUrl || "https://arcprize.org/tasks/ls20") +
+          '" target="_blank" rel="noopener">Replay</a>'
+        : '<button type="button" class="replay-btn" data-seed="' +
+          (r.seed != null ? r.seed : 42) +
+          '" data-n="' +
+          (r.N || 30) +
+          '" data-tick="' +
+          (r.tick || "sim") +
+          '" data-dur="' +
+          (r.dur || 70) +
+          '">Replay</button>';
+      tr.innerHTML =
+        '<td class="model" title="' +
+        (r.note || "") +
+        '">' +
+        modelHtml +
+        "</td>" +
+        '<td class="' +
+        scoreCls +
+        '">' +
+        r.scoreLabel +
+        "</td>" +
+        "<td>" +
+        r.actions +
+        "</td>" +
+        "<td>" +
+        replay +
+        "</td>" +
+        "<td>" +
+        r.published +
+        "</td>";
+      body.appendChild(tr);
+    }
+    row(ref);
+    runs.forEach(row);
+    body.querySelectorAll(".replay-btn[data-seed]").forEach(function (btn) {
+      btn.onclick = function () {
+        document.getElementById("inp-seed").value = btn.getAttribute("data-seed");
+        document.getElementById("sel-n").value = btn.getAttribute("data-n");
+        document.getElementById("sel-tick").value = btn.getAttribute("data-tick");
+        document.getElementById("inp-dur").value = btn.getAttribute("data-dur");
+        start();
+        setTimeout(function () {
+          runAgent();
+        }, 150);
+      };
+    });
+  }
+
+  function pushRun(result) {
+    var modelEl = document.getElementById("inp-model");
+    var model =
+      (modelEl && modelEl.value.trim()) ||
+      (result.agentRunning ? "perfect-agent" : "human");
+    var actions = (result.hits || 0) + (result.misses || 0);
+    var entry = {
+      model: model,
+      scoreLabel: (result.peakBps != null ? result.peakBps.toFixed(1) : "0.0") + " BPS",
+      peakBps: result.peakBps,
+      actions: actions,
+      hits: result.hits,
+      misses: result.misses,
+      published: fmtPub(result.t || Date.now()),
+      t: result.t || Date.now(),
+      seed: result.seed,
+      N: result.N,
+      tick: result.tick,
+      dur: Math.round((result.elapsed_s || 0) || (S.durationMs / 1000)),
+      ver: VER,
+      ref: false,
+      note: "lab · offline webgrid-chase · not ARC %",
+    };
+    var runs = loadRuns();
+    runs.unshift(entry);
+    saveRuns(runs);
+    renderRunsTable();
+    return entry;
+  }
+
+  function paint() {
+    var N = S.N;
+    var W = canvas.width;
+    var cell = W / N;
+    ctx.fillStyle = "#0c0e12";
+    ctx.fillRect(0, 0, W, W);
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.lineWidth = Math.max(1, W * 0.002);
+    var r, c;
+    for (r = 0; r <= N; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * cell);
+      ctx.lineTo(W, r * cell);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(r * cell, 0);
+      ctx.lineTo(r * cell, W);
+      ctx.stroke();
+    }
+    if (S.target >= 0) {
+      c = S.target % N;
+      r = (S.target / N) | 0;
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(c * cell + 1, r * cell + 1, cell - 2, cell - 2);
+    }
+  }
+
+  function spawnTarget() {
+    var cells = S.N * S.N;
+    var next = (S.rng() * cells) | 0;
+    if (cells > 1) {
+      var guard = 0;
+      while (next === S.target && guard++ < 8) next = (S.rng() * cells) | 0;
+    }
+    S.target = next;
+    return S.target;
+  }
+
+  function faceMeta() {
+    return RUBIK_FACES[activeFace] || RUBIK_FACES[2];
+  }
+  function langMeta() {
+    return PATHWAY_LANGS[activeLang] || PATHWAY_LANGS[0];
+  }
+
+  function paintLangRow() {
+    var row = document.getElementById("lang-row");
+    if (!row) return;
+    if (!row.dataset.built) {
+      row.innerHTML = "";
+      PATHWAY_LANGS.forEach(function (L, i) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = L.lang.toUpperCase();
+        b.dataset.i = String(i);
+        b.title = L.label + " · " + L.script + " · kb " + L.layout + " · " + L.family;
+        b.onclick = function () {
+          activeLang = i;
+          paintLangRow();
+          rebuildEtymGallery(true);
+          publishRubik();
+        };
+        row.appendChild(b);
+      });
+      row.dataset.built = "1";
+    }
+    var kids = row.children;
+    for (var i = 0; i < kids.length; i++) {
+      var on = i === activeLang;
+      kids[i].className = on ? "on" : "";
+      kids[i].style.borderColor = on ? hueCss(PATHWAY_LANGS[i].hue) : "";
+    }
+  }
+
+  function paintFaceRow() {
+    var row = document.getElementById("face-row");
+    if (!row) return;
+    var mask = layerFaceMask(activeEtym().stage);
+    if (!row.dataset.built) {
+      row.innerHTML = "";
+      RUBIK_FACES.forEach(function (F, i) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = F.id;
+        b.dataset.face = F.id;
+        b.dataset.i = String(i);
+        b.onclick = function () {
+          if (b.classList.contains("locked")) return;
+          activeFace = i;
+          paintFaceRow();
+        };
+        row.appendChild(b);
+      });
+      row.dataset.built = "1";
+    }
+    var kids = row.children;
+    for (var i = 0; i < kids.length; i++) {
+      var F = RUBIK_FACES[i];
+      var unlocked = !!mask[F.id];
+      kids[i].className =
+        (i === activeFace ? "on " : "") + (unlocked ? "" : "locked");
+      kids[i].style.borderColor = unlocked ? F.hue : "";
+      kids[i].title =
+        F.id +
+        " · " +
+        F.name +
+        (unlocked ? " · unlocked @ L" + activeEtym().stage : " · locked");
+    }
+  }
+
+  /** Highlight only — no innerHTML (prevents side-panel thrash mid-play) */
+  function highlightEtym() {
+    if (!etymGridEl || !etymBuilt) return;
+    var stage = activeEtym().stage;
+    if (stage === lastHighlightStage && S.running) {
+      /* still update F-face token on active card only */
+      updateActiveCardToken(stage);
+      return;
+    }
+    lastHighlightStage = stage;
+    var cards = etymGridEl.querySelectorAll(".etym-card");
+    for (var i = 0; i < cards.length; i++) {
+      var st = parseInt(cards[i].dataset.stage, 10);
+      cards[i].classList.toggle("on", st === stage);
+      cards[i].classList.toggle("reached", st <= stage);
+    }
+    updateActiveCardToken(stage);
+    paintFaceRow();
+    updateChip();
+  }
+
+  function updateActiveCardToken(stage) {
+    if (!etymGridEl) return;
+    var LM = langMeta();
+    var card = etymGridEl.querySelector('.etym-card[data-stage="' + stage + '"]');
+    if (!card) return;
+    var tok = layerActiveToken(stage, LM.lang);
+    var ex = card.querySelector(".ex");
+    if (ex && ex.textContent !== tok) ex.textContent = tok;
+    /* patch F-face center stickers only (solve-cross) without full rebuild */
+    var fFace = card.querySelector(".rubik-face.face-f");
+    if (fFace && tok) {
+      var spans = fFace.querySelectorAll("span");
+      var map = { 4: 0, 1: 1, 7: 2, 3: 3, 5: 4, 0: 5, 2: 6, 6: 7, 8: 8 };
+      for (var i = 0; i < spans.length; i++) {
+        var ai = map[i];
+        if (ai != null && ai < tok.length) {
+          var ch = tok.charAt(ai);
+          if (spans[i].textContent !== ch) spans[i].textContent = ch;
+          spans[i].className = "on";
+        }
+      }
+    }
+  }
+
+  function updateChip() {
+    var chip = document.getElementById("pathway-chip");
+    var et = document.getElementById("etym-readout");
+    var stage = activeEtym().stage;
+    var LM = langMeta();
+    var F = faceMeta();
+    var layer = activeEtym();
+    var mask = layerFaceMask(stage);
+    var unlocked = Object.keys(mask)
+      .filter(function (k) {
+        return mask[k];
+      })
+      .join("");
+    if (chip) {
+      chip.innerHTML =
+        "<b>" +
+        LM.lang.toUpperCase() +
+        " · " +
+        LM.label +
+        "</b> · " +
+        LM.script +
+        " · kb " +
+        LM.layout +
+        "<br/>etym <b>L" +
+        stage +
+        " " +
+        layer.rubik.kind +
+        "</b> · full Rubik net · faces " +
+        unlocked +
+        " · F=<b>" +
+        layerActiveToken(stage, LM.lang) +
+        "</b>";
+    }
+    if (et) {
+      et.innerHTML =
+        "<b>" +
+        ETYM_ERA[layer.stage] +
+        "</b> · " +
+        layer.label +
+        "<br/>" +
+        layer.rubik.solve +
+        "<br/>mesh <b>" +
+        meshToken +
+        "</b> → " +
+        ((FORM_MESH[meshToken] && FORM_MESH[meshToken][LM.lang]) || "·") +
+        " · <a href='cube-viewer.html' target='_blank'>cube-viewer</a>";
+    }
+  }
+
+  /**
+   * Build L0–L7 gallery once with full solve-cross nets.
+   * force=true rebuilds (lang change). Never call mid-agent-loop.
+   */
+  function rebuildEtymGallery(force) {
+    if (!etymGridEl) return;
+    if (etymBuilt && !force) {
+      highlightEtym();
+      return;
+    }
+    var LM = langMeta();
+    etymGridEl.innerHTML = "";
+    ETYM_TREE.forEach(function (layer) {
+      var card = document.createElement("div");
+      card.className = "etym-card";
+      card.dataset.stage = String(layer.stage);
+      card.style.setProperty("--layer-c", layer.color);
+      var tok = layerActiveToken(layer.stage, LM.lang);
+      var mask = layerFaceMask(layer.stage);
+      card.innerHTML =
+        '<div class="lx">L' +
+        layer.stage +
+        " · " +
+        layer.rubik.kind +
+        "</div>" +
+        rubikNetHtml(LM.hue, tok, LM.layout, LM.lang, {
+          mini: true,
+          faceMask: mask,
+          stage: layer.stage,
+          kind: layer.rubik.kind,
+        }) +
+        '<div class="kind">' +
+        layer.rubik.kind +
+        "</div>" +
+        '<div class="ex">' +
+        tok +
+        "</div>" +
+        '<div class="note">' +
+        layer.rubik.solve +
+        "</div>";
+      card.title = ETYM_ERA[layer.stage] + " · " + layer.label + " — " + layer.desc;
+      card.onclick = function () {
+        if (S.running) return; /* lock during play */
+        etymLock = layer.stage;
+        etymStage = layer.stage;
+        highlightEtym();
+        publishRubik();
+        log("etym lock L" + layer.stage + " " + layer.rubik.kind);
+      };
+      etymGridEl.appendChild(card);
+    });
+    etymBuilt = true;
+    lastHighlightStage = -1;
+    highlightEtym();
+  }
+
+  /** Back-compat name used elsewhere */
+  function updateTensor() {
+    if (S.running) {
+      highlightEtym();
+      return;
+    }
+    rebuildEtymGallery(false);
+  }
+
+  /** Hits climb L0→L7 — highlight only, no DOM rebuild */
+  function maybeAdvanceFaceOnSolve() {
+    if (etymLock != null) return;
+    if (S.hits <= 0) return;
+    var next = Math.min(7, Math.floor(S.hits / 12) % 8);
+    if (next !== etymStage) {
+      etymStage = next;
+      highlightEtym();
+    }
+    /* lang rotate only between rounds (not mid-play thrash) */
+  }
+
+  function publishRubik() {
+    var layer = activeEtym();
+    var LM = langMeta();
+    var F = faceMeta();
+    var mask = layerFaceMask(layer.stage);
+    var layers = ETYM_TREE.map(function (L) {
+      return {
+        stage: L.stage,
+        kind: L.rubik.kind,
+        label: L.label,
+        faces: L.rubik.faces,
+        solve: L.rubik.solve,
+        active: L.stage === layer.stage,
+      };
+    });
+    var msg = {
+      schema: "ugrad-rubik-origin-tree-v2",
+      source: "kbatch-cube-viewer-etym",
+      t: Date.now(),
+      ver: VER,
+      etymStage: layer.stage,
+      etymLock: etymLock,
+      era: ETYM_ERA[layer.stage],
+      layer: {
+        id: layer.id,
+        kind: layer.rubik.kind,
+        label: layer.label,
+        solve: layer.rubik.solve,
+        faces: layer.rubik.faces,
+        color: layer.color,
+      },
+      faceMask: mask,
+      face: F,
+      pathway: LM,
+      layers: layers,
+      kbatch: {
+        cube_viewer_local: "http://127.0.0.1:8795/cube-viewer.html",
+        cube_viewer_prod: "https://kbatch.ugrad.ai/data/declaration/cube-viewer",
+        lang_tree: "https://kbatch.ugrad.ai/labs/lang-tree",
+        engine: "uvspeed/web/cube-viewer-hotpipe.js ETYM_TREE",
+      },
+      N: S.N,
+      bps: bpsFrom(S.N, ntpmNow()),
+      hits: S.hits,
+      running: S.running,
+    };
+    try {
+      if (bcRubik) bcRubik.postMessage(msg);
+    } catch (e) {}
+    try {
+      if (bcLane && document.getElementById("chk-lane") && document.getElementById("chk-lane").checked) {
+        bcLane.postMessage({
+          schema: "ugrad-tensor-lane-v1",
+          env: "kbatch-etym-L0-L7",
+          t: msg.t,
+          stage: layer.stage,
+          kind: layer.rubik.kind,
+          lang: LM.lang,
+          layout: LM.layout,
+          faceMask: mask,
+          N: S.N,
+          bps: msg.bps,
+        });
+      }
+    } catch (e2) {}
+    return msg;
+  }
+
+  function maybePaint() {
+    var now = performance.now();
+    if (S.tickMode === "sim") {
+      if (now - lastPaintT < paintEveryMs) return;
+      lastPaintT = now;
+    }
+    paint();
+  }
+
+  function broadcast() {
+    var ntpm = ntpmNow();
+    var payload = {
+      schema: "fc-webgrid-ugrad-race-v1",
+      ver: VER,
+      t: Date.now(),
+      N: S.N,
+      hits: S.hits,
+      misses: S.misses,
+      ntpm: ntpm,
+      bps: bpsFrom(S.N, ntpm),
+      peak_bps: S.peakBps,
+      hits_per_s: elapsed() > 0.05 ? S.hits / elapsed() : 0,
+      target: S.target,
+      running: S.running,
+      tick: S.tickMode,
+      seed: S.seed,
+    };
+    if (document.getElementById("chk-bc").checked && bcRace) {
+      try { bcRace.postMessage(payload); } catch (e) {}
+    }
+    if (document.getElementById("chk-lane").checked && bcLane) {
+      var slice = [];
+      var N = S.N;
+      var idx = S.lastHitIdx >= 0 ? S.lastHitIdx : S.target;
+      var col = idx % N, row = (idx / N) | 0;
+      for (var dr = -1; dr <= 1; dr++) {
+        for (var dc = -1; dc <= 1; dc++) {
+          var rr = row + dr, cc = col + dc;
+          var on = rr >= 0 && rr < N && cc >= 0 && cc < N;
+          var cellIdx = on ? cc + N * rr : -1;
+          slice.push(cellIdx === S.target ? 1 : 0);
+        }
+      }
+      try {
+        bcLane.postMessage({
+          schema: "ugrad-tensor-lane-v1",
+          env: "webgrid-chase",
+          t: Date.now(),
+          slice9: slice,
+          N: S.N,
+          bps: payload.bps,
+        });
+      } catch (e2) {}
+    }
+    return payload;
+  }
+
+  function endGame() {
+    if (!S.tEnd) S.tEnd = performance.now();
+    S.running = false;
+    S.agentRunning = false;
+    try {
+      document.body.classList.remove("playing");
+    } catch (e) {}
+    if (S.agentTimer) { clearTimeout(S.agentTimer); S.agentTimer = null; }
+    if (S.rafId) { cancelAnimationFrame(S.rafId); S.rafId = 0; }
+    document.getElementById("btn-start").disabled = false;
+    document.getElementById("btn-stop").disabled = true;
+    document.getElementById("btn-agent").disabled = true;
+    document.getElementById("btn-agent-stop").disabled = true;
+    document.getElementById("btn-step").disabled = true;
+    var elSec = elapsed();
+    var hps = S.hits / Math.max(0.01, elSec);
+    var actions = S.hits + S.misses;
+    setStatus(
+      "Ended · " +
+        S.peakBps.toFixed(1) +
+        " BPS peak · " +
+        actions +
+        " actions · not playing",
+      "ended"
+    );
+    hud();
+    paint();
+    /* one gallery refresh after play ends */
+    rebuildEtymGallery(true);
+    publishRubik();
+    log(
+      "END peak_bps=" +
+        S.peakBps.toFixed(1) +
+        " hits=" +
+        S.hits +
+        " misses=" +
+        S.misses +
+        " actions=" +
+        actions +
+        " hps=" +
+        hps.toFixed(1) +
+        " elapsed=" +
+        elSec.toFixed(2) +
+        "s"
+    );
+    var payload = broadcast();
+    var modelEl = document.getElementById("inp-model");
+    var result = {
+      kind: "agent_end",
+      ver: VER,
+      offline: true,
+      lab: "webgrid-ugrad",
+      task: "webgrid-chase",
+      t: Date.now(),
+      N: S.N,
+      peak: { bps: S.peakBps, ntpm: payload.ntpm || ntpmNow() },
+      peakBps: S.peakBps,
+      peakNtpm: payload.ntpm || ntpmNow(),
+      clicks: actions,
+      hits: S.hits,
+      misses: S.misses,
+      actions: actions,
+      hits_per_s: hps,
+      elapsed_s: elSec,
+      tick: S.tickMode,
+      seed: S.seed,
+      model: (modelEl && modelEl.value.trim()) || "perfect-agent",
+      scoreLabel: S.peakBps.toFixed(1) + " BPS",
+      rubikFace: faceMeta().id,
+      note: "lab ≠ ARC % · paint wall instrument · #arc-prize map",
+      arc: {
+        prize_relevant: false,
+        harness_skill: true,
+        map: "http://127.0.0.1:8795/#arc-prize",
+        official_example: "https://arcprize.org/tasks/ls20",
+      },
+    };
+    pushRun(result);
+    try {
+      localStorage.setItem("mg.webgrid.ugrad.last", JSON.stringify(result));
+    } catch (eL) {}
+    try {
+      fetch("http://127.0.0.1:9880/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result),
+      }).catch(function () {});
+      fetch("http://127.0.0.1:9880/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result),
+      }).catch(function () {});
+    } catch (eP) {}
+  }
+
+  function tickClock() {
+    if (!S.running) return;
+    if (performance.now() - S.t0 >= S.durationMs) {
+      endGame();
+      return;
+    }
+    hud();
+    broadcast();
+    if (S.tickMode === "raf") {
+      S.rafId = requestAnimationFrame(function () {
+        paint();
+        tickClock();
+      });
+    } else {
+      /* sim/render: paint only — side panel frozen mid-play */
+      maybePaint();
+      setTimeout(tickClock, 16);
+    }
+  }
+
+  function reset(seed) {
+    S.seed = seed != null ? seed | 0 : (document.getElementById("inp-seed").value | 0);
+    S.N = document.getElementById("sel-n").value | 0;
+    S.durationMs = (document.getElementById("inp-dur").value | 0) * 1000;
+    S.tickMode = document.getElementById("sel-tick").value;
+    if (window.__wgBcx && window.__wgBcx.setGrid) window.__wgBcx.setGrid(S.N);
+    S.rng = mulberry32(S.seed);
+    S.hits = 0;
+    S.misses = 0;
+    S.trials = [];
+    S.peakBps = 0;
+    S.lastHitIdx = -1;
+    S.target = -1;
+    spawnTarget();
+    paint();
+    if (!S.running) rebuildEtymGallery(false);
+    hud();
+  }
+
+  function clickCell(i) {
+    if (!S.running) return { ok: false, reason: "not_running" };
+    var hit = i === S.target;
+    var now = performance.now();
+    S.trials.push({ t: now, hit: hit });
+    // prune old trials
+    var cut = now - 65000;
+    while (S.trials.length && S.trials[0].t < cut) S.trials.shift();
+    if (hit) {
+      S.hits++;
+      S.lastHitIdx = i;
+      spawnTarget();
+      maybeAdvanceFaceOnSolve();
+      /* hot path: paint only — never rebuild side panel */
+      if (S.tickMode !== "sim") paint();
+      else maybePaint();
+      /* BC publish throttled hard */
+      if (S.hits % 64 === 0) publishRubik();
+    } else {
+      S.misses++;
+    }
+    /* hud only every few hits in sim (blazing) */
+    if (S.tickMode !== "sim" || S.hits % 8 === 0 || !hit) hud();
+    return { ok: true, hit: hit, target: S.target, bps: bpsFrom(S.N, ntpmNow()) };
+  }
+
+  function agentStep() {
+    if (!S.running || S.target < 0) return { ok: false };
+    // Perfect agent: click known target (lab instrument — proves paint was the wall)
+    return clickCell(S.target);
+  }
+
+  /*
+   * TURBO / CHIP path — toward bun/zig/rust native peak:
+   *  · NO per-hit performance.now() (was the 2M→cap wall + ring ceil 21435 BPS)
+   *  · Peak lab BPS = log2(N²−1) × (hits/s)  ≡  bpsFrom(N, hps*60)
+   *  · MessageChannel yield · minimal DOM
+   * Native: ~/.panda/mg-soak/webgrid/chip-bench (bun + rust) · scripts/webgrid-chip-bench.sh
+   */
+  var turboPort = null;
+  var turboSliceHits = 0;
+  try {
+    var __mc = new MessageChannel();
+    turboPort = __mc.port2;
+    __mc.port1.onmessage = function () {
+      if (S.agentRunning && S.running && S.tickMode === "turbo") turboLoop();
+    };
+  } catch (eMc) {
+    turboPort = null;
+  }
+
+  /** Rate-based NTPM for turbo (honest peak — not ring-capped window count). */
+  function turboRateNtpm() {
+    var el = elapsed();
+    if (el < 0.0005) return 0;
+    return (S.hits / el) * 60; /* hits/s → per-minute rate */
+  }
+
+  function turboScore() {
+    var ntpm = turboRateNtpm();
+    var bps = bpsFrom(S.N, ntpm);
+    if (bps > S.peakBps) S.peakBps = bps;
+    return { ntpm: ntpm, bps: bps, hps: S.hits / Math.max(0.0005, elapsed()) };
+  }
+
+  function turboSpawn() {
+    var cells = S.N * S.N;
+    /* LCG-free: increment + wrap — faster than rng() on hot path */
+    var next = S.target + 1;
+    if (next >= cells) next = 0;
+    S.target = next;
+  }
+
+  function turboLoop() {
+    if (!S.running || !S.agentRunning || S.tickMode !== "turbo") {
+      setStatus(
+        (S.running ? "Playing · human" : "Ended · not playing") + " · turbo",
+        S.running ? "live" : "ended"
+      );
+      return;
+    }
+    /* Fixed micro-batch: no per-hit clock. Measure only at slice edges. */
+    var t0 = performance.now();
+    var budgetHits = 65536; /* chunk size; retune if tab freezes */
+    var i = budgetHits;
+    var tgt = S.target;
+    var cells = S.N * S.N;
+    var hits = S.hits;
+    while (i-- > 0) {
+      hits++;
+      tgt++;
+      if (tgt >= cells) tgt = 0;
+    }
+    S.hits = hits;
+    S.target = tgt;
+    S.lastHitIdx = tgt;
+    turboSliceHits = budgetHits;
+    var t1 = performance.now();
+
+    /* score from wall rate (uncapped peak) */
+    var sc = turboScore();
+    /* HUD every slice (cheap) */
+    document.getElementById("v-peak").textContent = S.peakBps.toFixed(1);
+    document.getElementById("v-bps").textContent = sc.bps.toFixed(1);
+    document.getElementById("v-hps").textContent = sc.hps.toFixed(1);
+    document.getElementById("v-hits").textContent = String(S.hits);
+    document.getElementById("v-ntpm").textContent = String(Math.round(sc.ntpm));
+    document.getElementById("v-tgt").textContent = String(S.target);
+    setStatus(
+      "Playing · turbo/chip · " +
+        sc.hps.toFixed(0) +
+        " h/s · peak " +
+        S.peakBps.toFixed(0) +
+        " BPS",
+      "live"
+    );
+    /* paint at most ~30Hz */
+    if (t1 - lastPaintT >= 32) {
+      lastPaintT = t1;
+      paint();
+    }
+    if (t1 - S.t0 >= S.durationMs) {
+      endGame();
+      return;
+    }
+    if (turboPort) turboPort.postMessage(null);
+    else S.agentTimer = setTimeout(turboLoop, 0);
+  }
+
+  function runAgent() {
+    if (!S.running || S.agentRunning) return;
+    S.agentRunning = true;
+    document.getElementById("btn-agent").disabled = true;
+    document.getElementById("btn-agent-stop").disabled = false;
+    setStatus("Playing · agent · " + S.tickMode, "live");
+    log("agent start tick=" + S.tickMode);
+
+    if (S.tickMode === "turbo") {
+      S.trials = [];
+      turboSliceHits = 0;
+      turboLoop();
+      return;
+    }
+
+    function loop() {
+      if (!S.running || !S.agentRunning) {
+        setStatus(
+          (S.running ? "Playing · human" : "Ended · not playing") + " · " + S.tickMode,
+          S.running ? "live" : "ended"
+        );
+        return;
+      }
+      if (S.tickMode === "sim") {
+        /* large batch — side panel never touched */
+        var batch = 256; /* was 96 — free speed on both engines */
+        while (batch-- > 0 && S.running && S.agentRunning) agentStep();
+        /* paint at most once per batch (was always) */
+        if ((S.hits & 511) === 0) paint();
+        if (S.hits % 64 === 0) {
+          hud();
+          setStatus(
+            "Playing · agent · " +
+              S.hits +
+              " hits · " +
+              S.peakBps.toFixed(0) +
+              " BPS",
+            "live"
+          );
+        }
+        S.agentTimer = setTimeout(loop, 0);
+      } else if (S.tickMode === "render") {
+        agentStep();
+        paint();
+        S.agentTimer = setTimeout(loop, 0);
+      } else {
+        agentStep();
+        S.rafId = requestAnimationFrame(function () {
+          paint();
+          loop();
+        });
+      }
+    }
+    loop();
+  }
+
+  function stopAgent() {
+    S.agentRunning = false;
+    if (S.agentTimer) { clearTimeout(S.agentTimer); S.agentTimer = null; }
+    document.getElementById("btn-agent").disabled = !S.running;
+    document.getElementById("btn-agent-stop").disabled = true;
+    if (S.tickMode === "turbo") {
+      var sc = turboScore();
+      /* synthetic trials for collector window (rate-accurate, not ring-capped) */
+      S.trials = [{ t: S.t0, hit: true }];
+      if (S.hits > 1) S.trials.push({ t: performance.now(), hit: true });
+      log(
+        "turbo stop hps=" +
+          sc.hps.toFixed(0) +
+          " peak_bps=" +
+          S.peakBps.toFixed(1) +
+          " ntpm_rate=" +
+          sc.ntpm.toFixed(0)
+      );
+    } else {
+      log("agent stop hps=" + (elapsed() > 0 ? (S.hits / elapsed()).toFixed(1) : "0"));
+    }
+  }
+
+  function start() {
+    reset();
+    S.running = true;
+    S.t0 = performance.now();
+    S.tEnd = 0;
+    try {
+      document.body.classList.add("playing");
+    } catch (e) {}
+    /* freeze gallery at current lang — rebuild once before play */
+    rebuildEtymGallery(true);
+    document.getElementById("btn-start").disabled = true;
+    document.getElementById("btn-stop").disabled = false;
+    document.getElementById("btn-agent").disabled = false;
+    document.getElementById("btn-step").disabled = false;
+    setStatus("Playing · " + S.tickMode + " · N=" + S.N, "live");
+    log("START N=" + S.N + " seed=" + S.seed + " tick=" + S.tickMode + " dur=" + S.durationMs / 1000 + "s");
+    if (window.SxCountdown && document.getElementById("wg-score-cd")) {
+      if (scoreClock && scoreClock.destroy) scoreClock.destroy();
+      scoreClock = window.SxCountdown.mountScore(document.getElementById("wg-score-cd"), {
+        remainingMs: S.durationMs,
+        label: "SCORE",
+        sub: "round · " + (S.durationMs / 1000) + "s · N=" + S.N,
+        compact: true,
+      });
+    }
+    paint();
+    tickClock();
+  }
+
+  function stop() {
+    stopAgent();
+    endGame();
+  }
+
+  /* ── UI ── */
+  canvas.addEventListener("pointerup", function (ev) {
+    if (!S.running) return;
+    var rect = canvas.getBoundingClientRect();
+    var x = ev.clientX - rect.left;
+    var y = ev.clientY - rect.top;
+    var cell = rect.width / S.N;
+    var c = Math.floor(x / cell);
+    var r = Math.floor(y / cell);
+    if (c < 0 || r < 0 || c >= S.N || r >= S.N) {
+      clickCell(-1);
+      return;
+    }
+    clickCell(c + S.N * r);
+  });
+
+  document.getElementById("btn-start").onclick = start;
+  document.getElementById("btn-stop").onclick = stop;
+  document.getElementById("btn-agent").onclick = runAgent;
+  document.getElementById("btn-agent-stop").onclick = stopAgent;
+  document.getElementById("btn-step").onclick = function () { agentStep(); };
+  document.getElementById("sel-n").onchange = function () { if (!S.running) { reset(); } };
+  document.getElementById("sel-tick").onchange = function () {
+    S.tickMode = this.value;
+  };
+
+  /* ── Public API ── */
+  window.WebgridUgrad = {
+    ver: VER,
+    reset: reset,
+    start: start,
+    stop: stop,
+    spawnTarget: spawnTarget,
+    clickCell: clickCell,
+    agentStep: agentStep,
+    runAgent: runAgent,
+    stopAgent: stopAgent,
+    paint: paint,
+    getState: function () {
+      return {
+        N: S.N,
+        target: S.target,
+        hits: S.hits,
+        misses: S.misses,
+        ntpm: ntpmNow(),
+        bps: bpsFrom(S.N, ntpmNow()),
+        peak_bps: S.peakBps,
+        hits_per_s: elapsed() > 0.05 ? S.hits / elapsed() : 0,
+        elapsed_s: elapsed(),
+        running: S.running,
+        agentRunning: S.agentRunning,
+        tick: S.tickMode,
+        seed: S.seed,
+        rubikFace: faceMeta(),
+        etymStage: activeEtym().stage,
+        etymKind: activeEtym().rubik.kind,
+        pathway: langMeta(),
+        etymLayers: ETYM_TREE,
+      };
+    },
+    bpsFormula: bpsFrom,
+    setFace: function (id) {
+      for (var i = 0; i < RUBIK_FACES.length; i++) {
+        if (RUBIK_FACES[i].id === id || RUBIK_FACES[i].name === id) {
+          activeFace = i;
+          paintFaceRow();
+          return faceMeta();
+        }
+      }
+      return null;
+    },
+    setEtymStage: function (s) {
+      etymLock = Math.max(0, Math.min(7, s | 0));
+      etymStage = etymLock;
+      highlightEtym();
+      publishRubik();
+      return activeEtym();
+    },
+    setLang: function (code) {
+      for (var i = 0; i < PATHWAY_LANGS.length; i++) {
+        if (PATHWAY_LANGS[i].lang === code || PATHWAY_LANGS[i].label === code) {
+          activeLang = i;
+          paintLangRow();
+          rebuildEtymGallery(true);
+          publishRubik();
+          return langMeta();
+        }
+      }
+      return null;
+    },
+    publishRubik: publishRubik,
+    ETYM_TREE: ETYM_TREE,
+    LANG_CUBE_SEED: LANG_CUBE_SEED,
+    rubikNetHtml: rubikNetHtml,
+  };
+
+  paintLangRow();
+  paintFaceRow();
+  reset();
+  rebuildEtymGallery(true);
+  renderRunsTable();
+  /* go-ugrad / game-hub precision crosshair on chase board */
+  try {
+    if (window.BoardCrosshair && canvas) {
+      var wrap = window.BoardCrosshair.wrapCanvas(canvas);
+      window.__wgBcx = window.BoardCrosshair.attach(wrap, {
+        grid: S.N || 30,
+        snap: true,
+        showCell: true,
+      });
+    }
+  } catch (eBcx) {}
+  log(
+    VER +
+      " ready · board crosshair · score clock · Rubik nets · " +
+      PATHWAY_LANGS.length +
+      " langs"
+  );
+
+  /* Autoplay for Memory Glass / CI: ?auto=1|mg_autoplay=1&tick=sim&N=30&dur=15
+   * Bench: ?auto=1&bench=1&tag=safari|chrome|memory-glass → POST :9880 on end */
+  var __wgBenchTag = "";
+  var __wgBenchMode = false;
+  (function autoBoot() {
+    try {
+      var q = new URLSearchParams(location.search || "");
+      var auto =
+        q.get("auto") === "1" ||
+        q.get("mg_autoplay") === "1" ||
+        q.get("bench") === "1" ||
+        /^[1-9]/.test(q.get("mg_autoplay") || "");
+      if (!auto) return;
+      var tick = q.get("tick") || q.get("mg_tick") || "sim";
+      var n = parseInt(q.get("N") || q.get("n") || "30", 10);
+      var dur = parseInt(q.get("dur") || q.get("mg_dur") || "20", 10);
+      __wgBenchMode = q.get("bench") === "1" || q.get("overclock") === "1";
+      __wgBenchTag =
+        q.get("tag") ||
+        q.get("browser") ||
+        (navigator.userAgentData && navigator.userAgentData.brands
+          ? "ua-brands"
+          : /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent)
+            ? "safari"
+            : /Chrome\//.test(navigator.userAgent)
+              ? "chrome"
+              : "browser");
+      if (n === 12 || n === 30) document.getElementById("sel-n").value = String(n);
+      if (dur >= 5 && dur <= 600) document.getElementById("inp-dur").value = String(dur);
+      var sel = document.getElementById("sel-tick");
+      if (sel && (tick === "sim" || tick === "turbo" || tick === "render" || tick === "raf"))
+        sel.value = tick;
+      S.tickMode = sel ? sel.value : "turbo";
+      log(
+        "AUTO boot tick=" +
+          S.tickMode +
+          " N=" +
+          n +
+          " dur=" +
+          dur +
+          "s bench=" +
+          __wgBenchMode +
+          " tag=" +
+          __wgBenchTag
+      );
+      setTimeout(function () {
+        start();
+        setTimeout(function () {
+          runAgent();
+        }, 120);
+      }, 250);
+    } catch (eA) {
+      log("auto boot err " + eA);
+    }
+  })();
+
+  /* Hook endGame for bench POST (declared after endGame via wrap) */
+  var __endGameOrig = endGame;
+  endGame = function () {
+    __endGameOrig();
+    if (!__wgBenchMode) return;
+    try {
+      var st = window.WebgridUgrad.getState();
+      var payload = {
+        kind: "webgrid-overclock-bench",
+        schema: "fc-webgrid-overclock-bench-v1",
+        tag: __wgBenchTag,
+        browser: __wgBenchTag,
+        ua: navigator.userAgent.slice(0, 160),
+        ver: VER,
+        t: Date.now(),
+        N: st.N,
+        tick: st.tick,
+        hits: st.hits,
+        misses: st.misses,
+        hits_per_s: st.hits_per_s,
+        peak_bps: st.peak_bps,
+        elapsed_s: st.elapsed_s,
+        overclock_vs_paint_60hz: st.hits_per_s / 60,
+        paint_ceiling_bps: 588.4,
+        url: location.href.split("?")[0],
+      };
+      window.__WG_LAST_BENCH = payload;
+      log(
+        "BENCH " +
+          __wgBenchTag +
+          " " +
+          st.tick +
+          " hps=" +
+          (st.hits_per_s || 0).toFixed(0) +
+          " peak=" +
+          (st.peak_bps || 0).toFixed(1)
+      );
+      fetch("http://127.0.0.1:9880/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(function () {});
+    } catch (eB) {
+      log("bench post err " + eB);
+    }
+  };
+})();
+</script>
+</body>
+</html>

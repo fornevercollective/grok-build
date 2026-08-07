@@ -1441,6 +1441,8 @@ fn inject_hotpipe_force_reset(webview: &wry::WebView) {
     "__mgActivityBoard",
     "__mgSessionRec",
     "__mgMemoryMaze",
+    "__mgAcousticScope",
+    "__mgAudioWave",
     "__mgBlochSolve",
     "__mgRubikLang",
     "__mgKeyboardBeats",
@@ -1476,6 +1478,7 @@ fn inject_hotpipe_force_reset(webview: &wry::WebView) {
   var ids = [
     "mg-glass-cap",
     "mg-mem-maze",
+    "mg-wave",
     "mg-geo-float",
     "mg-activity-board",
     "mg-board-chip",
@@ -1797,14 +1800,37 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     /* Modes:
      *   PRODUCT (default browse) — core chrome only; lab tools via hot_module
      *   LAB     — dual-space play lab (MG_LAB_FULL=1 or webgrid lean flag)
-     *   STRICT  — agent-only minimal
+     *   STRICT  — agent-only minimal (MG_HOTPIPE_LEAN=strict|agent-only|race)
+     *             enters lean inject path but skips maze/contrail/ugrad floats
      */
-    let env_lean = std::env::var("MG_HOTPIPE_LEAN")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("webgrid"))
-        .unwrap_or(false);
-    let strict = std::env::var("MG_HOTPIPE_LEAN")
-        .map(|v| v.eq_ignore_ascii_case("strict") || v.eq_ignore_ascii_case("agent-only"))
-        .unwrap_or(false);
+    let hotpipe_lean_raw = std::env::var("MG_HOTPIPE_LEAN").unwrap_or_default();
+    let env_lean = {
+        let v = hotpipe_lean_raw.as_str();
+        v == "1"
+            || v.eq_ignore_ascii_case("true")
+            || v.eq_ignore_ascii_case("webgrid")
+    };
+    let strict = {
+        let v = hotpipe_lean_raw.as_str();
+        v.eq_ignore_ascii_case("strict")
+            || v.eq_ignore_ascii_case("agent-only")
+            || v.eq_ignore_ascii_case("race")
+            || v.eq_ignore_ascii_case("race-shell")
+            || v.eq_ignore_ascii_case("pure")
+            || v.eq_ignore_ascii_case("bare")
+    };
+    /* race-shell / pure / bare: absolute minimal inject (webgrid agent only) */
+    let race_shell = {
+        let v = hotpipe_lean_raw.as_str();
+        v.eq_ignore_ascii_case("race-shell")
+            || v.eq_ignore_ascii_case("pure")
+            || v.eq_ignore_ascii_case("bare")
+            || v.eq_ignore_ascii_case("race") /* race defaults to shell */
+            || std::env::var("MG_RACE_SHELL")
+                .map(|x| x == "1" || x.eq_ignore_ascii_case("true"))
+                .unwrap_or(false)
+    };
+    /* strict/race alone must enter the lean webgrid inject branch (not product-core, not full) */
     let lab_full = std::env::var("MG_LAB_FULL")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("lab"))
         .unwrap_or(false)
@@ -1812,10 +1838,14 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false)
         || lean
-        || env_lean;
-    let lean = lab_full; /* legacy name: lean branch = dual-space lab */
+        || env_lean
+        || strict
+        || race_shell;
+    let lean = lab_full; /* legacy name: lean branch = dual-space lab OR agent-race */
 
     let webgrid = read_hotpipe_file("webgrid-play.js").unwrap_or_default();
+    let race_shell_js = read_hotpipe_file("race-shell.js").unwrap_or_default();
+    let float_bar_js = read_hotpipe_file("float-window-bar.js").unwrap_or_default();
     let activity_board = read_hotpipe_file("activity-leaderboard.js").unwrap_or_default();
     let session_rec = read_hotpipe_file("session-recorder.js").unwrap_or_default();
     let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
@@ -1875,10 +1905,12 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let dog_pose_core = read_hotpipe_file("dog-pose.js").unwrap_or_default();
     let compat = read_hotpipe_file("mg-compat.js").unwrap_or_default();
     let qbit_race = read_hotpipe_file("qbit-race-sitrep.js").unwrap_or_default();
+    let sx_launch_cd = read_hotpipe_file("sx-launch-countdown.js").unwrap_or_default();
     let qbit_l1 = read_hotpipe_file("qbit-l1-pilot.js").unwrap_or_default();
     let lang_codec = read_hotpipe_file("lang-codec-plane.js").unwrap_or_default();
     let kb_atlas = read_hotpipe_file("keyboard-atlas-seed.js").unwrap_or_default();
     let site_atlas = read_hotpipe_file("site-atlas.js").unwrap_or_default();
+    let acoustic_scope = read_hotpipe_file("acoustic-scope.js").unwrap_or_default();
 
     /* Low-power / 2019 MBP Touch Bar class — env or default auto (JS heuristic) */
     let low_power_env = std::env::var("MG_LOW_POWER")
@@ -1908,6 +1940,10 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             /* On forced low power skip heavy live.js (shell is native); keep tools light */
             if !low_power_env {
                 inject_js_blob(wv, &js);
+                /* Acoustic scope upgrades #mg-wave (FFT · isolation · speech · RGB parade · maze) */
+                if !acoustic_scope.is_empty() {
+                    inject_js_blob(wv, &acoustic_scope);
+                }
                 /* still-pipe body + dog (Jinx) IK on inspect — multi-subject */
                 if !body_pose_core.is_empty() {
                     inject_js_blob(wv, &body_pose_core);
@@ -1969,6 +2005,10 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
             if !low_power_env && !jump_stack.is_empty() {
                 inject_js_blob(wv, &jump_stack);
             }
+            /* SpaceX launches-style countdown (arms on /launches or ?mg_sx_cd=1) */
+            if !sx_launch_cd.is_empty() {
+                inject_js_blob(wv, &sx_launch_cd);
+            }
             if !lazy_boot.is_empty() {
                 inject_js_blob(
                     wv,
@@ -2027,8 +2067,66 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     }
 
     if lean {
+        /* ═══ RACE SHELL — lean agent + visible metrics (no maze/lab thrash) ═══ */
+        if race_shell {
+            let pure_gamedev = std::env::var("MG_GAMEDEV")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("pure"))
+                .unwrap_or(false)
+                || std::env::var("MG_NO_INSPECT")
+                    .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                    .unwrap_or(false);
+            for wv in targets {
+                if !race_shell_js.is_empty() {
+                    inject_js_blob(wv, &race_shell_js);
+                }
+                /* pure gamedev: skip float-bar + activity board (no click steal) */
+                if !pure_gamedev {
+                    if !float_bar_js.is_empty() {
+                        inject_js_blob(wv, &float_bar_js);
+                    }
+                    if !activity_board.is_empty() {
+                        inject_js_blob(wv, &activity_board);
+                    }
+                }
+                if !webgrid.is_empty() {
+                    inject_js_blob(wv, &webgrid);
+                }
+                /* launches countdown available on race too (spacex.com/launches) */
+                if !sx_launch_cd.is_empty() {
+                    inject_js_blob(wv, &sx_launch_cd);
+                }
+                let boot = if pure_gamedev {
+                    r#"(function(){try{window.__mgRaceShell=1;window.__mgWebgridRace=1;window.__mgGameDev=1;window.__mgPureGamedev=1;
+try{localStorage.setItem('mg.webgrid.gamedev','1');localStorage.setItem('mg.webgrid.pure','1');localStorage.setItem('mg.webgrid.lab_full','0');localStorage.setItem('mg.webgrid.autoplay','0');}catch(eL){}
+/* do NOT open activity board / float bar — flat surface */
+if(window.__mgDevLog)window.__mgDevLog('ok','RACE-SHELL v6 · GAMEDEV FLAT · no inject layers','race');
+}catch(e){}})();"#
+                } else {
+                    r#"(function(){try{window.__mgRaceShell=1;window.__mgWebgridRace=1;
+try{if(window.__mgActivityBoard&&window.__mgActivityBoard.open)window.__mgActivityBoard.open({collapsed:true});}catch(eB){}
+try{if(window.__mgFloatBar&&window.__mgFloatBar.raise)window.__mgFloatBar.raise('mg-sys');}catch(eF){}
+if(window.__mgDevLog)window.__mgDevLog('ok','RACE-SHELL v6 · bar+GPU+metrics','race');
+}catch(e){}})();"#
+                };
+                inject_js_blob(wv, boot);
+            }
+            eprintln!(
+                "hotpipe: RACE-SHELL v6 flat pure={} · webgrid={} race={} bar={} board={} → {} surface(s)",
+                pure_gamedev,
+                !webgrid.is_empty(),
+                !race_shell_js.is_empty(),
+                !float_bar_js.is_empty() && !pure_gamedev,
+                !activity_board.is_empty() && !pure_gamedev,
+                targets.len()
+            );
+            return true;
+        }
+
         for wv in targets {
             inject_js_blob(wv, &js);
+            if !acoustic_scope.is_empty() {
+                inject_js_blob(wv, &acoustic_scope);
+            }
             if !webgrid.is_empty() {
                 inject_js_blob(wv, &webgrid);
             }
@@ -2255,6 +2353,9 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     /* lark already read above for lean + full */
     for wv in targets {
         inject_js_blob(wv, &js);
+        if !acoustic_scope.is_empty() {
+            inject_js_blob(wv, &acoustic_scope);
+        }
         if !body.is_empty() {
             inject_js_blob(wv, &body);
         }
@@ -3436,7 +3537,13 @@ fn inspect_panel_html() -> String {
   /* System / spool meters — issue signals for RAM · GPU · frame lag */
   #mg-sys{flex-shrink:0;border-top:1px solid rgba(255,255,255,0.1);
     padding:8px 10px 10px;background:rgba(0,0,0,0.28);
-    display:flex;flex-direction:column;gap:5px}
+    display:flex;flex-direction:column;gap:5px;
+    position:relative;z-index:40!important;order:0!important}
+  /* when activity board docks above, keep meters on top of stack */
+  #panel #mg-sys{z-index:50!important}
+  #mg-sys.mg-sys-float{position:fixed!important;top:36px!important;left:10px!important;
+    z-index:2147483646!important;width:min(220px,42vw)!important;
+    border:1px solid rgba(255,255,255,0.14)!important;border-radius:10px!important}
   #mg-sys .sys-row{display:grid;grid-template-columns:52px 1fr 40px;gap:6px;align-items:center}
   #mg-sys .sys-lbl{font:650 8px/1 system-ui;letter-spacing:0.1em;text-transform:uppercase;
     color:rgba(160,200,255,0.7)}
@@ -9019,7 +9126,28 @@ fn main() -> Result<()> {
     let event_loop: EventLoop<Cmd> = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
 
-    let webgrid_mode = start.to_ascii_lowercase().contains("webgrid")
+    /* Play layout: Neuralink WebGrid, offline ugrad/arena, or explicit game-dev */
+    let gamedev_env = std::env::var("MG_GAMEDEV")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("pure"))
+        .unwrap_or(false)
+        || std::env::var("MG_RACE_SHELL")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+        || std::env::var("MG_HOTPIPE_LEAN")
+            .map(|v| {
+                let x = v.to_ascii_lowercase();
+                x == "race-shell" || x == "race" || x == "pure" || x == "bare" || x == "gamedev"
+            })
+            .unwrap_or(false);
+    let no_inspect = std::env::var("MG_NO_INSPECT")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+        || gamedev_env;
+    let start_lc = start.to_ascii_lowercase();
+    let webgrid_mode = start_lc.contains("webgrid")
+        || start_lc.contains("lite-arena")
+        || start_lc.contains("gamedev")
+        || gamedev_env
         || start.to_ascii_lowercase().contains("neuralink.com/webgrid");
     let webgrid_small = webgrid_mode && webgrid_wants_small_window();
     let mut wb = WindowBuilder::new()
@@ -9512,7 +9640,8 @@ fn main() -> Result<()> {
         .with_resizable(true)
         // Never always-on-top — that stacked inspect over the browser mid-work
         .with_always_on_top(false)
-        .with_visible(true);
+        /* GAMEDEV / race-shell: hide inspect by default (no side thrash) */
+        .with_visible(!no_inspect);
     if let Some(icon) = app_icon() {
         inspect_wb = inspect_wb.with_window_icon(Some(icon));
     }
@@ -9593,13 +9722,23 @@ fn main() -> Result<()> {
     inject_dev_line(&webview, "ok", &ver_full, "version");
     // Initial hot-pipe inject — LEAN on WebGrid (Intel FPS thrash guard)
     let hotpipe_lean = webgrid_mode;
-    inject_live_js_mode(&[&webview, &inspect_wv], hotpipe_lean);
+    /* GAMEDEV pure: inject main only — never thrash inspect dock with race/webgrid */
+    if no_inspect {
+        inject_live_js_mode(&[&webview], hotpipe_lean);
+        eprintln!("  hotpipe: GAMEDEV pure · main only · inspect hidden");
+    } else {
+        inject_live_js_mode(&[&webview, &inspect_wv], hotpipe_lean);
+    }
 
     let main_id = window.id();
     let inspect_id = inspect_window.id();
     let mut webview = Some(webview);
     let mut inspect_wv = Some(inspect_wv);
-    let mut inspect_visible = true;
+    let mut inspect_visible = !no_inspect;
+    if no_inspect {
+        inspect_window.set_visible(false);
+        eprintln!("  inspect: HIDDEN (MG_NO_INSPECT / MG_GAMEDEV / race-shell) · ⌘⌥I to show");
+    }
     let mut dev_spit_at = Some(std::time::Instant::now() + std::time::Duration::from_millis(900));
     let mut hot_poll_at = Some(std::time::Instant::now() + std::time::Duration::from_millis(1200));
     let mut live_mtime: Option<std::time::SystemTime> = mtime_of(&hotpipe_dir().join("live.js"));
