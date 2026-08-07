@@ -1,11 +1,9 @@
 //! `/gboom` -- hidden easter egg. Launches a tiny raycaster shooter
-//! rendered through the kitty graphics protocol (half-block fallback).
+//! rendered through the kitty graphics protocol.
 //!
 //! Never listed in the slash dropdown (`visible()` is false) but executes
 //! when typed exactly as `/gboom`; with any argument it passes through to
 //! the shell like an unknown command, so only the bare invocation triggers.
-//!
-//! Offline webgrid chase is **`/webgrid`** (not a gboom mode).
 
 use crate::app::actions::Action;
 use crate::slash::command::{AppCtx, CommandExecCtx, CommandResult, SlashCommand};

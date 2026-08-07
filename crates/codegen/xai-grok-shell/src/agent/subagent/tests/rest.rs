@@ -1855,6 +1855,141 @@ async fn read_parent_sampling_config_ignores_global_default() {
             ctx.models_manager.current_model_id().0.as_ref(),
         );
 }
+/// Every subagent config path must carry the live bearer resolver: a
+/// config frozen at spawn 401s for the rest of the subagent's life once
+/// the parent rotates its token (the wake-from-sleep failure mode).
+/// First-party base URL so the assertion holds whether the catalog memo
+/// reports `NotByok` or `Unknown`.
+#[tokio::test]
+async fn read_parent_sampling_config_fallback_wires_bearer_resolver() {
+    let mut ctx = ctx_with_toggle(HashMap::new());
+    ctx.parent_chat_state = None;
+    ctx.auth_method_id = acp::AuthMethodId::new(
+        crate::agent::auth_method::CACHED_TOKEN_AUTH_METHOD_ID,
+    );
+    ctx.sampling_config.model = "grok-4.5".to_string();
+    ctx.sampling_config.base_url = "https://api.x.ai/v1".to_string();
+    let (config, _) = read_parent_sampling_config(&ctx).await;
+    assert!(config.bearer_resolver.is_some());
+}
+/// The inherit-live path honors `would_strip_fallback_key` like the
+/// other two paths (it used to install the resolver unconditionally,
+/// stripping a no-session parent's env-key fallback).
+#[tokio::test]
+async fn read_parent_sampling_config_live_never_strips_a_fallback_key() {
+    let mut ctx = ctx_with_toggle(HashMap::new());
+    ctx.auth_method_id = acp::AuthMethodId::new(
+        crate::agent::auth_method::CACHED_TOKEN_AUTH_METHOD_ID,
+    );
+    ctx.auth = None;
+    let chat = spawn_test_parent_chat_state("grok-4.5");
+    chat.update_credentials(xai_chat_state::Credentials {
+        api_key: Some("xai-env-fallback".to_string()),
+        auth_type: xai_chat_state::AuthType::SessionToken,
+        alpha_test_key: None,
+        client_version: None,
+    });
+    ctx.parent_chat_state = Some(chat);
+    let (config, _) = read_parent_sampling_config(&ctx).await;
+    assert!(
+            config.bearer_resolver.is_none(),
+            "with no session, the live path must not displace a fallback key"
+        );
+    assert_eq!(config.api_key.as_deref(), Some("xai-env-fallback"));
+}
+/// `would_strip_fallback_key` on the inherit-fallback path: the baseline
+/// keeps the env `XAI_API_KEY` even while `auth_type` flips to
+/// `SessionToken`, and no resolver may displace it.
+#[tokio::test]
+async fn read_parent_sampling_config_fallback_never_strips_a_fallback_key() {
+    let mut ctx = ctx_with_toggle(HashMap::new());
+    ctx.parent_chat_state = None;
+    ctx.auth_method_id = acp::AuthMethodId::new(
+        crate::agent::auth_method::CACHED_TOKEN_AUTH_METHOD_ID,
+    );
+    ctx.auth = None;
+    ctx.sampling_config.model = "grok-4.5".to_string();
+    ctx.sampling_config.base_url = "https://api.x.ai/v1".to_string();
+    ctx.sampling_config.api_key = Some("xai-env-fallback".to_string());
+    let (config, _) = read_parent_sampling_config(&ctx).await;
+    assert!(config.bearer_resolver.is_none());
+    assert_eq!(config.api_key.as_deref(), Some("xai-env-fallback"));
+}
+#[tokio::test]
+async fn read_parent_sampling_config_fallback_no_resolver_for_api_key_method() {
+    let mut ctx = ctx_with_toggle(HashMap::new());
+    ctx.parent_chat_state = None;
+    ctx.auth_method_id = acp::AuthMethodId::new(
+        crate::agent::auth_method::XAI_API_KEY_METHOD_ID,
+    );
+    ctx.sampling_config.model = "grok-4.5".to_string();
+    ctx.sampling_config.base_url = "https://api.x.ai/v1".to_string();
+    let (config, _) = read_parent_sampling_config(&ctx).await;
+    assert!(config.bearer_resolver.is_none());
+}
+/// The override path wires the resolver for a session key regardless of
+/// freshness. Hard-expired (the post-sleep 401 window) is the case that
+/// matters: gating on wire-validity would freeze the subagent for life;
+/// the sampler strips the dead seeded key at request time instead.
+#[test]
+fn resolve_model_override_wires_resolver_for_fresh_and_hard_expired_session_keys() {
+    for auth in [
+        crate::auth::GrokAuth {
+            key: "session-jwt".into(),
+            ..crate::auth::GrokAuth::test_default()
+        },
+        crate::auth::GrokAuth {
+            key: "hard-expired-session-jwt".into(),
+            create_time: chrono::Utc::now() - chrono::Duration::hours(2),
+            expires_at: Some(chrono::Utc::now() - chrono::Duration::hours(1)),
+            ..crate::auth::GrokAuth::test_default()
+        },
+    ] {
+        let key = auth.key.clone();
+        let mut ctx = ctx_with_toggle(HashMap::new());
+        ctx.auth_method_id = acp::AuthMethodId::new(
+            crate::agent::auth_method::CACHED_TOKEN_AUTH_METHOD_ID,
+        );
+        ctx.auth = Some(auth);
+        ctx.available_models
+            .insert("grok-4.5".to_string(), test_model_entry("grok-4.5"));
+        let (config, _) = resolve_model_override_to_config("grok-4.5", &ctx).unwrap();
+        assert!(config.bearer_resolver.is_some(), "key={key}");
+    }
+}
+/// `would_strip_fallback_key` on the override path. `XAI_API_KEY`'s
+/// presence varies by environment, so assert the rule itself rather
+/// than one branch of it.
+#[test]
+fn resolve_model_override_to_config_never_strips_a_fallback_key() {
+    let mut ctx = ctx_with_toggle(HashMap::new());
+    ctx.auth_method_id = acp::AuthMethodId::new(
+        crate::agent::auth_method::CACHED_TOKEN_AUTH_METHOD_ID,
+    );
+    ctx.auth = None;
+    ctx.available_models.insert("grok-4.5".to_string(), test_model_entry("grok-4.5"));
+    let (config, _) = resolve_model_override_to_config("grok-4.5", &ctx).unwrap();
+    assert_eq!(
+            config.bearer_resolver.is_some(),
+            config.api_key.is_none(),
+            "with no session, a resolver is installed only when it displaces nothing"
+        );
+}
+/// A wired resolver is the sampler's sole auth source, so it must never
+/// displace a per-model key.
+#[test]
+fn resolve_model_override_to_config_no_resolver_for_byok_model() {
+    let mut ctx = ctx_with_toggle(HashMap::new());
+    ctx.auth_method_id = acp::AuthMethodId::new(
+        crate::agent::auth_method::CACHED_TOKEN_AUTH_METHOD_ID,
+    );
+    let mut byok = test_model_entry("byok-model");
+    byok.api_key = Some("sk-byok".to_string());
+    ctx.available_models.insert("byok-model".to_string(), byok);
+    let (config, _) = resolve_model_override_to_config("byok-model", &ctx).unwrap();
+    assert!(config.bearer_resolver.is_none());
+    assert_eq!(config.api_key.as_deref(), Some("sk-byok"));
+}
 #[tokio::test]
 async fn read_parent_sampling_config_resolves_backend_search_from_catalog() {
     let mut entry = test_model_entry("grok-4.5");
@@ -2551,6 +2686,76 @@ fn filter_inheritance_except_all_servers_gives_empty() {
     );
     let result = result.expect("Except should return Some");
     assert_eq!(result.server_names().count(), 0);
+}
+#[test]
+fn resolve_inherited_pool_all_passes_parent_pool() {
+    let pool = make_pool(&["github", "atlassian"]);
+    let result = super::resolve_inherited_mcp_pool(
+            Some(pool),
+            &xai_grok_agent::config::McpInheritance::All,
+        )
+        .expect("All should return Some");
+    assert_eq!(pool_names(&result), vec!["atlassian", "github"]);
+}
+#[test]
+fn resolve_inherited_pool_none_returns_none() {
+    let pool = make_pool(&["github", "atlassian"]);
+    let result = super::resolve_inherited_mcp_pool(
+        Some(pool),
+        &xai_grok_agent::config::McpInheritance::None,
+    );
+    assert!(result.is_none());
+}
+#[test]
+fn resolve_inherited_pool_named_filters() {
+    let pool = make_pool(&["github", "atlassian", "slack"]);
+    let result = super::resolve_inherited_mcp_pool(
+            Some(pool),
+            &xai_grok_agent::config::McpInheritance::Named(vec!["atlassian".into()]),
+        )
+        .expect("Named should return Some");
+    assert_eq!(pool_names(&result), vec!["atlassian"]);
+}
+#[test]
+fn resolve_inherited_pool_missing_parent_returns_none() {
+    let result = super::resolve_inherited_mcp_pool(
+        None,
+        &xai_grok_agent::config::McpInheritance::All,
+    );
+    assert!(result.is_none());
+}
+/// Plugin agents must still inherit the parent pool under default
+/// `mcpInheritance: all`. The product rule is: plugins cannot *declare*
+/// mcpServers, but they do inherit already-connected parent servers.
+#[test]
+fn plugin_agents_inherit_parent_mcp_pool_by_default() {
+    assert!(
+            !super::agent_owned_mcp_servers_allowed(true),
+            "plugin agents must not declare agent-owned mcpServers"
+        );
+    assert!(
+            super::agent_owned_mcp_servers_allowed(false),
+            "non-plugin agents may declare agent-owned mcpServers"
+        );
+    let pool = make_pool(&["atlassian", "github"]);
+    let inherited = super::resolve_inherited_mcp_pool(
+            Some(pool),
+            &xai_grok_agent::config::McpInheritance::All,
+        )
+        .expect("plugin children inherit parent pool with mcpInheritance=all");
+    assert_eq!(pool_names(&inherited), vec!["atlassian", "github"]);
+}
+#[test]
+fn plugin_agents_can_opt_out_via_mcp_inheritance_none() {
+    let pool = make_pool(&["atlassian"]);
+    let inherited = super::resolve_inherited_mcp_pool(
+        Some(pool),
+        &xai_grok_agent::config::McpInheritance::None,
+    );
+    assert!(
+            inherited.is_none(),
+            "mcpInheritance: none must drop the parent pool for every source"
+        );
 }
 fn make_test_skill(
     name: &str,

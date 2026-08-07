@@ -1,18 +1,14 @@
 //! `/gboom` easter egg: a tiny single-level raycaster shooter rendered in
-//! the terminal.
+//! the terminal via the kitty graphics protocol.
+//!
+//! Not production code — this is for fun and is not maintained to the
+//! standards in `crates/codegen/AGENTS.md`.
 //!
 //! Typing `/gboom` (and nothing else) opens a modal overlay — the same
-//! surface the imagine-video player uses.
-//!
-//! ## Paint ladder (fornevercollective)
-//!
-//! 1. **Kitty** graphics (PNG via post-flush `a=T` at ~30 fps) when available  
-//! 2. **Portable half-block** [`crate::render::halfblock`] (`▀` cells) —
-//!    **fornevercollective** design + impl (`fc-halfblock-tty-video`) so the
-//!    game runs in Terminal.app / iTerm2 / plain tmux without image protocols  
-//!
-//! Simulation steps with wall-clock `dt`, so gameplay speed is independent of
-//! the achieved frame rate.
+//! surface the imagine-video player uses — and streams PNG frames via
+//! per-frame kitty `a=T` retransmission at the ~30 fps animation tick. The
+//! simulation steps with wall-clock `dt`, so gameplay speed is independent
+//! of the achieved frame rate.
 //!
 //! Controls: `W`/`↑` forward, `S`/`↓` back, `A`/`D` strafe, `←`/`→` turn,
 //! mouse move/drag aim (in-modal, Playing only), click or `Space`/`Enter`
@@ -95,8 +91,6 @@ pub struct GboomState {
     sim_gen: u64,
     fb: FrameBuffer,
     png: Vec<u8>,
-    /// `(sim_gen, w, h)` of the RGB currently in `fb`.
-    rgb_cached: Option<(u64, usize, usize)>,
     /// `(sim_gen, w, h)` of the cached PNG in `png`.
     cached: Option<(u64, usize, usize)>,
     /// Wall-clock time inside the current phase.
@@ -112,6 +106,8 @@ impl GboomState {
         // On terminals that report key releases (Kitty keyboard protocol),
         // latch keys on press/release so the player can move and turn at
         // once; otherwise fall back to the repeat-bridging timer model.
+        // Deliberately `kitty_flags_pushed`, not `kitty_releases_reported`: the
+        // game pushes its own REPORT_ALL_KEYS layer over a downgraded base.
         game.set_release_aware(crate::terminal::kitty_flags_pushed());
         Self {
             game,
@@ -122,7 +118,6 @@ impl GboomState {
             sim_gen: 0,
             fb: FrameBuffer::new(),
             png: Vec::new(),
-            rgb_cached: None,
             cached: None,
             phase_time: 0.0,
             last_mouse_col: None,
@@ -249,10 +244,8 @@ impl GboomState {
         }
         let in_region = self.in_mouse_region(mouse.column, mouse.row);
         match mouse.kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                if in_region {
-                    self.game.queue_fire();
-                }
+            MouseEventKind::Down(MouseButton::Left) if in_region => {
+                self.game.queue_fire();
             }
             MouseEventKind::Moved | MouseEventKind::Drag(_) => {
                 if !in_region {
@@ -314,30 +307,6 @@ impl GboomState {
         (w, h)
     }
 
-    /// Render the current scene into the internal RGB framebuffer at `(w, h)`.
-    /// Returns `false` if the size is unusable.
-    fn render_rgb_frame(&mut self, w: usize, h: usize) -> bool {
-        if w < 8 || h < 8 {
-            return false;
-        }
-        if self.rgb_cached == Some((self.sim_gen, w, h)) {
-            return true;
-        }
-        self.fb.resize(w, h);
-        match self.phase {
-            Phase::Title => self.render_title_screen(),
-            Phase::Playing => self.renderer.render_game(&mut self.fb, &self.game),
-            Phase::Won => self.render_end_screen("VICTORY!", [255, 214, 80]),
-            Phase::Dead => self.render_end_screen("YOU DIED", assets::GBOOM_RED),
-        }
-        self.rgb_cached = Some((self.sim_gen, w, h));
-        // Size/gen changed — drop any PNG that no longer matches the buffer.
-        if self.cached != Some((self.sim_gen, w, h)) {
-            self.cached = None;
-        }
-        true
-    }
-
     /// Render the current frame at `(w, h)` and return it PNG-encoded.
     /// Cached per `(sim_gen, w, h)` so extra draws between ticks are free.
     pub fn frame_png(&mut self, w: usize, h: usize) -> Option<&[u8]> {
@@ -348,8 +317,12 @@ impl GboomState {
             return Some(&self.png);
         }
 
-        if !self.render_rgb_frame(w, h) {
-            return None;
+        self.fb.resize(w, h);
+        match self.phase {
+            Phase::Title => self.render_title_screen(),
+            Phase::Playing => self.renderer.render_game(&mut self.fb, &self.game),
+            Phase::Won => self.render_end_screen("VICTORY!", [255, 214, 80]),
+            Phase::Dead => self.render_end_screen("YOU DIED", assets::GBOOM_RED),
         }
 
         self.png.clear();
@@ -373,11 +346,11 @@ impl GboomState {
         Some(&self.png)
     }
 
+
     /// Paint the current frame into `area` as truecolor half-block cells.
     ///
     /// **fornevercollective** portable path ([`crate::render::halfblock`]) when
-    /// Kitty/iTerm image protocol is unavailable. Samples at one pixel per
-    /// column and two per cell-row for clean `▀` pairing.
+    /// Kitty/iTerm image protocol is unavailable.
     pub fn paint_half_blocks(
         &mut self,
         buf: &mut ratatui::buffer::Buffer,
@@ -387,29 +360,43 @@ impl GboomState {
             return false;
         }
         let (w, h) = crate::render::halfblock::sample_size_for_cells(area.width, area.height);
-        // Fold metrics: raycast → half-block paint → frame total (KBatch-style).
+        let w = w as usize;
+        let h = h as usize;
+        if w < 8 || h < 8 {
+            return false;
+        }
         let t_frame = std::time::Instant::now();
         let t_ray = std::time::Instant::now();
-        if !self.render_rgb_frame(w as usize, h as usize) {
-            return false;
+        self.fb.resize(w, h);
+        match self.phase {
+            Phase::Title => self.render_title_screen(),
+            Phase::Playing => self.renderer.render_game(&mut self.fb, &self.game),
+            Phase::Won => self.render_end_screen("VICTORY!", [255, 214, 80]),
+            Phase::Dead => self.render_end_screen("YOU DIED", assets::GBOOM_RED),
         }
         crate::render::halfblock::record_global(
             crate::render::halfblock::PaintPhase::Raycast,
             t_ray.elapsed(),
             area.width,
             area.height,
-            w,
-            h,
+            w as u32,
+            h as u32,
         );
-        let ok = crate::render::halfblock::paint_rgb24(buf, area, &self.fb.pixels, w, h);
+        let ok = crate::render::halfblock::paint_rgb24(
+            buf,
+            area,
+            &self.fb.pixels,
+            w as u32,
+            h as u32,
+        );
         if ok {
             crate::render::halfblock::record_global(
                 crate::render::halfblock::PaintPhase::FrameTotal,
                 t_frame.elapsed(),
                 area.width,
                 area.height,
-                w,
-                h,
+                w as u32,
+                h as u32,
             );
         }
         ok
@@ -536,21 +523,6 @@ mod tests {
         assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
         let dims = crate::prompt_images::decode_image_dimensions(&png).expect("decodable");
         assert_eq!(dims, (320, 200));
-    }
-
-    #[test]
-    fn paint_half_blocks_fills_cells() {
-        use ratatui::buffer::Buffer;
-        use ratatui::layout::Rect;
-        let mut state = GboomState::new();
-        state.tick();
-        let area = Rect::new(0, 0, 40, 12);
-        let mut buf = Buffer::empty(area);
-        assert!(state.paint_half_blocks(&mut buf, area));
-        assert_eq!(
-            buf[(0, 0)].symbol(),
-            crate::render::halfblock::HALF_BLOCK
-        );
     }
 
     #[test]

@@ -1,9 +1,3 @@
 /target
 **/*.rs.bk
 .DS_Store
-
-# fc optical-transfer / Decimen vendor
-scripts/live-demux/optical-transfer/**/node_modules/
-scripts/live-demux/optical-transfer/**/__pycache__/
-scripts/live-demux/optical-transfer/**/*.pyc
-scripts/live-demux/optical-transfer/.venv/

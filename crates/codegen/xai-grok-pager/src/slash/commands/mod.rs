@@ -15,6 +15,7 @@ pub mod context;
 pub mod copy;
 pub mod dashboard;
 pub mod debug;
+pub mod delete;
 pub mod docs;
 pub mod doctor;
 pub mod edit_prompt;
@@ -26,12 +27,12 @@ pub mod export;
 pub mod feedback;
 pub mod find;
 pub mod fork;
+pub mod gboom;
 pub mod cam;
 pub mod phone;
 pub mod lens;
 pub mod cast;
 pub mod optical;
-pub mod gboom;
 pub mod gy;
 pub mod map;
 pub mod monitor;
@@ -92,6 +93,7 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(help::HelpCommand),
         Arc::new(docs::DocsCommand),
         Arc::new(home::HomeCommand),
+        Arc::new(delete::DeleteCommand),
         Arc::new(new::NewCommand),
         Arc::new(fork::ForkCommand),
         Arc::new(compact::CompactCommand),
@@ -157,27 +159,17 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(personas::PersonasCommand),
         // Hidden easter egg: never listed, runs on bare `/gboom`.
         Arc::new(gboom::GboomCommand),
-        // fornevercollective GY TTY placeholders (visible).
+        // fornevercollective media / map / clock fleet
         Arc::new(gy::GyCommand),
-        // fornevercollective live demux → half-block inside Grok.
         Arc::new(watch::WatchCommand),
-        // Offline webgrid-ugrad chase · own surface (not nested under /watch).
         Arc::new(webgrid::WebgridCommand),
-        // Large camera self-view (side tile) under short `/cam` name.
         Arc::new(cam::CamCommand),
-        // Memory Glass phone PWA tether → still-pipe → /cam.
         Arc::new(phone::PhoneCommand),
-        // Live HDRI / anamorphic / tiny-bug-world lens pop-out (360-capable).
         Arc::new(lens::LensCommand),
-        // Cast desk/stream/mosaic to TCL Google TV / Chromecast (explicit).
         Arc::new(cast::CastCommand),
-        // Optical blur · jawta light · Decimen fountain (screen→camera).
         Arc::new(optical::OpticalCommand),
-        // fornevercollective broadcast timesync world clock inside Grok.
         Arc::new(timesync::TimesyncCommand),
-        // fornevercollective maptrace · in-Grok + pop-out.
         Arc::new(map::MapCommand),
-        // fornevercollective terminal fleet · active clock/map/watch/sessions.
         Arc::new(monitor::MonitorCommand),
         // Hidden diagnostic: never listed, toggles the scroll-debug HUD.
         Arc::new(scroll_debug::ScrollDebugCommand),
@@ -190,7 +182,7 @@ mod tests {
     use super::*;
     use crate::acp::model_state::ModelState;
     use crate::app::actions::Action;
-    use crate::slash::command::{CommandExecCtx, CommandResult};
+    use crate::slash::command::{CommandExecCtx, CommandResult, SlashCommand};
     use crate::slash::registry::CommandRegistry;
     use agent_client_protocol as acp;
     /// Build a ModelState with two models for testing.
@@ -227,6 +219,7 @@ mod tests {
             bundle_state: &DEFAULT_BUNDLE_STATE,
             screen_mode: crate::app::ScreenMode::Inline,
             billing_surface_visible: true,
+            usage_command_visible: true,
             pager_state: crate::settings::PagerLocalSnapshot {
                 multiline_mode: false,
                 yolo_mode: false,
@@ -274,170 +267,6 @@ mod tests {
         assert!(reg.get("loop").is_some());
     }
     #[test]
-    fn shell_collision_contract_covers_every_pager_command_and_alias() {
-        const SHELL_RESERVED: &[&str] = &[
-            "agents",
-            "agents-dashboard",
-            "always-approve",
-            "announcements",
-            "auto",
-            "btw",
-            "cd",
-            "changelog",
-            "chat",
-            "clear",
-            "cloud",
-            "compact",
-            "compact-mode",
-            "config",
-            "config-agents",
-            "context",
-            "copy",
-            "cost",
-            "dashboard",
-            "debug",
-            "docs",
-            "doctor",
-            "edit-prompt",
-            "effort",
-            "exit",
-            "expand",
-            "export",
-            "feedback",
-            "find",
-            "fork",
-            "full",
-            "fullscreen",
-            "a-la-carte",
-            "allacarte",
-            "anamorphic",
-            "bug",
-            "bugworld",
-            "cam",
-            "camera",
-            "cast",
-            "chromecast",
-            "clock",
-            "compound",
-            "epoch",
-            "fleet",
-            "gboom",
-            "geomap",
-            "gmux",
-            "guides",
-            "gy",
-            "hdri",
-            "help",
-            "history",
-            "home",
-            "hooks",
-            "howto",
-            "imagine",
-            "imagine-video",
-            "import-claude",
-            "insect",
-            "jawta-light",
-            "jump",
-            "lens",
-            "light-tx",
-            "live",
-            "login",
-            "logout",
-            "log",
-            "loop",
-            "m",
-            "map",
-            "maptrace",
-            "marketplace",
-            "mcps",
-            "mgphone",
-            "minimal",
-            "mirror",
-            "ml",
-            "model",
-            "monitor",
-            "multiline",
-            "new",
-            "onboarding",
-            "optical",
-            "optical-blur",
-            "optic",
-            "personas",
-            "phone",
-            "phonecam",
-            "plan",
-            "plan-view",
-            "plugins",
-            "preferences",
-            "prefs",
-            "privacy",
-            "queue",
-            "quit",
-            "recap",
-            "release-notes",
-            "remember",
-            "rename",
-            "resume",
-            "rewind",
-            "scroll-debug",
-            "selfie",
-            "session-info",
-            "sessions",
-            "settings",
-            "share",
-            "show-plan",
-            "skills",
-            "still-pipe",
-            "stillpipe",
-            "summarize",
-            "tasks",
-            "term-status",
-            "terminal-check",
-            "terminal-info",
-            "terminal-setup",
-            "terminals",
-            "tether",
-            "theme",
-            "timeline",
-            "timestamps",
-            "timesync",
-            "tinyworld",
-            "title",
-            "toggle-mouse-reporting",
-            "tour",
-            "trace-map",
-            "transcript",
-            "tutorial",
-            "tv",
-            "t",
-            "usage",
-            "view-plan",
-            "vim-mode",
-            "voice",
-            "watch",
-            "webcam",
-            "webgrid",
-            "webgrid-ugrad",
-            "wg",
-            "ugrad-webgrid",
-            "grid-chase",
-            "welcome",
-            "who",
-            "workflows",
-            "worldclock",
-            "yolo",
-            "zulu",
-        ];
-        // Registry construction panics on builtin alias collisions — smoke the
-        // full set before the shell-reserved contract so startup stays green.
-        let _reg = CommandRegistry::new(builtin_commands());
-        for command in builtin_commands() {
-            for key in std::iter::once(command.name()).chain(command.aliases().iter().copied()) {
-                assert!(SHELL_RESERVED.contains(&key), "unreserved pager key {key}");
-            }
-        }
-    }
-    #[test]
     fn builtin_registry_lookup_by_alias() {
         let reg = CommandRegistry::new(builtin_commands());
         assert!(reg.get("exit").is_some());
@@ -446,6 +275,7 @@ mod tests {
         assert!(reg.get("welcome").is_some());
         assert!(reg.get("show-plan").is_some());
         assert!(reg.get("plan-view").is_some());
+        assert!(reg.get("undo").is_some());
     }
     #[test]
     fn aliases_resolve_to_same_command() {
@@ -459,6 +289,9 @@ mod tests {
             assert_eq!(reg.get(alias).unwrap().name(), doctor.name());
             assert_eq!(reg.get(alias).unwrap().usage(), doctor.usage());
         }
+        let rewind = reg.get("rewind").unwrap();
+        assert_eq!(reg.get("undo").unwrap().name(), rewind.name());
+        assert_eq!(reg.get("undo").unwrap().usage(), rewind.usage());
     }
     #[test]
     fn exit_returns_quit_action() {
@@ -483,6 +316,19 @@ mod tests {
         let cmd = home::HomeCommand;
         let result = cmd.run(&mut ctx, "");
         assert!(matches!(result, CommandResult::Action(Action::ExitSession)));
+    }
+    #[test]
+    fn delete_requires_session_and_dispatches() {
+        let models = ModelState::default();
+        let cmd = delete::DeleteCommand;
+        let mut ctx = make_ctx(&models);
+        assert!(matches!(cmd.run(&mut ctx, ""), CommandResult::Error(_)));
+        let session_id = acp::SessionId::new("sess-delete");
+        ctx.session_id = Some(&session_id);
+        assert!(matches!(
+            cmd.run(&mut ctx, ""),
+            CommandResult::Action(Action::DeleteCurrentSession)
+        ));
     }
     #[test]
     fn view_plan_returns_show_plan_action() {
@@ -608,6 +454,7 @@ mod tests {
             cwd: std::path::Path::new("."),
             has_session_announcements: false,
             billing_surface_visible: true,
+            usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
         };
@@ -633,6 +480,7 @@ mod tests {
             cwd: std::path::Path::new("."),
             has_session_announcements: false,
             billing_surface_visible: true,
+            usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
         };
@@ -675,9 +523,13 @@ mod tests {
         ));
     }
     fn run_usage(args: &str, billing: bool) -> CommandResult {
+        run_usage_gated(args, billing, true)
+    }
+    fn run_usage_gated(args: &str, billing: bool, usage_cmd: bool) -> CommandResult {
         let models = ModelState::default();
         let mut ctx = make_ctx(&models);
         ctx.billing_surface_visible = billing;
+        ctx.usage_command_visible = usage_cmd;
         usage::UsageCommand.run(&mut ctx, args)
     }
     #[test]
@@ -716,6 +568,7 @@ mod tests {
             cwd: std::path::Path::new("."),
             has_session_announcements: false,
             billing_surface_visible: true,
+            usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
         };
@@ -732,6 +585,7 @@ mod tests {
             cwd: std::path::Path::new("."),
             has_session_announcements: false,
             billing_surface_visible: true,
+            usage_command_visible: true,
             workflows_available: false,
             screen_mode: crate::app::ScreenMode::Fullscreen,
         };
@@ -750,6 +604,26 @@ mod tests {
                 .get("usage")
                 .is_some()
         );
+    }
+    #[test]
+    fn usage_hidden_when_command_not_visible() {
+        let models = ModelState::default();
+        let ctx = crate::slash::command::AppCtx {
+            models: &models,
+            cwd: std::path::Path::new("."),
+            has_session_announcements: false,
+            billing_surface_visible: true,
+            usage_command_visible: false,
+            workflows_available: false,
+            screen_mode: crate::app::ScreenMode::Fullscreen,
+        };
+        assert!(!usage::UsageCommand.visible(&ctx));
+        assert!(!usage::UsageCommand.takes_args_now(&ctx));
+        assert!(usage::UsageCommand.suggest_args(&ctx, "").is_none());
+        assert!(matches!(
+            run_usage_gated("", true, false),
+            CommandResult::Error(msg) if msg.contains("not available")
+        ));
     }
     #[test]
     fn cd_registered_in_builtin_commands() {
@@ -798,6 +672,7 @@ mod tests {
             cwd: std::path::Path::new("."),
             has_session_announcements: false,
             billing_surface_visible: true,
+            usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
         };
@@ -852,22 +727,6 @@ mod tests {
         }
     }
     #[test]
-    fn webgrid_command_is_registered() {
-        let reg = CommandRegistry::new(builtin_commands());
-        assert!(reg.get("webgrid").is_some(), "/webgrid must be registered");
-        assert!(reg.get("wg").is_some(), "/wg alias must resolve");
-    }
-    #[test]
-    fn gboom_webgrid_args_pass_through_not_open_watch() {
-        // Webgrid is /webgrid only — /gboom webgrid must not hijack the easter egg.
-        let models = ModelState::default();
-        let mut ctx = make_ctx(&models);
-        match gboom::GboomCommand.run(&mut ctx, "webgrid") {
-            CommandResult::PassThrough(text) => assert_eq!(text, "/gboom webgrid"),
-            other => panic!("expected PassThrough, got {other:?}"),
-        }
-    }
-    #[test]
     fn recap_returns_manual_send_recap_action() {
         let models = ModelState::default();
         let mut ctx = make_ctx(&models);
@@ -901,5 +760,47 @@ mod tests {
         assert!(reg.get("voice").is_some());
         reg.set_voice_visible(false);
         assert!(reg.get("voice").is_none());
+    }
+    /// Every pager builtin trigger key must appear in the shell's
+    /// `PAGER_COMMAND_KEYS`. Add new names there when adding a pager builtin.
+    #[test]
+    fn pager_builtin_triggers_are_reserved_in_shell() {
+        let reserved: std::collections::HashSet<&str> = xai_grok_shell::session::PAGER_COMMAND_KEYS
+            .iter()
+            .copied()
+            .collect();
+        let missing: Vec<String> = builtin_commands()
+            .iter()
+            .flat_map(|cmd| {
+                std::iter::once(cmd.name().to_string())
+                    .chain(cmd.aliases().iter().map(|a| a.to_string()))
+            })
+            .filter(|key| !reserved.contains(key.as_str()))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "pager builtin trigger keys missing from the shell's \
+             PAGER_COMMAND_KEYS (xai-grok-shell/src/session/slash_commands.rs); \
+             a skill with one of these names would shadow or be shadowed by \
+             the pager builtin: {missing:?}"
+        );
+    }
+    #[test]
+    fn pager_blocked_acp_names_are_reserved_in_shell() {
+        let reserved: std::collections::HashSet<&str> = xai_grok_shell::session::PAGER_COMMAND_KEYS
+            .iter()
+            .copied()
+            .collect();
+        let missing: Vec<&str> = crate::slash::registry::BLOCKED_ACP_NAMES
+            .iter()
+            .copied()
+            .filter(|name| !reserved.contains(name))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "pager BLOCKED_ACP_NAMES missing from PAGER_COMMAND_KEYS; \
+             a skill with one of these names is advertised bare and then \
+             dropped: {missing:?}"
+        );
     }
 }
