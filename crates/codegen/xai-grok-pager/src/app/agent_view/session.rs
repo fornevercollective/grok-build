@@ -235,6 +235,7 @@ impl AgentView {
             gy_tty: None,
             live_watch: None,
             timesync: None,
+            language: None,
             maptrace: None,
             inline_media_cache: std::collections::HashMap::new(),
             inline_media_ids: std::collections::HashMap::new(),

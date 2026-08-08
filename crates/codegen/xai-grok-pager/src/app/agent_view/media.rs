@@ -688,6 +688,19 @@ impl AgentView {
     // -- /map maptrace ----------------------------------------------------------
 
     /// Handle a key event in the `/map` modal.
+    pub(super) fn handle_language_key(&mut self, key: &KeyEvent) -> InputOutcome {
+        let Some(ref mut lang) = self.language else {
+            return InputOutcome::Unchanged;
+        };
+        match lang.handle_key(key) {
+            crate::language::LanguageKeyOutcome::Close => {
+                self.language = None;
+                InputOutcome::Changed
+            }
+            crate::language::LanguageKeyOutcome::Changed => InputOutcome::Changed,
+        }
+    }
+
     pub(super) fn handle_maptrace_key(&mut self, key: &KeyEvent) -> InputOutcome {
         let Some(ref mut map) = self.maptrace else {
             return InputOutcome::Unchanged;

@@ -4,196 +4,218 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="theme-color" content="#000"/>
-<title>/drone · v5 cluster · full data</title>
+<title>/drone · dual-dial hub · Audi/Chrysler cluster</title>
 <link rel="preconnect" href="https://basemaps.cartocdn.com"/>
 <style>
 :root{
-  --void:#000;--ink:#eef6ff;--mut:rgba(180,200,220,.55);--cyan:#7ad0ff;--amber:#f0b429;--good:#3dd68c;--hot:#ff5d6c;
-  --line:rgba(120,200,255,.18);--mono:ui-monospace,Menlo,monospace;
-  --cap-r:16px;--cap-blur:blur(18px) saturate(1.5);
-  --cap-bg:rgba(28,32,40,.58);--cap-line:rgba(255,255,255,.14);
-  --stick:min(280px,30vw);--rail:72px;
+  --bg:#05060a;--ink:#f0f6fc;--mut:rgba(170,190,210,.55);--cyan:#6ec8ff;--amber:#f5b942;--good:#3dd68c;--hot:#ff5d6c;
+  --line:rgba(110,190,255,.16);--mono:ui-monospace,Menlo,monospace;
+  --dial:min(42vh,min(320px,28vw));
+  --glass:rgba(22,26,34,.55);--glass-line:rgba(255,255,255,.12);
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:#000;color:var(--ink);font:12px/1.35 -apple-system,system-ui,sans-serif;overflow:hidden;user-select:none}
-body::after{content:"";pointer-events:none;position:fixed;inset:0;z-index:90;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px)}
 a{color:var(--cyan);text-decoration:none}
-
 button{
-  appearance:none;cursor:pointer;border:1px solid var(--cap-line);
+  appearance:none;cursor:pointer;border:1px solid var(--glass-line);
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  background:var(--cap-bg);color:var(--ink);
+  background:var(--glass);color:var(--ink);
   font:600 14px/1.1 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-  padding:14px 18px;border-radius:var(--cap-r);min-height:54px;
-  box-shadow:inset 0 .5px 0 rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.28);
-  backdrop-filter:var(--cap-blur);-webkit-backdrop-filter:var(--cap-blur);
+  padding:12px 16px;border-radius:16px;min-height:48px;
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.12),0 4px 16px rgba(0,0,0,.3);
+  backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
   transition:background .12s,transform .1s}
-button:hover{background:rgba(255,255,255,.15)}
+button:hover{background:rgba(255,255,255,.14)}
 button:active{transform:scale(.97)}
-button.primary{background:rgba(10,132,255,.26);border-color:rgba(10,132,255,.45)}
-button.danger{background:rgba(255,69,58,.22);border-color:rgba(255,69,58,.45);color:#ffd5d2}
+button.primary{background:rgba(10,132,255,.28);border-color:rgba(10,132,255,.45)}
+button.danger{background:rgba(255,69,58,.22);border-color:rgba(255,69,58,.45);color:#ffd8d4}
 button.good{background:rgba(48,209,88,.18);border-color:rgba(48,209,88,.4)}
-button.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(160,210,255,.4)}
-button.xl{min-height:58px;font-size:15px;padding:16px 20px;border-radius:18px}
-button .ico{width:24px;height:24px;border-radius:50%;background:rgba(10,132,255,.95);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+button.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(140,200,255,.4)}
+button.xl{min-height:56px;font-size:15px;padding:14px 18px;border-radius:18px}
+button .ico{width:22px;height:22px;border-radius:50%;background:rgba(10,132,255,.95);display:flex;align-items:center;justify-content:center;font-size:11px}
 button.danger .ico{background:#ff453a}button.good .ico{background:#30d158}
 button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 
-.app{display:grid;grid-template-rows:28px minmax(0,1fr) minmax(260px,42vh) auto;height:100vh}
-.top{display:flex;align-items:center;gap:.5rem;padding:0 .7rem;z-index:40;
-  background:linear-gradient(180deg,#0a1018,#04060a);border-bottom:1px solid var(--line);
+/* ═══ HUB LAYOUT (Audi/Chrysler): top strip + dual dial hub row + floor ═══ */
+.app{display:grid;grid-template-rows:32px minmax(120px,28vh) minmax(0,1fr);height:100vh;background:#000}
+
+.top{display:flex;align-items:center;gap:.45rem;padding:0 .7rem;z-index:50;
+  background:linear-gradient(180deg,#0c121c,#06080e);border-bottom:1px solid var(--line);
   font:600 10px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
-.top .brand{color:var(--ink);letter-spacing:.14em}.top .brand b{color:var(--cyan)}
-.pill{display:inline-flex;align-items:center;gap:.25rem;padding:.16rem .42rem;border:1px solid var(--line);border-radius:999px}
+.top .brand{color:var(--ink);letter-spacing:.12em}.top .brand b{color:var(--cyan)}
+.pill{display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .4rem;border:1px solid var(--line);border-radius:999px}
 .pill.live{color:var(--good);border-color:rgba(61,214,140,.4)}.pill.warn{color:var(--amber);border-color:rgba(240,180,41,.4)}
 .dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
 .spacer{flex:1}.top a{color:var(--mut);text-transform:none;letter-spacing:0}
 
-/* OPTICS */
-.optics{position:relative;min-height:0;background:#000;overflow:hidden;border-bottom:1px solid rgba(120,200,255,.12)}
+/* FPV optics strip (mission camera — not full app) */
+.optics{position:relative;min-height:0;background:#000;overflow:hidden;border-bottom:1px solid rgba(100,180,255,.12)}
 #fpv,#fpv-ov,#instr-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #fpv-ov,#instr-cv{pointer-events:none;z-index:5}#instr-cv{z-index:8}
 .optics video.live,.optics iframe.live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0;z-index:1}
-.optics.has-live #fpv{opacity:.18}
-.corner{position:absolute;width:34px;height:34px;border:1.5px solid rgba(120,210,255,.55);z-index:9;pointer-events:none}
-.corner.tl{top:14px;left:14px;border-right:0;border-bottom:0}
-.corner.tr{top:14px;right:14px;border-left:0;border-bottom:0}
-.corner.bl{bottom:14px;left:14px;border-right:0;border-top:0}
-.corner.br{bottom:14px;right:14px;border-left:0;border-top:0}
-.mission-strip{position:absolute;top:14px;left:18px;z-index:10;font:600 13px/1.35 var(--mono);color:rgba(180,210,230,.8);text-shadow:0 1px 4px #000}
-.mission-strip b{color:#9ad8ff;font-size:14px}
-.hud-top-float{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:10;
-  font:700 13px/1 -apple-system,system-ui;letter-spacing:.24em;color:#f0b429;
-  background:rgba(0,0,0,.6);border:1px solid rgba(240,180,41,.45);padding:.45rem 1.1rem;border-radius:4px}
-.instr-alert{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);z-index:12;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none}
+.optics.has-live #fpv{opacity:.2}
+.corner{position:absolute;width:28px;height:28px;border:1.5px solid rgba(120,210,255,.5);z-index:9;pointer-events:none}
+.corner.tl{top:10px;left:10px;border-right:0;border-bottom:0}
+.corner.tr{top:10px;right:10px;border-left:0;border-bottom:0}
+.corner.bl{bottom:10px;left:10px;border-right:0;border-top:0}
+.corner.br{bottom:10px;right:10px;border-left:0;border-top:0}
+.mission-strip{position:absolute;top:10px;left:14px;z-index:10;font:600 12px/1.3 var(--mono);color:rgba(180,210,230,.8);text-shadow:0 1px 4px #000}
+.mission-strip b{color:#9ad8ff;font-size:13px}
+.hud-top-float{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;
+  font:700 12px/1 -apple-system,system-ui;letter-spacing:.2em;color:#f0b429;
+  background:rgba(0,0,0,.55);border:1px solid rgba(240,180,41,.4);padding:.35rem .9rem;border-radius:4px}
+.instr-alert{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%);z-index:12;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none}
 .instr-alert.on{opacity:1}
-.instr-alert .t1{font:700 18px/1.2 -apple-system,system-ui;letter-spacing:.32em;color:#f0f4f8;text-shadow:0 0 28px rgba(255,80,60,.45)}
-.instr-alert .t2{font:700 13px/1.3 -apple-system,system-ui;letter-spacing:.22em;color:#ff5a3c;margin-top:10px}
-.instr-alert .dots{letter-spacing:.45em;color:rgba(120,210,255,.5);margin:8px 0}
-.recv{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);z-index:11;font:700 12px var(--mono);letter-spacing:.2em;color:var(--cyan);background:rgba(0,0,0,.55);border:1px solid rgba(120,210,255,.35);padding:.45rem 1rem;display:none}
+.instr-alert .t1{font:700 16px/1.2 -apple-system,system-ui;letter-spacing:.28em;color:#f0f4f8;text-shadow:0 0 24px rgba(255,80,60,.4)}
+.instr-alert .t2{font:700 12px/1.3 -apple-system,system-ui;letter-spacing:.18em;color:#ff5a3c;margin-top:8px}
+.instr-alert .dots{letter-spacing:.4em;color:rgba(120,210,255,.5);margin:6px 0;font-size:10px}
+.recv{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);z-index:11;font:700 12px var(--mono);letter-spacing:.18em;color:var(--cyan);background:rgba(0,0,0,.5);border:1px solid rgba(120,210,255,.35);padding:.4rem .85rem;display:none}
 .recv.on{display:block}
 .tape,.reticle,.compass{display:none!important}
 
-/* DECK */
-.deck{display:grid;grid-template-columns:minmax(280px,30vw) minmax(0,1fr) minmax(280px,30vw);min-height:0;background:#010308}
-.col-l,.col-r{display:flex;flex-direction:column;min-height:0;background:rgba(3,6,12,.98);border-color:var(--line);position:relative;overflow:hidden}
-.col-l{border-right:1px solid var(--line)}.col-r{border-left:1px solid var(--line)}
-.col-c{display:flex;flex-direction:column;min-height:0;min-width:0;background:#02060c}
+/* ═══ HUB: L dial | MAP | R dial  (matches ref dual-cluster) ═══ */
+.hub{
+  display:grid;
+  grid-template-columns:minmax(260px,32vw) minmax(0,1fr) minmax(260px,32vw);
+  min-height:0;height:100%;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 45%,rgba(30,50,80,.15),transparent 70%),
+    #03050a;
+  border-top:1px solid rgba(100,180,255,.1);
+}
 
-/* data panels large */
-.unit-panel{padding:12px 14px;border-bottom:1px solid var(--line);flex:0 0 auto;z-index:2;background:rgba(6,10,18,.94)}
-.unit-panel .k{font:600 10px/1 -apple-system,system-ui;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:6px}
-.unit-panel .name{font:700 30px/1 -apple-system,system-ui;letter-spacing:-.03em;color:#f4fbff;text-shadow:0 1px 3px #000}
-.unit-panel .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.unit-panel .stat{font:300 28px/1 -apple-system,system-ui;color:#9ad8ff;font-variant-numeric:tabular-nums}
-.unit-panel .stat b{display:block;font:600 10px/1 -apple-system,system-ui;color:rgba(255,255,255,.42);margin-bottom:4px;letter-spacing:.08em}
-.unit-panel .stat.good{color:#3dd68c}.unit-panel .stat.warn{color:#f0b429}.unit-panel .stat.hot{color:#ff5d6c}
-.unit-panel .meta{font:500 12px/1.35 var(--mono);color:var(--mut);margin-top:8px}
-.maint-inline{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.maint-inline span{font:600 11px -apple-system,system-ui;padding:5px 9px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6)}
-.maint-inline span.ok{color:#3dd68c;border-color:rgba(61,214,140,.35)}.maint-inline span.warn{color:#f0b429}
-.fleet-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.fleet-row .unit-pill{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);cursor:pointer;font:600 15px -apple-system,system-ui}
-.fleet-row .unit-pill.on{background:rgba(10,132,255,.22);border-color:rgba(10,132,255,.45)}
-.fleet-row .batt{color:#3dd68c;font-size:13px}
-.led{width:8px;height:8px;border-radius:50%;background:#666}.led.ok{background:#3dd68c;box-shadow:0 0 8px #3dd68c}.led.busy{background:#f0b429}
-#trk-summary .big{font:300 36px/1 -apple-system,system-ui;color:#9ad8ff;margin:8px 0 6px}
-#trk-summary div{font:600 13px/1.45 -apple-system,system-ui;color:rgba(220,235,250,.72)}
-#gsplat-meta-vis{font:600 13px var(--mono);color:rgba(167,139,250,.95);margin-top:6px}
-.chips-h{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.chip{padding:8px 12px;border-radius:14px;font:600 12px -apple-system,system-ui;cursor:pointer;color:rgba(255,255,255,.5);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
-.chip.on{color:#fff;background:rgba(255,255,255,.16)}
-.telem-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
-.telem-grid .m{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
-.telem-grid .m .k{font:600 9px -apple-system,system-ui;color:rgba(255,255,255,.4);letter-spacing:.06em}
-.telem-grid .m .v{font:300 20px/1.1 -apple-system,system-ui;color:#9ad8ff;margin-top:2px}
-.tx-mini{font:500 11px/1.4 var(--mono);color:var(--mut);margin-top:8px}
-.tx-mini b{color:var(--cyan)}
+/* side pods */
+.pod{display:flex;flex-direction:column;min-height:0;height:100%;position:relative;z-index:2;
+  background:linear-gradient(180deg,rgba(8,12,20,.4),rgba(4,6,12,.85))}
+.pod-l{border-right:1px solid rgba(100,180,255,.1)}
+.pod-r{border-left:1px solid rgba(100,180,255,.1)}
 
-/* CLUSTER: curved button rails + huge dial + palm rest */
-.cluster{flex:1;display:grid;grid-template-columns:var(--rail) 1fr;grid-template-rows:1fr auto;min-height:0;position:relative;padding:8px;gap:6px}
-.col-r .cluster{grid-template-columns:1fr var(--rail)}
-.curve-rail{display:flex;flex-direction:column;gap:6px;z-index:3;min-height:0;justify-content:center;padding:8px 0}
-.curve-rail button{
-  width:100%;min-height:52px;padding:10px 6px;font-size:12px;writing-mode:horizontal-tb;
-  border-radius:18px;flex:0 0 auto}
-/* curve toward stick: left rail rounds on right edge, right rail on left */
-.col-l .curve-rail button{border-radius:14px 28px 28px 14px;text-align:left;padding-left:10px}
-.col-r .curve-rail button{border-radius:28px 14px 14px 28px;text-align:right;padding-right:10px}
-.dial-zone{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:0;z-index:2}
-.dial-zone .lbl{font:600 11px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(255,255,255,.4);margin-bottom:6px;z-index:2}
-.triggers{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(var(--stick),100%);z-index:3;margin-bottom:8px}
-.triggers button{min-height:50px;width:100%;font-size:13px;border-radius:16px}
-.stick-pad{width:var(--stick);max-width:100%;aspect-ratio:1;border-radius:50%;z-index:2;
-  border:1px solid rgba(120,210,255,.45);
-  background:radial-gradient(circle at 50% 40%,rgba(10,22,40,.95),#000);
-  box-shadow:inset 0 0 50px rgba(0,0,0,.85),0 0 40px rgba(120,210,255,.1)}
-.stick-pad canvas{width:100%;height:100%;display:block;border-radius:50%}
-/* SLAM data screening BEHIND joystick */
-.slam-bg{position:absolute;inset:10% 8% 22% 8%;z-index:0;pointer-events:none;opacity:.22;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  font:600 12px/1.3 var(--mono);color:rgba(120,210,255,.9)}
-.slam-bg .slam-n{font:200 64px/1 -apple-system,system-ui;color:rgba(140,220,255,.55);letter-spacing:-.04em}
-.slam-bg .slam-l{font:700 14px/1 -apple-system,system-ui;letter-spacing:.28em;color:rgba(160,230,255,.5);margin:4px 0}
-.slam-bg .slam-sub{font:500 11px var(--mono);color:rgba(160,200,230,.4);margin-top:2px}
-/* palm / thumb rest under circle */
-.palm-rest{width:min(var(--stick),100%);height:52px;margin-top:10px;z-index:2;
-  border-radius:0 0 40px 40px / 0 0 28px 28px;
-  background:linear-gradient(180deg,rgba(30,40,55,.35),rgba(12,16,24,.85));
-  border:1px solid rgba(255,255,255,.08);border-top:0;
-  box-shadow:inset 0 8px 16px rgba(0,0,0,.35);
-  display:flex;align-items:center;justify-content:center;
-  font:600 10px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(255,255,255,.28)}
-.palm-rest::before{content:"";width:40%;height:6px;border-radius:4px;background:rgba(255,255,255,.08)}
+.pod-data{padding:10px 12px 8px;flex:0 0 auto;z-index:3}
+.pod-data .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.38);margin-bottom:6px}
+.pod-data .name{font:700 26px/1 -apple-system,system-ui;letter-spacing:-.03em;color:#f4fbff;text-shadow:0 1px 3px #000}
+.pod-data .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.pod-data .stat{font:200 24px/1 -apple-system,system-ui;color:#8fd0ff;font-variant-numeric:tabular-nums}
+.pod-data .stat b{display:block;font:600 9px/1 -apple-system,system-ui;color:rgba(255,255,255,.4);margin-bottom:3px;letter-spacing:.08em}
+.pod-data .stat.good{color:#3dd68c}.pod-data .stat.warn{color:#f0b429}.pod-data .stat.hot{color:#ff5d6c}
+.pod-data .meta{font:500 11px/1.3 var(--mono);color:var(--mut);margin-top:6px}
+.maint-inline{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.maint-inline span{font:600 10px -apple-system,system-ui;padding:4px 8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.55)}
+.maint-inline span.ok{color:#3dd68c;border-color:rgba(61,214,140,.3)}.maint-inline span.warn{color:#f0b429}
+.fleet-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.fleet-row .unit-pill{display:flex;align-items:center;gap:6px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);cursor:pointer;font:600 13px -apple-system,system-ui}
+.fleet-row .unit-pill.on{background:rgba(10,132,255,.22);border-color:rgba(10,132,255,.4)}
+.fleet-row .batt{color:#3dd68c;font-size:12px}
+.led{width:7px;height:7px;border-radius:50%;background:#555}.led.ok{background:#3dd68c;box-shadow:0 0 6px #3dd68c}.led.busy{background:#f0b429}
+#trk-summary .big{font:200 32px/1 -apple-system,system-ui;color:#8fd0ff;margin:6px 0 4px}
+#trk-summary div{font:600 12px/1.4 -apple-system,system-ui;color:rgba(210,230,250,.7)}
+#gsplat-meta-vis{font:600 12px var(--mono);color:rgba(180,150,255,.9);margin-top:4px}
+.chips-h{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.chip{padding:6px 10px;border-radius:12px;font:600 11px -apple-system,system-ui;cursor:pointer;color:rgba(255,255,255,.5);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.chip.on{color:#fff;background:rgba(255,255,255,.14)}
+.telem-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}
+.telem-grid .m{padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+.telem-grid .m .k{font:600 8px -apple-system,system-ui;color:rgba(255,255,255,.38)}
+.telem-grid .m .v{font:200 18px/1.1 -apple-system,system-ui;color:#8fd0ff}
+.tx-mini{font:500 10px/1.35 var(--mono);color:var(--mut);margin-top:6px}.tx-mini b{color:var(--cyan)}
 
-/* CENTER: large CMD + gitgraph + map + dual term */
-.mission-cmd{padding:10px 12px 8px;border-bottom:1px solid var(--line);background:rgba(8,12,20,.98);flex:0 0 auto}
-.mission-cmd .k{font:600 10px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:8px}
+/* dial stage: curved rail + huge circle (ref cluster) */
+.dial-stage{
+  flex:1;display:grid;grid-template-columns:56px 1fr;min-height:0;padding:4px 8px 0;position:relative;align-items:center}
+.pod-r .dial-stage{grid-template-columns:1fr 56px}
+.curve-rail{display:flex;flex-direction:column;gap:5px;justify-content:center;z-index:4;padding:4px 0}
+.curve-rail button{min-height:46px;padding:8px 4px;font-size:11px;width:100%}
+.pod-l .curve-rail button{border-radius:12px 26px 26px 12px}
+.pod-r .curve-rail button{border-radius:26px 12px 12px 26px}
+.dial-core{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;min-height:0;z-index:2}
+.slam-bg{position:absolute;inset:8% 5% 18% 5%;z-index:0;pointer-events:none;opacity:.2;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.slam-bg .slam-n{font:200 56px/1 -apple-system,system-ui;color:rgba(140,220,255,.5)}
+.slam-bg .slam-l{font:700 12px/1 -apple-system,system-ui;letter-spacing:.28em;color:rgba(160,230,255,.45);margin:2px 0}
+.slam-bg .slam-sub{font:500 10px var(--mono);color:rgba(160,200,230,.35)}
+.dial-core .lbl{font:600 10px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(255,255,255,.35);margin-bottom:6px;z-index:2}
+.triggers{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:min(var(--dial),100%);z-index:3;margin-bottom:6px}
+.triggers button{min-height:44px;font-size:12px;border-radius:14px;padding:8px}
+.stick-pad{
+  width:var(--dial);max-width:100%;aspect-ratio:1;border-radius:50%;z-index:2;position:relative;
+  border:1px solid rgba(140,210,255,.35);
+  background:
+    radial-gradient(circle at 50% 38%,rgba(40,60,90,.35),transparent 55%),
+    radial-gradient(circle at 50% 50%,rgba(8,14,28,.98),#000 70%);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.8),
+    0 0 60px rgba(80,160,255,.08),
+    inset 0 0 60px rgba(0,0,0,.75),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+.stick-pad canvas{width:100%;height:100%;display:block;border-radius:50%;position:relative;z-index:1}
+.palm-rest{width:min(var(--dial),100%);height:44px;margin-top:8px;z-index:2;
+  border-radius:0 0 36px 36px / 0 0 24px 24px;
+  background:linear-gradient(180deg,rgba(35,45,60,.3),rgba(10,14,22,.9));
+  border:1px solid rgba(255,255,255,.07);border-top:0;
+  box-shadow:inset 0 6px 14px rgba(0,0,0,.4);
+  display:flex;align-items:center;justify-content:center}
+.palm-rest::before{content:"";width:36%;height:5px;border-radius:3px;background:rgba(255,255,255,.08)}
+.skb-host{flex:0 0 auto;z-index:3;border-top:1px solid rgba(100,180,255,.12)}
+
+/* CENTER HUB — map as hero between dials */
+.hub-c{display:flex;flex-direction:column;min-height:0;height:100%;position:relative;z-index:1}
+.mission-cmd{padding:8px 12px;flex:0 0 auto;border-bottom:1px solid rgba(100,180,255,.1);
+  background:linear-gradient(180deg,rgba(12,16,28,.9),rgba(6,10,18,.95))}
+.mission-cmd .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(255,255,255,.38);margin-bottom:8px}
 .cmd-rows{display:flex;flex-direction:column;gap:8px}
-.cmd-row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
-.cmd-row button{flex:1 1 auto;min-width:88px;min-height:56px;font-size:15px;padding:14px 16px;border-radius:18px}
-.cmd-row.hud button{min-height:48px;font-size:13px;min-width:72px}
-/* horizontal gitgraph linkage staging */
-.link-stage{display:flex;align-items:center;justify-content:center;gap:0;padding:12px 8px 4px;min-height:48px}
-.link-node{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font:700 13px -apple-system,system-ui;border:2px solid rgba(120,210,255,.35);background:rgba(0,0,0,.5);color:rgba(200,220,240,.7);z-index:1}
-.link-node.cur{border-color:var(--cyan);background:rgba(10,132,255,.25);color:#fff;box-shadow:0 0 16px rgba(10,132,255,.35);transform:scale(1.12)}
-.link-node.done{border-color:var(--good);color:var(--good);background:rgba(48,209,88,.12)}
-.link-node.todo{opacity:.55}
-.link-edge{height:3px;width:28px;background:rgba(120,210,255,.2);border-radius:2px}
-.link-edge.on{background:linear-gradient(90deg,var(--good),var(--cyan));box-shadow:0 0 8px rgba(92,200,255,.35)}
-.link-cap{font:600 10px -apple-system,system-ui;letter-spacing:.1em;color:rgba(255,255,255,.35);text-align:center;margin-bottom:2px}
+.cmd-row{display:flex;flex-wrap:wrap;gap:8px}
+.cmd-row button{flex:1 1 auto;min-width:90px;min-height:54px;font-size:15px;padding:14px 16px;border-radius:18px}
+.cmd-row.hud button{min-height:46px;font-size:13px;min-width:70px}
+.link-cap{font:600 9px -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.32);text-align:center;margin:8px 0 2px}
+.link-stage{display:flex;align-items:center;justify-content:center;gap:0;padding:6px 4px 2px;min-height:40px}
+.link-node{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:700 12px -apple-system,system-ui;border:2px solid rgba(120,210,255,.3);background:rgba(0,0,0,.45);color:rgba(200,220,240,.65)}
+.link-node.cur{border-color:var(--cyan);background:rgba(10,132,255,.28);color:#fff;box-shadow:0 0 18px rgba(10,132,255,.35);transform:scale(1.1)}
+.link-node.done{border-color:var(--good);color:var(--good)}
+.link-edge{height:3px;width:26px;background:rgba(120,210,255,.18);border-radius:2px}
+.link-edge.on{background:linear-gradient(90deg,var(--good),var(--cyan))}
 
-.map-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:4px 10px 0}
-.map-head{display:flex;align-items:center;gap:.5rem;margin-bottom:4px}
-.map-head h2{margin:0;font:600 11px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(160,210,255,.55)}
+.map-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:6px 10px 0;position:relative}
+.map-head{display:flex;align-items:center;gap:.5rem;margin-bottom:4px;z-index:2}
+.map-head h2{margin:0;font:600 11px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(160,210,255,.55)}
 .map-head .n-badge{font:700 10px var(--mono);color:var(--amber);border:1px solid rgba(240,180,41,.4);padding:2px 7px;border-radius:4px}
-.map-canvas-host{position:relative;flex:1;min-height:90px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0a0e14;
-  box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
+.chips-h{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
+.map-canvas-host{
+  position:relative;flex:1;min-height:100px;border-radius:20px;overflow:hidden;
+  border:1px solid rgba(140,200,255,.2);
+  background:#0a0e14;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.6),
+    0 12px 40px rgba(0,0,0,.45),
+    inset 0 0 80px rgba(0,0,0,.35);
+}
+/* soft oval vignette like Audi map pod */
+.map-canvas-host::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:radial-gradient(ellipse 85% 75% at 50% 50%,transparent 40%,rgba(0,0,0,.55) 100%);
+}
 #map{width:100%;height:100%;display:block;cursor:crosshair}
-.map-n{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:5;width:24px;height:24px;border-radius:50%;
-  background:rgba(0,0,0,.65);border:1px solid rgba(240,180,41,.5);display:flex;align-items:center;justify-content:center;
+.map-n{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:5;width:26px;height:26px;border-radius:50%;
+  background:rgba(0,0,0,.7);border:1px solid rgba(240,180,41,.55);display:flex;align-items:center;justify-content:center;
   font:700 11px var(--mono);color:var(--amber);pointer-events:none}
 .map-stat{font:500 10px var(--mono);color:var(--mut);margin:4px 0;display:flex;justify-content:space-between}
 
-.term-split{display:grid;grid-template-columns:1fr 1fr;flex:0 0 auto;min-height:100px;max-height:26%;
-  border-top:1px solid var(--line);background:#010308}
+/* terminal floor — center column only, touches bottom */
+.term-split{
+  display:grid;grid-template-columns:1fr 1fr;flex:1 1 0;min-height:130px;
+  border-top:1px solid rgba(100,180,255,.12);background:#010308;
+}
 .term-col{padding:8px 10px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.term-col.l{border-right:1px solid var(--line)}
+.term-col.l{border-right:1px solid rgba(100,180,255,.1)}
 .term-col .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px}
-.term-col.r .k{color:rgba(255,160,80,.8)}
-.term-col.r{background:rgba(40,12,8,.35)}
+.term-col.r{background:rgba(36,10,8,.4)}.term-col.r .k{color:rgba(255,160,80,.8)}
 #log,#log-warn{flex:1;overflow:auto;font:500 12px/1.45 var(--mono);color:var(--mut);white-space:pre-wrap}
 #log .ok{color:var(--good)}#log .ev{color:var(--cyan)}#log .warn,#log-warn .warn{color:var(--amber)}
 #log .err,#log-warn .err{color:var(--hot)}
 #log-warn.flash{animation:warnFlash 1s ease infinite}
 @keyframes warnFlash{50%{background:rgba(255,80,40,.12)}}
 
-#unit-list,#trk-list,#telem-bars,#maint,#tx-panel,#gsplat-meta,#foot-stat,#mosaic,
-.tape,.reticle,.compass{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);pointer-events:none}
-.drone-kb-host{flex:0 0 auto;z-index:50;grid-column:1/-1}
-.app>.drone-kb-host{min-height:0}
+#unit-list,#trk-list,#maint,#gsplat-meta,#foot-stat,#mosaic,.tape,.reticle,.compass{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);pointer-events:none}
 </style>
 </head>
 <body>
@@ -211,9 +233,11 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
     <a href="https://drone.ugrad.ai/viewer/viewer?media=mixed&demo=rows" target="_blank" rel="noopener">ugrad</a>
     <a href="https://map.ugrad.ai/map-hub?lite=1" target="_blank" rel="noopener">map-hub</a>
     <a href="https://tools.ugrad.ai/tools/clock" target="_blank" rel="noopener">clock</a>
+    <a href="https://kbatch.ugrad.ai/" target="_blank" rel="noopener">kbatch</a>
     <a href="https://github.com/uzh-rpg/LAFR" target="_blank" rel="noopener">LAFR</a>
   </header>
 
+  <!-- Mission camera strip -->
   <section class="optics" id="fpv-host">
     <canvas id="fpv" width="1280" height="720"></canvas>
     <canvas id="fpv-ov" width="1280" height="720"></canvas>
@@ -233,10 +257,11 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
     <div class="compass"><canvas id="compass-cv" width="480" height="480"></canvas></div>
   </section>
 
-  <div class="deck">
-    <!-- LEFT CLUSTER -->
-    <div class="col-l">
-      <div class="unit-panel">
+  <!-- DUAL-DIAL HUB (refs) -->
+  <div class="hub">
+    <!-- LEFT DIAL POD -->
+    <aside class="pod pod-l">
+      <div class="pod-data">
         <div class="k">ACTIVE UNIT · TELEMETRY</div>
         <div class="name" id="ub-name">UNIT-01</div>
         <div class="stats">
@@ -249,8 +274,8 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
         <div class="maint-inline" id="ub-maint"></div>
         <div class="telem-grid" id="telem-bars"></div>
       </div>
-      <div class="cluster">
-        <div class="curve-rail" id="rail-l">
+      <div class="dial-stage">
+        <div class="curve-rail">
           <button type="button" class="primary" id="btn-arm"><span class="ico">●</span><span class="lbl">Arm</span></button>
           <button type="button" class="danger" id="btn-rth"><span class="ico">⌂</span><span class="lbl">RTH</span></button>
           <button type="button" id="btn-hold"><span class="lbl">Hold</span></button>
@@ -258,21 +283,22 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
           <button type="button" class="good" id="btn-go2"><span class="lbl">Go</span></button>
           <button type="button" id="btn-trk"><span class="lbl">Trk</span></button>
         </div>
-        <div class="dial-zone">
+        <div class="dial-core">
           <div class="slam-bg"></div>
           <div class="lbl">THR · YAW</div>
           <div class="triggers">
             <button type="button" class="primary xl" id="btn-preload"><span class="lbl">Preload</span></button>
             <button type="button" class="good xl" id="btn-go"><span class="lbl">Go</span></button>
           </div>
-          <div class="stick-pad"><canvas id="stick-l" width="400" height="400"></canvas></div>
-          <div class="palm-rest">PALM · THUMB</div>
+          <div class="stick-pad"><canvas id="stick-l" width="440" height="440"></canvas></div>
+          <div class="palm-rest"></div>
         </div>
       </div>
-    </div>
+      <div id="skb-host-l" class="skb-host" aria-label="Left split keyboard"></div>
+    </aside>
 
-    <!-- CENTER MISSION -->
-    <div class="col-c">
+    <!-- CENTER MAP HUB -->
+    <main class="hub-c">
       <div class="mission-cmd">
         <div class="k">MISSION COMMAND</div>
         <div class="cmd-rows">
@@ -295,17 +321,17 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
             <button type="button" id="btn-clk"><span class="lbl">Clock</span></button>
             <button type="button" id="btn-recv"><span class="lbl">Tgt</span></button>
             <button type="button" id="btn-clear"><span class="lbl">Clr</span></button>
-<button type="button" id="btn-hud-kb" class="on"><span class="lbl">Keyboard</span></button>
+            <button type="button" id="btn-hud-kb" class="on"><span class="lbl">Keyboard</span></button>
           </div>
         </div>
-        <div class="link-cap">PATH STAGING · GITGRAPH</div>
+        <div class="link-cap">PATH STAGING</div>
         <div class="link-stage" id="link-stage"></div>
       </div>
       <div class="map-wrap">
         <div class="map-head">
-          <h2>MAP · N-UP · MISSION</h2>
+          <h2>MAP · HUB</h2>
           <span class="n-badge">N ↑</span>
-          <div class="chips-h" id="map-chips" style="margin-left:auto;margin-top:0">
+          <div class="chips-h" id="map-chips">
             <span class="chip on" data-bm="carto-dark">DARK</span>
             <span class="chip" data-bm="carto-voyager">VOY</span>
             <span class="chip" data-bm="osm">OSM</span>
@@ -316,19 +342,19 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
         </div>
         <div class="map-canvas-host">
           <div class="map-n">N</div>
-          <canvas id="map" width="1400" height="560"></canvas>
+          <canvas id="map" width="1400" height="700"></canvas>
         </div>
         <div class="map-stat"><span id="map-stat">TILES —</span><span id="map-center">—</span></div>
       </div>
       <div class="term-split">
-        <div class="term-col l"><div class="k">READOUT · HOTPIPE</div><div id="log"></div></div>
+        <div class="term-col l"><div class="k">READOUT</div><div id="log"></div></div>
         <div class="term-col r"><div class="k">WARNINGS</div><div id="log-warn"><span class="mut">no warnings</span></div></div>
       </div>
-    </div>
+    </main>
 
-    <!-- RIGHT CLUSTER -->
-    <div class="col-r">
-      <div class="unit-panel">
+    <!-- RIGHT DIAL POD -->
+    <aside class="pod pod-r">
+      <div class="pod-data">
         <div class="k">FLEET · SLAM · TRACK · TX</div>
         <div class="fleet-row" id="ub-fleet"></div>
         <div id="trk-summary"></div>
@@ -341,20 +367,20 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
           <span class="chip" data-m="slam">SLAM</span>
           <span class="chip" data-m="gsplat">GSPLAT</span>
         </div>
-        <div class="tx-mini" id="tx-panel">TX stack…</div>
+        <div class="tx-mini" id="tx-panel">TX…</div>
       </div>
-      <div class="cluster">
-        <div class="dial-zone">
+      <div class="dial-stage">
+        <div class="dial-core">
           <div class="slam-bg"></div>
           <div class="lbl">PITCH · ROLL</div>
           <div class="triggers">
             <button type="button" class="xl" id="btn-hold3"><span class="lbl">Hold</span></button>
             <button type="button" class="xl" id="btn-land3"><span class="lbl">Land</span></button>
           </div>
-          <div class="stick-pad"><canvas id="stick-r" width="400" height="400"></canvas></div>
-          <div class="palm-rest">PALM · THUMB</div>
+          <div class="stick-pad"><canvas id="stick-r" width="440" height="440"></canvas></div>
+          <div class="palm-rest"></div>
         </div>
-        <div class="curve-rail" id="rail-r">
+        <div class="curve-rail">
           <button type="button" id="btn-sam2"><span class="lbl">SAM</span></button>
           <button type="button" id="btn-slam2"><span class="lbl">SLAM</span></button>
           <button type="button" id="btn-gsplat2"><span class="lbl">Gsplat</span></button>
@@ -363,11 +389,11 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
           <button type="button" id="btn-clk2"><span class="lbl">Clk</span></button>
         </div>
       </div>
-    </div>
+      <div id="skb-host-r" class="skb-host" aria-label="Right split keyboard"></div>
+    </aside>
   </div>
 
-  <div id="drone-kb-host" class="drone-kb-host"></div>
-<div id="unit-list"></div><div id="trk-list"></div><div id="maint"></div>
+  <div id="unit-list"></div><div id="trk-list"></div><div id="maint"></div>
   <div id="gsplat-meta"></div><div id="foot-stat"></div><div id="mosaic"></div>
   <div id="ub-maint" style="display:none"></div>
   <button type="button" id="btn-trk2" style="display:none"></button>
@@ -383,7 +409,7 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 <script>
 (function(){
 "use strict";
-var VER="webgrid-drone-hud-v5.1-kbatch-kb";
+var VER="webgrid-drone-hud-v6-hub";
 var P=new URLSearchParams(location.search);
 var UNITS=Math.max(1,Math.min(8,parseInt(P.get("units")||"4",10)||4));
 var BACKEND=(P.get("backend")||"sim").toLowerCase();
@@ -460,7 +486,7 @@ function initMap(){
   mapApi=DroneMap.create(mapCanvas,{
     basemap:"carto-dark",
     center:{lat:state.home.lat,lon:state.home.lon},
-    zoom:15,
+    zoom:13,
     onClick:function(p){
       state.path.push({lat:p.lat,lon:p.lon,alt:20+state.path.length*2});
       syncMapPath();
@@ -1366,17 +1392,18 @@ window.WebgridDroneHud={
 })();
 
 
-// kbatch-style split keyboard
+// kbatch split kb — halves under L/R stick columns; center term to floor
 (function(){
-  var host=document.getElementById("drone-kb-host");
-  if(host && window.DroneSplitKb){
-    DroneSplitKb.mount(host);
+  var L=document.getElementById("skb-host-l");
+  var R=document.getElementById("skb-host-r");
+  if(window.DroneSplitKb && (L||R)){
+    if(DroneSplitKb.mountColumns) DroneSplitKb.mountColumns(L,R);
+    else if(L) DroneSplitKb.mount(L);
     DroneSplitKb.on(function(ev){
       if(ev.type==="enter" && ev.data!=null){
         var line=String(ev.data||"");
         if(!line)return;
         if(typeof log==="function") log("kb · "+line, "ev");
-        // slash-ish commands
         var low=line.toLowerCase().trim();
         if(low==="rth"||low==="/rth") rth();
         else if(low==="arm"||low==="/arm") arm(true);
@@ -1388,9 +1415,19 @@ window.WebgridDroneHud={
         else if(low==="sam"||low==="slam"||low==="gsplat"||low==="motion"||low==="dino"||low==="off") setTrackMode(low);
       }
     });
-    if(typeof log==="function") log("split kb · kbatch.ugrad.ai path · ` capture","ok");
+    if(typeof log==="function") log("split kb · under sticks · kbatch.ugrad.ai · ` capture","ok");
+  }
+  var b=document.getElementById("btn-hud-kb");
+  if(b&&window.DroneSplitKb){
+    b.onclick=function(){
+      var sample=document.querySelector(".drone-split-kb");
+      var vis=sample&&!sample.classList.contains("hidden");
+      DroneSplitKb.setVisible(!vis);
+      b.classList.toggle("on",!vis);
+    };
   }
 })();
+
 
 
 (function(){

@@ -1193,6 +1193,8 @@ pub struct AgentView {
     pub(crate) live_watch: Option<crate::live_demux::LiveWatchState>,
     /// Active `/timesync` broadcast world clock modal.
     pub(crate) timesync: Option<crate::timesync::TimesyncState>,
+    /// Active `/language` multi-stream keyboard translation modal.
+    pub(crate) language: Option<crate::language::LanguageState>,
     /// Active `/map` maptrace modal (ASCII world + traceroute).
     pub(crate) maptrace: Option<crate::maptrace::MapState>,
     /// Protocol-prepared image bytes keyed by file path. Used for dimension

@@ -473,6 +473,7 @@ pub(super) fn dispatch_open_timesync(app: &mut AppView) -> Vec<Effect> {
     agent.gy_tty = None;
     agent.live_watch = None;
     agent.maptrace = None;
+    agent.language = None;
     agent.timesync = Some(crate::timesync::TimesyncState::open());
     agent.show_toast(crate::timesync::TOAST_OPEN);
     vec![]
@@ -480,6 +481,36 @@ pub(super) fn dispatch_open_timesync(app: &mut AppView) -> Vec<Effect> {
 
 /// Open fornevercollective maptrace (`/map [target]`) — ASCII world map +
 /// traceroute hops inside Grok. Pop-out is a separate action.
+
+
+/// Open simultaneous multi-language keyboard streams (`/language`).
+pub(super) fn dispatch_open_language(app: &mut AppView) -> Vec<Effect> {
+    let ActiveView::Agent(id) = app.active_view else {
+        return vec![];
+    };
+    let Some(agent) = app.agents.get_mut(&id) else {
+        return vec![];
+    };
+    agent.image_viewer = None;
+    agent.image_load_rx = None;
+    agent.video_viewer = None;
+    agent.gboom = None;
+    agent.gy_tty = None;
+    agent.live_watch = None;
+    agent.maptrace = None;
+    agent.timesync = None;
+    let mode = std::env::var("FC_LANGUAGE_MODE").unwrap_or_else(|_| "all".into());
+    let mode = match mode.as_str() {
+        "layout" => crate::language::LanguageMode::Layout,
+        "translate" => crate::language::LanguageMode::Translate,
+        "codec" => crate::language::LanguageMode::Codec,
+        _ => crate::language::LanguageMode::All,
+    };
+    agent.language = Some(crate::language::LanguageState::open_with_mode(mode));
+    agent.show_toast(crate::language::TOAST_OPEN);
+    vec![]
+}
+
 
 pub(in crate::app::dispatch) fn dispatch_open_map(
     app: &mut AppView,

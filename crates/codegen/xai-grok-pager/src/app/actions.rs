@@ -992,6 +992,8 @@ pub enum Action {
     },
     /// Open fornevercollective broadcast timesync world clock (`/timesync`).
     OpenTimesync,
+    /// Simultaneous multi-language keyboard translation streams (`/language`).
+    OpenLanguage,
     /// Open fornevercollective maptrace modal (`/map [target]`).
     OpenMap {
         /// Host or IP to traceroute (empty → default 1.1.1.1).

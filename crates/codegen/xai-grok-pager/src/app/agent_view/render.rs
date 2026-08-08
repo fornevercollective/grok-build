@@ -917,6 +917,7 @@ impl AgentView {
                 || self.gy_tty.is_some()
                 || self.live_watch.is_some()
                 || self.timesync.is_some()
+                || self.language.is_some()
                 || self.maptrace.is_some()
                 || self.block_viewer.is_some()
                 || self.extensions_modal.is_some()
@@ -3888,6 +3889,31 @@ impl AgentView {
                     HintItem::new(key!(Right), "+10s"),
                 ]
             };
+            ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
+            self.pane_areas = layout.pane_areas();
+            return (None, prompt_post_flush);
+        }
+                if let Some(lang) = self.language.as_mut() {
+            use crate::views::shortcuts_bar::HintItem;
+            let overlay_area = Rect {
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: layout.shortcuts.y.saturating_sub(area.y),
+            };
+            lang.paint(
+                buf,
+                overlay_area,
+                theme.bg_base,
+                theme.text_primary,
+                theme.gray_dim,
+            );
+            let hints = vec![
+                HintItem::new(key!(Esc), "quit"),
+                HintItem::new(key!(Tab), "focus"),
+                HintItem::new(key!('m'), "mode"),
+                HintItem::new(key!('o'), "MG kb"),
+            ];
             ShortcutsBar::new(&hints).render(layout.shortcuts, buf);
             self.pane_areas = layout.pane_areas();
             return (None, prompt_post_flush);

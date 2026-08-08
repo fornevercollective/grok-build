@@ -5,6 +5,7 @@ pub mod gy_tty;
 pub mod glyphs;
 pub mod host;
 pub mod link_opener;
+pub mod language;
 pub mod live_demux;
 pub mod maptrace;
 pub mod modal_window_state;

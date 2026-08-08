@@ -53,6 +53,7 @@ impl AgentView {
             || self.gy_tty.is_some()
             || self.live_watch.is_some()
             || self.timesync.is_some()
+            || self.language.is_some()
             || self.maptrace.is_some()
             || self.show_goal_detail
             || self.btw_focused
@@ -92,6 +93,7 @@ impl AgentView {
             && self.gy_tty.is_none()
             && self.live_watch.is_none()
             && self.timesync.is_none()
+            && self.language.is_none()
             && self.maptrace.is_none()
             && self.extensions_modal.is_none()
             && self.btw_state.is_none()
@@ -130,6 +132,7 @@ impl AgentView {
             || self.gy_tty.is_some()
             || self.live_watch.is_some()
             || self.timesync.is_some()
+            || self.language.is_some()
             || self.maptrace.is_some()
             || self.video_viewer.is_some()
             || self.image_viewer.is_some()
@@ -609,7 +612,18 @@ impl AgentView {
                 _ => InputOutcome::Changed,
             };
         }
-        if self.maptrace.is_some() {
+                if self.language.is_some() {
+            return match ev {
+                Event::Key(key) if key.kind != KeyEventKind::Release => {
+                    if key!('q', CONTROL).matches(key) {
+                        return InputOutcome::Unchanged;
+                    }
+                    self.handle_language_key(key)
+                }
+                _ => InputOutcome::Changed,
+            };
+        }
+if self.maptrace.is_some() {
             return match ev {
                 Event::Key(key) if key.kind != KeyEventKind::Release => {
                     if key!('q', CONTROL).matches(key) {

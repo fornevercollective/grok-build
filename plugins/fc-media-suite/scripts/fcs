@@ -196,6 +196,7 @@ Commands (same as Grok slash tools):
   clock | timesync | zulu       world clock / NTP
   map | maptrace | geomap       traceroute map (Starbase honesty)
   webgrid | wg                  offline ugrad chase
+  language | lang               multi-lang keyboard streams
   optical                       optical blur / jawta / fountain TX
   lens                          bug-world / HDRI / 360 lens pop-out
   phone                         Continuity / still-pipe phone cam
@@ -536,6 +537,34 @@ cmd_map() {
   exec bash "$SCRIPTS/launch-map.sh" "${args[@]+"${args[@]}"}"
 }
 
+
+cmd_language() {
+  local args=("$@")
+  local SCRIPTS
+  SCRIPTS="$(cd "$(dirname "$0")/../../.." && pwd)/scripts"
+  [[ -d "$SCRIPTS" ]] || SCRIPTS="$(cd "$(dirname "$0")/.." && pwd)/../../scripts"
+  # prefer repo scripts from grok-build root
+  local ROOT
+  ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+  if [[ -f "$ROOT/scripts/launch-language.sh" ]]; then
+    exec bash "$ROOT/scripts/launch-language.sh" "${args[@]+"${args[@]}"}"
+  fi
+  # fallback: open MG plane
+  open "${LIVE_DEMUX_LANGUAGE_URL:-http://127.0.0.1:8790/webgrid-ugrad.html?mg_kb=1}" 2>/dev/null || true
+  echo "language · opened MG keyboard plane (launch-language.sh missing)"
+}
+
+cmd_drone() {
+  local args=("$@")
+  local ROOT
+  ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+  if [[ -f "$ROOT/scripts/launch-drone.sh" ]]; then
+    exec bash "$ROOT/scripts/launch-drone.sh" "${args[@]+"${args[@]}"}"
+  fi
+  echo "error: launch-drone.sh missing"
+  exit 1
+}
+
 cmd_webgrid() {
   local mode args=()
   mode="$(resolve_mode "$@")"
@@ -603,7 +632,7 @@ cmd_media() {
       *)
         bash "$PLUGIN/scripts/doctor.sh" || true
         echo ""
-        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | lens | cast"
+        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | language | drone | lens | cast"
         ;;
     esac
   else
@@ -622,6 +651,8 @@ normalize_cmd() {
     clock|timesync|zulu|worldclock|epoch) echo clock ;;
     map|maptrace|geomap|traceroute) echo map ;;
     webgrid|wg|webgrif|grid-chase) echo webgrid ;;
+    language|lang|translate|i18n|polyglot|multilang) echo language ;;
+    drone|hud|fleet-hud) echo drone ;;
     optical|optic|jawta|fountain) echo optical ;;
     lens|bug|bugworld) echo lens ;;
     phone|tether|brick|continuity) echo phone ;;
@@ -654,6 +685,8 @@ main() {
     clock) cmd_clock "$@" ;;
     map) cmd_map "$@" ;;
     webgrid) cmd_webgrid "$@" ;;
+    language) cmd_language "$@" ;;
+    drone) cmd_drone "$@" ;;
     optical) cmd_optical "$@" ;;
     lens) cmd_lens "$@" ;;
     phone) cmd_phone "$@" ;;

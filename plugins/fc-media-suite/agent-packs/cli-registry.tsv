@@ -79,3 +79,4 @@ autohand	skill	multi	.autohand/skills/fc-media-suite
 astrbot	skill	multi	.astrbot/skills/fc-media-suite	
 adal	skill	multi	.adal/skills/fc-media-suite	
 inferencesh	skill	multi	.inferencesh/skills/fc-media-suite	
+language	fcs language	/language	fc-language-stream-v1	simultaneous keyboard streams
