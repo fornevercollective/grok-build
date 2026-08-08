@@ -73,9 +73,10 @@ pub use glyph_watch::{
     FEATURE_ID as GLYPH_WATCH_FEATURE_ID, GLYPH_URL, TOAST_GLYPH,
 };
 pub use webgrid::{
-    is_webgrid_source, is_webgrid_token, launch_webgrid_popout_async, parse_webgrid_args,
-    webgrid_page_url, webgrid_url, WebgridFeed, WebgridMode,
-    FEATURE_ID as WEBGRID_FEATURE_ID, TOAST_WEBGRID, WEBGRID_URL,
+    is_drone_hud_args, is_webgrid_source, is_webgrid_token, launch_webgrid_drone_popout_async,
+    launch_webgrid_drone_popout_url_async, launch_webgrid_popout_async, parse_webgrid_args,
+    webgrid_drone_page_url, webgrid_page_url, webgrid_url, WebgridFeed, WebgridMode,
+    FEATURE_ID as WEBGRID_FEATURE_ID, TOAST_WEBGRID, TOAST_WEBGRID_DRONE, WEBGRID_URL,
 };
 
 use std::collections::{HashMap, VecDeque};

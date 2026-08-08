@@ -37,6 +37,7 @@ bash plugins/fc-media-suite/scripts/update.sh
 | `fc-maptrace-v1` | `/map` |
 | `fc-halfblock-tty-video` | paint path for watch + `/gboom` |
 | `fc-webgrid-tty-v1` | `/webgrid` offline ugrad chase (own slash) |
+| `fc-webgrid-drone-hud-v1` | `/drone` multi-unit FPV HUD (own slash · not under webgrid) |
 | `fc-optical-transfer-v1` | `/optical` · jawta light · blur fountain |
 
 ```bash
@@ -49,6 +50,8 @@ bash plugins/fc-media-suite/scripts/doctor.sh
 bash scripts/launch-watch.sh     # /watch · /cam
 bash scripts/launch-timesync.sh  # /clock
 bash scripts/launch-map.sh       # /map starbase
+bash scripts/launch-webgrid.sh   # /webgrid chase
+bash scripts/launch-drone.sh     # /drone HUD (standalone)
 ```
 
 ## Ports (Soft Path owns 8765/8766)

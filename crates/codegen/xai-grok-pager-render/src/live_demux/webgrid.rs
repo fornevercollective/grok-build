@@ -13,7 +13,8 @@
 //! /webgrid human              human only (arrows + space/enter)
 //! /webgrid 30                 N×N grid size (4–30)
 //! /webgrid popout             open offline webgrid-ugrad in browser/MG
-//! o (in modal)                same pop-out
+//! /webgrid drone | hud        drone HUD pop-out (multi-unit FPV · map · RTH)
+//! o (in modal)                same pop-out (chase); drone via /webgrid drone
 //! ```
 //!
 //! Keys (webgrid modal):
@@ -36,6 +37,14 @@ pub const TOAST_WEBGRID: &str =
 /// Override: LIVE_DEMUX_WEBGRID_URL=http://127.0.0.1:8790/webgrid-ugrad.html
 pub const DEFAULT_WEBGRID_PAGE: &str =
     "http://127.0.0.1:8790/webgrid-ugrad.html?gamedev=1&tick=sim&N=30&dur=20&auto=1";
+
+/// Drone HUD control surface (multi-unit FPV mosaic · flight path · RTH · maint).
+/// Override: LIVE_DEMUX_WEBGRID_DRONE_URL=…
+pub const DEFAULT_WEBGRID_DRONE_PAGE: &str =
+    "http://127.0.0.1:8790/webgrid-drone-hud.html?backend=sim&units=4&demo=rows&track=motion";
+
+pub const TOAST_WEBGRID_DRONE: &str =
+    "WEBGRID DRONE HUD · multi-unit FPV · map/RTH · maint · fc-webgrid-drone-hud-v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WebgridMode {
@@ -125,6 +134,10 @@ pub fn parse_webgrid_args(input: &str) -> (WebgridMode, u32, bool, String) {
             "human" | "play" | "manual" | "hand" => mode = WebgridMode::Human,
             "turbo" | "chip" | "fast" => turbo = true,
             "popout" | "out" | "external" | "ffplay" | "window" | "--popout" | "-o" => {}
+            // drone HUD tokens are handled by slash popout launcher; ignore for TTY mode
+            "drone" | "hud" | "drone-hud" | "fleet" | "mavlink" | "elrs" | "rth" | "map" => {
+                notes.push(low);
+            }
             other if other.parse::<u32>().is_ok() => {
                 let v = other.parse::<u32>().unwrap_or(n);
                 n = v.clamp(4, 30);
@@ -172,6 +185,31 @@ fn env_fps() -> f32 {
 /// Browser / MG page for pop-out (our offline build).
 pub fn webgrid_page_url() -> String {
     std::env::var("LIVE_DEMUX_WEBGRID_URL").unwrap_or_else(|_| DEFAULT_WEBGRID_PAGE.into())
+}
+
+/// Browser / MG page for drone HUD pop-out.
+pub fn webgrid_drone_page_url() -> String {
+    std::env::var("LIVE_DEMUX_WEBGRID_DRONE_URL")
+        .unwrap_or_else(|_| DEFAULT_WEBGRID_DRONE_PAGE.into())
+}
+
+/// True when args request the drone HUD surface (not chase board).
+pub fn is_drone_hud_args(input: &str) -> bool {
+    input.split_whitespace().any(|t| {
+        matches!(
+            t.to_ascii_lowercase().as_str(),
+            "drone"
+                | "hud"
+                | "drone-hud"
+                | "dronehud"
+                | "fleet"
+                | "mavlink"
+                | "elrs"
+                | "rth"
+                | "map"
+                | "flight"
+        )
+    })
 }
 
 // ── Game state (shared with paint thread + UI keys) ────────────────────
@@ -638,12 +676,32 @@ fn open_url(url: &str) {
 }
 
 fn ensure_site_and_url() -> String {
-    let url = webgrid_page_url();
+    ensure_site_and_url_for(false)
+}
+
+fn ensure_drone_site_and_url() -> String {
+    ensure_site_and_url_for(true)
+}
+
+fn ensure_site_and_url_for(drone: bool) -> String {
+    // Best-effort: copy latest PWA assets into paper site when present.
+    if let Some(pwa) = find_pwa_dir() {
+        sync_webgrid_assets(&pwa);
+    }
+    let url = if drone {
+        webgrid_drone_page_url()
+    } else {
+        webgrid_page_url()
+    };
     // Best-effort: if default :8790 dead, try :8787 pwa, then file://
     if url_reachable(&url) {
         return url;
     }
-    let alt = "http://127.0.0.1:8787/webgrid-ugrad.html?gamedev=1&tick=sim&N=30&dur=20&auto=1";
+    let alt = if drone {
+        "http://127.0.0.1:8787/webgrid-drone-hud.html?backend=sim&units=4&demo=rows&track=motion"
+    } else {
+        "http://127.0.0.1:8787/webgrid-ugrad.html?gamedev=1&tick=sim&N=30&dur=20&auto=1"
+    };
     if url_reachable(alt) {
         return alt.to_string();
     }
@@ -665,6 +723,23 @@ fn ensure_site_and_url() -> String {
         }
     }
     url
+}
+
+fn sync_webgrid_assets(pwa: &PathBuf) {
+    let site = std::env::var("MG_SITE")
+        .map(PathBuf::from)
+        .or_else(|_| {
+            std::env::var("HOME").map(|h| PathBuf::from(h).join(".panda/vision/cast/paper/site"))
+        })
+        .ok();
+    let Some(site) = site else { return };
+    let _ = std::fs::create_dir_all(&site);
+    for name in ["webgrid-ugrad.html", "webgrid-drone-hud.html"] {
+        let src = pwa.join(name);
+        if src.is_file() {
+            let _ = std::fs::copy(&src, site.join(name));
+        }
+    }
 }
 
 fn url_reachable(url: &str) -> bool {
@@ -697,12 +772,29 @@ fn find_pwa_dir() -> Option<PathBuf> {
     cands.push(PathBuf::from(
         "/Volumes/qbitOS/00.dev/projects/grok-build/experiments/memory-glass/pwa",
     ));
-    cands.into_iter().find(|p| p.join("webgrid-ugrad.html").is_file() || p.is_dir())
+    cands.into_iter().find(|p| {
+        p.join("webgrid-ugrad.html").is_file()
+            || p.join("webgrid-drone-hud.html").is_file()
+            || p.is_dir()
+    })
 }
 
 /// Open offline webgrid-ugrad in the OS browser (and try Memory Glass if present).
 pub fn launch_webgrid_popout_blocking() -> Result<String, String> {
-    let url = ensure_site_and_url();
+    launch_webgrid_popout_blocking_kind(false)
+}
+
+/// Open drone HUD control surface (multi-unit video · path · RTH · maint).
+pub fn launch_webgrid_drone_popout_blocking() -> Result<String, String> {
+    launch_webgrid_popout_blocking_kind(true)
+}
+
+fn launch_webgrid_popout_blocking_kind(drone: bool) -> Result<String, String> {
+    let url = if drone {
+        ensure_drone_site_and_url()
+    } else {
+        ensure_site_and_url()
+    };
     open_url(&url);
     // Prefer Memory Glass when installed (WK race shell can take the URL).
     #[cfg(target_os = "macos")]
@@ -718,19 +810,64 @@ pub fn launch_webgrid_popout_blocking() -> Result<String, String> {
                 .spawn();
         }
     }
-    Ok(format!("webgrid pop-out · {url}"))
+    let kind = if drone { "drone HUD" } else { "chase" };
+    Ok(format!("webgrid {kind} pop-out · {url}"))
 }
 
 pub fn launch_webgrid_popout_async() -> String {
+    launch_webgrid_popout_async_kind(false)
+}
+
+pub fn launch_webgrid_drone_popout_async() -> String {
+    launch_webgrid_popout_async_kind(true)
+}
+
+/// Open drone HUD at an explicit URL (units/backend overrides from `/drone` args).
+pub fn launch_webgrid_drone_popout_url_async(url: String) -> String {
+    let toast_url = url.clone();
     thread::Builder::new()
-        .name("webgrid-popout".into())
-        .spawn(|| {
-            if let Err(e) = launch_webgrid_popout_blocking() {
+        .name("webgrid-drone-popout".into())
+        .spawn(move || {
+            // Ensure assets/server, but navigate to the caller URL.
+            let _ = ensure_drone_site_and_url();
+            open_url(&url);
+            #[cfg(target_os = "macos")]
+            {
+                let mg = PathBuf::from(std::env::var("HOME").unwrap_or_default())
+                    .join("Applications/Memory Glass.app");
+                if mg.is_dir() {
+                    let _ = Command::new("open")
+                        .args(["-a", "Memory Glass", &url])
+                        .stdin(Stdio::null())
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .spawn();
+                }
+            }
+        })
+        .ok();
+    format!("{} · opening browser… · {toast_url}", TOAST_WEBGRID_DRONE)
+}
+
+fn launch_webgrid_popout_async_kind(drone: bool) -> String {
+    let name = if drone {
+        "webgrid-drone-popout"
+    } else {
+        "webgrid-popout"
+    };
+    thread::Builder::new()
+        .name(name.into())
+        .spawn(move || {
+            if let Err(e) = launch_webgrid_popout_blocking_kind(drone) {
                 eprintln!("[fc-webgrid] {e}");
             }
         })
         .ok();
-    format!("{} · opening browser…", TOAST_WEBGRID)
+    if drone {
+        format!("{} · opening browser…", TOAST_WEBGRID_DRONE)
+    } else {
+        format!("{} · opening browser…", TOAST_WEBGRID)
+    }
 }
 
 #[cfg(test)]
@@ -753,6 +890,11 @@ mod tests {
         assert_eq!(m, WebgridMode::Human);
         assert_eq!(n, 16);
         assert!(turbo);
+        assert!(is_drone_hud_args("drone"));
+        assert!(is_drone_hud_args("popout hud"));
+        assert!(is_drone_hud_args("webgrid fleet rth"));
+        assert!(!is_drone_hud_args("human 16 turbo"));
+        assert!(webgrid_drone_page_url().contains("webgrid-drone-hud"));
     }
 
     #[test]

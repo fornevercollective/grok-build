@@ -12,6 +12,7 @@
 //! /webgrid 30              30×30 board
 //! /webgrid turbo           lab uncap agent batch
 //! /webgrid popout          browser / Memory Glass (webgrid-ugrad.html)
+//! /webgrid drone | hud     drone HUD pop-out (FPV mosaic · map · RTH · maint)
 //! /webgrid help
 //! ```
 
@@ -28,15 +29,16 @@ impl SlashCommand for WebgridCommand {
 
     fn aliases(&self) -> &[&str] {
         // free names — not nested under /watch or /gboom
+        // drone HUD is first-class: /drone (not an alias here)
         &["wg", "webgrid-ugrad", "ugrad-webgrid", "grid-chase"]
     }
 
     fn description(&self) -> &str {
-        "Offline webgrid-ugrad chase · TTY half-block (our build · o = browser)"
+        "Webgrid chase · TTY half-block (o = browser · drone → /drone)"
     }
 
     fn usage(&self) -> &str {
-        "/webgrid [agent|human|N|turbo|popout|help]"
+        "/webgrid [agent|human|N|turbo|popout|help]  · drone: /drone"
     }
 
     fn takes_args(&self) -> bool {
@@ -65,6 +67,7 @@ impl SlashCommand for WebgridCommand {
             ("16", "16×16 board"),
             ("30", "30×30 board (desktop race size)"),
             ("popout", "open offline webgrid-ugrad.html in browser / Memory Glass"),
+            ("drone", "compat → prefer /drone (standalone HUD)"),
             ("out", "alias for popout"),
             ("help", "show /webgrid help"),
         ];
@@ -92,12 +95,14 @@ impl SlashCommand for WebgridCommand {
 
         if matches!(lower.as_str(), "help" | "?" | "list" | "ls") {
             return CommandResult::Message(
-                "/webgrid · fc-webgrid-tty-v1 · offline ugrad chase (our build)\n\
+                "/webgrid · fc-webgrid-tty-v1 · offline ugrad chase + drone HUD\n\
                  /webgrid                 agent ON · 12×12 half-block\n\
                  /webgrid human [N]       human cursor · arrows/hjkl · space hit\n\
                  /webgrid 30              N×N (4–30)\n\
                  /webgrid turbo           lab agent batch (paint ceiling)\n\
                  /webgrid popout          browser + Memory Glass · webgrid-ugrad.html\n\
+                 /webgrid drone           compat → same as /drone (prefer standalone)\n\
+                 /drone                   standalone multi-unit drone HUD (first-class)\n\
                  keys: arrows hit · a agent · r restart · o browser · Esc\n\
                  page: http://127.0.0.1:8790/webgrid-ugrad.html  (:8787 fallback)\n\
                  toolchain: OpenLiveWatch { url: \"webgrid://agent\" } · not a /watch channel\n\
@@ -106,15 +111,25 @@ impl SlashCommand for WebgridCommand {
             );
         }
 
-        // Pop-out only (browser/MG) — still open TTY surface so keys match optical pattern.
-        let popout = lower.split_whitespace().any(|t| {
-            matches!(
-                t,
-                "popout" | "pop-out" | "out" | "external" | "ffplay" | "window" | "--popout" | "-o"
-            )
-        });
+        let drone = crate::live_demux::is_drone_hud_args(&lower);
 
-        // Strip popout tokens from open args; keep mode/N/turbo.
+        // Pop-out only (browser/MG) — still open TTY surface so keys match optical pattern.
+        let popout = drone
+            || lower.split_whitespace().any(|t| {
+                matches!(
+                    t,
+                    "popout"
+                        | "pop-out"
+                        | "out"
+                        | "external"
+                        | "ffplay"
+                        | "window"
+                        | "--popout"
+                        | "-o"
+                )
+            });
+
+        // Strip popout / drone tokens from open args; keep mode/N/turbo for TTY chase.
         let open_args: Vec<&str> = raw
             .split_whitespace()
             .filter(|t| {
@@ -135,6 +150,17 @@ impl SlashCommand for WebgridCommand {
                         | "ugrad-webgrid"
                         | "grid-chase"
                         | "gridchase"
+                        | "drone"
+                        | "hud"
+                        | "drone-hud"
+                        | "dronehud"
+                        | "fleet"
+                        | "mavlink"
+                        | "elrs"
+                        | "rth"
+                        | "map"
+                        | "flight"
+                        | "webgrid-drone"
                 )
             })
             .collect();
@@ -148,8 +174,16 @@ impl SlashCommand for WebgridCommand {
         };
 
         if popout {
-            let toast = crate::live_demux::launch_webgrid_popout_async();
+            let toast = if drone {
+                crate::live_demux::launch_webgrid_drone_popout_async()
+            } else {
+                crate::live_demux::launch_webgrid_popout_async()
+            };
             eprintln!("[fc-webgrid] {toast}");
+            if drone {
+                // Pure drone HUD pop-out — toast only (no need for chase TTY board).
+                return CommandResult::Message(toast);
+            }
         }
 
         CommandResult::Action(Action::OpenLiveWatch { url: open_url })
@@ -194,8 +228,28 @@ mod tests {
         let models = ModelState::default();
         let mut ctx = make_ctx(&models);
         match WebgridCommand.run(&mut ctx, "help") {
-            CommandResult::Message(m) => assert!(m.contains("fc-webgrid-tty-v1")),
+            CommandResult::Message(m) => {
+                assert!(m.contains("fc-webgrid-tty-v1"));
+                assert!(m.contains("drone"), "help should mention drone HUD: {m}");
+            }
             other => panic!("expected Message, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn drone_opens_message_not_only_watch() {
+        let models = ModelState::default();
+        let mut ctx = make_ctx(&models);
+        match WebgridCommand.run(&mut ctx, "drone") {
+            CommandResult::Message(m) => {
+                assert!(
+                    m.to_ascii_lowercase().contains("drone")
+                        || m.contains("webgrid-drone")
+                        || m.contains("opening browser"),
+                    "msg={m}"
+                );
+            }
+            other => panic!("expected Message for drone HUD popout, got {other:?}"),
         }
     }
 }

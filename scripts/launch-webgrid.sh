@@ -8,6 +8,9 @@
 #   bash scripts/launch-webgrid.sh human 16
 #   bash scripts/launch-webgrid.sh turbo
 #   bash scripts/launch-webgrid.sh popout
+#   bash scripts/launch-webgrid.sh drone          # drone HUD pop-out
+#   bash scripts/launch-webgrid.sh popout drone
+#   bash scripts/launch-webgrid.sh hud            # alias · drone HUD
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -21,9 +24,14 @@ mkdir -p "$(dirname "$HALFBLOCK_PAINT_STAMP_PATH")"
 
 ARGS=("$@")
 POPOUT=0
+DRONE=0
 for a in "${ARGS[@]+"${ARGS[@]}"}"; do
   case "$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')" in
     popout|pop-out|out|--popout|-o|external)
+      POPOUT=1
+      ;;
+    drone|hud|drone-hud|webgrid-drone|fleet|mavlink|elrs|rth)
+      DRONE=1
       POPOUT=1
       ;;
   esac
@@ -31,16 +39,36 @@ done
 
 # Pure pop-out: browser / MG only (no TUI).
 if [[ "$POPOUT" -eq 1 ]]; then
-  WG_URL="${LIVE_DEMUX_WEBGRID_URL:-http://127.0.0.1:8790/webgrid-ugrad.html?gamedev=1&tick=sim&N=30&dur=20&auto=1}"
   SITE="${MG_SITE:-$HOME/.panda/vision/cast/paper/site}"
   PWA="$ROOT/experiments/memory-glass/pwa"
+  mkdir -p "$SITE"
+  # Sync chase + drone HUD surfaces into paper/gamedev site.
   if [[ -f "$PWA/webgrid-ugrad.html" ]]; then
-    mkdir -p "$SITE"
     cp -f "$PWA/webgrid-ugrad.html" "$SITE/webgrid-ugrad.html" 2>/dev/null || true
+  fi
+  if [[ -f "$PWA/webgrid-drone-hud.html" ]]; then
+    cp -f "$PWA/webgrid-drone-hud.html" "$SITE/webgrid-drone-hud.html" 2>/dev/null || true
+  fi
+  # drone HUD modules + hotpipe bridge
+  if [[ -d "$PWA/ugrad" ]]; then
+    mkdir -p "$SITE/ugrad"
+    cp -f "$PWA/ugrad"/drone-*.js "$SITE/ugrad/" 2>/dev/null || true
+  fi
+  if [[ -f "$ROOT/experiments/memory-glass/hotpipe/drone-hotpipe.js" ]]; then
+    mkdir -p "$SITE/hotpipe"
+    cp -f "$ROOT/experiments/memory-glass/hotpipe/drone-hotpipe.js" "$SITE/hotpipe/" 2>/dev/null || true
+  fi
+  if [[ "$DRONE" -eq 1 ]]; then
+    WG_URL="${LIVE_DEMUX_WEBGRID_DRONE_URL:-http://127.0.0.1:8790/webgrid-drone-hud.html?backend=sim&units=4&demo=rows&track=motion}"
+  else
+    WG_URL="${LIVE_DEMUX_WEBGRID_URL:-http://127.0.0.1:8790/webgrid-ugrad.html?gamedev=1&tick=sim&N=30&dur=20&auto=1}"
   fi
   if ! curl -sf -o /dev/null --connect-timeout 1 "http://127.0.0.1:8790/" 2>/dev/null; then
     if [[ -d "$SITE" ]]; then
       (cd "$SITE" && python3 -m http.server 8790 >/dev/null 2>&1 &)
+      sleep 0.4
+    elif [[ -d "$PWA" ]]; then
+      (cd "$PWA" && python3 -m http.server 8790 >/dev/null 2>&1 &)
       sleep 0.4
     fi
   fi
@@ -122,6 +150,7 @@ echo ""
 echo "  /webgrid                 # agent chase"
 echo "  /webgrid human 16        # human · 16×16"
 echo "  /webgrid turbo | popout"
+echo "  /drone                   # standalone drone HUD (prefer over /webgrid drone)"
 echo "  keys: arrows · space hit · a agent · r restart · o browser · Esc"
 echo ""
 

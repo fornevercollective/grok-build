@@ -39,6 +39,7 @@ pub mod monitor;
 pub mod timesync;
 pub mod watch;
 pub mod webgrid;
+pub mod drone;
 pub mod help;
 pub mod history;
 pub mod home;
@@ -163,6 +164,8 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(gy::GyCommand),
         Arc::new(watch::WatchCommand),
         Arc::new(webgrid::WebgridCommand),
+        // standalone drone HUD (not nested under /webgrid)
+        Arc::new(drone::DroneCommand),
         Arc::new(cam::CamCommand),
         Arc::new(phone::PhoneCommand),
         Arc::new(lens::LensCommand),
