@@ -31,3 +31,22 @@ bash scripts/launch-language.sh
 
 Streams: EN + ES/FR/DE/JA/ZH · RU/HE/AR/Dvorak/AZERTY layouts · HEX/STENO/BR8/REV codecs.  
 Optional: install `translate-shell` (`trans`) for better MT. Offline phrase map always works for common words.
+
+
+## Hotpipe (all options)
+
+MG inject: `hotpipe/language-hotpipe.js` after lang-codec + float-keyboard.
+
+| Bus | Path |
+|-----|------|
+| BroadcastChannel | `fc-language-streams` |
+| Pack | `~/.panda/packs/language-hotpipe.jsonl` · `language-hotpipe-latest.json` |
+| API | `window.__mgLanguageHotpipe.fanout(text)` · `.allOptions(text)` · `.formats()` |
+
+Fanout covers **all** lang-codec formats (ascii/hex/binary/pcap/gutter/steno/glyph/qbit) + layouts + translate targets simultaneously.
+
+```js
+__mgLanguageHotpipe.allOptions("hello")
+__mgLangCodec.allViews("hello")  // codec powerhouse
+__mgFloatKb.launch({ mode: "codec" })
+```

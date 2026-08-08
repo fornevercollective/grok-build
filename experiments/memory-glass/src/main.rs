@@ -1851,6 +1851,7 @@ fn inject_live_js_mode(targets: &[&wry::WebView], lean: bool) -> bool {
     let contrail = read_hotpipe_file("webgrid-contrail.js").unwrap_or_default();
     let glass_cap = read_hotpipe_file("glass-capsule-shell.js").unwrap_or_default();
     let float_kb = read_hotpipe_file("float-keyboard.js").unwrap_or_default();
+    let language_hotpipe = read_hotpipe_file("language-hotpipe.js").unwrap_or_default();
     let bloch_bus = read_hotpipe_file("bloch-solve-bus.js").unwrap_or_default();
     let mem_maze = read_hotpipe_file("memory-maze-gsplat.js").unwrap_or_default();
     let kb_beats = read_hotpipe_file("keyboard-beats.js").unwrap_or_default();
@@ -2218,6 +2219,9 @@ if(window.__mgDevLog)window.__mgDevLog('ok','RACE-SHELL v6 · bar+GPU+metrics','
                 if !float_kb.is_empty() {
                     inject_js_blob(wv, &float_kb);
                 }
+                if !language_hotpipe.is_empty() {
+                    inject_js_blob(wv, &language_hotpipe);
+                }
                 if !bloch_bus.is_empty() {
                     inject_js_blob(wv, &bloch_bus);
                 }
@@ -2443,6 +2447,9 @@ if(window.__mgDevLog)window.__mgDevLog('ok','RACE-SHELL v6 · bar+GPU+metrics','
         }
         if !float_kb.is_empty() {
             inject_js_blob(wv, &float_kb);
+        }
+        if !language_hotpipe.is_empty() {
+            inject_js_blob(wv, &language_hotpipe);
         }
         if !bloch_bus.is_empty() {
             inject_js_blob(wv, &bloch_bus);

@@ -253,7 +253,7 @@ fn to_braille_demo(s: &str) -> String {
 }
 
 fn default_streams() -> Vec<LangStream> {
-    vec![
+    let mut v = vec![
         LangStream {
             id: "en",
             label: "EN source",
@@ -261,105 +261,67 @@ fn default_streams() -> Vec<LangStream> {
             text: String::new(),
             note: "source".into(),
         },
-        LangStream {
-            id: "es",
-            label: "ES",
+    ];
+    // Translate targets (hotpipe + offline)
+    for (id, label) in [
+        ("es", "ES"),
+        ("fr", "FR"),
+        ("de", "DE"),
+        ("ja", "JA"),
+        ("zh", "ZH"),
+        ("ko", "KO"),
+        ("pt", "PT"),
+        ("it", "IT"),
+        ("ru", "RU"),
+        ("ar", "AR"),
+        ("hi", "HI"),
+    ] {
+        v.push(LangStream {
+            id,
+            label,
             kind: StreamKind::Translate,
             text: String::new(),
-            note: "offline+trans".into(),
-        },
-        LangStream {
-            id: "fr",
-            label: "FR",
-            kind: StreamKind::Translate,
-            text: String::new(),
-            note: "offline+trans".into(),
-        },
-        LangStream {
-            id: "de",
-            label: "DE",
-            kind: StreamKind::Translate,
-            text: String::new(),
-            note: "offline+trans".into(),
-        },
-        LangStream {
-            id: "ja",
-            label: "JA",
-            kind: StreamKind::Translate,
-            text: String::new(),
-            note: "offline+trans".into(),
-        },
-        LangStream {
-            id: "zh",
-            label: "ZH",
-            kind: StreamKind::Translate,
-            text: String::new(),
-            note: "offline+trans".into(),
-        },
-        LangStream {
-            id: "ru-layout",
-            label: "RU layout",
+            note: "offline+trans+hotpipe".into(),
+        });
+    }
+    // Layout remaps
+    for (id, label, note) in [
+        ("ru-layout", "RU layout", "qwerty→йцукен"),
+        ("he-layout", "HE layout", "qwerty→hebrew"),
+        ("ar-layout", "AR layout", "qwerty→arabic"),
+        ("dvorak", "Dvorak", "layout"),
+        ("azerty", "AZERTY", "layout"),
+    ] {
+        v.push(LangStream {
+            id,
+            label,
             kind: StreamKind::Layout,
             text: String::new(),
-            note: "qwerty→йцукен".into(),
-        },
-        LangStream {
-            id: "he-layout",
-            label: "HE layout",
-            kind: StreamKind::Layout,
-            text: String::new(),
-            note: "qwerty→hebrew".into(),
-        },
-        LangStream {
-            id: "ar-layout",
-            label: "AR layout",
-            kind: StreamKind::Layout,
-            text: String::new(),
-            note: "qwerty→arabic".into(),
-        },
-        LangStream {
-            id: "dvorak",
-            label: "Dvorak",
-            kind: StreamKind::Layout,
-            text: String::new(),
-            note: "layout".into(),
-        },
-        LangStream {
-            id: "azerty",
-            label: "AZERTY",
-            kind: StreamKind::Layout,
-            text: String::new(),
-            note: "layout".into(),
-        },
-        LangStream {
-            id: "hex",
-            label: "HEX",
+            note: note.into(),
+        });
+    }
+    // Full lang-codec-plane FORMATS (hotpipe allViews)
+    for (id, label, note) in [
+        ("ascii", "ASCII", "lang-codec"),
+        ("hex", "HEX", "lang-codec"),
+        ("binary", "BIN", "lang-codec"),
+        ("pcap", "PCAP", "lang-codec lite"),
+        ("gutter", "QGUT", "quantum gutter"),
+        ("steno", "STENO", "whitespace channel"),
+        ("glyph", "GLYPH", "gyg1 grid"),
+        ("qbit", "QBIT", "qbit-codec"),
+        ("rev", "REV", "reverse"),
+        ("braille", "BR8", "braille patterns"),
+    ] {
+        v.push(LangStream {
+            id,
+            label,
             kind: StreamKind::Codec,
             text: String::new(),
-            note: "utf-8".into(),
-        },
-        LangStream {
-            id: "steno",
-            label: "STENO",
-            kind: StreamKind::Codec,
-            text: String::new(),
-            note: "whitespace channel".into(),
-        },
-        LangStream {
-            id: "braille",
-            label: "BR8",
-            kind: StreamKind::Codec,
-            text: String::new(),
-            note: "braille patterns".into(),
-        },
-        LangStream {
-            id: "rev",
-            label: "REV",
-            kind: StreamKind::Codec,
-            text: String::new(),
-            note: "reverse".into(),
-        },
-    ]
+            note: note.into(),
+        });
+    }
+    v
 }
 
 impl LanguageState {
@@ -405,38 +367,42 @@ impl LanguageState {
             || self.last_trans.elapsed() > Duration::from_millis(400);
 
         for st in &mut self.streams {
-            match st.id {
-                "en" => {
-                    st.text = src.clone();
-                    st.note = "source".into();
-                }
-                "es" | "fr" | "de" | "ja" | "zh" | "ko" | "pt" | "it" | "hi" | "ar" | "ru" => {
-                    let lang = st.id;
-                    let offline = word_translate(&src, lang);
-                    if try_cli {
-                        if let Some(t) = try_trans_cli(&src, lang) {
-                            st.text = t;
-                            st.note = "trans CLI".into();
+            match st.kind {
+                StreamKind::Translate => {
+                    if st.id == "en" {
+                        st.text = src.clone();
+                        st.note = "source".into();
+                    } else {
+                        let lang = st.id;
+                        let offline = word_translate(&src, lang);
+                        if try_cli {
+                            if let Some(t) = try_trans_cli(&src, lang) {
+                                st.text = t;
+                                st.note = "trans CLI".into();
+                            } else {
+                                st.text = offline;
+                                st.note = "offline+hotpipe".into();
+                            }
                         } else {
                             st.text = offline;
-                            st.note = "offline map".into();
+                            st.note = "offline+hotpipe".into();
                         }
-                    } else if st.text.is_empty() || !src.is_empty() {
-                        // keep offline while typing fast
-                        st.text = offline;
-                        st.note = "offline map".into();
                     }
                 }
-                "ru-layout" => st.text = map_layout(&src, RU),
-                "he-layout" => st.text = map_layout(&src, HE),
-                "ar-layout" => st.text = map_layout(&src, AR),
-                "dvorak" => st.text = map_layout(&src, DVORAK),
-                "azerty" => st.text = map_layout(&src, AZERTY),
-                "hex" => st.text = to_hex_utf8(&src),
-                "steno" => st.text = to_steno_spaces(&src),
-                "braille" => st.text = to_braille_demo(&src),
-                "rev" => st.text = src.chars().rev().collect(),
-                _ => {}
+                StreamKind::Layout => {
+                    st.text = match st.id {
+                        "ru-layout" => map_layout(&src, RU),
+                        "he-layout" => map_layout(&src, HE),
+                        "ar-layout" => map_layout(&src, AR),
+                        "dvorak" => map_layout(&src, DVORAK),
+                        "azerty" => map_layout(&src, AZERTY),
+                        _ => src.clone(),
+                    };
+                }
+                StreamKind::Codec => {
+                    st.text = codec_display(&src, st.id);
+                    st.note = "lang-codec hotpipe".into();
+                }
             }
         }
         if try_cli {
@@ -444,10 +410,12 @@ impl LanguageState {
         }
         let vis = self.visible_streams().len();
         self.status = format!(
-            "mode={} · streams={vis} · {} chars · Tab focus · m mode · o MG · Esc",
+            "mode={} · streams={vis} · {} chars · hotpipe · Tab · Ctrl+m · Ctrl+o MG · Esc",
             self.mode.id(),
             src.chars().count()
         );
+        // Hotpipe pack — MG language-hotpipe.js polls this for all options fanout
+        publish_hotpipe_pack(&self.source, self.mode, &self.streams);
     }
 
     pub fn handle_key(&mut self, key: &KeyEvent) -> LanguageKeyOutcome {
@@ -689,6 +657,91 @@ fn open_mg_keyboard_plane() -> Result<(), String> {
 pub fn launch_language_popout() -> String {
     let _ = open_mg_keyboard_plane();
     format!("{TOAST_OPEN} · browser/MG keyboard plane")
+}
+
+
+fn codec_display(src: &str, id: &str) -> String {
+    match id {
+        "ascii" => src
+            .chars()
+            .map(|c| format!("{:03}", c as u32))
+            .collect::<Vec<_>>()
+            .join(" "),
+        "hex" => to_hex_utf8(src),
+        "binary" | "bin" => src
+            .as_bytes()
+            .iter()
+            .map(|b| format!("{b:08b}"))
+            .collect::<Vec<_>>()
+            .join(" "),
+        "pcap" => format!("PCAP-lite len={}B", src.len()),
+        "gutter" | "qgut" => {
+            // demo gutter prefixes cycling
+            let gates = ["n:", "+1:", "-n:", "0:", "H:", "X:", "T:"];
+            src.chars()
+                .enumerate()
+                .map(|(i, c)| format!("{}{}", gates[i % gates.len()], c))
+                .collect::<Vec<_>>()
+                .join(" ")
+        }
+        "steno" => to_steno_spaces(src),
+        "glyph" => {
+            // compact gyg1-ish hex glyph ticket
+            format!("gyg1 {}", to_hex_utf8(src))
+        }
+        "qbit" => format!("qbit-lite:{}", to_hex_utf8(src).chars().take(48).collect::<String>()),
+        "rev" => src.chars().rev().collect(),
+        "braille" => to_braille_demo(src),
+        _ => src.to_string(),
+    }
+}
+
+fn publish_hotpipe_pack(source: &str, mode: LanguageMode, streams: &[LangStream]) {
+    use std::io::Write;
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let dir = std::path::PathBuf::from(home).join(".panda/packs");
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("language-hotpipe.jsonl");
+    let mut codecs = serde_json::Map::new();
+    let mut layouts = serde_json::Map::new();
+    let mut translate = serde_json::Map::new();
+    for st in streams {
+        match st.kind {
+            StreamKind::Codec => {
+                codecs.insert(st.id.to_string(), serde_json::Value::String(st.text.clone()));
+            }
+            StreamKind::Layout => {
+                layouts.insert(st.id.to_string(), serde_json::Value::String(st.text.clone()));
+            }
+            StreamKind::Translate => {
+                translate.insert(st.id.to_string(), serde_json::Value::String(st.text.clone()));
+            }
+        }
+    }
+    let payload = serde_json::json!({
+        "type": "language.fanout",
+        "ver": "language-hotpipe-v1",
+        "text": source,
+        "mode": mode.id(),
+        "codecs": codecs,
+        "layouts": layouts,
+        "translate": translate,
+        "formats": ["ascii","hex","binary","pcap","gutter","steno","glyph","qbit"],
+        "t": std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0),
+    });
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        let _ = writeln!(f, "{payload}");
+    }
+    // also rewrite a "latest" single-line file for simple poll
+    let latest = dir.join("language-hotpipe-latest.json");
+    let _ = std::fs::write(latest, payload.to_string());
 }
 
 #[cfg(test)]

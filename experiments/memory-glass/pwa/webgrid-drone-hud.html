@@ -4,13 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="theme-color" content="#000"/>
-<title>/drone · dual-dial hub · Audi/Chrysler cluster</title>
+<title>/drone · chat hub · 1/3 sticks+map</title>
 <link rel="preconnect" href="https://basemaps.cartocdn.com"/>
 <style>
 :root{
   --bg:#05060a;--ink:#f0f6fc;--mut:rgba(170,190,210,.55);--cyan:#6ec8ff;--amber:#f5b942;--good:#3dd68c;--hot:#ff5d6c;
   --line:rgba(110,190,255,.16);--mono:ui-monospace,Menlo,monospace;
-  --dial:min(42vh,min(320px,28vw));
+  --dial:min(14vh,min(148px,18vw));
   --glass:rgba(22,26,34,.55);--glass-line:rgba(255,255,255,.12);
 }
 *{box-sizing:border-box}
@@ -37,7 +37,7 @@ button.danger .ico{background:#ff453a}button.good .ico{background:#30d158}
 button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 
 /* ═══ HUB LAYOUT (Audi/Chrysler): top strip + dual dial hub row + floor ═══ */
-.app{display:grid;grid-template-rows:32px minmax(120px,28vh) minmax(0,1fr);height:100vh;background:#000}
+.app{display:grid;grid-template-rows:30px minmax(0,1fr) 33.333vh;height:100vh;background:#000}
 
 .top{display:flex;align-items:center;gap:.45rem;padding:0 .7rem;z-index:50;
   background:linear-gradient(180deg,#0c121c,#06080e);border-bottom:1px solid var(--line);
@@ -48,8 +48,32 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 .dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
 .spacer{flex:1}.top a{color:var(--mut);text-transform:none;letter-spacing:0}
 
+/* ═══ MID: chat L | optics | chat R  (~2/3 screen) ═══ */
+.mid{display:grid;grid-template-columns:minmax(210px,22vw) minmax(0,1fr) minmax(210px,22vw);min-height:0;height:100%;overflow:hidden;border-bottom:1px solid rgba(100,180,255,.1)}
+.chat-col{display:flex;flex-direction:column;min-height:0;height:100%;background:linear-gradient(180deg,rgba(8,12,20,.95),rgba(4,6,12,.98));overflow:hidden}
+.chat-l{border-right:1px solid rgba(100,180,255,.12)}
+.chat-r{border-left:1px solid rgba(100,180,255,.12)}
+.chat-head{padding:8px 10px 6px;flex:0 0 auto;border-bottom:1px solid rgba(100,180,255,.1)}
+.chat-head .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.38);margin-bottom:6px}
+.chat-head .name{font:700 20px/1 -apple-system,system-ui;letter-spacing:-.02em;color:#f4fbff}
+.chat-head .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.chat-head .stat{font:200 18px/1 -apple-system,system-ui;color:#8fd0ff;font-variant-numeric:tabular-nums}
+.chat-head .stat b{display:block;font:600 8px/1 -apple-system,system-ui;color:rgba(255,255,255,.4);margin-bottom:2px;letter-spacing:.08em}
+.chat-head .stat.good{color:#3dd68c}.chat-head .stat.warn{color:#f0b429}.chat-head .stat.hot{color:#ff5d6c}
+.chat-head .meta{font:500 10px/1.3 var(--mono);color:var(--mut);margin-top:4px}
+.chat-log{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 10px;font:500 11px/1.45 var(--mono);color:var(--mut);white-space:pre-wrap}
+.chat-log .ok{color:var(--good)}.chat-log .ev{color:var(--cyan)}.chat-log .warn{color:var(--amber)}.chat-log .err{color:var(--hot)}
+.chat-log .cmd{color:#c8b0ff}.chat-log .me{color:rgba(200,220,240,.85)}
+.chat-chips{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;flex:0 0 auto;border-top:1px solid rgba(100,180,255,.08)}
+.chat-chips .chip{padding:5px 8px;border-radius:10px;font:600 10px -apple-system,system-ui;cursor:pointer;color:rgba(255,255,255,.55);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.chat-chips .chip:hover{background:rgba(255,255,255,.12);color:#fff}
+.chat-input-row{display:flex;gap:6px;padding:6px 8px 8px;flex:0 0 auto;border-top:1px solid rgba(100,180,255,.1)}
+.chat-input-row input{flex:1;min-width:0;background:rgba(0,0,0,.45);border:1px solid rgba(120,180,255,.22);border-radius:10px;color:var(--ink);font:500 12px/1.2 var(--mono);padding:8px 10px;outline:none}
+.chat-input-row input:focus{border-color:rgba(110,200,255,.5)}
+.chat-input-row button{min-height:36px;padding:8px 12px;font-size:12px;border-radius:10px;flex:0 0 auto}
+
 /* FPV optics strip (mission camera — not full app) */
-.optics{position:relative;min-height:0;background:#000;overflow:hidden;border-bottom:1px solid rgba(100,180,255,.12)}
+.optics{position:relative;min-height:0;height:100%;background:#000;overflow:hidden}
 #fpv,#fpv-ov,#instr-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #fpv-ov,#instr-cv{pointer-events:none;z-index:5}#instr-cv{z-index:8}
 .optics video.live,.optics iframe.live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0;z-index:1}
@@ -76,12 +100,13 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 /* ═══ HUB: L dial | MAP | R dial  (matches ref dual-cluster) ═══ */
 .hub{
   display:grid;
-  grid-template-columns:minmax(260px,32vw) minmax(0,1fr) minmax(260px,32vw);
-  min-height:0;height:100%;
+  grid-template-columns:minmax(200px,26vw) minmax(0,1fr) minmax(200px,26vw);
+  min-height:0;height:100%;max-height:33.333vh;
   background:
     radial-gradient(ellipse 80% 60% at 50% 45%,rgba(30,50,80,.15),transparent 70%),
     #03050a;
   border-top:1px solid rgba(100,180,255,.1);
+  overflow:hidden;
 }
 
 /* side pods */
@@ -90,7 +115,7 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 .pod-l{border-right:1px solid rgba(100,180,255,.1)}
 .pod-r{border-left:1px solid rgba(100,180,255,.1)}
 
-.pod-data{padding:10px 12px 8px;flex:0 0 auto;z-index:3}
+.pod-data{display:none!important}
 .pod-data .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.38);margin-bottom:6px}
 .pod-data .name{font:700 26px/1 -apple-system,system-ui;letter-spacing:-.03em;color:#f4fbff;text-shadow:0 1px 3px #000}
 .pod-data .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -120,21 +145,21 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 
 /* dial stage: curved rail + huge circle (ref cluster) */
 .dial-stage{
-  flex:1;display:grid;grid-template-columns:56px 1fr;min-height:0;padding:4px 8px 0;position:relative;align-items:center}
-.pod-r .dial-stage{grid-template-columns:1fr 56px}
-.curve-rail{display:flex;flex-direction:column;gap:5px;justify-content:center;z-index:4;padding:4px 0}
-.curve-rail button{min-height:46px;padding:8px 4px;font-size:11px;width:100%}
-.pod-l .curve-rail button{border-radius:12px 26px 26px 12px}
-.pod-r .curve-rail button{border-radius:26px 12px 12px 26px}
+  flex:1 1 auto;display:grid;grid-template-columns:44px 1fr;min-height:0;padding:2px 4px 0;position:relative;align-items:center;overflow:hidden}
+.pod-r .dial-stage{grid-template-columns:1fr 44px}
+.curve-rail{display:flex;flex-direction:column;gap:3px;justify-content:center;z-index:4;padding:2px 0;max-height:100%;overflow:auto}
+.curve-rail button{min-height:28px;padding:4px 2px;font-size:9px;width:100%}
+.pod-l .curve-rail button{border-radius:8px 16px 16px 8px}
+.pod-r .curve-rail button{border-radius:16px 8px 8px 16px}
 .dial-core{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;min-height:0;z-index:2}
-.slam-bg{position:absolute;inset:8% 5% 18% 5%;z-index:0;pointer-events:none;opacity:.2;
+.slam-bg{position:absolute;inset:6% 4% 16% 4%;z-index:0;pointer-events:none;opacity:.18;
   display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.slam-bg .slam-n{font:200 56px/1 -apple-system,system-ui;color:rgba(140,220,255,.5)}
-.slam-bg .slam-l{font:700 12px/1 -apple-system,system-ui;letter-spacing:.28em;color:rgba(160,230,255,.45);margin:2px 0}
-.slam-bg .slam-sub{font:500 10px var(--mono);color:rgba(160,200,230,.35)}
-.dial-core .lbl{font:600 10px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(255,255,255,.35);margin-bottom:6px;z-index:2}
-.triggers{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:min(var(--dial),100%);z-index:3;margin-bottom:6px}
-.triggers button{min-height:44px;font-size:12px;border-radius:14px;padding:8px}
+.slam-bg .slam-n{font:200 28px/1 -apple-system,system-ui;color:rgba(140,220,255,.5)}
+.slam-bg .slam-l{font:700 9px/1 -apple-system,system-ui;letter-spacing:.2em;color:rgba(160,230,255,.45);margin:2px 0}
+.slam-bg .slam-sub{font:500 8px var(--mono);color:rgba(160,200,230,.35)}
+.dial-core .lbl{font:600 8px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.35);margin-bottom:2px;z-index:2}
+.triggers{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:min(var(--dial),100%);z-index:3;margin-bottom:2px}
+.triggers button{min-height:26px;font-size:10px;border-radius:10px;padding:4px}
 .stick-pad{
   width:var(--dial);max-width:100%;aspect-ratio:1;border-radius:50%;z-index:2;position:relative;
   border:1px solid rgba(140,210,255,.35);
@@ -143,51 +168,51 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
     radial-gradient(circle at 50% 50%,rgba(8,14,28,.98),#000 70%);
   box-shadow:
     0 0 0 1px rgba(0,0,0,.8),
-    0 0 60px rgba(80,160,255,.08),
-    inset 0 0 60px rgba(0,0,0,.75),
+    0 0 30px rgba(80,160,255,.08),
+    inset 0 0 40px rgba(0,0,0,.75),
     inset 0 1px 0 rgba(255,255,255,.08);
 }
 .stick-pad canvas{width:100%;height:100%;display:block;border-radius:50%;position:relative;z-index:1}
-.palm-rest{width:min(var(--dial),100%);height:44px;margin-top:8px;z-index:2;
-  border-radius:0 0 36px 36px / 0 0 24px 24px;
+.palm-rest{width:min(var(--dial),100%);height:18px;margin-top:2px;z-index:2;
+  border-radius:0 0 20px 20px / 0 0 12px 12px;
   background:linear-gradient(180deg,rgba(35,45,60,.3),rgba(10,14,22,.9));
   border:1px solid rgba(255,255,255,.07);border-top:0;
-  box-shadow:inset 0 6px 14px rgba(0,0,0,.4);
+  box-shadow:inset 0 4px 10px rgba(0,0,0,.4);
   display:flex;align-items:center;justify-content:center}
-.palm-rest::before{content:"";width:36%;height:5px;border-radius:3px;background:rgba(255,255,255,.08)}
-.skb-host{flex:0 0 auto;z-index:3;border-top:1px solid rgba(100,180,255,.12)}
+.palm-rest::before{content:"";width:36%;height:3px;border-radius:2px;background:rgba(255,255,255,.08)}
+.skb-host{flex:0 0 auto;z-index:3;border-top:1px solid rgba(100,180,255,.12);max-height:42%;overflow:auto}
 
 /* CENTER HUB — map as hero between dials */
 .hub-c{display:flex;flex-direction:column;min-height:0;height:100%;position:relative;z-index:1}
-.mission-cmd{padding:8px 12px;flex:0 0 auto;border-bottom:1px solid rgba(100,180,255,.1);
-  background:linear-gradient(180deg,rgba(12,16,28,.9),rgba(6,10,18,.95))}
-.mission-cmd .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(255,255,255,.38);margin-bottom:8px}
-.cmd-rows{display:flex;flex-direction:column;gap:8px}
-.cmd-row{display:flex;flex-wrap:wrap;gap:8px}
-.cmd-row button{flex:1 1 auto;min-width:90px;min-height:54px;font-size:15px;padding:14px 16px;border-radius:18px}
-.cmd-row.hud button{min-height:46px;font-size:13px;min-width:70px}
-.link-cap{font:600 9px -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.32);text-align:center;margin:8px 0 2px}
-.link-stage{display:flex;align-items:center;justify-content:center;gap:0;padding:6px 4px 2px;min-height:40px}
-.link-node{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font:700 12px -apple-system,system-ui;border:2px solid rgba(120,210,255,.3);background:rgba(0,0,0,.45);color:rgba(200,220,240,.65)}
-.link-node.cur{border-color:var(--cyan);background:rgba(10,132,255,.28);color:#fff;box-shadow:0 0 18px rgba(10,132,255,.35);transform:scale(1.1)}
+.mission-cmd{padding:4px 8px;flex:0 0 auto;border-bottom:1px solid rgba(100,180,255,.1);
+  background:linear-gradient(180deg,rgba(12,16,28,.9),rgba(6,10,18,.95));max-height:28%;overflow:auto}
+.mission-cmd .k{font:600 8px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(255,255,255,.38);margin-bottom:4px}
+.cmd-rows{display:flex;flex-direction:column;gap:4px}
+.cmd-row{display:flex;flex-wrap:wrap;gap:4px}
+.cmd-row button{flex:1 1 auto;min-width:56px;min-height:28px;font-size:11px;padding:4px 8px;border-radius:10px}
+.cmd-row.hud button{min-height:24px;font-size:10px;min-width:48px}
+.link-cap{font:600 8px -apple-system,system-ui;letter-spacing:.1em;color:rgba(255,255,255,.32);text-align:center;margin:3px 0 1px}
+.link-stage{display:flex;align-items:center;justify-content:center;gap:0;padding:2px 2px 1px;min-height:22px}
+.link-node{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:700 9px -apple-system,system-ui;border:1.5px solid rgba(120,210,255,.3);background:rgba(0,0,0,.45);color:rgba(200,220,240,.65)}
+.link-node.cur{border-color:var(--cyan);background:rgba(10,132,255,.28);color:#fff;box-shadow:0 0 10px rgba(10,132,255,.35);transform:scale(1.08)}
 .link-node.done{border-color:var(--good);color:var(--good)}
-.link-edge{height:3px;width:26px;background:rgba(120,210,255,.18);border-radius:2px}
+.link-edge{height:2px;width:14px;background:rgba(120,210,255,.18);border-radius:2px}
 .link-edge.on{background:linear-gradient(90deg,var(--good),var(--cyan))}
 
-.map-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:6px 10px 0;position:relative}
-.map-head{display:flex;align-items:center;gap:.5rem;margin-bottom:4px;z-index:2}
-.map-head h2{margin:0;font:600 11px/1 -apple-system,system-ui;letter-spacing:.14em;color:rgba(160,210,255,.55)}
-.map-head .n-badge{font:700 10px var(--mono);color:var(--amber);border:1px solid rgba(240,180,41,.4);padding:2px 7px;border-radius:4px}
-.chips-h{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
+.map-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:3px 6px 0;position:relative}
+.map-head{display:flex;align-items:center;gap:.35rem;margin-bottom:2px;z-index:2}
+.map-head h2{margin:0;font:600 9px/1 -apple-system,system-ui;letter-spacing:.12em;color:rgba(160,210,255,.55)}
+.map-head .n-badge{font:700 9px var(--mono);color:var(--amber);border:1px solid rgba(240,180,41,.4);padding:1px 5px;border-radius:3px}
+.chips-h{display:flex;flex-wrap:wrap;gap:3px;margin-left:auto}
 .map-canvas-host{
-  position:relative;flex:1;min-height:100px;border-radius:20px;overflow:hidden;
+  position:relative;flex:1;min-height:40px;border-radius:12px;overflow:hidden;
   border:1px solid rgba(140,200,255,.2);
   background:#0a0e14;
   box-shadow:
     0 0 0 1px rgba(0,0,0,.6),
-    0 12px 40px rgba(0,0,0,.45),
-    inset 0 0 80px rgba(0,0,0,.35);
+    0 6px 20px rgba(0,0,0,.45),
+    inset 0 0 40px rgba(0,0,0,.35);
 }
 /* soft oval vignette like Audi map pod */
 .map-canvas-host::after{
@@ -202,18 +227,27 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 
 /* terminal floor — center column only, touches bottom */
 .term-split{
-  display:grid;grid-template-columns:1fr 1fr;flex:1 1 0;min-height:130px;
+  display:grid;grid-template-columns:1fr 1fr;flex:0 0 22%;min-height:48px;max-height:28%;
   border-top:1px solid rgba(100,180,255,.12);background:#010308;
 }
-.term-col{padding:8px 10px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.term-col{padding:4px 6px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .term-col.l{border-right:1px solid rgba(100,180,255,.1)}
-.term-col .k{font:600 9px/1 -apple-system,system-ui;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px}
+.term-col .k{font:600 8px/1 -apple-system,system-ui;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:2px}
 .term-col.r{background:rgba(36,10,8,.4)}.term-col.r .k{color:rgba(255,160,80,.8)}
-#log,#log-warn{flex:1;overflow:auto;font:500 12px/1.45 var(--mono);color:var(--mut);white-space:pre-wrap}
+#log,#log-warn{flex:1;overflow:auto;font:500 10px/1.35 var(--mono);color:var(--mut);white-space:pre-wrap}
 #log .ok{color:var(--good)}#log .ev{color:var(--cyan)}#log .warn,#log-warn .warn{color:var(--amber)}
 #log .err,#log-warn .err{color:var(--hot)}
 #log-warn.flash{animation:warnFlash 1s ease infinite}
 @keyframes warnFlash{50%{background:rgba(255,80,40,.12)}}
+
+
+/* hub keyboard: larger letter keys (v3) — dials share remaining space */
+.hub .pod{min-height:0}
+.hub .dial-stage{flex:0 1 38%;max-height:42%}
+.hub .skb-host{flex:1 1 58%;max-height:none;min-height:0}
+.hub .skb-key{min-height:42px!important;font-size:16px!important;border-radius:11px!important}
+.hub .skb-key.letter{font-size:18px!important}
+.hub .skb-mods .skb-key{min-height:38px!important;font-size:12px!important}
 
 #unit-list,#trk-list,#maint,#gsplat-meta,#foot-stat,#mosaic,.tape,.reticle,.compass{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);pointer-events:none}
 </style>
@@ -237,32 +271,11 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
     <a href="https://github.com/uzh-rpg/LAFR" target="_blank" rel="noopener">LAFR</a>
   </header>
 
-  <!-- Mission camera strip -->
-  <section class="optics" id="fpv-host">
-    <canvas id="fpv" width="1280" height="720"></canvas>
-    <canvas id="fpv-ov" width="1280" height="720"></canvas>
-    <canvas id="instr-cv" width="1280" height="720"></canvas>
-    <div class="corner tl"></div><div class="corner tr"></div>
-    <div class="corner bl"></div><div class="corner br"></div>
-    <div class="mission-strip"><b id="mission-day">MISSION · —</b><br/><span id="fpv-title">UNIT-01 · FPV</span></div>
-    <div class="hud-top-float" id="mode-banner">HOLD</div>
-    <div class="instr-alert" id="instr-alert">
-      <div class="t1">EMERGENCY RETURN</div>
-      <div class="dots">············</div>
-      <div class="t2">AUTO-PILOT INITIALIZE</div>
-    </div>
-    <div class="recv" id="recv">RECEIVING COORDINATES</div>
-    <div class="tape l"><div class="v" id="r-spd">0</div><div id="r-hdg-t"></div></div>
-    <div class="tape r"><div class="v" id="r-alt">0</div><div id="r-vs">0</div></div>
-    <div class="compass"><canvas id="compass-cv" width="480" height="480"></canvas></div>
-  </section>
-
-  <!-- DUAL-DIAL HUB (refs) -->
-  <div class="hub">
-    <!-- LEFT DIAL POD -->
-    <aside class="pod pod-l">
-      <div class="pod-data">
-        <div class="k">ACTIVE UNIT · TELEMETRY</div>
+  <!-- MID: chat L | optics | chat R  (~2/3) -->
+  <div class="mid">
+    <aside class="chat-col chat-l" id="chat-l">
+      <div class="chat-head">
+        <div class="k">CHAT · COMMANDS · L</div>
         <div class="name" id="ub-name">UNIT-01</div>
         <div class="stats">
           <div class="stat good" id="ub-batt"><b>BATT</b>76%</div>
@@ -274,6 +287,79 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
         <div class="maint-inline" id="ub-maint"></div>
         <div class="telem-grid" id="telem-bars"></div>
       </div>
+      <div class="chat-log" id="chat-log-l" aria-live="polite"></div>
+      <div class="chat-chips" id="chat-chips-l">
+        <span class="chip" data-cmd="arm">ARM</span>
+        <span class="chip" data-cmd="rth">RTH</span>
+        <span class="chip" data-cmd="hold">HOLD</span>
+        <span class="chip" data-cmd="land">LAND</span>
+        <span class="chip" data-cmd="go">GO</span>
+        <span class="chip" data-cmd="preload">PRELOAD</span>
+        <span class="chip" data-cmd="status">STATUS</span>
+        <span class="chip" data-cmd="help">HELP</span>
+      </div>
+      <div class="chat-input-row">
+        <input id="chat-in-l" type="text" placeholder="/arm · /rth · /hold · /go" autocomplete="off" spellcheck="false"/>
+        <button type="button" class="primary" id="chat-send-l">Send</button>
+      </div>
+    </aside>
+
+    <section class="optics" id="fpv-host">
+      <canvas id="fpv" width="1280" height="720"></canvas>
+      <canvas id="fpv-ov" width="1280" height="720"></canvas>
+      <canvas id="instr-cv" width="1280" height="720"></canvas>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="mission-strip"><b id="mission-day">MISSION · —</b><br/><span id="fpv-title">UNIT-01 · FPV</span></div>
+      <div class="hud-top-float" id="mode-banner">HOLD</div>
+      <div class="instr-alert" id="instr-alert">
+        <div class="t1">EMERGENCY RETURN</div>
+        <div class="dots">············</div>
+        <div class="t2">AUTO-PILOT INITIALIZE</div>
+      </div>
+      <div class="recv" id="recv">RECEIVING COORDINATES</div>
+      <div class="tape l"><div class="v" id="r-spd">0</div><div id="r-hdg-t"></div></div>
+      <div class="tape r"><div class="v" id="r-alt">0</div><div id="r-vs">0</div></div>
+      <div class="compass"><canvas id="compass-cv" width="480" height="480"></canvas></div>
+    </section>
+
+    <aside class="chat-col chat-r" id="chat-r">
+      <div class="chat-head">
+        <div class="k">CHAT · COMMANDS · R</div>
+        <div class="fleet-row" id="ub-fleet"></div>
+        <div id="trk-summary"></div>
+        <div id="gsplat-meta-vis">gsplat · idle</div>
+        <div class="chips-h" id="track-chips">
+          <span class="chip" data-m="off">OFF</span>
+          <span class="chip on" data-m="motion">MOTION</span>
+          <span class="chip" data-m="sam">SAM</span>
+          <span class="chip" data-m="dino">DINO</span>
+          <span class="chip" data-m="slam">SLAM</span>
+          <span class="chip" data-m="gsplat">GSPLAT</span>
+        </div>
+        <div class="tx-mini" id="tx-panel">TX…</div>
+      </div>
+      <div class="chat-log" id="chat-log-r" aria-live="polite"></div>
+      <div class="chat-chips" id="chat-chips-r">
+        <span class="chip" data-cmd="sam">SAM</span>
+        <span class="chip" data-cmd="slam">SLAM</span>
+        <span class="chip" data-cmd="gsplat">GSPLAT</span>
+        <span class="chip" data-cmd="motion">MOTION</span>
+        <span class="chip" data-cmd="pin">PIN</span>
+        <span class="chip" data-cmd="clear">CLR</span>
+        <span class="chip" data-cmd="clock">CLOCK</span>
+        <span class="chip" data-cmd="help">HELP</span>
+      </div>
+      <div class="chat-input-row">
+        <input id="chat-in-r" type="text" placeholder="/sam · /slam · /pin · track mode" autocomplete="off" spellcheck="false"/>
+        <button type="button" class="primary" id="chat-send-r">Send</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- HUB 33.333vh: L sticks+kb | map+term | R sticks+kb -->
+  <div class="hub">
+    <aside class="pod pod-l">
       <div class="dial-stage">
         <div class="curve-rail">
           <button type="button" class="primary" id="btn-arm"><span class="ico">●</span><span class="lbl">Arm</span></button>
@@ -297,7 +383,6 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
       <div id="skb-host-l" class="skb-host" aria-label="Left split keyboard"></div>
     </aside>
 
-    <!-- CENTER MAP HUB -->
     <main class="hub-c">
       <div class="mission-cmd">
         <div class="k">MISSION COMMAND</div>
@@ -352,23 +437,7 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
       </div>
     </main>
 
-    <!-- RIGHT DIAL POD -->
     <aside class="pod pod-r">
-      <div class="pod-data">
-        <div class="k">FLEET · SLAM · TRACK · TX</div>
-        <div class="fleet-row" id="ub-fleet"></div>
-        <div id="trk-summary"></div>
-        <div id="gsplat-meta-vis">gsplat · idle</div>
-        <div class="chips-h" id="track-chips">
-          <span class="chip" data-m="off">OFF</span>
-          <span class="chip on" data-m="motion">MOTION</span>
-          <span class="chip" data-m="sam">SAM</span>
-          <span class="chip" data-m="dino">DINO</span>
-          <span class="chip" data-m="slam">SLAM</span>
-          <span class="chip" data-m="gsplat">GSPLAT</span>
-        </div>
-        <div class="tx-mini" id="tx-panel">TX…</div>
-      </div>
       <div class="dial-stage">
         <div class="dial-core">
           <div class="slam-bg"></div>
@@ -395,10 +464,8 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 
   <div id="unit-list"></div><div id="trk-list"></div><div id="maint"></div>
   <div id="gsplat-meta"></div><div id="foot-stat"></div><div id="mosaic"></div>
-  <div id="ub-maint" style="display:none"></div>
   <button type="button" id="btn-trk2" style="display:none"></button>
   <button type="button" id="btn-recv2" style="display:none"></button>
-  <button type="button" id="btn-recv" style="display:none"></button>
 </div>
 
 <script src="ugrad/drone-clock.js"></script>
@@ -409,7 +476,7 @@ button .lbl{font:600 14px/1.1 -apple-system,system-ui}
 <script>
 (function(){
 "use strict";
-var VER="webgrid-drone-hud-v6-hub";
+var VER="webgrid-drone-hud-v6.2-kb-layouts";
 var P=new URLSearchParams(location.search);
 var UNITS=Math.max(1,Math.min(8,parseInt(P.get("units")||"4",10)||4));
 var BACKEND=(P.get("backend")||"sim").toLowerCase();
@@ -451,6 +518,8 @@ function log(msg,cls){
     ew.innerHTML=warns.slice(0,40).map(line).join("\n")||'<span class="mut">no warnings</span>';
     ew.classList.toggle("flash", warns.length>0 && (warns[0].cls==="err"||warns[0].cls==="warn"));
   }
+  // mirror latest into side chat command logs (skip if already chat-scoped)
+  if(typeof chatPush==="function" && !state._chatMute) chatPush(msg, c);
 }
 
 function seedUnit(i){
@@ -1392,6 +1461,94 @@ window.WebgridDroneHud={
 })();
 
 
+
+// ═══ side chat command columns (L/R above keyboards via mid row) ═══
+var chatHist = {l: [], r: []};
+function chatPush(msg, cls, side){
+  var entry = {t: new Date().toISOString().slice(11,19), msg: String(msg||""), cls: cls||"ev"};
+  var sides = side ? [side] : ["l","r"];
+  sides.forEach(function(s){
+    chatHist[s].unshift(entry);
+    if(chatHist[s].length > 80) chatHist[s].pop();
+    var el = document.getElementById("chat-log-" + s);
+    if(!el) return;
+    el.innerHTML = chatHist[s].slice(0, 50).map(function(e){
+      return '<span class="'+e.cls+'">['+e.t+'] '+e.msg+'</span>';
+    }).join("\n") || '<span class="ev">— chat ready —</span>';
+  });
+}
+function runChatCommand(raw, side){
+  var line = String(raw||"").trim();
+  if(!line) return;
+  chatPush("> " + line, "me", side);
+  var low = line.toLowerCase();
+  if(low.charAt(0) === "/") low = low.slice(1);
+  var parts = low.split(/\s+/);
+  var cmd = parts[0] || "";
+  var arg = parts.slice(1).join(" ");
+  try {
+    if(cmd === "arm"){ arm(true); chatPush("armed", "ok", side); }
+    else if(cmd === "disarm"){ arm(false); chatPush("disarmed", "ok", side); }
+    else if(cmd === "rth" || cmd === "return"){ rth(); chatPush("RTH engaged", "warn", side); }
+    else if(cmd === "hold"){ setMode(MODE.HOLD); chatPush("hold", "ok", side); }
+    else if(cmd === "land"){ if(!state.armed) arm(true); setMode(MODE.LAND); chatPush("land", "warn", side); }
+    else if(cmd === "go" || cmd === "mission"){ goMission(); chatPush("mission go", "ok", side); }
+    else if(cmd === "preload"){ preloadPath(); chatPush("path preloaded", "ev", side); }
+    else if(cmd === "clear" || cmd === "clr"){ state.path = []; state.pathIdx = 0; syncMapPath(); chatPush("path cleared", "ev", side); }
+    else if(cmd === "pin"){ var u=active(); state.path.push({lat:u.lat,lon:u.lon,alt:u.alt}); syncMapPath(); flashRecv(); chatPush("pin @ unit", "ev", side); }
+    else if(cmd === "sam" || cmd === "slam" || cmd === "gsplat" || cmd === "motion" || cmd === "dino" || cmd === "off"){ setTrackMode(cmd); chatPush("track "+cmd, "ok", side); }
+    else if(cmd === "track" && arg){ setTrackMode(arg); chatPush("track "+arg, "ok", side); }
+    else if(cmd === "clock" || cmd === "clk"){ if(window.DroneClock) DroneClock.refresh(); chatPush("clock refresh", "ev", side); }
+    else if(cmd === "status" || cmd === "st"){
+      var u=active();
+      chatPush(u.name+" · "+state.mode+" · batt "+Math.round(u.batt)+"% · alt "+fmt(u.alt,1)+"m · "+hdg(u.hdg), "ok", side);
+    }
+    else if(cmd === "unit" && arg){
+      var n = parseInt(arg,10);
+      if(!isNaN(n)){ selectUnit(Math.max(0, n-1)); chatPush("unit "+n, "ev", side); }
+      else chatPush("unit N (1-based)", "warn", side);
+    }
+    else if(cmd === "help" || cmd === "?"){
+      chatPush("cmds: arm disarm rth hold land go preload pin clear sam slam gsplat motion track X clock status unit N", "cmd", side);
+    }
+    else {
+      chatPush("unknown · try help", "warn", side);
+      if(typeof log === "function"){ state._chatMute=true; try{ log("chat · "+line, "ev"); } finally{ state._chatMute=false; } }
+    }
+  } catch(err){
+    chatPush("err · "+(err && err.message || err), "err", side);
+  }
+}
+function wireChatPanels(){
+  ["l","r"].forEach(function(side){
+    var input = document.getElementById("chat-in-" + side);
+    var send = document.getElementById("chat-send-" + side);
+    var chips = document.getElementById("chat-chips-" + side);
+    function fire(){
+      if(!input) return;
+      var v = input.value;
+      input.value = "";
+      runChatCommand(v, side);
+    }
+    if(send) send.onclick = fire;
+    if(input){
+      input.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){ e.preventDefault(); fire(); }
+        e.stopPropagation();
+      });
+      // don't steal WASD sticks while typing
+      input.addEventListener("keyup", function(e){ e.stopPropagation(); });
+    }
+    if(chips){
+      chips.querySelectorAll(".chip[data-cmd]").forEach(function(ch){
+        ch.onclick = function(){ runChatCommand(ch.getAttribute("data-cmd"), side); };
+      });
+    }
+    chatPush(side.toUpperCase()+" chat ready · type help", "cmd", side);
+  });
+}
+
+
 // kbatch split kb — halves under L/R stick columns; center term to floor
 (function(){
   var L=document.getElementById("skb-host-l");
@@ -1403,19 +1560,22 @@ window.WebgridDroneHud={
       if(ev.type==="enter" && ev.data!=null){
         var line=String(ev.data||"");
         if(!line)return;
-        if(typeof log==="function") log("kb · "+line, "ev");
-        var low=line.toLowerCase().trim();
-        if(low==="rth"||low==="/rth") rth();
-        else if(low==="arm"||low==="/arm") arm(true);
-        else if(low==="disarm"||low==="/disarm") arm(false);
-        else if(low==="hold"||low==="/hold") setMode(MODE.HOLD);
-        else if(low==="land"||low==="/land"){if(!state.armed)arm(true);setMode(MODE.LAND)}
-        else if(low==="go"||low==="/go") goMission();
-        else if(low.indexOf("track ")===0) setTrackMode(low.slice(6).trim());
-        else if(low==="sam"||low==="slam"||low==="gsplat"||low==="motion"||low==="dino"||low==="off") setTrackMode(low);
+        if(typeof runChatCommand==="function") runChatCommand(line, "l");
+        else {
+          if(typeof log==="function") log("kb · "+line, "ev");
+          var low=line.toLowerCase().trim();
+          if(low==="rth"||low==="/rth") rth();
+          else if(low==="arm"||low==="/arm") arm(true);
+          else if(low==="disarm"||low==="/disarm") arm(false);
+          else if(low==="hold"||low==="/hold") setMode(MODE.HOLD);
+          else if(low==="land"||low==="/land"){if(!state.armed)arm(true);setMode(MODE.LAND)}
+          else if(low==="go"||low==="/go") goMission();
+          else if(low.indexOf("track ")===0) setTrackMode(low.slice(6).trim());
+          else if(low==="sam"||low==="slam"||low==="gsplat"||low==="motion"||low==="dino"||low==="off") setTrackMode(low);
+        }
       }
     });
-    if(typeof log==="function") log("split kb · under sticks · kbatch.ugrad.ai · ` capture","ok");
+    if(typeof log==="function") log("split kb · under sticks · chat cols mid · hub 1/3","ok");
   }
   var b=document.getElementById("btn-hud-kb");
   if(b&&window.DroneSplitKb){
@@ -1453,7 +1613,8 @@ preloadPath();
 setMode(MODE.HOLD);
 if(P.get("track"))setTrackMode(P.get("track"));
 else setTrackMode("motion");
-log(VER+" · Oblivion/DJI · "+units.length+" units · "+BACKEND,"ok");
+if(typeof wireChatPanels==="function") wireChatPanels();
+log(VER+" · chat L/R · hub 33% · "+units.length+" units · "+BACKEND,"ok");
 log("tiles · track · clock · hotpipe · LAFR/gsplat hooks","ev");
 if(BACKEND!=="sim")setTimeout(probe,300);
 else renderTx();
