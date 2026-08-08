@@ -8,10 +8,21 @@ description: >
 
 # /watch · fc-live-demux-v1
 
-In-Grok: yt-dlp + ffmpeg RGB24 → half-block (or Kitty).  
+**Universal (any terminal · any AI):** `fcs watch …` (not Grok-only).  
+In-Grok / TTY: yt-dlp + ffmpeg RGB24 → half-block (or Kitty).  
 Pop-out: **`o`** or `/watch popout …` → external ffplay.
 
 ```bash
+# any terminal / any agent
+fcs watch bloomberg
+fcs watch popout cnn
+fcs watch 'https://x.com/zanelowe/media'
+
+# plain zsh after `fcs install` (slash rewrite)
+/watch bloomberg
+/watch popout cnn
+
+# Grok TUI
 bash scripts/launch-watch.sh
 /watch
 /watch bloomberg

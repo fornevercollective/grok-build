@@ -1,7 +1,7 @@
 {
   "name": "fc-media-suite",
-  "version": "0.1.0",
-  "description": "fornevercollective media wall for Grok: /watch live demux, /cam PiP+pop-out, /clock Zulu timesync, /map traceroute (Starbase honesty). Half-block TTY first, external pop-out second. Requires fornevercollective grok-build binary with fc-* feature stamps.",
+  "version": "0.2.1",
+  "description": "fornevercollective media wall: /watch live demux, /cam, /clock, /map — universal fcs CLI + skill install for Arena-mapped terminal CLIs (Claude/Codex/Cursor/Grok/Qwen/Gemini/…). Updatable from grok-build via fcs update.",
   "author": {
     "name": "fornevercollective",
     "email": "dev@fornevercollective",

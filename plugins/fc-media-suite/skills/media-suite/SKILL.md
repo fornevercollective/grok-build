@@ -1,10 +1,11 @@
 ---
 name: media-suite
 description: >
-  fornevercollective media wall for Grok: /watch live demux, /cam, /clock timesync,
-  /map traceroute (Starbase). Use when user says media suite, install watch clock map,
-  fc-media-suite, fornevercollective media, half-block video, or wants SpaceXAI/x.com/Grok
-  ops surfaces in the TUI. Versioned plugin pack with doctor + update.
+  fornevercollective media wall — /watch live demux, /cam, /clock timesync,
+  /map traceroute (Starbase), /webgrid, /drone, /language. Universal via `fcs` CLI
+  for any terminal and any AI (Grok, Claude, Codex, Cursor). Triggers: media suite,
+  fcs watch, install watch clock map, fc-media-suite, half-block video,
+  SpaceXAI/x.com/Grok ops surfaces.
 ---
 
 # fc-media-suite · fornevercollective media wall
@@ -13,45 +14,93 @@ description: >
 **Repo:** https://github.com/fornevercollective/grok-build  
 **Credits:** `plugins/fc-media-suite/CREDITS.md`
 
-## Install / update (agent should offer these)
+## Universal first (any terminal · every CLI AI)
+
+Slash tools are **not Grok-only**. Prefer the **`fcs`** CLI.  
+Skills install into **Arena-mapped terminal CLIs** (Claude/Codex/Cursor/Grok/Qwen/Gemini/…) and stay linked to this repo.
 
 ```bash
-# install
+fcs install                 # PATH + shell + every terminal CLI skill
+fcs update                  # git pull grok-build + refresh all CLI skills
+fcs agents status           # which CLIs have the skill
+fcs watch bloomberg
+fcs watch popout cnn
+fcs cam
+fcs clock --once            # agent-safe
+fcs map popout starbase
+fcs webgrid popout
+fcs drone popout
+fcs language                # multi-lang simultaneous keyboard streams
+fcs lens bug
+fcs cast list
+fcs doctor
+```
+
+Arena: https://arena.ai/leaderboard/agent · registry: `agent-packs/cli-registry.tsv`
+
+After shell install, plain terminals also accept:
+
+```bash
+/watch bloomberg
+/cam
+/clock
+/map starbase
+/webgrid
+/drone
+/language
+```
+
+Agents (Claude / Codex / Cursor / Grok / …) should **run `fcs …` via shell**, not reimplement players.
+
+## Install / update
+
+```bash
+# install (plugin + fcs + shell + agent packs + optional binary)
 curl -fsSL https://raw.githubusercontent.com/fornevercollective/grok-build/main/plugins/fc-media-suite/scripts/install.sh | bash
 
-# or
+# universal layer only
+bash plugins/fc-media-suite/scripts/fcs install
+
+# Grok plugin
 grok plugin install fornevercollective/grok-build#plugins/fc-media-suite --trust
 grok plugin enable fc-media-suite
 
-# update like a teammate
+# update
 bash plugins/fc-media-suite/scripts/update.sh
-# or: grok plugin update fc-media-suite && git pull && cargo build -p xai-grok-pager-bin
 ```
 
 ## Feature ids (doctor)
 
-| Id | Slash |
-|----|-------|
-| `fc-live-demux-v1` | `/watch` `/gmux` `/cam` |
-| `fc-timesync-v1` | `/timesync` `/clock` |
-| `fc-maptrace-v1` | `/map` |
-| `fc-halfblock-tty-video` | paint path for watch + `/gboom` |
-| `fc-webgrid-tty-v1` | `/webgrid` offline ugrad chase (own slash) |
-| `fc-webgrid-drone-hud-v1` | `/drone` multi-unit FPV HUD (own slash · not under webgrid) |
-| `fc-optical-transfer-v1` | `/optical` · jawta light · blur fountain |
+| Id | Slash | `fcs` |
+|----|-------|-------|
+| `fc-live-demux-v1` | `/watch` `/gmux` `/cam` | `fcs watch` · `fcs cam` |
+| `fc-timesync-v1` | `/timesync` `/clock` | `fcs clock` |
+| `fc-maptrace-v1` | `/map` | `fcs map` |
+| `fc-halfblock-tty-video` | paint + `/gboom` | `fcs gboom` |
+| `fc-webgrid-tty-v1` | `/webgrid` | `fcs webgrid` |
+| `fc-webgrid-drone-hud-v1` | `/drone` multi-unit FPV HUD | `fcs drone` |
+| `fc-language-stream-v1` | `/language` simultaneous keyboard streams | `fcs language` |
+| `fc-optical-transfer-v1` | `/optical` | `fcs optical` |
 
 ```bash
+fcs doctor
 bash plugins/fc-media-suite/scripts/doctor.sh
 ```
 
-## Launch (real TTY only)
+## Launch modes
+
+| Mode | When |
+|------|------|
+| **pop-out / standalone** | Agents, non-TTY, `fcs watch popout`, no FC binary |
+| **Grok TUI half-block** | Real Terminal + fornevercollective binary · `fcs watch` / `launch-watch.sh` |
 
 ```bash
-bash scripts/launch-watch.sh     # /watch · /cam
-bash scripts/launch-timesync.sh  # /clock
-bash scripts/launch-map.sh       # /map starbase
+bash scripts/launch-watch.sh     # TUI /watch · /cam
+bash scripts/launch-timesync.sh  # TUI /clock
+bash scripts/launch-map.sh       # TUI /map
 bash scripts/launch-webgrid.sh   # /webgrid chase
 bash scripts/launch-drone.sh     # /drone HUD (standalone)
+bash scripts/launch-language.sh  # /language multi-lang keyboard streams
 ```
 
 ## Ports (Soft Path owns 8765/8766)
@@ -68,12 +117,12 @@ Do **not** bind 8765/8766 for cast, paper, or MG. See `docs/fornever-ledger/PORT
 
 ## Agent rules
 
-1. Prefer **in-Grok slash** over reimplementing players in chat.
-2. Non-TTY agent shells cannot open the TUI — tell user to run launch scripts in Terminal.app.
-3. Binary must be the **fornevercollective** build (feature stamps). Stock xAI binary will fail doctor.
-4. Do not claim official xAI marketplace listing unless verified; third-party marketplace add is supported.
+1. Prefer **`fcs <cmd>`** (universal) over reimplementing players in chat.
+2. Non-TTY agent shells: `fcs` auto-picks pop-out / `--once` — no hung TUI.
+3. Half-block in-TTY paint still needs real Terminal + FC binary stamps.
+4. Do not claim official xAI marketplace listing unless verified.
 5. Never park lab servers on Soft Path ports.
 
 ## Ecosystem discovery keywords
 
-spacexai · xai · grok · spacex · x.com · tesla · neuralink · starbase · sbx · elon · fornevercollective
+spacexai · xai · grok · spacex · x.com · tesla · neuralink · starbase · sbx · elon · fornevercollective · fcs

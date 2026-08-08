@@ -1,10 +1,10 @@
 # fc-media-suite · fornevercollective
 
-**Version:** `0.1.0` · **Feature pack:** watch · cam · clock · map
+**Version:** `0.2.0` · **Feature pack:** watch · cam · clock · map · universal `fcs`
 
-Installable Grok plugin + doctor for the fornevercollective **media wall**.
-The slash surfaces live in the **fork binary**; this pack makes them
-discoverable, documentable, versioned, and updatable like a team plugin.
+Installable Grok plugin + **universal CLI** for the fornevercollective **media wall**.
+Slash surfaces work in the **fork binary**, in **any standard terminal**, and from
+**any AI agent** via `fcs` (not Grok-only).
 
 | | |
 |--|--|
@@ -32,14 +32,23 @@ grok plugin install ./plugins/fc-media-suite --trust
 ## Up in under a minute (after install)
 
 ```bash
-# real Terminal (not agent non-TTY)
-cd ~/Projects/grok-build   # or wherever you cloned the fork
-bash scripts/launch-watch.sh
-# then:
+# universal — any terminal, any AI agent shell
+fcs watch bloomberg
+fcs watch popout cnn
+fcs cam
+fcs clock
+fcs map starbase
+fcs doctor
+
+# after shell hook (source ~/.zshrc): same slash names outside Grok
 /watch bloomberg
 /cam
 /clock
 /map starbase
+
+# optional: Grok TUI half-block (real Terminal + FC binary)
+cd ~/Projects/grok-build
+bash scripts/launch-watch.sh
 ```
 
 ## Update (dev-team style)
@@ -62,13 +71,23 @@ grok plugin install fornevercollective/grok-build#plugins/fc-media-suite@v0.1.0 
 
 ## What you get
 
-| Slash | Feature id | In-TTY | Pop-out |
-|-------|------------|--------|---------|
-| `/watch` | `fc-live-demux-v1` | half-block live demux | `o` · ffplay |
-| `/cam` | same | PiP / large self-view | `/cam popout` |
-| `/clock` | `fc-timesync-v1` | Zulu · markets · NTP | standalone Python |
-| `/map` | `fc-maptrace-v1` | ASCII map + hops | maptrace TUI/web |
-| `/gboom` | `fc-halfblock-tty-video` | half-block game | — |
+| Slash | `fcs` | Feature id | In-TTY | Pop-out |
+|-------|-------|------------|--------|---------|
+| `/watch` | `fcs watch` | `fc-live-demux-v1` | half-block live demux | `o` · ffplay |
+| `/cam` | `fcs cam` | same | PiP / large self-view | cam-popout |
+| `/clock` | `fcs clock` | `fc-timesync-v1` | Zulu · markets · NTP | standalone Python |
+| `/map` | `fcs map` | `fc-maptrace-v1` | ASCII map + hops | maptrace TUI/web |
+| `/webgrid` | `fcs webgrid` | `fc-webgrid-tty-v1` | ugrad chase | browser |
+| `/lens` | `fcs lens` | `fc-lens-bug-v1` | — | lens-popout |
+| `/cast` | `fcs cast` | `fc-cast-tv-v1` | — | Chromecast / TCL |
+| `/gboom` | `fcs gboom` | `fc-halfblock-tty-video` | half-block game | — |
+
+**Multi-CLI AI (Arena-mapped):** `fcs install agents` / `fcs update` installs one skill hub and **symlinks** it into every terminal CLI skill dir (Claude, Codex, Cursor, Grok, Qwen, Gemini, Continue, OpenCode, Aider, Hermes, …).  
+
+- Registry: `agent-packs/cli-registry.tsv`  
+- Arena models: https://arena.ai/leaderboard/agent  
+- Hub (live from repo): `~/.local/share/fc-media-suite/skills/fc-media-suite` → `agent-packs/generic`  
+- Refresh after `git pull`: **`fcs update`**
 
 ## Doctor
 

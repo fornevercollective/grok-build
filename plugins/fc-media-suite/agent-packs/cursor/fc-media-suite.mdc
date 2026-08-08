@@ -1,0 +1,15 @@
+---
+description: fornevercollective media suite — use fcs CLI for /watch /cam /clock /map and related surfaces (any terminal, not Grok-only)
+globs:
+alwaysApply: false
+---
+
+# fc-media-suite
+
+When the user mentions `/watch`, `/cam`, `/clock`, `/map`, `/webgrid`, `/lens`, `/cast`, live demux, half-block video, or media suite:
+
+- Run **`fcs <cmd> [args]`** via the terminal tool (universal CLI).
+- Do not reimplement yt-dlp/ffmpeg players in chat.
+- Agent-safe: `fcs watch popout …`, `fcs clock --once`, `fcs map popout …`.
+- Install if missing: `bash ~/Projects/grok-build/plugins/fc-media-suite/scripts/fcs install`
+- Soft Path owns ports 8765/8766 — do not bind them.
