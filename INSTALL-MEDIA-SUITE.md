@@ -16,7 +16,17 @@ grok plugin install fornevercollective/grok-build#plugins/fc-media-suite --trust
 grok plugin enable fc-media-suite
 ```
 
-## Run
+## Run (universal — any terminal · any AI)
+
+```bash
+fcs watch bloomberg
+fcs cam
+fcs clock
+fcs map starbase
+# after shell hook: /watch bloomberg works in plain zsh/bash too
+```
+
+## Run (optional Grok TUI half-block)
 
 ```bash
 cd ~/Projects/grok-build   # created by install.sh
@@ -36,7 +46,8 @@ bash ~/Projects/grok-build/plugins/fc-media-suite/scripts/update.sh
 - Repo: https://github.com/fornevercollective/grok-build  
 - Plugin: https://github.com/fornevercollective/grok-build/tree/main/plugins/fc-media-suite  
 - Credits: `plugins/fc-media-suite/CREDITS.md`  
-- Version: `plugins/fc-media-suite/VERSION` (currently **0.1.0**)
+- Version: `plugins/fc-media-suite/VERSION` (currently **0.2.0**)
+- Universal CLI: `fcs` (`plugins/fc-media-suite/scripts/fcs`)
 
 ## Doctor
 

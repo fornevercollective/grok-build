@@ -5,7 +5,15 @@ argument-hint: "[channel|popout|trailers|list]"
 
 # /watch helper (plugin)
 
-In the **fornevercollective** binary, type in the agent composer:
+**Universal (any terminal · any AI):**
+
+```bash
+fcs watch bloomberg
+fcs watch popout cnn
+fcs /watch trailers
+```
+
+In the **fornevercollective** binary, agent composer still accepts:
 
 ```
 /watch
@@ -14,6 +22,7 @@ In the **fornevercollective** binary, type in the agent composer:
 /watch popout cnn
 ```
 
-Launch TUI: `bash scripts/launch-watch.sh`  
-Full skill: media-suite / watch SKILL.md  
+Plain shell (after `fcs install`): `/watch bloomberg` via zsh/bash hook.  
+Launch TUI: `bash scripts/launch-watch.sh` or `fcs watch --tui`  
+Full skill: media-suite / watch SKILL.md · agent-packs/generic/SKILL.md  
 Args: $ARGUMENTS

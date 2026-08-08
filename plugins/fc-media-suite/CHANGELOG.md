@@ -4,6 +4,36 @@ All notable releases of the **installable plugin pack** + coordinated fork binar
 
 Format: Keep a Changelog · versioning: SemVer (`MAJOR.MINOR.PATCH`).
 
+## [0.2.1] — 2026-08-08
+
+### Added
+
+- **Arena-mapped multi-CLI skill install** (`agent-packs/cli-registry.tsv` + `scripts/install-agents.sh`)
+  - Terminal CLIs: claude, codex, cursor, grok, continue, openclaw, opencode, qwen, factory, hermes, pi, junie, kilocode, roo, trae, gemini, aider, goose, windsurf, amp, + any tool dir present on machine
+  - Single hub: `~/.local/share/fc-media-suite/skills/fc-media-suite` → symlink into grok-build `agent-packs/generic`
+  - Optional CLIs only installed when `~/.<tool>` already exists (no home pollution)
+- **`fcs update`** / **`fcs agents status|list|install`** — pull/refresh all agent skills from grok-build
+- `update.sh` re-links every CLI skill after git pull
+- Arena reference: https://arena.ai/leaderboard/agent
+
+## [0.2.0] — 2026-08-08
+
+### Added
+
+- **Universal CLI `fcs`** — same slash surfaces outside Grok:
+  - any standard terminal (Terminal.app, iTerm, tmux, …)
+  - any AI agent (Grok, Claude, Codex, Cursor, Aider, …) via shell
+- Shell hooks (`scripts/shell/fcs.zsh` · `fcs.bash`): type `/watch bloomberg` in zsh/bash
+- Multi-AI agent packs (`agent-packs/`):
+  - `~/.agents` · `~/.claude/skills` + commands · `~/.codex` · `~/.cursor/rules`
+  - generic `SKILL.md` + `AGENTS.media-suite.md`
+- `fcs install [all|cli|shell|agents]` · install.sh step wires universal layer
+- Agent-safe defaults: non-TTY → pop-out / `--standalone` / `--once`
+
+### Commands
+
+`fcs watch|cam|clock|map|webgrid|optical|lens|phone|cast|tiles|gboom|media|doctor|install`
+
 ## [0.1.0] — 2026-07-29
 
 ### Added

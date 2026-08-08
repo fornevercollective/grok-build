@@ -40,9 +40,27 @@ if [[ "${FC_MEDIA_SKIP_BUILD:-0}" != "1" ]] && command -v cargo >/dev/null 2>&1 
   (cd "$REPO" && cargo build -p xai-grok-pager-bin ${FC_MEDIA_RELEASE:+--release}) || true
 fi
 
-# 4. Doctor
+# 4. Universal CLI + multi-CLI AI skills (Arena-mapped terminal agents)
+# Hub symlinks into grok-build agent-packs/generic so all CLIs track the repo.
+if [[ -f "$ROOT/scripts/fcs" ]]; then
+  echo "==> fcs CLI refresh"
+  export FC_MEDIA_DIR="${FC_MEDIA_DIR:-$REPO}"
+  export FCS_ROOT="${FCS_ROOT:-$REPO}"
+  export GROK_PLUGIN_ROOT="$ROOT"
+  bash "$ROOT/scripts/fcs" install cli 2>/dev/null || true
+fi
+if [[ -f "$ROOT/scripts/install-agents.sh" ]]; then
+  echo "==> multi-CLI AI skills (claude codex cursor grok qwen …)"
+  bash "$ROOT/scripts/install-agents.sh" update
+fi
+
+# 5. Doctor
 bash "$ROOT/scripts/doctor.sh" || true
+if [[ -x "$HOME/.local/bin/fcs" ]]; then
+  bash "$HOME/.local/bin/fcs" agents status 2>/dev/null || true
+fi
 
 NEW_V="$(cat "$ROOT/VERSION" 2>/dev/null || echo unknown)"
 echo "==> now v${NEW_V}"
 echo "    changelog: $ROOT/CHANGELOG.md"
+echo "    agents:    fcs agents status | fcs update"

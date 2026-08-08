@@ -1,0 +1,678 @@
+#!/usr/bin/env bash
+# fcs — fornevercollective media suite CLI (universal)
+#
+# Same surfaces as Grok slash tools, usable from:
+#   · any standard terminal (Terminal.app, iTerm, tmux, …)
+#   · any AI agent (Grok, Claude, Codex, Cursor, Aider, …) via shell
+#
+# Usage:
+#   fcs watch bloomberg
+#   fcs /watch popout cnn
+#   fcs cam
+#   fcs clock --standalone
+#   fcs map starbase
+#   fcs doctor
+#   fcs install          # PATH + shell + multi-AI agent packs
+#
+# Env:
+#   FC_MEDIA_DIR / FCS_ROOT   grok-build checkout (default ~/Projects/grok-build)
+#   FCS_MODE=auto|tui|popout  default surface (auto: TTY+binary→tui else popout)
+#   FCS_AGENT=1               force agent-safe modes (popout / standalone / once)
+#   GROK_PLUGIN_ROOT          installed plugin root (optional)
+set -euo pipefail
+
+VERSION_FALLBACK="0.2.0"
+
+resolve_root() {
+  if [[ -n "${FCS_ROOT:-}" && -d "${FCS_ROOT}" ]]; then
+    echo "$FCS_ROOT"; return 0
+  fi
+  if [[ -n "${FC_MEDIA_DIR:-}" && -d "${FC_MEDIA_DIR}" ]]; then
+    echo "$FC_MEDIA_DIR"; return 0
+  fi
+  # script lives in plugins/fc-media-suite/scripts/fcs → repo is ../../..
+  local here
+  here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$here/../../../scripts" && -f "$here/../../../Cargo.toml" ]]; then
+    echo "$(cd "$here/../../.." && pwd)"; return 0
+  fi
+  if [[ -d "$HOME/Projects/grok-build/scripts" ]]; then
+    echo "$HOME/Projects/grok-build"; return 0
+  fi
+  # installed copy under ~/.local/share/fc-media-suite or plugin
+  for c in \
+    "${GROK_PLUGIN_ROOT:-}" \
+    "$HOME/.grok/plugins/fc-media-suite" \
+    "$HOME/.local/share/fc-media-suite" \
+    "$HOME/Projects/grok-build/plugins/fc-media-suite"
+  do
+    if [[ -n "$c" && -d "$c" ]]; then
+      # plugin dir — parent may be repo
+      if [[ -d "$(dirname "$c")/../scripts" ]]; then
+        echo "$(cd "$(dirname "$c")/.." && pwd)"; return 0
+      fi
+      if [[ -d "$HOME/Projects/grok-build/scripts" ]]; then
+        echo "$HOME/Projects/grok-build"; return 0
+      fi
+    fi
+  done
+  echo "$HOME/Projects/grok-build"
+}
+
+ROOT="$(resolve_root)"
+PLUGIN="${GROK_PLUGIN_ROOT:-}"
+if [[ -z "$PLUGIN" || ! -d "$PLUGIN" ]]; then
+  if [[ -d "$ROOT/plugins/fc-media-suite" ]]; then
+    PLUGIN="$ROOT/plugins/fc-media-suite"
+  elif [[ -d "$HOME/.grok/plugins/fc-media-suite" ]]; then
+    PLUGIN="$HOME/.grok/plugins/fc-media-suite"
+  else
+    PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  fi
+fi
+VERSION="$(cat "$PLUGIN/VERSION" 2>/dev/null || echo "$VERSION_FALLBACK")"
+SCRIPTS="$ROOT/scripts"
+LIVE="$SCRIPTS/live-demux"
+
+is_tty() { [[ -t 0 && -t 1 ]]; }
+
+is_agent() {
+  [[ "${FCS_AGENT:-0}" == "1" ]] && return 0
+  [[ -n "${CI:-}" ]] && return 0
+  # Common agent markers
+  [[ -n "${CLAUDECODE:-}${CODEX_CI:-}${CURSOR_AGENT:-}${AIDER_CHAT:-}" ]] && return 0
+  ! is_tty
+}
+
+has_feature() {
+  local bin="$1" needle="$2"
+  [[ -x "$bin" ]] || return 1
+  python3 - "$bin" "$needle" <<'PY' 2>/dev/null
+import sys
+path, needle = sys.argv[1], sys.argv[2].encode()
+with open(path, "rb") as f:
+    data = f.read()
+sys.exit(0 if needle in data else 1)
+PY
+}
+
+pick_grok() {
+  local c
+  for c in \
+    "${FC_MEDIA_BIN:-}" \
+    "$ROOT/target/debug/xai-grok-pager" \
+    "$ROOT/target/release/xai-grok-pager" \
+    "$(command -v grok-fc 2>/dev/null || true)" \
+    "$(command -v grok 2>/dev/null || true)" \
+    "$(command -v xai-grok-pager 2>/dev/null || true)"
+  do
+    [[ -n "$c" && -x "$c" ]] || continue
+    if has_feature "$c" "fc-live-demux"; then
+      echo "$c"; return 0
+    fi
+  done
+  for c in \
+    "$ROOT/target/debug/xai-grok-pager" \
+    "$ROOT/target/release/xai-grok-pager" \
+    "$(command -v grok 2>/dev/null || true)"
+  do
+    [[ -n "$c" && -x "$c" ]] && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+# Resolve mode: tui | popout
+resolve_mode() {
+  local want="${FCS_MODE:-auto}"
+  local force_pop=0 force_tui=0
+  local a
+  for a in "$@"; do
+    case "$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')" in
+      popout|pop-out|out|--popout|-o|external|ffplay|--standalone|standalone)
+        force_pop=1 ;;
+      --tui|tui|--grok|in-grok)
+        force_tui=1 ;;
+    esac
+  done
+  if [[ "$force_tui" -eq 1 ]]; then echo tui; return; fi
+  if [[ "$force_pop" -eq 1 ]]; then echo popout; return; fi
+  case "$want" in
+    tui|grok) echo tui; return ;;
+    popout|out|standalone) echo popout; return ;;
+  esac
+  # auto
+  if is_agent; then echo popout; return; fi
+  if is_tty && pick_grok >/dev/null 2>&1; then echo tui; return; fi
+  echo popout
+}
+
+strip_mode_flags() {
+  # print args with mode-only flags removed (keep channel words)
+  local a out=()
+  for a in "$@"; do
+    case "$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')" in
+      --tui|tui|--grok|in-grok|--mode=tui|--mode=popout|--mode=auto) ;;
+      *) out+=("$a") ;;
+    esac
+  done
+  if [[ ${#out[@]} -gt 0 ]]; then
+    printf '%s\n' "${out[@]}"
+  fi
+}
+
+need_script() {
+  local p="$1"
+  if [[ ! -f "$p" ]]; then
+    echo "error: missing $p" >&2
+    echo "  set FC_MEDIA_DIR to your grok-build checkout" >&2
+    echo "  or: fcs install" >&2
+    exit 1
+  fi
+}
+
+run_bash() {
+  need_script "$1"
+  exec bash "$@"
+}
+
+cmd_help() {
+  cat <<EOF
+fcs · fornevercollective media suite v${VERSION}
+universal CLI — any terminal · any AI agent
+
+Usage:
+  fcs <command> [args…]
+  fcs /watch bloomberg          # leading slash OK
+  fcs watch popout cnn
+  fcs cam
+  fcs clock --standalone
+  fcs map starbase
+  fcs doctor
+  fcs install                   # PATH + shell hooks + multi-AI packs
+
+Commands (same as Grok slash tools):
+  watch | gmux | tv | live      live demux / half-block or ffplay pop-out
+  cam                           large self-view + stream
+  clock | timesync | zulu       world clock / NTP
+  map | maptrace | geomap       traceroute map (Starbase honesty)
+  webgrid | wg                  offline ugrad chase
+  optical                       optical blur / jawta / fountain TX
+  lens                          bug-world / HDRI / 360 lens pop-out
+  phone                         Continuity / still-pipe phone cam
+  cast | share                  Chromecast / TCL Google TV
+  tiles                         independent ffplay tile plane
+  gboom                         half-block game surface
+  media                         suite status
+  doctor                        binary stamps + tools + multi-CLI skills
+  install [all|cli|shell|agents]  PATH + shell + every terminal CLI AI skill
+  update [all|agents|cli]       git pull grok-build + refresh hub + agents
+  agents status|list            multi-CLI skill status (Arena-mapped)
+  help | version
+
+Mode (env FCS_MODE or flags):
+  auto     TTY + FC binary → Grok TUI; else pop-out / standalone (default)
+  tui      force Grok TUI  (--tui)
+  popout   force OS window / standalone (--popout | popout)
+
+Agent-safe defaults:
+  Non-TTY or FCS_AGENT=1 → popout / --standalone / --once (no hung TUI)
+
+Examples:
+  fcs watch bloomberg
+  fcs watch popout 'https://x.com/user/media'
+  fcs cam large
+  fcs clock --once            # one-shot JSON-friendly
+  fcs map popout 1.1.1.1
+  fcs lens bug dual
+  fcs cast list
+  fcs tiles list
+
+Repo:  $ROOT
+Plugin: $PLUGIN
+EOF
+}
+
+cmd_version() {
+  echo "fcs $VERSION"
+  echo "root $ROOT"
+  echo "plugin $PLUGIN"
+}
+
+cmd_doctor() {
+  local fail=0
+  echo "fcs doctor · v${VERSION}"
+  echo "root   $ROOT"
+  echo "plugin $PLUGIN"
+  if command -v fcs >/dev/null 2>&1; then
+    echo "OK     fcs on PATH → $(command -v fcs)"
+  elif [[ -x "$HOME/.local/share/fc-media-suite/fcs" ]]; then
+    echo "OK     fcs wrapper → $HOME/.local/share/fc-media-suite/fcs"
+  else
+    echo "WARN   fcs not on PATH (run: fcs install)"
+  fi
+  if [[ -f "$SCRIPTS/launch-watch.sh" ]]; then
+    echo "OK     launch scripts (universal + TUI)"
+  else
+    echo "FAIL   launch scripts missing under $SCRIPTS"
+    fail=1
+  fi
+  echo "--- grok binary (optional for pop-out) ---"
+  if [[ -f "$PLUGIN/scripts/doctor.sh" ]]; then
+    # Soft: pop-out paths work without FC feature stamps
+    if bash "$PLUGIN/scripts/doctor.sh"; then
+      :
+    else
+      echo "WARN   FC binary stamps incomplete — TUI /watch may fail; pop-out still OK"
+    fi
+  else
+    echo "WARN   plugin doctor.sh missing"
+  fi
+  echo "--- multi-CLI AI skills (Arena-mapped) ---"
+  if [[ -f "$PLUGIN/scripts/install-agents.sh" ]]; then
+    bash "$PLUGIN/scripts/install-agents.sh" status 2>/dev/null || true
+  else
+    for p in \
+      "$HOME/.agents/skills/fc-media-suite/SKILL.md" \
+      "$HOME/.claude/skills/fc-media-suite/SKILL.md" \
+      "$HOME/.codex/skills/fc-media-suite/SKILL.md" \
+      "$HOME/.cursor/skills/fc-media-suite/SKILL.md"
+    do
+      if [[ -e "$p" || -L "$p" ]]; then
+        echo "OK     $p"
+      else
+        echo "--     $p  (fcs install agents)"
+      fi
+    done
+  fi
+  if [[ -f "$HOME/.local/share/fc-media-suite/shell/fcs.zsh" ]] || \
+     grep -q 'fc-media-suite fcs' "$HOME/.zshrc" 2>/dev/null; then
+    echo "OK     shell hook (zshrc or share)"
+  else
+    echo "--     shell hook not detected (fcs install shell)"
+  fi
+  if [[ "$fail" -ne 0 ]]; then
+    echo "fcs doctor: NOT READY"
+    return 1
+  fi
+  echo "fcs doctor: READY · any terminal · any AI → fcs watch|cam|clock|map …"
+  echo "update skills from grok-build:  fcs update"
+  return 0
+}
+
+cmd_install() {
+  local sub="${1:-all}"
+  shift || true
+  local share="$HOME/.local/share/fc-media-suite"
+  local bindir="${FCS_BINDIR:-$HOME/.local/bin}"
+  local do_cli=0 do_shell=0 do_agents=0
+  mkdir -p "$bindir" "$share/shell" "$share/agent-packs"
+
+  case "$sub" in
+    all|"") do_cli=1; do_shell=1; do_agents=1 ;;
+    cli) do_cli=1 ;;
+    shell) do_shell=1 ;;
+    agents) do_agents=1 ;;
+    *)
+      echo "usage: fcs install [all|cli|shell|agents]"
+      exit 2
+      ;;
+  esac
+
+  if [[ "$do_cli" -eq 1 ]]; then
+    echo "==> install fcs → $bindir/fcs"
+    local body="$PLUGIN/scripts/fcs"
+    if [[ ! -f "$body" ]]; then
+      body="${BASH_SOURCE[0]}"
+    fi
+    cp -f "$body" "$share/fcs.body"
+    chmod +x "$share/fcs.body"
+    printf '%s\n' "$ROOT" >"$share/ROOT"
+    printf '%s\n' "$PLUGIN" >"$share/PLUGIN"
+    # Thin wrapper pins FCS_ROOT so agents/terminals resolve launch scripts
+    cat >"$share/fcs" <<WRAP
+#!/usr/bin/env bash
+export FCS_ROOT="\${FCS_ROOT:-$(printf '%q' "$ROOT")}"
+export FC_MEDIA_DIR="\${FC_MEDIA_DIR:-\$FCS_ROOT}"
+export GROK_PLUGIN_ROOT="\${GROK_PLUGIN_ROOT:-$(printf '%q' "$PLUGIN")}"
+exec bash $(printf '%q' "$share/fcs.body") "\$@"
+WRAP
+    chmod +x "$share/fcs"
+    ln -sfn "$share/fcs" "$bindir/fcs"
+    ln -sfn "$share/fcs" "$bindir/fc-media" 2>/dev/null || true
+    echo "    $bindir/fcs"
+    case ":$PATH:" in
+      *":$bindir:"*) ;;
+      *) echo "    note: add to PATH → export PATH=\"$bindir:\$PATH\"" ;;
+    esac
+  fi
+
+  if [[ "$do_shell" -eq 1 ]]; then
+    echo "==> shell hooks → $share/shell"
+    if [[ -f "$PLUGIN/scripts/shell/fcs.zsh" ]]; then
+      cp -f "$PLUGIN/scripts/shell/fcs.zsh" "$share/shell/fcs.zsh"
+      cp -f "$PLUGIN/scripts/shell/fcs.bash" "$share/shell/fcs.bash" 2>/dev/null || true
+    else
+      echo "    warn: shell hooks missing in plugin"
+    fi
+    local marker="# fc-media-suite fcs (universal slash tools)"
+    local zline="[ -f \"$share/shell/fcs.zsh\" ] && source \"$share/shell/fcs.zsh\""
+    local bline="[ -f \"$share/shell/fcs.bash\" ] && source \"$share/shell/fcs.bash\""
+    touch "$HOME/.zshrc"
+    if ! grep -qF 'fc-media-suite fcs' "$HOME/.zshrc" 2>/dev/null; then
+      printf '\n%s\n%s\n' "$marker" "$zline" >>"$HOME/.zshrc"
+      echo "    appended ~/.zshrc"
+    else
+      echo "    ~/.zshrc already has fcs hook"
+    fi
+    if [[ -f "$HOME/.bashrc" ]]; then
+      if ! grep -qF 'fc-media-suite fcs' "$HOME/.bashrc" 2>/dev/null; then
+        printf '\n%s\n%s\n' "$marker" "$bline" >>"$HOME/.bashrc"
+        echo "    appended ~/.bashrc"
+      else
+        echo "    ~/.bashrc already has fcs hook"
+      fi
+    fi
+  fi
+
+  if [[ "$do_agents" -eq 1 ]]; then
+    echo "==> multi-CLI AI skills (Arena leaderboard → terminal CLIs)"
+    if [[ -f "$PLUGIN/scripts/install-agents.sh" ]]; then
+      bash "$PLUGIN/scripts/install-agents.sh" install
+    else
+      echo "    warn: install-agents.sh missing"
+    fi
+  fi
+
+  echo ""
+  echo "==> done · open a new shell or: source $share/shell/fcs.zsh"
+  echo "    try:  fcs watch bloomberg"
+  echo "          /watch bloomberg     # after shell hook"
+  echo "          fcs doctor"
+  echo "          fcs update           # pull grok-build + refresh all AI skills"
+}
+
+cmd_update() {
+  local sub="${1:-all}"
+  shift || true
+  local share="$HOME/.local/share/fc-media-suite"
+  echo "==> fcs update · v${VERSION} · from grok-build"
+
+  # 1. Prefer plugin update.sh (git pull + plugin refresh + optional cargo)
+  if [[ -f "$PLUGIN/scripts/update.sh" ]] && [[ "$sub" == "all" || "$sub" == "repo" ]]; then
+    bash "$PLUGIN/scripts/update.sh" || true
+  elif [[ -d "$ROOT/.git" ]] && [[ "$sub" == "all" || "$sub" == "repo" ]]; then
+    echo "==> git fetch/pull $ROOT"
+    if git -C "$ROOT" status --porcelain | grep -q .; then
+      echo "    dirty tree — pull skipped; still refreshing agent hub from working tree"
+    else
+      git -C "$ROOT" pull --ff-only 2>/dev/null || echo "    pull skipped"
+    fi
+  fi
+
+  # 2. Re-install CLI wrapper body from plugin tree
+  if [[ "$sub" == "all" || "$sub" == "cli" ]]; then
+    cmd_install cli
+  fi
+
+  # 3. Re-link every terminal CLI AI skill from repo hub
+  if [[ "$sub" == "all" || "$sub" == "agents" ]]; then
+    if [[ -f "$PLUGIN/scripts/install-agents.sh" ]]; then
+      bash "$PLUGIN/scripts/install-agents.sh" update
+    else
+      cmd_install agents
+    fi
+  fi
+
+  echo ""
+  echo "==> update done · hub tracks grok-build agent-packs/generic"
+  echo "    fcs agents status"
+}
+
+cmd_agents() {
+  local sub="${1:-status}"
+  shift || true
+  if [[ -f "$PLUGIN/scripts/install-agents.sh" ]]; then
+    case "$sub" in
+      install|update|refresh) bash "$PLUGIN/scripts/install-agents.sh" install ;;
+      status|doctor|"") bash "$PLUGIN/scripts/install-agents.sh" status ;;
+      list) bash "$PLUGIN/scripts/install-agents.sh" list ;;
+      *)
+        echo "usage: fcs agents [status|list|install|update]"
+        exit 2
+        ;;
+    esac
+  else
+    echo "error: install-agents.sh missing in $PLUGIN"
+    exit 1
+  fi
+}
+
+# --- surface dispatchers ---
+
+cmd_watch() {
+  local mode args=()
+  mode="$(resolve_mode "$@")"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && args+=("$line")
+  done < <(strip_mode_flags "$@")
+
+  need_script "$SCRIPTS/launch-watch.sh"
+  if [[ "$mode" == "popout" ]]; then
+    # Avoid double-popout flag
+    local has_pop=0 a
+    for a in "${args[@]+"${args[@]}"}"; do
+      case "$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')" in
+        popout|pop-out|out|--popout|-o) has_pop=1 ;;
+      esac
+    done
+    if [[ "$has_pop" -eq 0 ]]; then
+      exec bash "$SCRIPTS/launch-watch.sh" popout "${args[@]+"${args[@]}"}"
+    fi
+    exec bash "$SCRIPTS/launch-watch.sh" "${args[@]+"${args[@]}"}"
+  fi
+  exec bash "$SCRIPTS/launch-watch.sh" "${args[@]+"${args[@]}"}"
+}
+
+cmd_cam() {
+  local mode args=()
+  mode="$(resolve_mode "$@")"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && args+=("$line")
+  done < <(strip_mode_flags "$@")
+  need_script "$SCRIPTS/launch-watch.sh"
+  if [[ "$mode" == "popout" ]]; then
+    # cam OS windows when agent/popout
+    if [[ -f "$LIVE/cam-popout.sh" ]]; then
+      local sub="${args[0]:-all}"
+      exec bash "$LIVE/cam-popout.sh" "${args[@]+"${args[@]}"}"
+    fi
+    exec bash "$SCRIPTS/launch-watch.sh" popout camera "${args[@]+"${args[@]}"}"
+  fi
+  exec bash "$SCRIPTS/launch-watch.sh" camera "${args[@]+"${args[@]}"}"
+}
+
+cmd_clock() {
+  local mode args=()
+  mode="$(resolve_mode "$@")"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && args+=("$line")
+  done < <(strip_mode_flags "$@")
+  need_script "$SCRIPTS/launch-timesync.sh"
+  if [[ "$mode" == "popout" ]] || is_agent; then
+    local has_sa=0 a
+    for a in "${args[@]+"${args[@]}"}"; do
+      case "$a" in
+        --standalone|--once|--json|standalone) has_sa=1 ;;
+      esac
+    done
+    if [[ "$has_sa" -eq 0 ]]; then
+      if is_agent; then
+        exec bash "$SCRIPTS/launch-timesync.sh" --once "${args[@]+"${args[@]}"}"
+      fi
+      exec bash "$SCRIPTS/launch-timesync.sh" --standalone "${args[@]+"${args[@]}"}"
+    fi
+  fi
+  exec bash "$SCRIPTS/launch-timesync.sh" "${args[@]+"${args[@]}"}"
+}
+
+cmd_map() {
+  local mode args=()
+  mode="$(resolve_mode "$@")"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && args+=("$line")
+  done < <(strip_mode_flags "$@")
+  need_script "$SCRIPTS/launch-map.sh"
+  if [[ "$mode" == "popout" ]]; then
+    local has_pop=0 a
+    for a in "${args[@]+"${args[@]}"}"; do
+      case "$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')" in
+        popout|web|out|--popout|-o|--web|-w) has_pop=1 ;;
+      esac
+    done
+    if [[ "$has_pop" -eq 0 ]]; then
+      exec bash "$SCRIPTS/launch-map.sh" popout "${args[@]+"${args[@]}"}"
+    fi
+  fi
+  exec bash "$SCRIPTS/launch-map.sh" "${args[@]+"${args[@]}"}"
+}
+
+cmd_webgrid() {
+  local mode args=()
+  mode="$(resolve_mode "$@")"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && args+=("$line")
+  done < <(strip_mode_flags "$@")
+  need_script "$SCRIPTS/launch-webgrid.sh"
+  if [[ "$mode" == "popout" ]]; then
+    exec bash "$SCRIPTS/launch-webgrid.sh" popout "${args[@]+"${args[@]}"}"
+  fi
+  exec bash "$SCRIPTS/launch-webgrid.sh" "${args[@]+"${args[@]}"}"
+}
+
+cmd_optical() {
+  # optical is a /watch channel
+  cmd_watch optical "$@"
+}
+
+cmd_lens() {
+  need_script "$LIVE/lens-popout.sh"
+  exec bash "$LIVE/lens-popout.sh" "$@"
+}
+
+cmd_phone() {
+  need_script "$LIVE/phone-tether.sh"
+  if [[ $# -eq 0 ]]; then
+    exec bash "$LIVE/phone-tether.sh" start
+  fi
+  exec bash "$LIVE/phone-tether.sh" "$@"
+}
+
+cmd_cast() {
+  need_script "$LIVE/cast-tv.sh"
+  exec bash "$LIVE/cast-tv.sh" "$@"
+}
+
+cmd_tiles() {
+  need_script "$LIVE/ffplay-tiles.sh"
+  exec bash "$LIVE/ffplay-tiles.sh" "$@"
+}
+
+cmd_gboom() {
+  need_script "$SCRIPTS/launch-gboom.sh"
+  exec bash "$SCRIPTS/launch-gboom.sh" "$@"
+}
+
+cmd_media() {
+  if [[ -x "$PLUGIN/scripts/doctor.sh" ]] || [[ -f "$PLUGIN/scripts/doctor.sh" ]]; then
+    echo "fc-media-suite v$(cat "$PLUGIN/VERSION" 2>/dev/null || echo "$VERSION")"
+    echo "cli: fcs (universal · any terminal · any AI)"
+    echo "repo: https://github.com/fornevercollective/grok-build"
+    echo "root: $ROOT"
+    case "${1:-}" in
+      install) shift; cmd_install "$@" ;;
+      doctor) cmd_doctor ;;
+      update)
+        if [[ -f "$PLUGIN/scripts/update.sh" ]]; then
+          exec bash "$PLUGIN/scripts/update.sh"
+        fi
+        echo "no update.sh"
+        ;;
+      credits)
+        cat "$PLUGIN/CREDITS.md" 2>/dev/null || echo "see CREDITS.md"
+        ;;
+      *)
+        bash "$PLUGIN/scripts/doctor.sh" || true
+        echo ""
+        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | lens | cast"
+        ;;
+    esac
+  else
+    cmd_doctor
+  fi
+}
+
+# Normalize leading slash and aliases
+normalize_cmd() {
+  local c="$1"
+  c="${c#/}"  # strip one leading slash
+  c="$(printf '%s' "$c" | tr '[:upper:]' '[:lower:]')"
+  case "$c" in
+    watch|gmux|tv|live|demux) echo watch ;;
+    cam|camera|webcam) echo cam ;;
+    clock|timesync|zulu|worldclock|epoch) echo clock ;;
+    map|maptrace|geomap|traceroute) echo map ;;
+    webgrid|wg|webgrif|grid-chase) echo webgrid ;;
+    optical|optic|jawta|fountain) echo optical ;;
+    lens|bug|bugworld) echo lens ;;
+    phone|tether|brick|continuity) echo phone ;;
+    cast|share|mirror|chromecast|tv-cast) echo cast ;;
+    tiles|tile|mosaic-tiles) echo tiles ;;
+    gboom|halfblock|hb) echo gboom ;;
+    media|suite|fc-media) echo media ;;
+    doctor|doc) echo doctor ;;
+    install|setup) echo install ;;
+    update|upgrade|sync) echo update ;;
+    agents|clis|arena) echo agents ;;
+    help|h|\?) echo help ;;
+    version|ver|-v|--version) echo version ;;
+    *) echo "$c" ;;
+  esac
+}
+
+main() {
+  if [[ $# -eq 0 ]]; then
+    cmd_help
+    exit 0
+  fi
+  local raw="$1"
+  shift || true
+  local cmd
+  cmd="$(normalize_cmd "$raw")"
+  case "$cmd" in
+    watch) cmd_watch "$@" ;;
+    cam) cmd_cam "$@" ;;
+    clock) cmd_clock "$@" ;;
+    map) cmd_map "$@" ;;
+    webgrid) cmd_webgrid "$@" ;;
+    optical) cmd_optical "$@" ;;
+    lens) cmd_lens "$@" ;;
+    phone) cmd_phone "$@" ;;
+    cast) cmd_cast "$@" ;;
+    tiles) cmd_tiles "$@" ;;
+    gboom) cmd_gboom "$@" ;;
+    media) cmd_media "$@" ;;
+    doctor) cmd_doctor ;;
+    install) cmd_install "$@" ;;
+    update) cmd_update "$@" ;;
+    agents) cmd_agents "$@" ;;
+    help) cmd_help ;;
+    version) cmd_version ;;
+    *)
+      echo "unknown command: $raw" >&2
+      echo "try: fcs help" >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"

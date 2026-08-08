@@ -12,7 +12,7 @@ set -euo pipefail
 REPO_URL="${FC_MEDIA_REPO:-https://github.com/fornevercollective/grok-build.git}"
 DIR="${FC_MEDIA_DIR:-$HOME/Projects/grok-build}"
 PLUGIN_REL="plugins/fc-media-suite"
-VERSION="0.1.0"
+VERSION="$(cat "$(dirname "$0")/../VERSION" 2>/dev/null || echo "0.2.0")"
 
 echo "==> fc-media-suite v${VERSION} · fornevercollective"
 echo "    repo: $REPO_URL"
@@ -121,17 +121,39 @@ for t in yt-dlp ffmpeg ffplay; do
   fi
 done
 
-# --- 5. Doctor ---
+# --- 5. Universal CLI + shell + multi-AI agent packs ---
+# Makes /watch and friends work in any terminal and any AI (not Grok-only).
+if [[ -f "$PLUGIN/scripts/fcs" ]]; then
+  echo "==> universal fcs CLI (any terminal · any AI)"
+  export FC_MEDIA_DIR="$DIR"
+  export FCS_ROOT="$DIR"
+  export GROK_PLUGIN_ROOT="$PLUGIN"
+  bash "$PLUGIN/scripts/fcs" install all || echo "    warn: fcs install failed"
+else
+  echo "==> skip fcs (scripts/fcs missing)"
+fi
+
+# --- 6. Doctor ---
 if [[ -x "$PLUGIN/scripts/doctor.sh" ]]; then
   echo "==> doctor"
   bash "$PLUGIN/scripts/doctor.sh" || true
+fi
+if [[ -x "$HOME/.local/bin/fcs" ]] || [[ -f "$PLUGIN/scripts/fcs" ]]; then
+  echo "==> fcs doctor"
+  bash "${HOME}/.local/bin/fcs" doctor 2>/dev/null \
+    || bash "$PLUGIN/scripts/fcs" doctor 2>/dev/null \
+    || true
 fi
 
 echo ""
 echo "==> done · fc-media-suite v${VERSION}"
 echo "    credits: $PLUGIN/CREDITS.md"
-echo "    launch (real Terminal):"
+echo "    universal (any terminal · any AI):"
+echo "      fcs watch bloomberg"
+echo "      fcs watch popout cnn"
+echo "      fcs cam · fcs clock · fcs map starbase"
+echo "      /watch bloomberg     # after: source ~/.zshrc  (shell hook)"
+echo "    Grok TUI (optional):"
 echo "      cd $DIR && bash scripts/launch-watch.sh"
-echo "      /watch bloomberg · /cam · /clock · /map starbase"
 echo "    update:"
 echo "      bash $PLUGIN/scripts/update.sh"

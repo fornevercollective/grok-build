@@ -1,0 +1,81 @@
+# Terminal CLI AI registry for fc-media-suite skill install.
+# Source of truth updates from grok-build: fcs update | fcs install agents
+# Arena (models): https://arena.ai/leaderboard/agent
+# Columns: id	kind	arena_labs	skill_dir_rel_home	extra
+# kind: skill | rule | agents_md | commands | conf
+# skill_dir_rel_home: path under $HOME (no leading ~)
+# empty skill_dir is skipped; create parent when installing
+#
+# Labs covering Arena Agent leaderboard families (Claude/GPT/Grok/Kimi/Gemini/Qwen/DeepSeek/GLM/MiniMax/Mistral/Meta/…)
+
+agents	skill	multi	.agents/skills/fc-media-suite	hub
+claude	skill	Anthropic	.claude/skills/fc-media-suite	
+claude	commands	Anthropic	.claude/commands	fc-*.md
+codex	skill	OpenAI	.codex/skills/fc-media-suite	
+codex	agents_md	OpenAI	.codex/fc-media-suite.md	file
+cursor	skill	OpenAI+multi	.cursor/skills/fc-media-suite	
+cursor	rule	OpenAI+multi	.cursor/rules/fc-media-suite.mdc	file
+grok	skill	SpaceXAI	.grok/skills/fc-media-suite	
+continue	skill	multi	.continue/skills/fc-media-suite	
+openclaw	skill	multi	.openclaw/skills/fc-media-suite	
+opencode	skill	multi	.opencode/skills/fc-media-suite	
+opencode	skill	multi	.config/opencode/skills/fc-media-suite	
+qwen	skill	Alibaba	.qwen/skills/fc-media-suite	
+factory	skill	multi	.factory/skills/fc-media-suite	
+hermes	skill	multi	.hermes/skills/fc-media-suite	
+hermes	agents_md	multi	.hermes/fc-media-suite.md	file
+pi	skill	multi	.pi/agent/skills/fc-media-suite	
+junie	skill	multi	.junie/skills/fc-media-suite	
+kilocode	skill	multi	.kilocode/skills/fc-media-suite	
+roo	skill	multi	.roo/skills/fc-media-suite	
+trae	skill	multi	.trae/skills/fc-media-suite	
+gemini	skill	Google	.gemini/skills/fc-media-suite	
+windsurf	skill	multi	.codeium/windsurf/skills/fc-media-suite	
+amp	skill	multi	.amp/skills/fc-media-suite	
+goose	skill	multi	.config/goose/skills/fc-media-suite	
+aider	agents_md	multi	.aider/fc-media-suite.md	file
+copilot	skill	GitHub+OpenAI	.copilot/skills/fc-media-suite	
+droid	skill	multi	.droid/skills/fc-media-suite	
+kode	skill	multi	.kode/skills/fc-media-suite	
+lingma	skill	multi	.lingma/skills/fc-media-suite	
+iflow	skill	multi	.iflow/skills/fc-media-suite	
+augment	skill	multi	.augment/skills/fc-media-suite	
+tabnine	skill	multi	.tabnine/skills/fc-media-suite	
+zed	skill	multi	.config/zed/skills/fc-media-suite	
+kiro	skill	multi	.kiro/skills/fc-media-suite	
+bob	skill	multi	.bob/skills/fc-media-suite	
+codeium	skill	multi	.codeium/skills/fc-media-suite	
+amazonq	skill	Amazon	.aws/amazonq/skills/fc-media-suite	
+cody	skill	Sourcegraph	.cody/skills/fc-media-suite	
+devin	skill	multi	.devin/skills/fc-media-suite	
+sweagent	skill	multi	.sweagent/skills/fc-media-suite	
+openhands	skill	multi	.openhands/skills/fc-media-suite	
+aiderdesk	agents_md	multi	.aider-desk/fc-media-suite.md	file
+mustream	skill	multi	.mustream/skills/fc-media-suite	
+mux	skill	multi	.mux/skills/fc-media-suite	
+neovate	skill	multi	.neovate/skills/fc-media-suite	
+pochi	skill	multi	.pochi/skills/fc-media-suite	
+reasonix	skill	multi	.reasonix/skills/fc-media-suite	
+rovodev	skill	multi	.rovodev/skills/fc-media-suite	
+snowflake	skill	multi	.snowflake/skills/fc-media-suite	
+terramind	skill	multi	.terramind/skills/fc-media-suite	
+tinycloud	skill	multi	.tinycloud/skills/fc-media-suite	
+vibe	skill	multi	.vibe/skills/fc-media-suite	
+zcode	skill	multi	.zcode/skills/fc-media-suite	
+zencoder	skill	multi	.zencoder/skills/fc-media-suite	
+commandcode	skill	multi	.commandcode/skills/fc-media-suite	
+codebuddy	skill	multi	.codebuddy/skills/fc-media-suite	
+codestudio	skill	multi	.codestudio/skills/fc-media-suite	
+codemaker	skill	multi	.codemaker/skills/fc-media-suite	
+qoder	skill	multi	.qoder/skills/fc-media-suite	
+qoder-cn	skill	multi	.qoder-cn/skills/fc-media-suite	
+ona	skill	multi	.ona/skills/fc-media-suite	
+moxby	skill	multi	.moxby/skills/fc-media-suite	
+mcpjam	skill	multi	.mcpjam/skills/fc-media-suite	
+parallel	skill	multi	.parallel/skills/fc-media-suite	
+jazz	skill	multi	.jazz/skills/fc-media-suite	
+forge	skill	multi	.forge/skills/fc-media-suite	
+autohand	skill	multi	.autohand/skills/fc-media-suite	
+astrbot	skill	multi	.astrbot/skills/fc-media-suite	
+adal	skill	multi	.adal/skills/fc-media-suite	
+inferencesh	skill	multi	.inferencesh/skills/fc-media-suite	
