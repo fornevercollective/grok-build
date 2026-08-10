@@ -39,12 +39,23 @@ resolve_root() {
   if [[ -d "$HOME/Projects/grok-build/scripts" ]]; then
     echo "$HOME/Projects/grok-build"; return 0
   fi
+  # lab checkout (qbitOS / volumes)
+  for c in \
+    "/Volumes/qbitOS/00.dev/projects/grok-build" \
+    "$HOME/dev/grok-build" \
+    "$HOME/fornevercollective/grok-build"
+  do
+    if [[ -d "$c/scripts" && -f "$c/Cargo.toml" ]]; then
+      echo "$c"; return 0
+    fi
+  done
   # installed copy under ~/.local/share/fc-media-suite or plugin
   for c in \
     "${GROK_PLUGIN_ROOT:-}" \
     "$HOME/.grok/plugins/fc-media-suite" \
     "$HOME/.local/share/fc-media-suite" \
-    "$HOME/Projects/grok-build/plugins/fc-media-suite"
+    "$HOME/Projects/grok-build/plugins/fc-media-suite" \
+    "/Volumes/qbitOS/00.dev/projects/grok-build/plugins/fc-media-suite"
   do
     if [[ -n "$c" && -d "$c" ]]; then
       # plugin dir — parent may be repo
@@ -54,8 +65,19 @@ resolve_root() {
       if [[ -d "$HOME/Projects/grok-build/scripts" ]]; then
         echo "$HOME/Projects/grok-build"; return 0
       fi
+      if [[ -d "/Volumes/qbitOS/00.dev/projects/grok-build/scripts" ]]; then
+        echo "/Volumes/qbitOS/00.dev/projects/grok-build"; return 0
+      fi
     fi
   done
+  # last resort: follow share ROOT stamp from install
+  if [[ -f "$HOME/.local/share/fc-media-suite/ROOT" ]]; then
+    local stamped
+    stamped="$(cat "$HOME/.local/share/fc-media-suite/ROOT" 2>/dev/null || true)"
+    if [[ -n "$stamped" && -d "$stamped/scripts" ]]; then
+      echo "$stamped"; return 0
+    fi
+  fi
   echo "$HOME/Projects/grok-build"
 }
 
@@ -196,6 +218,7 @@ Commands (same as Grok slash tools):
   clock | timesync | zulu       world clock / NTP
   map | maptrace | geomap       traceroute map (Starbase honesty)
   webgrid | wg                  offline ugrad chase
+  glyph | peel | q-lift         glyph engine (arena · peel · broadcast · translate)
   language | lang               multi-lang keyboard streams
   optical                       optical blur / jawta / fountain TX
   lens                          bug-world / HDRI / 360 lens pop-out
@@ -204,6 +227,7 @@ Commands (same as Grok slash tools):
   tiles                         independent ffplay tile plane
   gboom                         half-block game surface
   media                         suite status
+  web | inspect | hygiene       /web inspect · multi-browser DevTools · job hygiene
   doctor                        binary stamps + tools + multi-CLI skills
   install [all|cli|shell|agents]  PATH + shell + every terminal CLI AI skill
   update [all|agents|cli]       git pull grok-build + refresh hub + agents
@@ -221,12 +245,22 @@ Agent-safe defaults:
 Examples:
   fcs watch bloomberg
   fcs watch popout 'https://x.com/user/media'
+  fcs glyph                     # arena mode=glyph :8790
+  fcs glyph popout
+  fcs glyph broadcast bloomberg
+  fcs glyph translate from en to es,fr,ja
+  fcs glyph webgrid
   fcs cam large
   fcs clock --once            # one-shot JSON-friendly
   fcs map popout 1.1.1.1
   fcs lens bug dual
   fcs cast list
   fcs tiles list
+  fcs web                       # Memory Glass /web inspect (any terminal)
+  fcs web browsers --json       # peer DevTools matrix (agent-safe)
+  fcs web open safari           # open Safari + print inspect keys
+  fcs hygiene                   # arm job hygiene (zombie download patch)
+  fcs web onramps               # every shell / AI / code entry
 
 Repo:  $ROOT
 Plugin: $PLUGIN
@@ -295,7 +329,12 @@ cmd_doctor() {
     echo "fcs doctor: NOT READY"
     return 1
   fi
-  echo "fcs doctor: READY · any terminal · any AI → fcs watch|cam|clock|map …"
+  if [[ -f "$SCRIPTS/launch-glyph.sh" ]]; then
+    echo "OK     glyph engine (fcs glyph · /glyph)"
+  else
+    echo "--     launch-glyph.sh missing"
+  fi
+  echo "fcs doctor: READY · any terminal · any AI → fcs watch|glyph|cam|clock|map …"
   echo "update skills from grok-build:  fcs update"
   return 0
 }
@@ -578,6 +617,52 @@ cmd_webgrid() {
   exec bash "$SCRIPTS/launch-webgrid.sh" "${args[@]+"${args[@]}"}"
 }
 
+# /web inspect · multi-browser DevTools · job hygiene (Memory Glass + peers)
+cmd_web() {
+  local mg_web=""
+  for c in \
+    "$ROOT/experiments/memory-glass/scripts/mg-web.sh" \
+    "/Volumes/qbitOS/00.dev/projects/grok-build/experiments/memory-glass/scripts/mg-web.sh" \
+    "$HOME/Projects/grok-build/experiments/memory-glass/scripts/mg-web.sh"
+  do
+    if [[ -f "$c" ]]; then mg_web="$c"; break; fi
+  done
+  if [[ -z "$mg_web" ]]; then
+    echo "mg-web.sh not found — expected experiments/memory-glass/scripts/mg-web.sh under $ROOT" >&2
+    exit 1
+  fi
+  exec bash "$mg_web" "$@"
+}
+
+cmd_glyph() {
+  # First-class glyph engine (arena · peel · broadcast · translate · webgrid)
+  # Nested alias still works: fcs watch glyph
+  local args=("$@")
+  if [[ -f "$SCRIPTS/launch-glyph.sh" ]]; then
+    # agent / non-TTY: default to popout/arena (not hung peel TUI)
+    if is_agent && [[ ${#args[@]} -eq 0 ]]; then
+      exec bash "$SCRIPTS/launch-glyph.sh" arena
+    fi
+    if is_agent && [[ ${#args[@]} -gt 0 ]]; then
+      local first
+      first="$(printf '%s' "${args[0]}" | tr '[:upper:]' '[:lower:]')"
+      case "$first" in
+        peel|dense|tty|seat)
+          # rewrite peel → popout for agents
+          exec bash "$SCRIPTS/launch-glyph.sh" popout "${args[@]:1}"
+          ;;
+      esac
+    fi
+    exec bash "$SCRIPTS/launch-glyph.sh" "${args[@]+"${args[@]}"}"
+  fi
+  # fallback chain
+  if [[ -f "$LIVE/glyph-watch-popout.sh" ]]; then
+    exec bash "$LIVE/glyph-watch-popout.sh" "$@"
+  fi
+  open "${LIVE_DEMUX_GLYPH_ARENA:-http://127.0.0.1:8790/ugrad-arena.html?mode=glyph}" 2>/dev/null || true
+  echo "glyph · opened arena (launch-glyph.sh missing)"
+}
+
 cmd_optical() {
   # optical is a /watch channel
   cmd_watch optical "$@"
@@ -632,7 +717,7 @@ cmd_media() {
       *)
         bash "$PLUGIN/scripts/doctor.sh" || true
         echo ""
-        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | language | drone | lens | cast"
+        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | glyph | language | drone | lens | cast"
         ;;
     esac
   else
@@ -651,7 +736,8 @@ normalize_cmd() {
     clock|timesync|zulu|worldclock|epoch) echo clock ;;
     map|maptrace|geomap|traceroute) echo map ;;
     webgrid|wg|webgrif|grid-chase) echo webgrid ;;
-    language|lang|translate|i18n|polyglot|multilang) echo language ;;
+    glyph|glyphs|peel|q-lift|qlift|quantum-lift|glyph-engine|glyph-tools) echo glyph ;;
+    language|lang|i18n|polyglot|multilang) echo language ;;
     drone|hud|fleet-hud) echo drone ;;
     optical|optic|jawta|fountain) echo optical ;;
     lens|bug|bugworld) echo lens ;;
@@ -660,6 +746,8 @@ normalize_cmd() {
     tiles|tile|mosaic-tiles) echo tiles ;;
     gboom|halfblock|hb) echo gboom ;;
     media|suite|fc-media) echo media ;;
+    # /web inspect · multi-browser DevTools · job hygiene (not webgrid)
+    web|webi|inspect|devtools|hygiene|job-hygiene|jobs-hygiene) echo web ;;
     doctor|doc) echo doctor ;;
     install|setup) echo install ;;
     update|upgrade|sync) echo update ;;
@@ -685,6 +773,7 @@ main() {
     clock) cmd_clock "$@" ;;
     map) cmd_map "$@" ;;
     webgrid) cmd_webgrid "$@" ;;
+    glyph) cmd_glyph "$@" ;;
     language) cmd_language "$@" ;;
     drone) cmd_drone "$@" ;;
     optical) cmd_optical "$@" ;;
@@ -694,6 +783,20 @@ main() {
     tiles) cmd_tiles "$@" ;;
     gboom) cmd_gboom "$@" ;;
     media) cmd_media "$@" ;;
+    web)
+      # fcs hygiene → web hygiene; fcs inspect → web inspect
+      case "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')" in
+        /hygiene|hygiene|job-hygiene|jobs-hygiene)
+          cmd_web hygiene "$@"
+          ;;
+        /inspect|inspect|devtools)
+          if [[ $# -eq 0 ]]; then cmd_web inspect; else cmd_web "$@"; fi
+          ;;
+        *)
+          cmd_web "$@"
+          ;;
+      esac
+      ;;
     doctor) cmd_doctor ;;
     install) cmd_install "$@" ;;
     update) cmd_update "$@" ;;

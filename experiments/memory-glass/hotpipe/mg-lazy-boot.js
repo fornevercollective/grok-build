@@ -1,10 +1,10 @@
 /* Memory Glass · Lazy boot
  * Product browse stays light: only core chrome runs. Lab / heavy tools load on demand.
- * VER: mg-lazy-boot-v2-park-safe
+ * VER: mg-lazy-boot-v3-web-hygiene
  */
 (function () {
   "use strict";
-  var VER = "mg-lazy-boot-v2-park-safe";
+  var VER = "mg-lazy-boot-v3-web-hygiene";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._lazyBootVer === VER) return;
   HP._lazyBootVer = VER;
@@ -60,6 +60,12 @@
     xr: "mg-xr-glasses.js",
     glasses: "mg-xr-glasses.js",
     webxr: "mg-xr-glasses.js",
+    hygiene: "job-hygiene.js",
+    jobHygiene: "job-hygiene.js",
+    jobs: "job-hygiene.js",
+    webInspect: "web-inspect.js",
+    inspect: "web-inspect.js",
+    web: "web-inspect.js",
   };
 
   function log(m) {
@@ -98,6 +104,10 @@
     if (key === "bodyPose") return !!window.__mgGetBodyPose;
     if (key === "dogPose") return !!window.__mgGetDogPose;
     if (key === "xr" || key === "glasses" || key === "webxr") return !!window.__mgXr;
+    if (key === "hygiene" || key === "jobHygiene" || key === "jobs")
+      return !!window.__mgJobHygiene;
+    if (key === "webInspect" || key === "inspect" || key === "web")
+      return !!window.__mgWebInspect;
     return false;
   }
 

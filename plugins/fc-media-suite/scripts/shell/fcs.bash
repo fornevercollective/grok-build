@@ -40,7 +40,7 @@ if ! command -v fcs >/dev/null 2>&1; then
   fcs() { _fcs_bin "$@"; }
 fi
 
-_fcs_slash_re='^[[:space:]]*/(watch|gmux|tv|live|cam|camera|clock|timesync|zulu|map|maptrace|geomap|webgrid|wg|optical|optic|lens|phone|cast|share|tiles|gboom|media|doctor)([[:space:]]|$)'
+_fcs_slash_re='^[[:space:]]*/(watch|gmux|tv|live|cam|camera|clock|timesync|zulu|map|maptrace|geomap|webgrid|wg|glyph|glyphs|peel|optical|optic|lens|phone|cast|share|tiles|gboom|media|doctor|language|lang|drone|web|webi|inspect|devtools|hygiene)([[:space:]]|$)'
 
 # Interactive bash: rewrite /watch … before execution via DEBUG trap (once per command)
 if [[ $- == *i* ]]; then
@@ -74,11 +74,16 @@ if [[ $- == *i* ]]; then
   alias fc-clock='fcs clock'
   alias fc-map='fcs map'
   alias fc-webgrid='fcs webgrid'
+  alias fc-web='fcs web'
+  alias fc-inspect='fcs inspect'
+  alias fc-hygiene='fcs hygiene'
+  alias fc-glyph='fcs glyph'
   alias fc-lens='fcs lens'
   alias fc-cast='fcs cast'
   alias fc-tiles='fcs tiles'
   alias fc-phone='fcs phone'
   alias fc-optical='fcs optical'
+  alias fc-language='fcs language'
   alias fc-media='fcs media'
 fi
 
@@ -95,7 +100,7 @@ fi
 command_not_found_handle() {
   local cmd="$1"
   case "$cmd" in
-    gmux|cam|clock|timesync|map|maptrace|webgrid|optical|lens|phone|cast|tiles|gboom)
+    gmux|cam|clock|timesync|map|maptrace|webgrid|glyph|peel|optical|lens|phone|cast|tiles|gboom|language|lang|drone|web|webi|inspect|devtools|hygiene)
       shift
       _fcs_bin "$cmd" "$@"
       return $?

@@ -2,9 +2,9 @@
 name: media-suite
 description: >
   fornevercollective media wall — /watch live demux, /cam, /clock timesync,
-  /map traceroute (Starbase), /webgrid, /drone, /language. Universal via `fcs` CLI
+  /map traceroute (Starbase), /webgrid, /glyph, /drone, /language. Universal via `fcs` CLI
   for any terminal and any AI (Grok, Claude, Codex, Cursor). Triggers: media suite,
-  fcs watch, install watch clock map, fc-media-suite, half-block video,
+  fcs watch, fcs glyph, install watch clock map, fc-media-suite, half-block video,
   SpaceXAI/x.com/Grok ops surfaces.
 ---
 
@@ -29,6 +29,8 @@ fcs cam
 fcs clock --once            # agent-safe
 fcs map popout starbase
 fcs webgrid popout
+fcs glyph                   # arena · peel · broadcast · translate
+fcs glyph translate from en to es,fr,ja
 fcs drone popout
 fcs language                # multi-lang simultaneous keyboard streams
 fcs lens bug
@@ -42,6 +44,9 @@ After shell install, plain terminals also accept:
 
 ```bash
 /watch bloomberg
+/glyph
+/glyph peel
+/glyph translate from en to es,fr,ja
 /cam
 /clock
 /map starbase
@@ -78,6 +83,7 @@ bash plugins/fc-media-suite/scripts/update.sh
 | `fc-maptrace-v1` | `/map` | `fcs map` |
 | `fc-halfblock-tty-video` | paint + `/gboom` | `fcs gboom` |
 | `fc-webgrid-tty-v1` | `/webgrid` | `fcs webgrid` |
+| `fc-glyph-engine-v1` | `/glyph` plant peel · broadcast · translate | `fcs glyph` |
 | `fc-webgrid-drone-hud-v1` | `/drone` multi-unit FPV HUD | `fcs drone` |
 | `fc-language-stream-v1` | `/language` simultaneous keyboard streams | `fcs language` |
 | `fc-optical-transfer-v1` | `/optical` | `fcs optical` |
@@ -99,6 +105,7 @@ bash scripts/launch-watch.sh     # TUI /watch · /cam
 bash scripts/launch-timesync.sh  # TUI /clock
 bash scripts/launch-map.sh       # TUI /map
 bash scripts/launch-webgrid.sh   # /webgrid chase
+bash scripts/launch-glyph.sh     # /glyph arena · peel · broadcast · translate
 bash scripts/launch-drone.sh     # /drone HUD (standalone)
 bash scripts/launch-language.sh  # /language multi-lang keyboard streams
 ```
@@ -108,10 +115,10 @@ bash scripts/launch-language.sh  # /language multi-lang keyboard streams
 | App | Port |
 |-----|------|
 | Soft Path (kid game) | **8765 + 8766 HTTPS** — exclusive |
-| Memory Glass PWA / glyph arena | **8787** |
-| Memory Glass webgrid | **9880** |
-| Cast align / TV hub | **8791 + 8792** |
-| Paper / lab experiments | **8790+** |
+| Paper / lab (glyph arena · lang desk · webgrid) | **8790** |
+| Memory Glass PWA fallback | **8787** |
+| Memory Glass webgrid (alt) | **9880** |
+| Cast align / layered preview | **8791 + 8792** |
 
 Do **not** bind 8765/8766 for cast, paper, or MG. See `docs/fornever-ledger/PORT-HANDOFF.md`.
 

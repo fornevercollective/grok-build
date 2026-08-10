@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Skills + Memory Glass · fcs.ugrad.ai/download</title>
+  <meta name="description" content="All fcs skills: /watch /cam /cast /optical /web /glyph … and Memory Glass browser download."/>
+  <link rel="canonical" href="https://fcs.ugrad.ai/download/"/>
+  <link rel="icon" href="/icon-mg.png" type="image/png"/>
+  <link rel="apple-touch-icon" href="/icon-mg.png"/>
+  <meta name="theme-color" content="#05070c"/>
+  <link rel="stylesheet" href="/fcs.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/" style="text-decoration:none;color:inherit">
+        <img class="brand-icon" src="/icon-mg.png" width="40" height="40" alt="Memory Glass"/>
+        <div>
+          <b>fcs · skills</b>
+          <span>Memory Glass download · fornevercollective suite</span>
+        </div>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Hub</a>
+        <a href="#skills">Skills</a>
+        <a href="#browser">Browser</a>
+        <a href="#install">Install</a>
+      </nav>
+    </header>
+
+    <section class="hero" style="grid-template-columns:1fr">
+      <div>
+        <h1>Every skill. One CLI. One browser.</h1>
+        <p>
+          This is the public home for <strong>fcs</strong> skills
+          (<code class="mono">/watch</code> · <code class="mono">/cam</code> · <code class="mono">/optical</code> · <code class="mono">/cast</code> · …)
+          and the <strong>Memory Glass</strong> browser download.
+          Run the same commands from any terminal or AI agent.
+        </p>
+        <div class="row">
+          <a class="btn primary" href="#skills">Browse all skills</a>
+          <a class="btn gold" href="#browser">Browser download</a>
+          <a class="btn" href="#install">Install fcs</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="card" style="margin-bottom:22px">
+      <h2>Quick run</h2>
+      <pre class="cli-block">fcs install
+fcs doctor
+fcs watch popout bloomberg
+fcs cam
+fcs optical
+fcs cast list
+fcs web
+fcs glyph
+fcs language</pre>
+    </div>
+
+    <div class="section-hd" id="skills">
+      <h2>All skills</h2>
+      <span>slash · fcs &lt;cmd&gt; · any terminal / any AI</span>
+    </div>
+    <div id="skills-host">
+      <p class="mono" style="color:var(--muted)">loading /skills.json…</p>
+    </div>
+
+    <div class="section-hd" id="browser">
+      <h2>Memory Glass browser</h2>
+      <span>download surface</span>
+    </div>
+    <div class="hero" style="margin-bottom:8px">
+      <div class="card">
+        <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">
+          <img src="/icon-mg.png" width="56" height="56" alt="" style="border-radius:14px;box-shadow:0 0 24px rgba(80,160,255,0.35)"/>
+          <div>
+            <div style="font-weight:700;font-size:16px">Memory Glass</div>
+            <div style="color:var(--muted);font-size:12px">Operator browser · IronLine · hotpipe · job hygiene</div>
+          </div>
+        </div>
+        <h2>Public build <span class="badge lab">lab</span></h2>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 10px">
+          Signed macOS package will land here:
+        </p>
+        <pre class="cli-block">https://fcs.ugrad.ai/download/Memory-Glass.dmg
+https://fcs.ugrad.ai/download/latest.json</pre>
+        <div class="row" style="margin-top:12px">
+          <button type="button" class="btn primary" id="btn-dmg" disabled>Download .dmg (soon)</button>
+          <a class="btn" href="https://github.com/fornevercollective/grok-build">Source</a>
+        </div>
+      </div>
+      <div class="card" id="install">
+        <h2>Lab install · now</h2>
+        <pre class="cli-block"># suite CLI + AI skills
+bash plugins/fc-media-suite/scripts/fcs install
+
+# Memory Glass.app
+cd experiments/memory-glass
+bash build-mac-app.sh
+# → ~/Applications/Memory Glass.app
+
+bash scripts/mg-hotpipe-sync.sh
+# focus MG → ⌘⇧R
+fcs web
+fcs hygiene</pre>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Why this browser</h2>
+      <table class="simple">
+        <thead>
+          <tr><th>Surface</th><th>Memory Glass</th><th>Typical browsers</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Skills wall</td>
+            <td class="status-ok">fcs /watch /cam /cast /optical /web … in one suite</td>
+            <td>Separate apps and tabs</td>
+          </tr>
+          <tr>
+            <td>Downloads</td>
+            <td class="status-ok">Job hygiene · no zombie Preparing · cancel always</td>
+            <td>Stuck list rows · dead cancel</td>
+          </tr>
+          <tr>
+            <td>Inspect</td>
+            <td class="status-ok">/web multi-browser matrix · dual float</td>
+            <td>DevTools only in that browser</td>
+          </tr>
+          <tr>
+            <td>Train / media</td>
+            <td class="status-ok">WebGrid · glyph · language · cast wall</td>
+            <td>Bolt-on extensions</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="foot">
+      <div>
+        <a class="brand" href="/" style="text-decoration:none;color:inherit;display:inline-flex;gap:8px;align-items:center">
+          <img src="/icon-mg.png" width="22" height="22" alt="" style="border-radius:6px"/>
+          <span>fcs.ugrad.ai</span>
+        </a>
+      </div>
+      <div>
+        <a href="/skills.json">skills.json</a> ·
+        <a href="/sitemap">sitemap</a> ·
+        <a href="/llms.txt">llms.txt</a> ·
+        <a href="/version.json">version</a>
+      </div>
+    </footer>
+  </div>
+  <script src="/fcs.js"></script>
+  <script>
+    fetch("/version.json").then(function(r){return r.json()}).then(function(v){
+      if (v && v.browser && v.browser.status === "public") {
+        var b = document.getElementById("btn-dmg");
+        if (b) { b.disabled = false; b.textContent = "Download Memory Glass"; }
+      }
+    }).catch(function(){});
+  </script>
+</body>
+</html>

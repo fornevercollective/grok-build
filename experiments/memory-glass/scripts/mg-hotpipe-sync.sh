@@ -100,6 +100,12 @@ bake_companion "race-shell.js" "language-hotpipe.js" "COMPANION_LANGUAGE_HOTPIPE
 bake_companion "live.js" "mg-xr-glasses.js" "COMPANION_MG_XR_GLASSES" "xr-glasses→live"
 bake_companion "session-recorder.js" "mg-xr-glasses.js" "COMPANION_MG_XR_GLASSES" "xr-glasses→rec"
 bake_companion "mg-lazy-boot.js" "mg-xr-glasses.js" "COMPANION_MG_XR_GLASSES" "xr-glasses→lazy"
+# Job hygiene + /web inspect (Safari zombie class · multi-browser DevTools)
+bake_companion "live.js" "job-hygiene.js" "COMPANION_JOB_HYGIENE" "job-hygiene→live"
+bake_companion "session-recorder.js" "job-hygiene.js" "COMPANION_JOB_HYGIENE" "job-hygiene→rec"
+bake_companion "session-recorder.js" "web-inspect.js" "COMPANION_WEB_INSPECT" "web-inspect→rec"
+bake_companion "mg-lazy-boot.js" "job-hygiene.js" "COMPANION_JOB_HYGIENE" "job-hygiene→lazy"
+bake_companion "mg-lazy-boot.js" "web-inspect.js" "COMPANION_WEB_INSPECT" "web-inspect→lazy"
 
 # ad-hoc re-sign (Resources change)
 if [[ -x "$ROOT/scripts/resign-app.sh" ]]; then

@@ -1,3 +1,16 @@
+## 0.2.2 — 2026-08-08
+
+### Glyph engine (`fc-glyph-engine-v1` · arena v1.7 color update)
+
+- First-class **`/glyph`** · **`fcs glyph`** for every terminal CLI AI (Arena-mapped packs)
+- `scripts/launch-glyph.sh` — arena · **color** · peel · popout/lift · broadcast · encode/decode · translate · webgrid · **soak** · stack · doctor
+- **Color update:** modes `hybrid|luma|rgb|chroma|anaglyph|hsv` · heat `fc|turbo|viridis|magma` · URL `?color=&heat=` · BC `color_update`
+- **Soak:** `fcs glyph soak 30` → `~/.panda/packs/glyph-soak-latest.json`
+- Agent contracts: `scripts/glyph/llms-glyph.txt` · `data/glyph/manifest.json` on :8790
+- Bridges: lang-chat-desk live translation · layered optical broadcast · webgrid chase
+- Shell slash rewrite: `/glyph` in zsh/bash hooks
+- Nested path retained: `/watch glyph` · `glyph-watch-popout.sh`
+
 # Changelog · fc-media-suite
 
 All notable releases of the **installable plugin pack** + coordinated fork binary stamps.

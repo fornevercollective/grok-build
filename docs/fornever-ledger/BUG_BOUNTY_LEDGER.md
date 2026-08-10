@@ -131,3 +131,5 @@ echo "$(date -u +%Y-%m-%d) MG-0XX title — repro: …" >> \
 - `experiments/memory-glass/hotpipe/plans/COMPETITIVE_HARD_TRUTH.md`  
 
 | MG-042 | P0 | SIGABRT titlebar nil / IPC | tao titlebar_buttons_hidden null FullScreen button (macOS 26) | safe hide + ipc catch_unwind | fixed 2026-07-19 |
+
+| MG-HYG-001 | med | Safari zombie download `*` Preparing forever; cancel dead | Orphan download UI job / paste garbage | job-hygiene.js + zombie_download mitigation + /web inspect | shipped-hotpipe |

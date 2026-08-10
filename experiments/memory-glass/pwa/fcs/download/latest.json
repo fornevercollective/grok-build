@@ -1,0 +1,10 @@
+{
+  "product": "Memory Glass",
+  "status": "lab",
+  "version": null,
+  "dmg": null,
+  "note": "Public DMG not published yet. Lab: build-mac-app.sh · future host https://fcs.ugrad.ai/download/",
+  "install_cli": "fcs install",
+  "hub": "https://fcs.ugrad.ai/",
+  "lang_models": "https://lang.ugrad.ai/data/language/models-offline.html"
+}

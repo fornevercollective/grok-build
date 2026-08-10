@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>fcs · skills · Memory Glass · fcs.ugrad.ai</title>
+  <meta name="description" content="fcs skills: /watch /cam /cast /optical /web /glyph /language … Memory Glass browser download."/>
+  <meta name="theme-color" content="#05070c"/>
+  <link rel="canonical" href="https://fcs.ugrad.ai/"/>
+  <link rel="icon" href="/icon-mg.png" type="image/png"/>
+  <link rel="apple-touch-icon" href="/icon-mg.png"/>
+  <meta property="og:title" content="fcs · fornevercollective suite"/>
+  <meta property="og:url" content="https://fcs.ugrad.ai/"/>
+  <meta property="og:image" content="https://fcs.ugrad.ai/icon-mg.png"/>
+  <link rel="alternate" type="application/json" href="/skills.json"/>
+  <link rel="stylesheet" href="/fcs.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/" style="text-decoration:none;color:inherit">
+        <img class="brand-icon" src="/icon-mg.png" width="40" height="40" alt="Memory Glass"/>
+        <div>
+          <b>fcs</b>
+          <span>fornevercollective suite · skills + browser</span>
+        </div>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#skills">Skills</a>
+        <a href="/download/">Download</a>
+        <a href="#install">Install</a>
+        <a class="btn primary" href="/download/#browser">Get browser</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>All the skills.<br/>One suite CLI.</h1>
+        <p>
+          <strong>/watch</strong> · <strong>/cam</strong> · <strong>/optical</strong> · <strong>/cast</strong> ·
+          <strong>/clock</strong> · <strong>/map</strong> · <strong>/webgrid</strong> · <strong>/web</strong> ·
+          <strong>/glyph</strong> · <strong>/language</strong> · <strong>/drone</strong> · <strong>/lens</strong> ·
+          <strong>/tiles</strong> · <strong>/phone</strong> · <strong>/hygiene</strong>
+        </p>
+        <p>
+          <strong>fcs</strong> = fornevercollective suite — same commands from Terminal, Grok, Claude, Codex, Cursor, or any agent.
+          Browser download: <a href="/download/">Memory Glass</a>.
+        </p>
+        <div class="row">
+          <a class="btn primary" href="#skills">All skills</a>
+          <a class="btn gold" href="/download/">Download page</a>
+        </div>
+      </div>
+      <div class="card" id="install">
+        <h2>Install · any machine</h2>
+        <pre class="cli-block">bash plugins/fc-media-suite/scripts/fcs install
+
+fcs doctor
+fcs watch popout bloomberg
+fcs cam
+fcs optical
+fcs cast list
+fcs web
+fcs glyph</pre>
+        <p style="margin:12px 0 0;font-size:12px;color:var(--muted)">
+          Agents: run shell <code class="mono">fcs …</code> — do not reimplement.
+          <span id="ver-pill" class="pill" style="margin-left:6px">v—</span>
+        </p>
+      </div>
+    </section>
+
+    <div class="section-hd" id="skills">
+      <h2>Skills we built</h2>
+      <span>slash · fcs &lt;cmd&gt; · focus of this site</span>
+    </div>
+    <div id="skills-host">
+      <p class="mono" style="color:var(--muted)">loading /skills.json…</p>
+    </div>
+
+    <div class="section-hd">
+      <h2>Browser</h2>
+      <span>Memory Glass</span>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <img src="/icon-mg.png" width="48" height="48" alt="" style="border-radius:12px"/>
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:700">Memory Glass</div>
+          <div style="color:var(--muted);font-size:13px">
+            Download home for the suite browser · job hygiene · /web inspect · train loops
+          </div>
+        </div>
+        <a class="btn primary" href="/download/#browser">Open download</a>
+      </div>
+    </div>
+
+    <footer class="foot">
+      <div>
+        <span class="pill"><span class="dot"></span> fcs.ugrad.ai</span>
+        <span> updated <span id="updated">—</span></span>
+      </div>
+      <div>
+        <a href="/skills.json">skills.json</a> ·
+        <a href="/sitemap">sitemap</a> ·
+        <a href="/llms.txt">llms.txt</a> ·
+        <a href="/version.json">version.json</a>
+      </div>
+    </footer>
+  </div>
+  <script src="/fcs.js"></script>
+</body>
+</html>

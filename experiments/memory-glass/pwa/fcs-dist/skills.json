@@ -1,0 +1,213 @@
+{
+  "schema": "fcs.skills/v1",
+  "product": "fcs.ugrad.ai",
+  "title": "fornevercollective skills · universal fcs CLI",
+  "cli": "fcs",
+  "install": "fcs install",
+  "updated": "2026-08-10",
+  "groups": [
+    {
+      "id": "media-wall",
+      "label": "Media wall",
+      "skills": [
+        {
+          "id": "watch",
+          "cmd": "fcs watch",
+          "slash": "/watch",
+          "title": "Live demux",
+          "blurb": "Half-block TTY or pop-out live video · news · VEVO · trailers · X broadcasts",
+          "status": "shipped"
+        },
+        {
+          "id": "cam",
+          "cmd": "fcs cam",
+          "slash": "/cam",
+          "title": "Self-view cam",
+          "blurb": "Large self-view · dual desk · Continuity phone",
+          "status": "shipped"
+        },
+        {
+          "id": "phone",
+          "cmd": "fcs phone",
+          "slash": "/phone",
+          "title": "Phone camera",
+          "blurb": "Continuity Camera or still-pipe into /cam desk",
+          "status": "shipped"
+        },
+        {
+          "id": "clock",
+          "cmd": "fcs clock",
+          "slash": "/clock",
+          "title": "World clock",
+          "blurb": "Zulu · markets · NTP tier · epoch drift",
+          "status": "shipped"
+        },
+        {
+          "id": "map",
+          "cmd": "fcs map",
+          "slash": "/map",
+          "title": "Maptrace",
+          "blurb": "World map + traceroute · Starbase honesty pin",
+          "status": "shipped"
+        },
+        {
+          "id": "cast",
+          "cmd": "fcs cast",
+          "slash": "/cast",
+          "title": "Cast wall",
+          "blurb": "Chromecast / TCL Google TV · desk dual · mosaics",
+          "status": "shipped"
+        },
+        {
+          "id": "tiles",
+          "cmd": "fcs tiles",
+          "slash": "/tiles",
+          "title": "Tile plane",
+          "blurb": "Independent ffplay tiles · load place close crash-isolate",
+          "status": "shipped"
+        },
+        {
+          "id": "lens",
+          "cmd": "fcs lens",
+          "slash": "/lens",
+          "title": "Live lens",
+          "blurb": "Bug world · HDRI anamorphic · 360 compound-eye",
+          "status": "shipped"
+        },
+        {
+          "id": "optical",
+          "cmd": "fcs optical",
+          "slash": "/optical",
+          "title": "Optical transfer",
+          "blurb": "Light pulse / fountain QR · air-gap screen→camera",
+          "status": "shipped"
+        }
+      ]
+    },
+    {
+      "id": "train-lab",
+      "label": "Train · lab · language",
+      "skills": [
+        {
+          "id": "webgrid",
+          "cmd": "fcs webgrid",
+          "slash": "/webgrid",
+          "title": "WebGrid chase",
+          "blurb": "Offline ugrad chase on TTY half-block · training BPS",
+          "status": "shipped"
+        },
+        {
+          "id": "glyph",
+          "cmd": "fcs glyph",
+          "slash": "/glyph",
+          "title": "Glyph engine",
+          "blurb": "Dense peel · quantum-lift · broadcast TX/RX · live translation",
+          "status": "shipped"
+        },
+        {
+          "id": "language",
+          "cmd": "fcs language",
+          "slash": "/language",
+          "title": "Language desk",
+          "blurb": "Multi-lang streams · captions · desk at lang.ugrad.ai",
+          "status": "shipped",
+          "href": "https://lang.ugrad.ai/"
+        },
+        {
+          "id": "drone",
+          "cmd": "fcs drone",
+          "slash": "/drone",
+          "title": "Drone HUD",
+          "blurb": "Multi-unit FPV ops HUD · SAM/DINO/SLAM/GSPLAT hooks",
+          "status": "shipped"
+        }
+      ]
+    },
+    {
+      "id": "browser-dev",
+      "label": "Browser · inspect · hygiene",
+      "skills": [
+        {
+          "id": "web",
+          "cmd": "fcs web",
+          "slash": "/web",
+          "title": "/web inspect",
+          "blurb": "Multi-browser DevTools onramp · field triggers · job hygiene",
+          "status": "shipped",
+          "aliases": ["fcs inspect", "fcs hygiene"]
+        },
+        {
+          "id": "memory-glass",
+          "cmd": "open Memory Glass",
+          "slash": "/memory-glass",
+          "title": "Memory Glass",
+          "blurb": "Rust + hotpipe browser shell · IronLine · tensor playground",
+          "status": "lab",
+          "href": "/download"
+        },
+        {
+          "id": "media-suite",
+          "cmd": "fcs doctor",
+          "slash": "/media",
+          "title": "Suite doctor",
+          "blurb": "Binary stamps · tools · multi-CLI skill install",
+          "status": "shipped"
+        },
+        {
+          "id": "xr",
+          "cmd": "bash experiments/memory-glass/scripts/mg-xr-dev.sh auto",
+          "slash": "/xr",
+          "title": "XR glasses pipe",
+          "blurb": "Quest · XREAL · Vision Pro multi-seat · room lab · for-ai",
+          "status": "shipped",
+          "href": "http://127.0.0.1:8787/xr-onboard.html"
+        }
+      ]
+    },
+    {
+      "id": "agent-desktop",
+      "label": "Agent hands · voice",
+      "skills": [
+        {
+          "id": "desktop-harness",
+          "cmd": "desktop-harness",
+          "slash": "/hands",
+          "title": "desktop-harness",
+          "blurb": "AX-first Mac GUI control for Grok Build agents (xfreeze2)",
+          "status": "external",
+          "href": "https://github.com/xfreeze2/desktop-harness",
+          "install": "bash scripts/install-desktop-harness.sh"
+        },
+        {
+          "id": "quill",
+          "cmd": "open -a Quill",
+          "slash": "/quill",
+          "title": "Quill dictation",
+          "blurb": "Speak anywhere · Grok STT · lands in focused field (xfreeze2)",
+          "status": "external",
+          "href": "https://github.com/xfreeze2/quill",
+          "install": "bash scripts/install-quill.sh"
+        },
+        {
+          "id": "lab-env",
+          "cmd": "bash scripts/mg-lab-env.sh doctor",
+          "slash": "/lab",
+          "title": "Lab env doctor",
+          "blurb": "One checklist: MG · web · xr · fcs · harness · quill · upstream pin",
+          "status": "shipped"
+        }
+      ]
+    }
+  ],
+  "links": {
+    "lang_sitemap": "https://lang.ugrad.ai/sitemap.html",
+    "lang_models_offline": "https://lang.ugrad.ai/data/language/models-offline.html",
+    "lang_hub": "https://lang.ugrad.ai/",
+    "fcs_hub": "https://fcs.ugrad.ai/",
+    "desktop_harness": "https://github.com/xfreeze2/desktop-harness",
+    "quill": "https://github.com/xfreeze2/quill",
+    "cli_help": "fcs help",
+    "install": "fcs install",
+    "lab_doc": "docs/LAB_ENV.md"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "product": "fcs.ugrad.ai",
+  "name": "fornevercollective suite",
+  "version": "0.2.3",
+  "cli": "fcs",
+  "updated": "2026-08-10",
+  "browser": {
+    "name": "Memory Glass",
+    "status": "lab",
+    "download_path": "/download",
+    "note": "macOS lab shell · future public DMG lands here"
+  },
+  "related": {
+    "lang": "https://lang.ugrad.ai/",
+    "lang_sitemap": "https://lang.ugrad.ai/sitemap.html",
+    "lang_models_offline": "https://lang.ugrad.ai/data/language/models-offline.html",
+    "repo": "https://github.com/fornevercollective/grok-build"
+  }
+}

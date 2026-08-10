@@ -1,0 +1,60 @@
+# fcs.ugrad.ai · fornevercollective suite
+
+> Universal CLI `fcs` + skill map + Memory Glass browser download hub.
+> Sibling of lang.ugrad.ai (language construct · offline models · sitemap).
+
+## Product
+
+- CLI name: fcs (fornevercollective suite)
+- Any terminal · any AI agent: run shell `fcs <command>` — do not reimplement
+- Browser lab: Memory Glass (download surface: https://fcs.ugrad.ai/download)
+
+## Machine maps
+
+- https://fcs.ugrad.ai/sitemap.json
+- https://fcs.ugrad.ai/skills.json
+- https://fcs.ugrad.ai/version.json
+- https://lang.ugrad.ai/sitemap.json
+- https://lang.ugrad.ai/sitemap.html
+- https://lang.ugrad.ai/data/language/models-offline.html
+
+## Install
+
+```bash
+# from grok-build checkout
+bash plugins/fc-media-suite/scripts/fcs install
+# then
+fcs doctor
+fcs web onramps
+```
+
+## Core commands
+
+| Slash | CLI |
+|-------|-----|
+| /watch | fcs watch |
+| /cam | fcs cam |
+| /clock | fcs clock |
+| /map | fcs map |
+| /webgrid | fcs webgrid |
+| /web /inspect | fcs web |
+| /hygiene | fcs hygiene |
+| /glyph | fcs glyph |
+| /language | fcs language |
+| /drone | fcs drone |
+| /lens | fcs lens |
+| /cast | fcs cast |
+| /tiles | fcs tiles |
+| /optical | fcs optical |
+| /phone | fcs phone |
+
+## Agent rules
+
+1. Prefer `fcs` over inventing players or DevTools flows.
+2. Non-TTY: fcs defaults pop-out / --once (set FCS_AGENT=1 if needed).
+3. Soft Path ports 8765/8766 — do not bind.
+4. Language product lives on https://lang.ugrad.ai — offline models page linked above.
+5. Browser download + skill index live on this host (fcs.ugrad.ai).
+
+Repo: https://github.com/fornevercollective/grok-build
+Plugin: plugins/fc-media-suite

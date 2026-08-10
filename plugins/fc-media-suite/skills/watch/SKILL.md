@@ -32,12 +32,15 @@ bash scripts/launch-watch.sh
 /watch optical light sos
 /watch popout optical  # /watch optical + OS browser display
 /optical             # same as /watch optical blur
-/watch glyph         # plant glyph control plane (fc-glyph-watch-v1)
+/glyph                   # FIRST-CLASS glyph engine (prefer this · fcs glyph)
+/glyph peel | popout | broadcast | translate | webgrid | stack
+/watch glyph             # nested plant path (fc-glyph-watch-v1) — still valid
 /watch glyph peel
 /watch glyph https://…   # stream + glyph channel
 /watch popout glyph      # quantum-lift ffplay + open arena Glyph form
 /watch popout glyph 'https://…'
 /watch q-lift URL        # alias
+bash scripts/launch-glyph.sh
 bash scripts/live-demux/glyph-watch-popout.sh [URL]
 /watch https://x.com/zanelowe/media          # X profile Media tab (video playlist)
 /watch popout https://x.com/zanelowe/media  # same → external ffplay
@@ -46,18 +49,22 @@ bash scripts/live-demux/glyph-watch-popout.sh [URL]
 
 **Not a /watch channel:** offline webgrid chase is **`/webgrid`** (own slash · `scripts/launch-webgrid.sh`).
 
-## Glyph plant path (`fc-glyph-watch-v1`)
+## Glyph plant path (`fc-glyph-engine-v1` · nested `fc-glyph-watch-v1`)
 
+**Prefer first-class:** `/glyph` · `fcs glyph` (see skill `glyph/SKILL.md`).  
 Not optical TX (`/watch optical glyph` = fountain grid TX).  
-`/watch glyph` = plant control plane · debate handoff · dense peel seat.
+`/watch glyph` = nested plant control plane · debate handoff · dense peel seat.
 
 | Action | What happens |
 |--------|----------------|
+| **`/glyph`** / `fcs glyph` | arena + engine (any AI) |
 | `/watch glyph` | TTY dense grid · status HUD |
-| **`o`** in modal | `glyph-watch-popout.sh` → quantum-lift ffplay + open `:8765` Glyph tools |
+| **`o`** in modal | `glyph-watch-popout.sh` → quantum-lift ffplay + open `:8790` Glyph tools |
 | `/watch popout glyph [URL]` | same without TTY |
 | Path | yt-dlp → ffmpeg/ffplay (HW) → `last-lift.json` → multiplex Rubik/Bloch/glyph_dense/tensor |
-| Arena | `http://127.0.0.1:8787/ugrad-arena.html?mode=glyph` (MG PWA · Soft Path owns **:8765**) |
+| Arena | `http://127.0.0.1:8790/ugrad-arena.html?mode=glyph` (paper/lab · Soft Path owns **:8765**) |
+| Translate | `fcs glyph translate from en to es,fr,ja` → lang-chat-desk |
+| Broadcast | `fcs glyph broadcast bloomberg` → layered optical TX |
 
 Honesty: lab BPS ≠ ARC % · lift = control plane · peel owns dense map · race XOR peel.
 

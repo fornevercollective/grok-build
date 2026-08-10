@@ -1,0 +1,69 @@
+{
+  "schema": "fcs.ugrad-sitemap/v1",
+  "product": "fcs.ugrad.ai",
+  "title": "fornevercollective suite · full routing map for humans + AI",
+  "canonical": "https://fcs.ugrad.ai/",
+  "local": "http://127.0.0.1:8790/fcs/",
+  "updated": "2026-08-10",
+  "related_sitemaps": [
+    "https://lang.ugrad.ai/sitemap.json",
+    "https://lang.ugrad.ai/sitemap.html"
+  ],
+  "entrypoints": {
+    "human": "https://fcs.ugrad.ai/",
+    "ai_first": "https://fcs.ugrad.ai/sitemap.json",
+    "skills": "https://fcs.ugrad.ai/skills.json",
+    "version": "https://fcs.ugrad.ai/version.json",
+    "download": "https://fcs.ugrad.ai/download",
+    "llms": "https://fcs.ugrad.ai/llms.txt",
+    "lang_models": "https://lang.ugrad.ai/data/language/models-offline.html",
+    "lang_sitemap": "https://lang.ugrad.ai/sitemap.html"
+  },
+  "read_order_for_ai": [
+    "https://fcs.ugrad.ai/sitemap.json",
+    "https://fcs.ugrad.ai/version.json",
+    "https://fcs.ugrad.ai/skills.json",
+    "https://fcs.ugrad.ai/llms.txt",
+    "https://lang.ugrad.ai/sitemap.json",
+    "https://lang.ugrad.ai/data/language/models-offline.html"
+  ],
+  "routes": [
+    {
+      "id": "hub",
+      "path": "/",
+      "file": "index.html",
+      "title": "fcs · suite hub",
+      "role": "landing · skills grid · CLI · links to lang + download"
+    },
+    {
+      "id": "download",
+      "path": "/download",
+      "aliases": ["/download.html"],
+      "file": "download.html",
+      "title": "Memory Glass download",
+      "role": "future public browser download · fcs install · lab status"
+    },
+    {
+      "id": "skills",
+      "path": "/skills.json",
+      "file": "skills.json",
+      "title": "Skills catalog",
+      "role": "machine-readable skill roster"
+    },
+    {
+      "id": "sitemap",
+      "path": "/sitemap.html",
+      "file": "sitemap.html",
+      "title": "Human sitemap",
+      "role": "scorecard-style map + lang cross-links"
+    },
+    {
+      "id": "models",
+      "path": "/models",
+      "aliases": ["/models.html"],
+      "file": "models.html",
+      "title": "Offline models bridge",
+      "role": "points at lang.ugrad.ai offline models + local fcs use"
+    }
+  ]
+}

@@ -2,10 +2,12 @@
 name: fc-media-suite
 description: >
   fornevercollective media wall — /watch live demux, /cam, /clock timesync, /map,
-  /webgrid, /lens, /cast, /tiles. Use the universal `fcs` CLI from any terminal or AI
-  agent (not Grok-only). Arena-mapped terminal CLIs: Claude Code, Codex, Cursor, Grok,
-  Continue, OpenCode, Qwen, Gemini, Aider, Hermes, and more. Triggers: /watch, fcs watch,
-  media suite, bloomberg live, half-block video, starbase map, timesync, cast TV.
+  /webgrid, /web, /inspect, /hygiene, /glyph, /language, /lens, /cast, /tiles.
+  Use the universal `fcs` CLI from any terminal or AI agent (not Grok-only).
+  Arena-mapped terminal CLIs: Claude Code, Codex, Cursor, Grok, Continue, OpenCode,
+  Qwen, Gemini, Aider, Hermes, and more.
+  Triggers: /watch, /web, /inspect, /hygiene, /glyph, fcs web, fcs watch, media suite,
+  bloomberg live, half-block video, starbase map, DevTools onramp, job hygiene.
 ---
 
 # fc-media-suite · universal (any terminal CLI AI)
@@ -18,22 +20,49 @@ Anthropic→`claude` · OpenAI→`codex`/`cursor` · SpaceXAI→`grok` · Google
 
 Do **not** reimplement players in chat. Run the **`fcs`** CLI.
 
+**Hub:** https://fcs.ugrad.ai · **Browser download:** https://fcs.ugrad.ai/download · **Lang:** https://lang.ugrad.ai
+
 ## Prefer this over Grok-only slash
 
 | Surface | Agent / shell command |
 |---------|------------------------|
 | `/watch` | `fcs watch [channel\|url]` |
 | `/watch popout` | `fcs watch popout [channel]` |
+| `/glyph` | `fcs glyph` · `fcs glyph popout` · `fcs glyph translate from en to es,fr,ja` |
 | `/cam` | `fcs cam` · OS: `fcs cam all` |
 | `/clock` | `fcs clock` · agent: `fcs clock --once` |
 | `/map` | `fcs map [target]` · `fcs map popout 1.1.1.1` |
 | `/webgrid` | `fcs webgrid` · `fcs webgrid popout` |
+| `/web` · `/inspect` | `fcs web` · `fcs inspect` · multi-browser DevTools + MG hygiene |
+| `/hygiene` | `fcs hygiene` · zombie download / job hygiene patch |
+| `/language` | `fcs language` · lang-chat-desk multi-lang |
 | `/optical` | `fcs optical` |
 | `/lens` | `fcs lens bug` · `fcs lens 360 dual` |
 | `/phone` | `fcs phone start` |
 | `/cast` | `fcs cast list` · `fcs cast url 'https://…'` |
 | `/tiles` | `fcs tiles list` · `fcs tiles load 12 URL` |
 | doctor | `fcs doctor` |
+
+### Glyph engine (`fc-glyph-engine-v1`)
+
+```bash
+fcs glyph                         # arena :8790 mode=glyph
+fcs glyph color chroma turbo      # dense color update (anaglyph|hsv|…)
+fcs glyph peel                    # TTY dense peel (real Terminal)
+fcs glyph popout [URL]            # quantum-lift + arena (agent-safe)
+fcs glyph broadcast bloomberg     # layered TX + glyph budget
+fcs glyph encode "hello"
+fcs glyph translate from en to es,fr,ja
+fcs glyph webgrid
+fcs glyph soak 30                 # doctor · color cycle · contracts
+fcs glyph stack                   # arena + language + webgrid
+fcs glyph doctor
+```
+
+Surfaces:  
+http://127.0.0.1:8790/ugrad-arena.html?mode=glyph ·  
+http://127.0.0.1:8790/lang-chat-desk.html?from=en&to=es,fr,ja&v=22vis ·  
+http://127.0.0.1:8790/llms-glyph.txt
 
 ## Agent rules
 
@@ -72,12 +101,32 @@ Skill hub: `~/.local/share/fc-media-suite/skills/fc-media-suite` →
 ```bash
 fcs watch popout bloomberg
 fcs watch popout 'https://x.com/zanelowe/media'
+fcs glyph
+fcs glyph translate from en to es,fr,ja
+fcs glyph webgrid
 fcs clock --once
 fcs map popout 8.8.8.8
 fcs lens bug
 fcs cast list
+fcs web
+fcs web browsers --json
+fcs web open safari
+fcs hygiene
+fcs web onramps
 fcs doctor
 ```
+
+### /web inspect (all browsers · all terminals)
+
+```bash
+fcs web                  # open Memory Glass · /web inspect panel
+fcs web browsers         # peer DevTools matrix
+fcs web hygiene          # arm job hygiene (Safari zombie class)
+fcs web open chrome      # open peer browser + print inspect keys
+fcs web onramps          # every shell / AI / code entry point
+```
+
+Bus: `~/.panda/mg-session/web-cmd.json` (MG polls). Script: `experiments/memory-glass/scripts/mg-web.sh`.
 
 Repo: https://github.com/fornevercollective/grok-build  
 Plugin: `plugins/fc-media-suite`  

@@ -66,3 +66,9 @@ open -n "$HOME/Applications/Memory Glass.app" --args \
 ## Year context
 
 This app sits in a year-long fornevercollective stack: ugrad, qbitos-*, Mu, charm, blank, freya, GrokYtalkY, grok-build fork of xai-org. Agents should **learn and extend**, not replace or delete that history.
+
+## /web (universal)
+
+```bash
+fcs web · fcs inspect · fcs hygiene · fcs web onramps
+```

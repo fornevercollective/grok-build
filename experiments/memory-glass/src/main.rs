@@ -2625,6 +2625,19 @@ fn mitigation_for_error(msg: &str) -> Option<&'static str> {
     {
         return Some("popup_guard");
     }
+    // Safari-class zombie download: "*" filename · Preparing forever · cancel dead
+    if m.contains("preparing to download")
+        || m.contains("zombie_download")
+        || m.contains("zombie download")
+        || m.contains("download hang")
+        || m.contains("stuck download")
+        || m.contains("job hygiene")
+        || (m.contains("filename") && m.contains("*"))
+        || m.contains("prepare_ttl")
+        || m.contains("download cancelled failed")
+    {
+        return Some("zombie_download");
+    }
     None
 }
 
@@ -2792,6 +2805,110 @@ fn leaderboard_file_url(post: bool) -> Option<String> {
 fn mg_session_dir() -> std::path::PathBuf {
     std::path::PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into()))
         .join(".panda/mg-session")
+}
+
+/// Universal /web onramp bus (fcs web · any terminal · any AI).
+/// Written by experiments/memory-glass/scripts/mg-web.sh
+fn web_cmd_bus_path() -> std::path::PathBuf {
+    mg_session_dir().join("web-cmd.json")
+}
+
+/// Apply pending /web command from bus file → inject modules + open panel.
+fn apply_web_cmd_bus(targets: &[&wry::WebView]) -> bool {
+    let path = web_cmd_bus_path();
+    let Ok(raw) = std::fs::read_to_string(&path) else {
+        return false;
+    };
+    if raw.trim().is_empty() {
+        return false;
+    }
+    let v: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(v) => v,
+        Err(_) => {
+            let _ = std::fs::rename(&path, path.with_extension("json.bad"));
+            return false;
+        }
+    };
+    let action = v
+        .get("action")
+        .and_then(|x| x.as_str())
+        .unwrap_or("open")
+        .to_string();
+    let tab = v
+        .get("tab")
+        .and_then(|x| x.as_str())
+        .unwrap_or("mg")
+        .to_string();
+    // Ensure modules present on main surfaces
+    let _ = inject_hot_module(targets, "job-hygiene.js");
+    let _ = inject_hot_module(targets, "web-inspect.js");
+    let action_js = serde_json::to_string(&action).unwrap_or_else(|_| "\"open\"".into());
+    let tab_js = serde_json::to_string(&tab).unwrap_or_else(|_| "\"mg\"".into());
+    let js = format!(
+        r#"(function(){{
+  var action={action_js};
+  var tab={tab_js};
+  function run(){{
+    try {{
+      if (window.__mgJobHygiene && window.__mgJobHygiene.arm) window.__mgJobHygiene.arm();
+    }} catch (e0) {{}}
+    try {{
+      if (!window.__mgWebInspect) return false;
+      if (action === "pack" || action === "export") {{
+        window.__mgWebInspect.exportPack();
+        return true;
+      }}
+      if (action === "soak") {{
+        window.__mgWebInspect.ensureHygiene(function () {{
+          try {{ if (window.__mgJobHygiene) window.__mgJobHygiene.soakProbe(); }} catch (e) {{}}
+        }});
+        window.__mgWebInspect.open("hygiene");
+        return true;
+      }}
+      window.__mgWebInspect.open(tab || "mg");
+      return true;
+    }} catch (e1) {{ return false; }}
+  }}
+  if (run()) return;
+  var n = 0;
+  var iv = setInterval(function () {{
+    n++;
+    if (run() || n > 50) clearInterval(iv);
+  }}, 100);
+}})();"#
+    );
+    for wv in targets {
+        inject_js_blob(wv, &js);
+        inject_dev_line(
+            wv,
+            "ok",
+            &format!("web-cmd bus · {action} · tab={tab}"),
+            "web-inspect",
+        );
+    }
+    // consume so we don't re-fire
+    let done = mg_session_dir().join(format!(
+        "web-cmd-done-{}.json",
+        chrono_like_ts().replace(':', "")
+    ));
+    let _ = std::fs::rename(&path, &done);
+    // keep only last few done files
+    if let Ok(rd) = std::fs::read_dir(mg_session_dir()) {
+        let mut dones: Vec<_> = rd
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_name()
+                    .to_string_lossy()
+                    .starts_with("web-cmd-done-")
+            })
+            .collect();
+        dones.sort_by_key(|e| std::cmp::Reverse(e.metadata().ok().and_then(|m| m.modified()).ok()));
+        for e in dones.into_iter().skip(8) {
+            let _ = std::fs::remove_file(e.path());
+        }
+    }
+    eprintln!("hotpipe: web-cmd bus applied action={action} tab={tab}");
+    true
 }
 
 fn write_leaderboard_handoff(text: &str) -> std::path::PathBuf {
@@ -9755,6 +9872,7 @@ fn main() -> Result<()> {
     let mut ego_mtime: Option<std::time::SystemTime> = mtime_of(&hotpipe_dir().join("ego.js"));
     let mut dock_mtime: Option<std::time::SystemTime> =
         mtime_of(&hotpipe_dir().join("inspect-dock.js"));
+    let mut web_cmd_mtime: Option<std::time::SystemTime> = mtime_of(&web_cmd_bus_path());
     let mut mitigate_cooldown: Option<std::time::Instant> = None;
     let mut mitigated_stems: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut agent_push_at: Option<std::time::Instant> = None;
@@ -9882,6 +10000,27 @@ fn main() -> Result<()> {
                 }
                 if inject_live_js_mode(&t, hotpipe_lean) {
                     eprintln!("hotpipe: stack reloaded lean={hotpipe_lean}");
+                }
+            }
+            // Universal /web bus: fcs web · mg-web.sh · any agent terminal
+            let wcmd = web_cmd_bus_path();
+            if let Some(mt) = mtime_of(&wcmd) {
+                let fresh = match web_cmd_mtime {
+                    None => true,
+                    Some(prev) => mt > prev,
+                };
+                if fresh {
+                    web_cmd_mtime = Some(mt);
+                    let mut t: Vec<&wry::WebView> = Vec::new();
+                    if let Some(wv) = webview.as_ref() {
+                        t.push(wv);
+                    }
+                    // main page only for inspect UI (not paint dual)
+                    if !t.is_empty() {
+                        let _ = apply_web_cmd_bus(&t);
+                        // after consume, clear mtime tracker so missing file is ok
+                        web_cmd_mtime = mtime_of(&web_cmd_bus_path());
+                    }
                 }
             }
         }

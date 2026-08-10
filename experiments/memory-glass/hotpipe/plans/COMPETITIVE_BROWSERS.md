@@ -21,7 +21,9 @@
 3. **Hot-pipe** — live.js reload without cargo rebuild.  
 4. **Training curves** — WebGrid BPS, μgrad R0→R6, games hub as *browser fitness*.  
 5. **Ironline budgets** — explicit L0–L7 latency contracts (browsers hide this).  
-6. **Collab mesh** — multi-agent packs + conversation + still-pipe snapshots.
+6. **Collab mesh** — multi-agent packs + conversation + still-pipe snapshots.  
+7. **Job hygiene** — no Safari-class zombie downloads (`*` / Preparing forever / dead cancel). Field glitches → triggers → patches (`job-hygiene.js` · `/web hygiene`).  
+8. **/web inspect** — multi-browser DevTools matrix + MG native inspect + export packs for Grok Build speed (`web-inspect.js` · `/web` · `/inspect`).
 
 ## What we refuse (for now)
 

@@ -37,7 +37,11 @@ From `crates/codegen/xai-grok-tools` (grok_build implementations):
 | Surface | Path | Role |
 |---------|------|------|
 | **TOOLS drawer** | `hotpipe/mg-tools-drawer.js` | Left chrome — open modules on demand |
-| **Grok terminal float** | `hotpipe/mg-grok-terminal.js` | Glass term · `/status` `/tools` `/version` `/open` · tool roster |
+| **Grok terminal float** | `hotpipe/mg-grok-terminal.js` | Glass term · `/status` `/tools` `/web` `/inspect` `/hygiene` `/version` `/open` · tool roster |
+| **Job hygiene** | `hotpipe/job-hygiene.js` | Zombie-download patch · prepare TTL · paste sanitize · field triggers |
+| **/web inspect** | `hotpipe/web-inspect.js` | Multi-browser DevTools matrix · learn log · export pack for agents |
+| **fcs web onramps** | `scripts/mg-web.sh` · `fcs web` | Any terminal/AI → bus → MG panel · peer DevTools |
+| **Field trigger loop** | `hotpipe/plans/FIELD_TRIGGER_LOOP.md` | Random browser bugs → MG product strengths |
 | **IPC** | `op: "grok_term"` in `src/main.rs` | Host probes + open external `grok` TUI |
 | **Rubik language** | `hotpipe/rubik-language-float.js` | Face→lettering dual-space glass cube |
 

@@ -2,11 +2,11 @@
  * Glass-morphism terminal handler bridge for Grok Build (xai-org/grok-build).
  * Foundation for MG ↔ Grok communication: status, tool roster, open external TUI,
  * allowlisted local probes. Full PTY agent host can land on ptyctl later.
- * VER: mg-grok-term-v1
+ * VER: mg-grok-term-v2-web-inspect
  */
 (function () {
   "use strict";
-  var VER = "mg-grok-term-v1";
+  var VER = "mg-grok-term-v2-web-inspect";
   var HP = (window.__mgHotPipe = window.__mgHotPipe || {});
   if (HP._grokTermVer === VER) return;
   HP._grokTermVer = VER;
@@ -161,7 +161,10 @@
       "sys",
       "Comm foundation for xai-org/grok-build · monorepo tools live in crates/codegen/xai-grok-tools"
     );
-    push("ok", "Commands: /status  /tools  /version  /open  /clear  or free text → external grok");
+    push(
+      "ok",
+      "Commands: /status  /tools  /version  /open  /web  /inspect  /hygiene  /clear  · free text → external grok"
+    );
     try {
       if (window.__MG_SOURCE_REV)
         push("sys", "SOURCE_REV " + window.__MG_SOURCE_REV);
@@ -219,6 +222,48 @@
       push("ok", "opening external Grok TUI (Terminal / grok)…");
       return;
     }
+    /* /web inspect · multi-browser learn + job hygiene (field triggers → MG patches) */
+    if (
+      low === "/web" ||
+      low.indexOf("/web ") === 0 ||
+      low === "/inspect" ||
+      low === "web inspect" ||
+      low === "/hygiene" ||
+      low === "/learn" ||
+      low === "/web inspect"
+    ) {
+      function runWeb(cmd) {
+        try {
+          if (window.__mgWebInspect && window.__mgWebInspect.handleCommand) {
+            var r = window.__mgWebInspect.handleCommand(cmd);
+            push("ok", "/web · " + (r && r.action ? r.action : "ok") + (r && r.tab ? " · tab " + r.tab : ""));
+            return;
+          }
+        } catch (eW) {}
+        try {
+          if (window.__mgLazy && window.__mgLazy.need) {
+            window.__mgLazy.need("webInspect", function () {
+              try {
+                if (window.__mgWebInspect) {
+                  window.__mgWebInspect.handleCommand(cmd);
+                  push("ok", "/web inspect loaded");
+                } else push("err", "web-inspect module missing");
+              } catch (e2) {
+                push("err", String(e2));
+              }
+            });
+            push("sys", "loading web-inspect…");
+            return;
+          }
+        } catch (eL) {}
+        post("hot_module", { name: "web-inspect.js" });
+        /* also request hygiene in parallel */
+        post("hot_module", { name: "job-hygiene.js" });
+        push("sys", "hot_module web-inspect + job-hygiene… re-run /web in ~1s");
+      }
+      runWeb(low.indexOf("/") === 0 ? low : "/" + low);
+      return;
+    }
     /* free text: hand to external grok with prompt seed */
     post("grok_term", { action: "open", line: line });
     push("ok", "seeded external grok session with prompt (when host supports)");
@@ -254,7 +299,7 @@
       '<div class="out" id="mg-gt-out"></div>' +
       '<div class="tools" id="mg-grok-tools"></div>' +
       '<div class="row">' +
-      '  <input id="mg-gt-in" type="text" autocomplete="off" spellcheck="false" placeholder="/status · /tools · /open · or prompt…" />' +
+      '  <input id="mg-gt-in" type="text" autocomplete="off" spellcheck="false" placeholder="/web · /hygiene · /status · /tools · /open…" />' +
       '  <button type="button" class="go" id="mg-gt-go">RUN</button>' +
       "</div>";
     (document.body || document.documentElement).appendChild(el);

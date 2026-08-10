@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Sitemap · fcs.ugrad.ai</title>
+  <link rel="canonical" href="https://fcs.ugrad.ai/sitemap.html"/>
+  <link rel="stylesheet" href="fcs.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="mark"></div>
+        <div><b>Sitemap</b><span>fcs.ugrad.ai · AI + human map</span></div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Hub</a>
+        <a href="download.html">Download</a>
+        <a href="https://lang.ugrad.ai/sitemap.html">lang sitemap</a>
+      </nav>
+    </header>
+
+    <h1 style="font-size:1.5rem;margin:0 0 8px">Suite map</h1>
+    <p style="color:var(--muted);margin:0 0 20px">
+      Machine-first: <a href="sitemap.json">sitemap.json</a> ·
+      <a href="skills.json">skills.json</a> ·
+      <a href="llms.txt">llms.txt</a>
+    </p>
+
+    <div class="card" style="margin-bottom:16px">
+      <h2>Cross-link · lang.ugrad.ai</h2>
+      <p style="margin:0;color:var(--muted);font-size:13px">
+        Language product sitemap &amp; offline models are canonical on the lang host.
+        This suite host indexes <strong>fcs skills + browser download</strong>.
+      </p>
+      <div class="row" style="margin-top:12px">
+        <a class="btn" href="https://lang.ugrad.ai/sitemap.html">lang sitemap.html</a>
+        <a class="btn" href="https://lang.ugrad.ai/sitemap.json">lang sitemap.json</a>
+        <a class="btn" href="https://lang.ugrad.ai/data/language/models-offline.html">models-offline</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>fcs routes</h2>
+      <table class="simple" id="routes">
+        <thead><tr><th>Path</th><th>Role</th></tr></thead>
+        <tbody><tr><td colspan="2" class="mono">loading sitemap.json…</td></tr></tbody>
+      </table>
+    </div>
+
+    <footer class="foot">
+      <a href="index.html">← hub</a>
+      <span>read order for AI in sitemap.json</span>
+    </footer>
+  </div>
+  <script>
+    fetch("sitemap.json").then(function(r){return r.json()}).then(function(s){
+      var tb = document.querySelector("#routes tbody");
+      if (!tb || !s.routes) return;
+      tb.innerHTML = s.routes.map(function(r){
+        return "<tr><td><a href=\"" + (r.path==="/"?"index.html":r.path.replace(/^\//,"")) + "\"><code>" +
+          r.path + "</code></a></td><td>" + (r.role||r.title||"") + "</td></tr>";
+      }).join("");
+    });
+  </script>
+</body>
+</html>

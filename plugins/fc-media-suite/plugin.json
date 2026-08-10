@@ -1,7 +1,7 @@
 {
   "name": "fc-media-suite",
-  "version": "0.2.1",
-  "description": "fornevercollective media wall: /watch live demux, /cam, /clock, /map — universal fcs CLI + skill install for Arena-mapped terminal CLIs (Claude/Codex/Cursor/Grok/Qwen/Gemini/…). Updatable from grok-build via fcs update.",
+  "version": "0.2.2",
+  "description": "fornevercollective media wall: /watch live demux, /cam, /clock, /map \u2014 universal fcs CLI + skill install for Arena-mapped terminal CLIs (Claude/Codex/Cursor/Grok/Qwen/Gemini/\u2026). Updatable from grok-build via fcs update.",
   "author": {
     "name": "fornevercollective",
     "email": "dev@fornevercollective",
@@ -52,10 +52,20 @@
     "optical-blur",
     "jawta",
     "fountain-qr",
-    "fc-optical-transfer-v1"
+    "fc-optical-transfer-v1",
+    "glyph",
+    "glyph-engine",
+    "fc-glyph-engine-v1",
+    "quantum-lift",
+    "lang-chat-desk",
+    "webgrid"
   ],
   "category": "media",
-  "skills": ["./skills"],
-  "commands": ["./commands"],
+  "skills": [
+    "./skills"
+  ],
+  "commands": [
+    "./commands"
+  ],
   "hooks": "./hooks/hooks.json"
 }
