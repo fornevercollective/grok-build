@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" data-mg-xr="1">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Memory Glass · XR glasses dev</title>
+<meta name="description" content="Automatic XR/VR glasses quick-pipe: device registry, optics presets, WebXR, Quest/XREAL/Vision Pro/Pico."/>
+<style>
+:root{
+  --bg:#070b10;--panel:#10161e;--ink:#e8eef5;--mut:#8b949e;--line:#2a3340;
+  --acc:#5eead4;--blue:#58a6ff;--hot:#f85149;--chip:#1a222c;--ok:#3fb950;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--blue)}
+#bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#141a22,#0c1016);
+  position:sticky;top:0;z-index:20}
+.brand{font-weight:800;letter-spacing:.04em}
+.brand span{color:var(--acc);font-weight:600;font-size:11px;margin-left:6px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);
+  border-radius:8px;padding:7px 12px;cursor:pointer;font:650 12px system-ui}
+.btn.primary{background:rgba(94,233,168,.15);border-color:rgba(94,233,168,.45);color:var(--acc)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.mut{color:var(--mut);font-size:12px}
+#layout{display:grid;grid-template-columns:1fr min(360px,40vw);min-height:calc(100vh - 52px)}
+@media(max-width:860px){#layout{grid-template-columns:1fr}}
+#main{padding:14px;display:flex;flex-direction:column;gap:12px}
+#side{border-left:1px solid var(--line);background:var(--panel);padding:14px;overflow:auto}
+.panel{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:12px}
+.panel h2{margin:0 0 8px;font:700 11px/1 system-ui;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+#stage{flex:1;min-height:280px;border-radius:14px;border:1px solid var(--line);
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 45%,rgba(94,233,168,.08),transparent 60%),
+    linear-gradient(160deg,#0a1018,#121a24 50%,#0d1218);
+  position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#stage .hint{text-align:center;color:var(--mut);padding:20px;max-width:28rem}
+#stage.sbs{display:grid;grid-template-columns:1fr 1fr}
+#stage .eye{display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.06);
+  font:700 13px ui-monospace,Menlo,monospace;color:var(--acc)}
+#stage .eye:last-child{border:0;color:var(--blue)}
+.grid{display:grid;gap:6px}
+.row{display:flex;justify-content:space-between;gap:8px;font:600 12px ui-monospace,Menlo,monospace;margin:4px 0}
+.row .k{color:var(--mut)}
+select,input{width:100%;background:var(--chip);border:1px solid var(--line);color:var(--ink);
+  border-radius:8px;padding:8px;font:13px system-ui;margin:4px 0 8px}
+#log{font:12px/1.4 ui-monospace,Menlo,monospace;max-height:220px;overflow:auto;white-space:pre-wrap;
+  color:var(--mut);background:#0a0e14;border-radius:8px;padding:8px;border:1px solid var(--line)}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
+  font:650 10px system-ui;color:var(--mut);margin:2px}
+.chip.on{border-color:rgba(94,233,168,.5);color:var(--acc)}
+#devlist{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto}
+.dev{text-align:left;padding:8px 10px;border-radius:10px;border:1px solid var(--line);
+  background:var(--chip);cursor:pointer;color:var(--ink);font:600 12px system-ui}
+.dev:hover,.dev.on{border-color:rgba(94,233,168,.45);background:rgba(94,233,168,.08)}
+.dev .meta{display:block;font:500 10px system-ui;color:var(--mut);margin-top:2px}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="brand">Memory Glass <span>XR DEV PIPE</span></div>
+  <button type="button" class="btn primary" id="btn-auto">Auto detect</button>
+  <button type="button" class="btn" id="btn-webxr">Enter WebXR</button>
+  <button type="button" class="btn" id="btn-exit">Exit XR</button>
+  <button type="button" class="btn" id="btn-sbs">SBS preview</button>
+  <span class="mut" id="bar-status">loading…</span>
+</div>
+<div id="layout">
+  <div id="main">
+    <div id="stage">
+      <div class="hint">
+        <strong style="color:var(--ink)">Quick pipe for all VR/XR glasses</strong><br/>
+        Auto-apply optics · WebXR when available · Quest via ADB reverse · desktop stereo proxy.<br/>
+        <span class="mut">Port <strong>8787</strong> only — never Soft Path 8765/8766.</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Pipe</h2>
+      <div class="row"><span class="k">URL</span><span id="pipe-url">—</span></div>
+      <div class="row"><span class="k">Device</span><span id="pipe-dev">—</span></div>
+      <div class="row"><span class="k">WebXR</span><span id="pipe-xr">—</span></div>
+      <div class="row"><span class="k">Class</span><span id="pipe-class">—</span></div>
+      <div id="caps"></div>
+    </div>
+    <div class="panel">
+      <h2>Log</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+  <aside id="side">
+    <div class="panel">
+      <h2>Device</h2>
+      <label class="mut" for="sel">Apply profile</label>
+      <select id="sel"></select>
+      <button type="button" class="btn primary" id="btn-apply" style="width:100%">Apply</button>
+    </div>
+    <div class="panel">
+      <h2>Registry</h2>
+      <div id="devlist"></div>
+    </div>
+    <div class="panel">
+      <h2>CLI</h2>
+      <pre class="mut" style="margin:0;white-space:pre-wrap;font:11px ui-monospace,Menlo,monospace">bash scripts/mg-xr-dev.sh auto
+bash scripts/mg-xr-dev.sh quest
+# console
+__mgXr.auto()
+__mgXr.status()</pre>
+    </div>
+  </aside>
+</div>
+<script src="hotpipe/mg-xr-glasses.js"></script>
+<script>
+(function () {
+  var logEl = document.getElementById("log");
+  function log(m) {
+    var t = new Date().toISOString().slice(11, 19);
+    logEl.textContent = "[" + t + "] " + m + "\n" + logEl.textContent;
+  }
+  function $(id) { return document.getElementById(id); }
+
+  function paint() {
+    if (!window.__mgXr) return;
+    var st = __mgXr.status();
+    $("bar-status").textContent = st.ver + " · " + st.deviceCount + " devices";
+    $("pipe-url").textContent = st.pipeUrl || location.href;
+    $("pipe-dev").textContent = st.device
+      ? st.device.id + " · " + st.device.name
+      : (st.detected ? "det " + st.detected.id : "—");
+    $("pipe-class").textContent = (st.device && st.device.class) || (st.detected && st.detected.class) || "—";
+    var xr = st.webxr || {};
+    $("pipe-xr").textContent = xr.immersive
+      ? "immersive"
+      : xr.supported
+        ? "ready"
+        : "n/a (desktop proxy)";
+    var caps = xr.caps || {};
+    var capEl = $("caps");
+    capEl.innerHTML = "";
+    ["immersiveVr", "immersiveAr", "inline"].forEach(function (k) {
+      var s = document.createElement("span");
+      s.className = "chip" + (caps[k] ? " on" : "");
+      s.textContent = k + (caps[k] ? " ✓" : "");
+      capEl.appendChild(s);
+    });
+  }
+
+  function fillList() {
+    if (!window.__mgXr) return;
+    var list = __mgXr.list();
+    var sel = $("sel");
+    var box = $("devlist");
+    sel.innerHTML = "";
+    box.innerHTML = "";
+    list.forEach(function (d) {
+      var o = document.createElement("option");
+      o.value = d.id;
+      o.textContent = d.brand + " · " + d.name;
+      sel.appendChild(o);
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "dev";
+      b.dataset.id = d.id;
+      b.innerHTML =
+        d.name +
+        '<span class="meta">' +
+        d.id +
+        " · " +
+        d.class +
+        (d.webxr ? " · webxr" : "") +
+        (d.adb ? " · adb" : "") +
+        "</span>";
+      b.onclick = function () {
+        __mgXr.apply(d.id);
+        sel.value = d.id;
+        Array.prototype.forEach.call(box.querySelectorAll(".dev"), function (el) {
+          el.classList.toggle("on", el.dataset.id === d.id);
+        });
+        paint();
+        log("apply " + d.id);
+      };
+      box.appendChild(b);
+    });
+  }
+
+  function boot() {
+    if (!window.__mgXr) {
+      log("mg-xr-glasses.js missing — run: bash scripts/mg-xr-dev.sh sync");
+      $("bar-status").textContent = "module missing";
+      return;
+    }
+    __mgXr.loadRegistry().then(function () {
+      fillList();
+      var q = new URLSearchParams(location.search);
+      var dev = q.get("device") || q.get("xr");
+      if (dev) {
+        __mgXr.apply(dev);
+        $("sel").value = dev;
+      } else {
+        __mgXr.auto();
+      }
+      return __mgXr.checkSessions();
+    }).then(function () {
+      paint();
+      log("ready · " + JSON.stringify(__mgXr.status().device || __mgXr.status().detected));
+    }).catch(function (e) {
+      log("err " + e);
+      paint();
+    });
+  }
+
+  $("btn-auto").onclick = function () {
+    if (!window.__mgXr) return;
+    __mgXr.auto();
+    paint();
+    log("auto " + (__mgXr.status().device && __mgXr.status().device.id));
+  };
+  $("btn-apply").onclick = function () {
+    if (!window.__mgXr) return;
+    __mgXr.apply($("sel").value);
+    paint();
+    log("apply " + $("sel").value);
+  };
+  $("btn-webxr").onclick = function () {
+    if (!window.__mgXr) return;
+    __mgXr
+      .checkSessions()
+      .then(function (c) {
+        if (c.immersiveVr) return __mgXr.enterWebXR("immersive-vr");
+        if (c.immersiveAr) return __mgXr.enterWebXR("immersive-ar");
+        log("WebXR immersive not supported — desktop proxy / SBS");
+        return null;
+      })
+      .then(function () { paint(); })
+      .catch(function (e) { log("webxr " + e); paint(); });
+  };
+  $("btn-exit").onclick = function () {
+    if (!window.__mgXr) return;
+    __mgXr.exitWebXR().then(function () { paint(); log("exit xr"); });
+  };
+  $("btn-sbs").onclick = function () {
+    var st = $("stage");
+    st.classList.toggle("sbs");
+    if (st.classList.contains("sbs")) {
+      st.innerHTML =
+        '<div class="eye">L · OD</div><div class="eye">R · OS</div>';
+      log("sbs preview on");
+    } else {
+      st.innerHTML =
+        '<div class="hint"><strong style="color:var(--ink)">Quick pipe for all VR/XR glasses</strong><br/>SBS off</div>';
+      log("sbs preview off");
+    }
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

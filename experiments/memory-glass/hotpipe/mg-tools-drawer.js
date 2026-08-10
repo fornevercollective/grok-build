@@ -1013,6 +1013,49 @@
             { ico: "↻", sub: "Reload menus", keepStatus: true }
           )
         );
+        r.appendChild(
+          act(
+            "XR",
+            "primary",
+            function () {
+              function go() {
+                try {
+                  if (window.__mgXr) {
+                    var r = window.__mgXr.auto();
+                    var st = window.__mgXr.status();
+                    setStatus(
+                      "XR · " +
+                        ((st.device && st.device.id) ||
+                          (st.detected && st.detected.id) ||
+                          "proxy")
+                    );
+                    return;
+                  }
+                } catch (eX) {}
+                setStatus("XR missing — ⌘⇧R / mg-xr-dev.sh sync");
+              }
+              try {
+                if (window.__mgLazy && window.__mgLazy.need) {
+                  window.__mgLazy.need("xr", go);
+                  return;
+                }
+              } catch (eL) {}
+              go();
+            },
+            { ico: "◈", sub: "Glasses auto", keepStatus: true }
+          )
+        );
+        r.appendChild(
+          act(
+            "XR Dev",
+            "hot",
+            function () {
+              nav("http://127.0.0.1:8787/xr-dev.html?mg_xr=1");
+              setStatus("XR dev pipe :8787");
+            },
+            { ico: "◎", sub: "PWA · all HMDs", keepStatus: true }
+          )
+        );
         box.appendChild(r);
       })
     );

@@ -1535,6 +1535,13 @@
       local: "questcast.html",
       desc: "Quest cast (local)",
     },
+    xrdev: {
+      id: "xrdev",
+      label: "XR Glasses Dev",
+      kind: "url",
+      url: "http://127.0.0.1:8787/xr-dev.html?mg_xr=1",
+      desc: "All VR/XR glasses quick-pipe · sync · WebXR",
+    },
     jawta: {
       id: "jawta",
       label: "Jawta Audio",

@@ -90,6 +90,16 @@ bake_companion "kbatch-fleet-bridge.js" "mg-kbatch-site.js" "COMPANION_KBATCH_SI
 bake_companion "search-comms.js" "site-atlas.js" "COMPANION_SITE_ATLAS" "site-atlas"
 # harvest seeds (keyboard matrix atlas already in keyboard-atlas-seed.js inject)
 bake_companion "float-keyboard.js" "key-popout-menus-seed.js" "COMPANION_KEY_POPOUT" "key-popout"
+# /language plane: installed Aug-era binaries inject float-keyboard but not language-hotpipe.js
+bake_companion "float-keyboard.js" "language-hotpipe.js" "COMPANION_LANGUAGE_HOTPIPE" "language-hotpipe→float-kb"
+# race-shell early-return also skips float-kb — bake keyboard+lang onto race for ?mg_kb / ?mg_lang URLs
+bake_companion "race-shell.js" "lang-codec-plane.js" "COMPANION_LANG_CODEC" "lang-codec→race"
+bake_companion "race-shell.js" "float-keyboard.js" "COMPANION_FLOAT_KB" "float-kb→race"
+bake_companion "race-shell.js" "language-hotpipe.js" "COMPANION_LANGUAGE_HOTPIPE" "language-hotpipe→race"
+# XR / VR glasses quick-pipe (Quest · XREAL · Vision Pro · Pico · tethered AR · Rx)
+bake_companion "live.js" "mg-xr-glasses.js" "COMPANION_MG_XR_GLASSES" "xr-glasses→live"
+bake_companion "session-recorder.js" "mg-xr-glasses.js" "COMPANION_MG_XR_GLASSES" "xr-glasses→rec"
+bake_companion "mg-lazy-boot.js" "mg-xr-glasses.js" "COMPANION_MG_XR_GLASSES" "xr-glasses→lazy"
 
 # ad-hoc re-sign (Resources change)
 if [[ -x "$ROOT/scripts/resign-app.sh" ]]; then

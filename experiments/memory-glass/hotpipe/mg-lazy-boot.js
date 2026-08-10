@@ -57,6 +57,9 @@
     stillFleet: "mg-still-fleet.js",
     bodyPose: "body-pose.js",
     dogPose: "dog-pose.js",
+    xr: "mg-xr-glasses.js",
+    glasses: "mg-xr-glasses.js",
+    webxr: "mg-xr-glasses.js",
   };
 
   function log(m) {
@@ -94,6 +97,7 @@
     if (key === "stillFleet") return !!window.__mgStillFleet;
     if (key === "bodyPose") return !!window.__mgGetBodyPose;
     if (key === "dogPose") return !!window.__mgGetDogPose;
+    if (key === "xr" || key === "glasses" || key === "webxr") return !!window.__mgXr;
     return false;
   }
 
