@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Memory Glass · XR glasses dev</title>
-<meta name="description" content="Automatic XR/VR glasses quick-pipe: device registry, optics presets, WebXR, Quest/XREAL/Vision Pro/Pico."/>
+<meta name="description" content="XR/VR glasses quick-pipe: multi-seat room, optics, WebXR, AI handoff."/>
 <style>
 :root{
   --bg:#070b10;--panel:#10161e;--ink:#e8eef5;--mut:#8b949e;--line:#2a3340;
@@ -31,7 +31,7 @@ a{color:var(--blue)}
 #side{border-left:1px solid var(--line);background:var(--panel);padding:14px;overflow:auto}
 .panel{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:12px}
 .panel h2{margin:0 0 8px;font:700 11px/1 system-ui;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
-#stage{flex:1;min-height:280px;border-radius:14px;border:1px solid var(--line);
+#stage{flex:1;min-height:240px;border-radius:14px;border:1px solid var(--line);
   background:
     radial-gradient(ellipse 50% 40% at 50% 45%,rgba(94,233,168,.08),transparent 60%),
     linear-gradient(160deg,#0a1018,#121a24 50%,#0d1218);
@@ -41,39 +41,41 @@ a{color:var(--blue)}
 #stage .eye{display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.06);
   font:700 13px ui-monospace,Menlo,monospace;color:var(--acc)}
 #stage .eye:last-child{border:0;color:var(--blue)}
-.grid{display:grid;gap:6px}
 .row{display:flex;justify-content:space-between;gap:8px;font:600 12px ui-monospace,Menlo,monospace;margin:4px 0}
 .row .k{color:var(--mut)}
 select,input{width:100%;background:var(--chip);border:1px solid var(--line);color:var(--ink);
   border-radius:8px;padding:8px;font:13px system-ui;margin:4px 0 8px}
-#log{font:12px/1.4 ui-monospace,Menlo,monospace;max-height:220px;overflow:auto;white-space:pre-wrap;
+#log{font:12px/1.4 ui-monospace,Menlo,monospace;max-height:180px;overflow:auto;white-space:pre-wrap;
   color:var(--mut);background:#0a0e14;border-radius:8px;padding:8px;border:1px solid var(--line)}
 .chip{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
   font:650 10px system-ui;color:var(--mut);margin:2px}
 .chip.on{border-color:rgba(94,233,168,.5);color:var(--acc)}
-#devlist{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto}
+#devlist{display:flex;flex-direction:column;gap:6px;max-height:32vh;overflow:auto}
 .dev{text-align:left;padding:8px 10px;border-radius:10px;border:1px solid var(--line);
   background:var(--chip);cursor:pointer;color:var(--ink);font:600 12px system-ui}
 .dev:hover,.dev.on{border-color:rgba(94,233,168,.45);background:rgba(94,233,168,.08)}
 .dev .meta{display:block;font:500 10px system-ui;color:var(--mut);margin-top:2px}
+#peers{font:12px ui-monospace,Menlo,monospace;color:var(--mut);max-height:120px;overflow:auto}
+.setup li{margin:4px 0;color:var(--mut);font-size:12px}
 </style>
 </head>
 <body>
 <div id="bar">
-  <div class="brand">Memory Glass <span>XR DEV PIPE</span></div>
+  <div class="brand">Memory Glass <span>XR DEV v2</span></div>
   <button type="button" class="btn primary" id="btn-auto">Auto detect</button>
+  <button type="button" class="btn" id="btn-join">Join room</button>
   <button type="button" class="btn" id="btn-webxr">Enter WebXR</button>
-  <button type="button" class="btn" id="btn-exit">Exit XR</button>
-  <button type="button" class="btn" id="btn-sbs">SBS preview</button>
+  <button type="button" class="btn" id="btn-sbs">SBS</button>
+  <a class="btn" href="/xr-onboard.html" style="text-decoration:none">Onboard</a>
   <span class="mut" id="bar-status">loading…</span>
 </div>
 <div id="layout">
   <div id="main">
     <div id="stage">
       <div class="hint">
-        <strong style="color:var(--ink)">Quick pipe for all VR/XR glasses</strong><br/>
-        Auto-apply optics · WebXR when available · Quest via ADB reverse · desktop stereo proxy.<br/>
-        <span class="mut">Port <strong>8787</strong> only — never Soft Path 8765/8766.</span>
+        <strong style="color:var(--ink)">Shared XR pipe</strong><br/>
+        Host + glasses + AI join room <code>lab</code>, share optics, hot-sync hotpipe.<br/>
+        <span class="mut">Port <strong>8787</strong> · never Soft Path 8765/8766</span>
       </div>
     </div>
     <div class="panel">
@@ -81,8 +83,12 @@ select,input{width:100%;background:var(--chip);border:1px solid var(--line);colo
       <div class="row"><span class="k">URL</span><span id="pipe-url">—</span></div>
       <div class="row"><span class="k">Device</span><span id="pipe-dev">—</span></div>
       <div class="row"><span class="k">WebXR</span><span id="pipe-xr">—</span></div>
-      <div class="row"><span class="k">Class</span><span id="pipe-class">—</span></div>
+      <div class="row"><span class="k">Room</span><span id="pipe-room">—</span></div>
       <div id="caps"></div>
+    </div>
+    <div class="panel">
+      <h2>Setup for this class</h2>
+      <ol class="setup" id="setup"></ol>
     </div>
     <div class="panel">
       <h2>Log</h2>
@@ -94,7 +100,14 @@ select,input{width:100%;background:var(--chip);border:1px solid var(--line);colo
       <h2>Device</h2>
       <label class="mut" for="sel">Apply profile</label>
       <select id="sel"></select>
-      <button type="button" class="btn primary" id="btn-apply" style="width:100%">Apply</button>
+      <button type="button" class="btn primary" id="btn-apply" style="width:100%">Apply + broadcast</button>
+    </div>
+    <div class="panel">
+      <h2>Room peers</h2>
+      <input id="room-id" value="lab" placeholder="room id"/>
+      <div id="peers">not joined</div>
+      <button type="button" class="btn" id="btn-handoff" style="width:100%;margin-top:6px">Export handoff → room</button>
+      <button type="button" class="btn" id="btn-forai" style="width:100%;margin-top:6px">Copy forAi JSON</button>
     </div>
     <div class="panel">
       <h2>Registry</h2>
@@ -102,11 +115,11 @@ select,input{width:100%;background:var(--chip);border:1px solid var(--line);colo
     </div>
     <div class="panel">
       <h2>CLI</h2>
-      <pre class="mut" style="margin:0;white-space:pre-wrap;font:11px ui-monospace,Menlo,monospace">bash scripts/mg-xr-dev.sh auto
-bash scripts/mg-xr-dev.sh quest
-# console
-__mgXr.auto()
-__mgXr.status()</pre>
+      <pre class="mut" style="margin:0;white-space:pre-wrap;font:11px ui-monospace,Menlo,monospace">mg-xr-dev.sh auto
+mg-xr-dev.sh doctor
+mg-xr-dev.sh quest
+__mgXr.room.join('lab')
+__mgXr.forAi()</pre>
     </div>
   </aside>
 </div>
@@ -128,13 +141,15 @@ __mgXr.status()</pre>
     $("pipe-dev").textContent = st.device
       ? st.device.id + " · " + st.device.name
       : (st.detected ? "det " + st.detected.id : "—");
-    $("pipe-class").textContent = (st.device && st.device.class) || (st.detected && st.detected.class) || "—";
     var xr = st.webxr || {};
     $("pipe-xr").textContent = xr.immersive
       ? "immersive"
       : xr.supported
-        ? "ready"
-        : "n/a (desktop proxy)";
+        ? "ready" + (xr.secureContext === false ? " (insecure ctx)" : "")
+        : "n/a";
+    $("pipe-room").textContent = st.room.joined
+      ? st.room.id + " · peers " + st.room.peers
+      : "—";
     var caps = xr.caps || {};
     var capEl = $("caps");
     capEl.innerHTML = "";
@@ -144,6 +159,15 @@ __mgXr.status()</pre>
       s.textContent = k + (caps[k] ? " ✓" : "");
       capEl.appendChild(s);
     });
+    var setup = st.setup || [];
+    $("setup").innerHTML = setup.map(function (s) { return "<li>" + s + "</li>"; }).join("")
+      || "<li class='mut'>Select a device</li>";
+    var peers = __mgXr.room.peers() || [];
+    $("peers").textContent = peers.length
+      ? peers.map(function (p) {
+          return (p.role || "?") + " · " + (p.name || p.id) + " · " + (p.deviceId || "—");
+        }).join("\n")
+      : (st.room.joined ? "joined · waiting…" : "not joined");
   }
 
   function fillList() {
@@ -165,9 +189,7 @@ __mgXr.status()</pre>
       b.innerHTML =
         d.name +
         '<span class="meta">' +
-        d.id +
-        " · " +
-        d.class +
+        d.id + " · " + d.class +
         (d.webxr ? " · webxr" : "") +
         (d.adb ? " · adb" : "") +
         "</span>";
@@ -177,6 +199,7 @@ __mgXr.status()</pre>
         Array.prototype.forEach.call(box.querySelectorAll(".dev"), function (el) {
           el.classList.toggle("on", el.dataset.id === d.id);
         });
+        if (__mgXr.status().room.joined) __mgXr.room.ping({ broadcast: true });
         paint();
         log("apply " + d.id);
       };
@@ -186,7 +209,7 @@ __mgXr.status()</pre>
 
   function boot() {
     if (!window.__mgXr) {
-      log("mg-xr-glasses.js missing — run: bash scripts/mg-xr-dev.sh sync");
+      log("module missing — mg-xr-dev.sh sync");
       $("bar-status").textContent = "module missing";
       return;
     }
@@ -197,13 +220,15 @@ __mgXr.status()</pre>
       if (dev) {
         __mgXr.apply(dev);
         $("sel").value = dev;
-      } else {
+      } else if (!q.get("mg_xr") && !/device=/.test(location.search)) {
         __mgXr.auto();
       }
+      if (q.get("room")) $("room-id").value = q.get("room");
       return __mgXr.checkSessions();
     }).then(function () {
       paint();
       log("ready · " + JSON.stringify(__mgXr.status().device || __mgXr.status().detected));
+      setInterval(paint, 3000);
     }).catch(function (e) {
       log("err " + e);
       paint();
@@ -211,53 +236,60 @@ __mgXr.status()</pre>
   }
 
   $("btn-auto").onclick = function () {
-    if (!window.__mgXr) return;
     __mgXr.auto();
     paint();
     log("auto " + (__mgXr.status().device && __mgXr.status().device.id));
   };
   $("btn-apply").onclick = function () {
-    if (!window.__mgXr) return;
     __mgXr.apply($("sel").value);
+    if (__mgXr.status().room.joined) __mgXr.room.ping({ broadcast: true });
     paint();
     log("apply " + $("sel").value);
   };
-  $("btn-webxr").onclick = function () {
-    if (!window.__mgXr) return;
-    __mgXr
-      .checkSessions()
-      .then(function (c) {
-        if (c.immersiveVr) return __mgXr.enterWebXR("immersive-vr");
-        if (c.immersiveAr) return __mgXr.enterWebXR("immersive-ar");
-        log("WebXR immersive not supported — desktop proxy / SBS");
-        return null;
-      })
-      .then(function () { paint(); })
-      .catch(function (e) { log("webxr " + e); paint(); });
+  $("btn-join").onclick = function () {
+    var rid = $("room-id").value || "lab";
+    __mgXr.room.join(rid).then(function () {
+      log("joined " + rid);
+      paint();
+    }).catch(function (e) {
+      log("join fail " + e + " — is serve (room API) up?");
+    });
   };
-  $("btn-exit").onclick = function () {
-    if (!window.__mgXr) return;
-    __mgXr.exitWebXR().then(function () { paint(); log("exit xr"); });
+  $("btn-webxr").onclick = function () {
+    __mgXr.checkSessions().then(function (c) {
+      if (c.immersiveVr) return __mgXr.enterWebXR("immersive-vr");
+      if (c.immersiveAr) return __mgXr.enterWebXR("immersive-ar");
+      log("WebXR immersive not supported here — use SBS / desktop proxy");
+      return null;
+    }).then(function () { paint(); }).catch(function (e) { log("webxr " + e); paint(); });
   };
   $("btn-sbs").onclick = function () {
     var st = $("stage");
     st.classList.toggle("sbs");
     if (st.classList.contains("sbs")) {
-      st.innerHTML =
-        '<div class="eye">L · OD</div><div class="eye">R · OS</div>';
-      log("sbs preview on");
+      st.innerHTML = '<div class="eye">L · OD</div><div class="eye">R · OS</div>';
+      log("sbs on");
     } else {
-      st.innerHTML =
-        '<div class="hint"><strong style="color:var(--ink)">Quick pipe for all VR/XR glasses</strong><br/>SBS off</div>';
-      log("sbs preview off");
+      st.innerHTML = '<div class="hint"><strong style="color:var(--ink)">Shared XR pipe</strong><br/>SBS off</div>';
+      log("sbs off");
+    }
+  };
+  $("btn-handoff").onclick = function () {
+    var h = __mgXr.exportHandoff("desk handoff " + new Date().toISOString());
+    log("handoff " + (h.deviceId || "?"));
+    paint();
+  };
+  $("btn-forai").onclick = function () {
+    var j = JSON.stringify(__mgXr.forAi(), null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(j).then(function () { log("forAi copied"); });
+    } else {
+      log(j.slice(0, 200) + "…");
     }
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
 </script>
 </body>

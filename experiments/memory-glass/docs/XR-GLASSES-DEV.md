@@ -1,98 +1,98 @@
-# Memory Glass · XR / VR glasses dev pipe
+# Memory Glass · XR / VR glasses dev pipe (v2)
 
-**Automatic quick-pipe + sync + dev** for every glasses class MG cares about: tethered AR (XREAL / VITURE / Rokid), standalone VR (Quest / Pico / Vision Pro), smart glasses (Ray-Ban Meta / Even), Rx frames (Warby / Zenni), and desktop stereo proxy.
+**Anyone** with a glasses kit, Memory Glass (or the PWA), this repo, and an AI agent can **sync, join a room, and co-work**.
 
 ## One command
 
 ```bash
-cd /Volumes/qbitOS/00.dev/projects/grok-build
+cd /Volumes/qbitOS/00.dev/projects/grok-build   # or your clone
 bash experiments/memory-glass/scripts/mg-xr-dev.sh auto
 ```
 
-Does: **sync hotpipe → app + PWA**, **serve `:8787`**, print **status + detect + URLs**.
-
 | Command | Effect |
 |---------|--------|
-| `…/mg-xr-dev.sh auto` | sync + serve + status |
-| `… sync` | hotpipe + registry → app Resources + `pwa/` |
-| `… serve` | static PWA on **8787** (never 8765/8766) |
-| `… hot` | sync + ⌘⇧R |
-| `… list` | device registry |
-| `… detect` | host / adb guess |
-| `… quest` | `adb reverse` + headset URL |
-| `… open quest-3` | serve + open browser with profile |
+| `auto` | sync + **room API serve** + status |
+| `sync` / `hot` | hotpipe → app + PWA · `hot` also ⌘⇧R |
+| `serve` / `restart` | PWA + `/api/xr/*` multi-seat |
+| `doctor` | green/red checklist |
+| `onboard` | print human + AI guide |
+| `quest` | adb reverse + headset URLs |
+| `room [lab]` | snapshot peers |
+| `for-ai` | agent JSON |
+
+## Who can work together
+
+| Role | What they need | How they join |
+|------|----------------|---------------|
+| **Host** | Mac + repo + optional MG.app | `mg-xr-dev.sh auto` |
+| **Glass** | Quest / Pico / Vision / tethered AR | browser → LAN or adb `xr-dev.html?room=lab&join=1` |
+| **AI** | shell + edit + curl | `curl …/api/xr/for-ai` · edit hotpipe · `hot` |
+| **Desktop only** | browser | desktop-proxy profile + SBS / anaglyph |
+
+Shared state: room **`lab`** (device, optics, note, handoff) via `POST /api/xr/room`.
 
 ## Surfaces
 
-| Surface | Path / API |
-|---------|------------|
-| Registry | `hotpipe/data/xr-glasses-registry.json` |
-| Hotpipe module | `hotpipe/mg-xr-glasses.js` → `window.__mgXr` |
-| PWA desk | `http://127.0.0.1:8787/xr-dev.html` |
-| TOOLS drawer | **XR** (auto) · **XR Dev** (nav PWA) |
-| Lazy boot | `__mgLazy.need("xr")` |
-| Hot sync bake | `COMPANION_MG_XR_GLASSES` into `live.js` |
+| Surface | Path |
+|---------|------|
+| Registry | `hotpipe/data/xr-glasses-registry.json` (v2 + setup) |
+| Hotpipe | `hotpipe/mg-xr-glasses.js` → `window.__mgXr` **v2** |
+| Serve | `scripts/mg-xr-serve.py` (static + room API) |
+| CLI | `scripts/mg-xr-dev.sh` |
+| Desk | `http://127.0.0.1:8787/xr-dev.html` |
+| Onboard | `http://127.0.0.1:8787/xr-onboard.html` |
+| Agent | `http://127.0.0.1:8787/api/xr/for-ai` |
+| Room | `http://127.0.0.1:8787/api/xr/room?room=lab` |
+| State | `~/.panda/mg-xr/LATEST.json` · `rooms.json` |
 
 ## Console API
 
 ```js
-__mgXr.list()           // all devices
-__mgXr.detect()         // UA / WebXR guess
-__mgXr.auto()           // detect + apply optics
-__mgXr.apply("quest-3") // force profile
-__mgXr.status()
-__mgXr.enterWebXR()     // immersive-vr when available
-__mgXr.pipeUrl()
-__mgXr.syncHint()
+__mgXr.auto()
+__mgXr.apply("quest-3")
+__mgXr.list() · __mgXr.status() · __mgXr.forAi()
+__mgXr.room.join("lab") · __mgXr.room.peers()
+__mgXr.exportHandoff("note for next agent")
+__mgXr.enterWebXR()
 ```
 
-Query flags:
-
-- `?mg_xr=1` or `?device=quest-3` on any page with the module
-- `?mg_xr_webxr=1` to request immersive session after load
+Query: `?device=quest-3&mg_xr=1&room=lab&join=1&follow=1`
 
 ## Device classes
 
-| Class | Examples | Dev path |
-|-------|----------|----------|
-| `standalone-vr` | Quest 3/3S/2/Pro, Pico 4, Vision Pro | WebXR · ADB (Quest/Pico) · browser |
-| `tethered-ar` | XREAL One/Air, VITURE, Rokid | USB-C host browser · partial WebXR |
-| `smart-glasses` | Ray-Ban Meta, Even G1, Oakley Meta | companion / host; optics soft |
-| `optical-rx` | Warby, Zenni | Rx import in MG inspect (existing) |
-| `desktop-proxy` | Mac MG | anaglyph · SBS · WebXR sim |
+| Class | Examples | Path |
+|-------|----------|------|
+| `standalone-vr` | Quest, Pico, Vision Pro | WebXR · ADB · browser |
+| `tethered-ar` | XREAL, VITURE, Rokid | host browser / USB-C |
+| `smart-glasses` | Ray-Ban Meta, Even | host MG / companion |
+| `optical-rx` | Warby, Zenni | Rx import in MG |
+| `desktop-proxy` | Mac | SBS / anaglyph |
 
-Optics map into existing MG sliders: IPD · FOV · fovea · ana · eye preset · page/depth mode.
-
-## Quest (Meta Horizon)
+## Agent loop (copy-paste)
 
 ```bash
-bash experiments/memory-glass/scripts/mg-xr-dev.sh serve
-bash experiments/memory-glass/scripts/mg-xr-dev.sh quest
-# On headset Meta Browser:
-#   http://127.0.0.1:8787/xr-dev.html?device=quest-3&mg_xr=1
+bash experiments/memory-glass/scripts/mg-xr-dev.sh doctor
+curl -s http://127.0.0.1:8787/api/xr/for-ai | jq .
+# edit experiments/memory-glass/hotpipe/*.js
+bash experiments/memory-glass/scripts/mg-xr-dev.sh hot
 ```
 
-HzOS MCP (when connected): `get_adb_path`, `stream_device_logcat`, `take_screenshot`, `get_web_documentation_index` / `fetch_meta_quest_doc`.
+Rules:
+
+1. Never bind **8765/8766** (Soft Path).  
+2. Never `pkill` Memory Glass — use `hot` / ⌘⇧R.  
+3. Prefer hotpipe JS over Rust for UI.  
+4. Quest WebXR: prefer **adb reverse** so headset sees `http://127.0.0.1:8787` (secure-ish localhost).
 
 ## Ports
 
 | Port | Owner |
 |------|--------|
-| **8787** | Memory Glass PWA · **xr-dev** · glyph arena |
-| **8765 / 8766** | Soft Path only — **do not bind** |
+| **8787** | MG PWA · XR desk · room API |
+| **8765/8766** | Soft Path only |
 
-See `docs/fornever-ledger/PORT-HANDOFF.md`.
+## Limits (honest)
 
-## Agent workflow
-
-1. `mg-xr-dev.sh auto` (or `sync` + existing PWA server)
-2. In MG: TOOLS → **XR** or console `__mgXr.auto()`
-3. Headset: LAN or adb-reverse URL → `xr-dev.html?device=…`
-4. After hotpipe edits: `mg-xr-dev.sh hot` (no app kill)
-5. Record learnings via dispatch if fleet session
-
-## Related
-
-- Inspect **Glasses Rx** (Warby / Meta Ray-Ban / XREAL / …) in native shell
-- H9 XR touch proxy in `hotpipe/hurdles.js` (depth-z · not full HMD)
-- Skill `memory-glass` · slash `/memory-glass`
+- Not a native MG binary on the HMD — **browser + host shell**.  
+- Multi-seat shares **profile/optics/handoff**, not full DOM collab.  
+- LAN HTTP may block immersive WebXR; use adb reverse / HTTPS later if needed.

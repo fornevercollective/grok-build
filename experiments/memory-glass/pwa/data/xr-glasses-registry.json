@@ -1,19 +1,22 @@
 {
-  "ver": "xr-registry-v1",
+  "ver": "xr-registry-v2",
   "updated": "2026-08-10",
   "pipe": {
     "pwaPort": 8787,
     "path": "/xr-dev.html",
     "hotpipeModule": "mg-xr-glasses.js",
     "syncScript": "scripts/mg-xr-dev.sh",
-    "note": "Do not bind Soft Path 8765/8766"
+    "note": "Do not bind Soft Path 8765/8766",
+    "roomApi": "/api/xr/room",
+    "forAi": "/api/xr/for-ai",
+    "onboard": "/xr-onboard.html"
   },
   "classes": {
     "tethered-ar": "Display glasses over real world (XREAL/VITURE/Rokid)",
     "standalone-vr": "6DoF HMD (Quest/Pico/Vision Pro immersive)",
     "smart-glasses": "Everyday wearables (Ray-Ban Meta/Even/Oakley)",
-    "optical-rx": "Rx retailers / lab frames (Warby/Zenni) — calibration only",
-    "desktop-proxy": "No HMD — stereo/anaglyph/WebXR sim on Mac"
+    "optical-rx": "Rx retailers / lab frames (Warby/Zenni) \u2014 calibration only",
+    "desktop-proxy": "No HMD \u2014 stereo/anaglyph/WebXR sim on Mac"
   },
   "devices": [
     {
@@ -21,165 +24,636 @@
       "brand": "Meta",
       "name": "Quest 3",
       "class": "standalone-vr",
-      "uaHints": ["Quest 3", "OculusBrowser", "Quest"],
-      "transport": ["adb", "webxr", "browser"],
-      "dev": { "adb": true, "webxr": true, "hzos": true },
-      "optics": { "ipdMm": 63, "fovH": 110, "stereo": "sbs", "refresh": [72, 90, 120] },
-      "mg": { "eye": "human", "ipd": 36, "fov": 2200, "fovea": 42, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Quest 3",
+        "OculusBrowser",
+        "Quest"
+      ],
+      "transport": [
+        "adb",
+        "webxr",
+        "browser"
+      ],
+      "dev": {
+        "adb": true,
+        "webxr": true,
+        "hzos": true
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 110,
+        "stereo": "sbs",
+        "refresh": [
+          72,
+          90,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 36,
+        "fov": 2200,
+        "fovea": 42,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "quest-3s",
       "brand": "Meta",
       "name": "Quest 3S",
       "class": "standalone-vr",
-      "uaHints": ["Quest 3S", "OculusBrowser"],
-      "transport": ["adb", "webxr", "browser"],
-      "dev": { "adb": true, "webxr": true, "hzos": true },
-      "optics": { "ipdMm": 63, "fovH": 96, "stereo": "sbs", "refresh": [72, 90, 120] },
-      "mg": { "eye": "human", "ipd": 34, "fov": 2000, "fovea": 40, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Quest 3S",
+        "OculusBrowser"
+      ],
+      "transport": [
+        "adb",
+        "webxr",
+        "browser"
+      ],
+      "dev": {
+        "adb": true,
+        "webxr": true,
+        "hzos": true
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 96,
+        "stereo": "sbs",
+        "refresh": [
+          72,
+          90,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 34,
+        "fov": 2000,
+        "fovea": 40,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "quest-2",
       "brand": "Meta",
       "name": "Quest 2",
       "class": "standalone-vr",
-      "uaHints": ["Quest 2", "OculusBrowser", "Quest 2"],
-      "transport": ["adb", "webxr", "browser"],
-      "dev": { "adb": true, "webxr": true, "hzos": true },
-      "optics": { "ipdMm": 63, "fovH": 97, "stereo": "sbs", "refresh": [72, 90] },
-      "mg": { "eye": "human", "ipd": 32, "fov": 1900, "fovea": 38, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Quest 2",
+        "OculusBrowser",
+        "Quest 2"
+      ],
+      "transport": [
+        "adb",
+        "webxr",
+        "browser"
+      ],
+      "dev": {
+        "adb": true,
+        "webxr": true,
+        "hzos": true
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 97,
+        "stereo": "sbs",
+        "refresh": [
+          72,
+          90
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 32,
+        "fov": 1900,
+        "fovea": 38,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "quest-pro",
       "brand": "Meta",
       "name": "Quest Pro",
       "class": "standalone-vr",
-      "uaHints": ["Quest Pro", "OculusBrowser"],
-      "transport": ["adb", "webxr", "browser"],
-      "dev": { "adb": true, "webxr": true, "hzos": true },
-      "optics": { "ipdMm": 63, "fovH": 106, "stereo": "sbs", "refresh": [72, 90] },
-      "mg": { "eye": "human", "ipd": 35, "fov": 2100, "fovea": 44, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Quest Pro",
+        "OculusBrowser"
+      ],
+      "transport": [
+        "adb",
+        "webxr",
+        "browser"
+      ],
+      "dev": {
+        "adb": true,
+        "webxr": true,
+        "hzos": true
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 106,
+        "stereo": "sbs",
+        "refresh": [
+          72,
+          90
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 35,
+        "fov": 2100,
+        "fovea": 44,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "xreal-one",
       "brand": "XREAL",
       "name": "XREAL One / One Pro",
       "class": "tethered-ar",
-      "uaHints": ["XREAL", "Nebula", "Air"],
-      "transport": ["browser", "usb-c", "nebula"],
-      "dev": { "adb": false, "webxr": "partial", "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 57, "stereo": "binocular", "refresh": [60, 90, 120] },
-      "mg": { "eye": "calibrate", "ipd": 18, "fov": 1600, "fovea": 48, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "XREAL",
+        "Nebula",
+        "Air"
+      ],
+      "transport": [
+        "browser",
+        "usb-c",
+        "nebula"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": "partial",
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 57,
+        "stereo": "binocular",
+        "refresh": [
+          60,
+          90,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 18,
+        "fov": 1600,
+        "fovea": 48,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Plug glasses into host (USB-C)",
+        "Mirror/extend host display or open Nebula/host browser",
+        "Apply XREAL/VITURE/Rokid profile in MG or xr-dev",
+        "Prefer page mode optics (low IPD stress)"
+      ]
     },
     {
       "id": "xreal-air",
       "brand": "XREAL",
       "name": "XREAL Air / Air 2",
       "class": "tethered-ar",
-      "uaHints": ["XREAL", "Nreal", "Air"],
-      "transport": ["browser", "usb-c", "nebula"],
-      "dev": { "adb": false, "webxr": "partial", "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 46, "stereo": "binocular", "refresh": [60, 90, 120] },
-      "mg": { "eye": "calibrate", "ipd": 16, "fov": 1500, "fovea": 50, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "XREAL",
+        "Nreal",
+        "Air"
+      ],
+      "transport": [
+        "browser",
+        "usb-c",
+        "nebula"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": "partial",
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 46,
+        "stereo": "binocular",
+        "refresh": [
+          60,
+          90,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 16,
+        "fov": 1500,
+        "fovea": 50,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Plug glasses into host (USB-C)",
+        "Mirror/extend host display or open Nebula/host browser",
+        "Apply XREAL/VITURE/Rokid profile in MG or xr-dev",
+        "Prefer page mode optics (low IPD stress)"
+      ]
     },
     {
       "id": "viture-pro",
       "brand": "VITURE",
       "name": "VITURE Pro / One",
       "class": "tethered-ar",
-      "uaHints": ["VITURE", "Viture"],
-      "transport": ["browser", "usb-c"],
-      "dev": { "adb": false, "webxr": "partial", "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 50, "stereo": "binocular", "refresh": [60, 120] },
-      "mg": { "eye": "calibrate", "ipd": 17, "fov": 1550, "fovea": 48, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "VITURE",
+        "Viture"
+      ],
+      "transport": [
+        "browser",
+        "usb-c"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": "partial",
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 50,
+        "stereo": "binocular",
+        "refresh": [
+          60,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 17,
+        "fov": 1550,
+        "fovea": 48,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Plug glasses into host (USB-C)",
+        "Mirror/extend host display or open Nebula/host browser",
+        "Apply XREAL/VITURE/Rokid profile in MG or xr-dev",
+        "Prefer page mode optics (low IPD stress)"
+      ]
     },
     {
       "id": "rokid-max",
       "brand": "Rokid",
       "name": "Rokid Max / Max 2",
       "class": "tethered-ar",
-      "uaHints": ["Rokid", "AR Studio"],
-      "transport": ["browser", "usb-c"],
-      "dev": { "adb": false, "webxr": "partial", "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 50, "stereo": "binocular", "refresh": [60, 120] },
-      "mg": { "eye": "calibrate", "ipd": 17, "fov": 1550, "fovea": 48, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "Rokid",
+        "AR Studio"
+      ],
+      "transport": [
+        "browser",
+        "usb-c"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": "partial",
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 50,
+        "stereo": "binocular",
+        "refresh": [
+          60,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 17,
+        "fov": 1550,
+        "fovea": 48,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Plug glasses into host (USB-C)",
+        "Mirror/extend host display or open Nebula/host browser",
+        "Apply XREAL/VITURE/Rokid profile in MG or xr-dev",
+        "Prefer page mode optics (low IPD stress)"
+      ]
     },
     {
       "id": "even-g1",
       "brand": "Even Realities",
       "name": "Even G1",
       "class": "smart-glasses",
-      "uaHints": ["Even Realities", "Even G1"],
-      "transport": ["ble", "companion"],
-      "dev": { "adb": false, "webxr": false, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 25, "stereo": "mono-waveguide", "refresh": [60] },
-      "mg": { "eye": "calibrate", "ipd": 8, "fov": 1200, "fovea": 62, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "Even Realities",
+        "Even G1"
+      ],
+      "transport": [
+        "ble",
+        "companion"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": false,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 25,
+        "stereo": "mono-waveguide",
+        "refresh": [
+          60
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 8,
+        "fov": 1200,
+        "fovea": 62,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Use companion app + host MG for optics/Rx",
+        "Camera-only devices: still-pipe / host browser, not WebXR"
+      ]
     },
     {
       "id": "meta-rayban",
       "brand": "Meta",
       "name": "Ray-Ban Meta",
       "class": "smart-glasses",
-      "uaHints": ["Ray-Ban", "Meta AI glasses"],
-      "transport": ["companion", "browser-host"],
-      "dev": { "adb": false, "webxr": false, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 0, "stereo": "camera-only", "refresh": [30] },
-      "mg": { "eye": "calibrate", "ipd": 6, "fov": 1100, "fovea": 70, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "Ray-Ban",
+        "Meta AI glasses"
+      ],
+      "transport": [
+        "companion",
+        "browser-host"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": false,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 0,
+        "stereo": "camera-only",
+        "refresh": [
+          30
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 6,
+        "fov": 1100,
+        "fovea": 70,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Use companion app + host MG for optics/Rx",
+        "Camera-only devices: still-pipe / host browser, not WebXR"
+      ]
     },
     {
       "id": "oakley-meta",
       "brand": "Oakley / Meta",
       "name": "Oakley Meta",
       "class": "smart-glasses",
-      "uaHints": ["Oakley", "Meta"],
-      "transport": ["companion"],
-      "dev": { "adb": false, "webxr": false, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 0, "stereo": "camera-only", "refresh": [30] },
-      "mg": { "eye": "calibrate", "ipd": 6, "fov": 1100, "fovea": 70, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "Oakley",
+        "Meta"
+      ],
+      "transport": [
+        "companion"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": false,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 0,
+        "stereo": "camera-only",
+        "refresh": [
+          30
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 6,
+        "fov": 1100,
+        "fovea": 70,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Use companion app + host MG for optics/Rx",
+        "Camera-only devices: still-pipe / host browser, not WebXR"
+      ]
     },
     {
       "id": "apple-vision-pro",
       "brand": "Apple",
       "name": "Vision Pro",
       "class": "standalone-vr",
-      "uaHints": ["Vision", "xrOS", "AppleWebKit", "Macintosh"],
-      "transport": ["browser", "webxr"],
-      "dev": { "adb": false, "webxr": true, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 100, "stereo": "sbs", "refresh": [90, 96, 100] },
-      "mg": { "eye": "human", "ipd": 30, "fov": 2000, "fovea": 52, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Vision",
+        "xrOS",
+        "AppleWebKit",
+        "Macintosh"
+      ],
+      "transport": [
+        "browser",
+        "webxr"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": true,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 100,
+        "stereo": "sbs",
+        "refresh": [
+          90,
+          96,
+          100
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 30,
+        "fov": 2000,
+        "fovea": 52,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "pico-4",
       "brand": "Pico",
       "name": "Pico 4 / 4 Ultra",
       "class": "standalone-vr",
-      "uaHints": ["Pico", "PICO"],
-      "transport": ["adb", "webxr", "browser"],
-      "dev": { "adb": true, "webxr": true, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 105, "stereo": "sbs", "refresh": [72, 90] },
-      "mg": { "eye": "human", "ipd": 34, "fov": 2050, "fovea": 40, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Pico",
+        "PICO"
+      ],
+      "transport": [
+        "adb",
+        "webxr",
+        "browser"
+      ],
+      "dev": {
+        "adb": true,
+        "webxr": true,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 105,
+        "stereo": "sbs",
+        "refresh": [
+          72,
+          90
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 34,
+        "fov": 2050,
+        "fovea": 40,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "hololens-2",
       "brand": "Microsoft",
       "name": "HoloLens 2",
       "class": "standalone-vr",
-      "uaHints": ["HoloLens", "Windows MR"],
-      "transport": ["browser", "webxr"],
-      "dev": { "adb": false, "webxr": true, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 52, "stereo": "waveguide", "refresh": [60] },
-      "mg": { "eye": "calibrate", "ipd": 20, "fov": 1700, "fovea": 45, "ana": 0, "mode": "page" }
+      "uaHints": [
+        "HoloLens",
+        "Windows MR"
+      ],
+      "transport": [
+        "browser",
+        "webxr"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": true,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 52,
+        "stereo": "waveguide",
+        "refresh": [
+          60
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 20,
+        "fov": 1700,
+        "fovea": 45,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "magic-leap-2",
       "brand": "Magic Leap",
       "name": "Magic Leap 2",
       "class": "standalone-vr",
-      "uaHints": ["Magic Leap"],
-      "transport": ["browser", "webxr"],
-      "dev": { "adb": false, "webxr": true, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 70, "stereo": "waveguide", "refresh": [60, 120] },
-      "mg": { "eye": "human", "ipd": 24, "fov": 1800, "fovea": 44, "ana": 0, "mode": "depth" }
+      "uaHints": [
+        "Magic Leap"
+      ],
+      "transport": [
+        "browser",
+        "webxr"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": true,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 70,
+        "stereo": "waveguide",
+        "refresh": [
+          60,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "human",
+        "ipd": 24,
+        "fov": 1800,
+        "fovea": 44,
+        "ana": 0,
+        "mode": "depth"
+      },
+      "setup": [
+        "Enable developer mode on headset",
+        "Same Wi\u2011Fi as host OR adb reverse for Quest",
+        "Open xr-dev.html in headset browser",
+        "Tap Auto detect \u00b7 optional Enter WebXR"
+      ]
     },
     {
       "id": "warby-parker",
@@ -187,10 +661,32 @@
       "name": "Warby (Rx frames)",
       "class": "optical-rx",
       "uaHints": [],
-      "transport": ["rx-import"],
-      "dev": { "adb": false, "webxr": false, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 0, "stereo": "none", "refresh": [] },
-      "mg": { "eye": "calibrate", "ipd": 12, "fov": 1400, "fovea": 55, "ana": 0, "mode": "page" }
+      "transport": [
+        "rx-import"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": false,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 0,
+        "stereo": "none",
+        "refresh": []
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 12,
+        "fov": 1400,
+        "fovea": 55,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Import Rx JSON/CSV in MG Glasses Rx panel",
+        "Apply No-glasses / calibrate preset"
+      ]
     },
     {
       "id": "zenni",
@@ -198,21 +694,118 @@
       "name": "Zenni / generic lab",
       "class": "optical-rx",
       "uaHints": [],
-      "transport": ["rx-import"],
-      "dev": { "adb": false, "webxr": false, "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 0, "stereo": "none", "refresh": [] },
-      "mg": { "eye": "calibrate", "ipd": 12, "fov": 1400, "fovea": 55, "ana": 0, "mode": "page" }
+      "transport": [
+        "rx-import"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": false,
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 0,
+        "stereo": "none",
+        "refresh": []
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 12,
+        "fov": 1400,
+        "fovea": 55,
+        "ana": 0,
+        "mode": "page"
+      },
+      "setup": [
+        "Import Rx JSON/CSV in MG Glasses Rx panel",
+        "Apply No-glasses / calibrate preset"
+      ]
     },
     {
       "id": "desktop-proxy",
       "brand": "Memory Glass",
       "name": "Desktop stereo proxy",
       "class": "desktop-proxy",
-      "uaHints": ["Macintosh", "Chrome", "Safari", "Firefox"],
-      "transport": ["browser", "anaglyph", "webxr-sim"],
-      "dev": { "adb": false, "webxr": "sim", "hzos": false },
-      "optics": { "ipdMm": 63, "fovH": 90, "stereo": "anaglyph|sbs", "refresh": [60, 120] },
-      "mg": { "eye": "calibrate", "ipd": 14, "fov": 1800, "fovea": 34, "ana": 18, "mode": "depth" }
+      "uaHints": [
+        "Macintosh",
+        "Chrome",
+        "Safari",
+        "Firefox"
+      ],
+      "transport": [
+        "browser",
+        "anaglyph",
+        "webxr-sim"
+      ],
+      "dev": {
+        "adb": false,
+        "webxr": "sim",
+        "hzos": false
+      },
+      "optics": {
+        "ipdMm": 63,
+        "fovH": 90,
+        "stereo": "anaglyph|sbs",
+        "refresh": [
+          60,
+          120
+        ]
+      },
+      "mg": {
+        "eye": "calibrate",
+        "ipd": 14,
+        "fov": 1800,
+        "fovea": 34,
+        "ana": 18,
+        "mode": "depth"
+      },
+      "setup": [
+        "Run mg-xr-dev.sh auto on Mac",
+        "TOOLS \u2192 XR or open xr-dev.html",
+        "Use Anaglyph RB / SBS preview without HMD"
+      ]
     }
-  ]
+  ],
+  "agent": {
+    "sync": "bash experiments/memory-glass/scripts/mg-xr-dev.sh auto",
+    "hot": "bash experiments/memory-glass/scripts/mg-xr-dev.sh hot",
+    "doctor": "bash experiments/memory-glass/scripts/mg-xr-dev.sh doctor",
+    "console": [
+      "__mgXr.auto()",
+      "__mgXr.forAi()",
+      "__mgXr.room.join('lab')"
+    ],
+    "neverPorts": [
+      8765,
+      8766
+    ],
+    "edit": "experiments/memory-glass/hotpipe then mg-xr-dev.sh hot"
+  },
+  "setup": {
+    "standalone-vr": [
+      "Enable developer mode on headset",
+      "Same Wi\u2011Fi as host OR adb reverse for Quest",
+      "Open xr-dev.html in headset browser",
+      "Tap Auto detect \u00b7 optional Enter WebXR"
+    ],
+    "tethered-ar": [
+      "Plug glasses into host (USB-C)",
+      "Mirror/extend host display or open Nebula/host browser",
+      "Apply XREAL/VITURE/Rokid profile in MG or xr-dev",
+      "Prefer page mode optics (low IPD stress)"
+    ],
+    "smart-glasses": [
+      "Use companion app + host MG for optics/Rx",
+      "Camera-only devices: still-pipe / host browser, not WebXR"
+    ],
+    "optical-rx": [
+      "Import Rx JSON/CSV in MG Glasses Rx panel",
+      "Apply No-glasses / calibrate preset"
+    ],
+    "desktop-proxy": [
+      "Run mg-xr-dev.sh auto on Mac",
+      "TOOLS \u2192 XR or open xr-dev.html",
+      "Use Anaglyph RB / SBS preview without HMD"
+    ]
+  }
 }

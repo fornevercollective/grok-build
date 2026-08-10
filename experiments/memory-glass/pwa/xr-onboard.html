@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Memory Glass · XR onboard</title>
+<style>
+:root{--bg:#070b10;--ink:#e8eef5;--mut:#8b949e;--line:#2a3340;--acc:#5eead4;--chip:#1a222c;--blue:#58a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,sans-serif;padding:24px;max-width:720px}
+h1{font-size:1.35rem;margin:0 0 8px}
+h2{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin:28px 0 10px}
+.mut{color:var(--mut)}
+.card{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+pre,code{font:12px/1.4 ui-monospace,Menlo,monospace}
+pre{background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto}
+a{color:var(--blue)}
+.btn{display:inline-block;margin:4px 6px 4px 0;padding:8px 12px;border-radius:8px;border:1px solid rgba(94,233,168,.45);
+  background:rgba(94,233,168,.12);color:var(--acc);text-decoration:none;font:650 13px system-ui}
+.step{display:flex;gap:12px;margin:12px 0}
+.n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--chip);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font:700 12px system-ui;color:var(--acc)}
+#status{font:12px ui-monospace,Menlo,monospace;color:var(--mut)}
+</style>
+</head>
+<body>
+<h1>XR glasses · onboard</h1>
+<p class="mut">Anyone with a glasses kit, Memory Glass (or this PWA), the repo, and an AI can sync and co-work on the same room.</p>
+<p id="status">checking pipe…</p>
+<p>
+  <a class="btn" href="/xr-dev.html?mg_xr=1&room=lab&join=1">Open XR desk + join lab</a>
+  <a class="btn" href="/api/xr/for-ai" target="_blank">Agent for-ai JSON</a>
+</p>
+
+<h2>1 · Host (Mac)</h2>
+<div class="card">
+<pre>cd grok-build
+bash experiments/memory-glass/scripts/mg-xr-dev.sh auto
+bash experiments/memory-glass/scripts/mg-xr-dev.sh doctor</pre>
+<p class="mut">Syncs hotpipe → app + PWA, serves <strong>:8787</strong> with multi-seat room API. Never use 8765/8766.</p>
+</div>
+
+<h2>2 · Memory Glass</h2>
+<div class="step"><div class="n">A</div><div>Install or open <code>Memory Glass.app</code> → <strong>TOOLS → XR</strong> (auto) or <strong>XR Dev</strong>.</div></div>
+<div class="step"><div class="n">B</div><div>After hotpipe edits: <code>mg-xr-dev.sh hot</code> or ⌘⇧R. Do not kill the app.</div></div>
+<div class="step"><div class="n">C</div><div>Console: <code>__mgXr.auto()</code> · <code>__mgXr.room.join('lab')</code> · <code>__mgXr.forAi()</code></div></div>
+
+<h2>3 · Glasses</h2>
+<div class="card">
+<p><strong>Quest</strong> — developer mode, USB, then:</p>
+<pre>bash experiments/memory-glass/scripts/mg-xr-dev.sh quest
+# headset browser:
+# http://127.0.0.1:8787/xr-dev.html?device=quest-3&room=lab&join=1</pre>
+<p><strong>XREAL / VITURE / Rokid</strong> — USB-C to host; open LAN URL on host browser (mirrored) or Nebula; apply profile in desk.</p>
+<p><strong>Vision Pro</strong> — Safari to LAN <code>xr-dev.html?device=apple-vision-pro&join=1</code></p>
+<p><strong>No HMD</strong> — desktop proxy + Anaglyph / SBS on the desk page.</p>
+</div>
+
+<h2>4 · AI agent</h2>
+<div class="card">
+<pre>curl -s http://127.0.0.1:8787/api/xr/for-ai
+# edit experiments/memory-glass/hotpipe/*.js
+bash experiments/memory-glass/scripts/mg-xr-dev.sh hot</pre>
+<p class="mut">Room <code>lab</code> shares device/optics/handoff across host, glass, and agents polling the API.</p>
+</div>
+
+<h2>5 · Multi-seat URL</h2>
+<div class="card">
+<p class="mut">Share with makers on the same Wi‑Fi (replace LAN):</p>
+<pre id="lan-url">http://LAN:8787/xr-dev.html?mg_xr=1&room=lab&join=1</pre>
+</div>
+
+<script>
+fetch('/api/xr/status').then(function(r){return r.json()}).then(function(j){
+  document.getElementById('status').textContent = 'pipe ok · ' + (j.ver||'') + ' · port room API ready';
+}).catch(function(){
+  document.getElementById('status').textContent = 'pipe down — run: bash experiments/memory-glass/scripts/mg-xr-dev.sh serve';
+});
+fetch('/api/xr/for-ai').then(function(r){return r.json()}).then(function(j){
+  if (j.urls && j.urls.lan) {
+    document.getElementById('lan-url').textContent = j.urls.lan.replace('mg_xr=1','mg_xr=1&room=lab&join=1');
+  }
+}).catch(function(){});
+</script>
+</body>
+</html>

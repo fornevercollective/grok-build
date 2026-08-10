@@ -14,6 +14,7 @@
 | **Package map** | [docs/PACKAGE_MAP.md](docs/PACKAGE_MAP.md) — core vs lab planes |
 | **Fleet R4** | [docs/FLEET-R4-DATA.md](docs/FLEET-R4-DATA.md) — kbatch axes · living books P0 |
 | **Modes** | Product lean on WebGrid · full multi-plane lab via `?mg_lab_full=1` |
+| **XR glasses** | [docs/XR-GLASSES-DEV.md](docs/XR-GLASSES-DEV.md) · `scripts/mg-xr-dev.sh auto` · PWA `:8787/xr-dev.html` |
 
 ### Goal + hurdles
 
