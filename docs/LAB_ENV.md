@@ -1,6 +1,6 @@
-# Lab environment · grok-build + experiments + external tools
+# Lab environment · fornevercollective
 
-One plane for **Memory Glass**, **fcs**, **XR glasses**, **/web hygiene**, **desktop-harness**, **Quill**, and **xAI upstream pins**.
+One plane for **Memory Glass**, **fcs**, **XR glasses**, **/web hygiene**, **suite hands**, **suite voice** (`/mic` · `/chat`), and **upstream pins**.
 
 ## Quick doctor
 
@@ -14,69 +14,45 @@ bash scripts/mg-lab-env.sh onboard
 | Plane | Entry | Role |
 |-------|--------|------|
 | **Browser shell** | Memory Glass.app · hotpipe | Native WKWebView craft |
-| **/web + hygiene** | `fcs web` · `mg-web.sh` · `/web` | Multi-browser DevTools · Safari zombie patch |
+| **/web + hygiene** | `fcs web` · `mg-web.sh` · `/web` | Multi-browser DevTools · zombie download patch |
 | **XR glasses** | `mg-xr-dev.sh auto` · `:8787` | Multi-seat optics · WebXR · agent for-ai |
-| **Media wall** | `fcs watch|cam|clock|map|…` | Live demux suite |
-| **Hub** | https://fcs.ugrad.ai/ | Skills · download · lang bridges |
-| **Hands** | `desktop-harness` ([xfreeze2](https://github.com/xfreeze2/desktop-harness)) | AX-first Mac GUI control for agents |
-| **Voice** | Quill ([xfreeze2](https://github.com/xfreeze2/quill)) | Dictation into any field via Grok STT |
-| **Upstream** | `SOURCE_REV` + path-checkout | xai-org/grok-build product tree (no merge) |
+| **Media wall** | `fcs watch\|cam\|clock\|map\|…` | Live demux suite |
+| **Hub** | https://fcs.ugrad.ai/ | Skills · download |
+| **Hands** | `fcs hands` · `/hands` | Agent Mac GUI control for lab desks |
+| **Voice** | `fcs mic` · `fcs chat` | Mic→whisper→inbox · inbox→Grok→speak |
+| **Upstream** | `SOURCE_REV` + path-checkout | Product tree pin (no merge) |
 
-## Install external tools
+## Install suite tools
 
 ```bash
-bash scripts/install-desktop-harness.sh
-bash scripts/install-quill.sh
-desktop-harness --doctor
-desktop-harness daemon start --bg
-open -a Quill
+bash scripts/install-hands.sh
+bash scripts/install-voice.sh
+fcs hands
+fcs mic
+fcs chat
 ```
 
-## Field trigger loop (competitive)
+## Field trigger loop
 
 ```
 random glitch (Safari * download, paste garbage, …)
   → __mgJobHygiene.learn({ kind })
   → rule / mitigation
   → /web learn
-  → COMPETITIVE_BROWSERS wedge
+  → competitive wedge
 ```
 
-Shipped rules (job-hygiene **v2**):
+Job-hygiene rules: reject `*` · prepare TTL · cancel always · paste sanitize · blob/iframe flood limits.
 
-| Safari / field class | MG rule |
-|----------------------|---------|
-| `*` / empty filename | Reject |
-| Preparing forever | 8s TTL |
-| Cancel dead | Cancel always |
-| Terminal paste garbage | Sanitize + reject star |
-| Multi-line paste + buried URL | Prefer URL |
-| Blob download storms | Rate-limit spool |
-| Reload mid-download | Fail open jobs |
-| iframe download flood | Rate-limit |
-
-## Upstream xAI (forks / updates)
-
-GitHub “N commits behind” is **normal** (unrelated histories). Trust pin:
+## Upstream product tree
 
 ```bash
 cat SOURCE_REV
 git fetch upstream
 ./scripts/sync-upstream-path-checkout.sh upstream/main
-# review, commit, push origin
 ```
 
 Do **not** `git merge upstream/main`. Policy: `docs/FORK_SYNC.md`.
-
-## Agent / multi-CLI
-
-| Agent | Path |
-|-------|------|
-| Any terminal | `fcs web` · `fcs hygiene` · `fcs install agents` |
-| Grok MG term | `/web` · `/hygiene` · `/xr` patterns |
-| Dispatch | `mgd web` · `mgd hygiene` · `mgd xr` |
-| Claude | `/fc-web` · media suite packs |
-| Lab snapshot | `~/.panda/lab-env/LATEST.json` |
 
 ## Ports (never Soft Path)
 
@@ -85,3 +61,14 @@ Do **not** `git merge upstream/main`. Policy: `docs/FORK_SYNC.md`.
 | **8787** | MG PWA · XR · glyph arena |
 | **8790** | fcs local hub / benches |
 | **8765/8766** | Soft Path only — do not bind |
+
+## Upstream pin (last path-checkout)
+
+| | |
+|--|--|
+| **When** | 2026-08-12 |
+| **SOURCE_REV** | `ea094a8c369475f97c85540d01730baec0dce5d6` |
+| **upstream/main** | `e5fd4816` |
+| **Verify** | `./scripts/verify-upstream-sync.sh` |
+| **Pages** | https://fornevercollective.github.io/grok-build/ |
+

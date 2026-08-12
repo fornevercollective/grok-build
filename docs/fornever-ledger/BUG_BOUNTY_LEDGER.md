@@ -30,6 +30,23 @@ Severity: **S0** ship-blocker · **S1** high · **S2** medium · **S3** polish �
 | MG-015 | S3 | Dock icon stale | After rebuild | LaunchServices cache | lsregister; killall Dock tip | **Known** |
 | MG-016 | S1 | Play kills contrails · scrim blocks maze | No trails; glitchy floats; board/maze blocked | quietPlayChrome off + openPlayFloats dead + scrim pe:auto on play | v32 ensurePlayContrails; scrim pe:none mid-play; z-index fix | **Mitigated** |
 
+---
+
+## elffin (Metal terminal / cinema)
+
+| ID | Sev | Title | Symptom | Root / hypothesis | Mitigation / fix | Status |
+|----|-----|-------|---------|-------------------|------------------|--------|
+| EL-001 | S1 | Cinema resize-to-tiny SIGABRT | Drag Dr Doom trailer window to watch size → abort on main during NSView draw | Live resize 0×0 / sub-64 surface.configure + texture recreate thrash (pid 40829 2026-08-11, parent 97421) | `resize`: skip GPU reconfig if w\|h < 64; window `min_inner_size` 180×120; keep last good surface | **Mitigated** 2026-08-11 |
+| EL-002 | S1 | Clean desk not typeable | Keys stolen by beauty/media shortcuts | plain_terminal not forced on clean | `force_plain` + media_tx clear + wide rail | **Mitigated** e40a91a |
+| EL-003 | INFO | Capture-quiet aliased to clean | Blank navy void desk | clean → capture-quiet | split clean vs capture | **Mitigated** earlier |
+
+### EL-001 reproduce
+```bash
+# cinema seat with trailer, drag corner until ~watch size
+# pre-fix: SIGABRT abort() on Thread 0 during _NSViewDrawRect
+# post-fix: skip log + window resists <180×120 logical
+```
+
 ### Reproduce pack (MG-001)
 ```bash
 # DO NOT leave unsigned:

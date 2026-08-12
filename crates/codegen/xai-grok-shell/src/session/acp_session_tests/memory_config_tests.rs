@@ -5,6 +5,13 @@ use xai_grok_paths::AbsPathBuf;
 use xai_grok_workspace::file_system::MockFs;
 use xai_grok_workspace::permission::PermissionHandle;
 #[test]
+fn first_turn_memory_visibility_matches_displayed_score() {
+    assert_eq!(
+        [true, true, false, false],
+        [0.90, 0.006, 0.004, 0.0].map(super::SessionActor::is_first_turn_memory_score_visible),
+    );
+}
+#[test]
 fn initial_injection_backend_params_use_override_min_score() {
     let params = crate::session::memory::MemoryBackendParams {
         session_id: "test-session".to_owned(),
@@ -86,7 +93,7 @@ async fn create_test_actor_with_memory(
     let state = TokioMutex::new(State {
         running_task: None,
         pending_inputs: VecDeque::new(),
-        combine_edit_holds: std::collections::HashSet::new(),
+        edit_holds: HashMap::new(),
         pending_notifications: Vec::new(),
         notifications_suppressed: false,
         rewindable: false,
@@ -142,7 +149,9 @@ async fn create_test_actor_with_memory(
         tool_context,
         deny_read_globs: Vec::new(),
         mcp_state: Arc::new(TokioMutex::new(McpState::new(vec![]))),
-        mcp_strategy: McpInitStrategy::Blocking,
+        mcp_strategy: std::cell::Cell::new(McpInitStrategy::Blocking),
+        delivery_tools: std::cell::RefCell::new(Vec::new()),
+        attach_non_interactive: std::cell::Cell::new(false),
         chat_state_handle,
         unattributed_background_usage: std::sync::atomic::AtomicBool::new(false),
         current_prompt_id: std::sync::Arc::new(std::sync::Mutex::new(None)),
@@ -268,7 +277,6 @@ async fn create_test_actor_with_memory(
         pending_classifier_completions: parking_lot::Mutex::new(std::collections::VecDeque::new()),
         goal_classifier_in_flight: std::sync::atomic::AtomicBool::new(false),
         managed_mcp_handle: Default::default(),
-        managed_mcp_expires_at: std::sync::Mutex::new(None),
         initial_client_mcp_servers: vec![],
         tool_metadata_snapshot: Arc::new(std::sync::Mutex::new(Default::default())),
         mcp_announced_servers: Mutex::new(HashMap::new()),
@@ -278,6 +286,7 @@ async fn create_test_actor_with_memory(
         mcp_handshakes_done: Arc::new(tokio::sync::Notify::new()),
         user_input_generation: std::sync::atomic::AtomicU64::new(0),
         laziness_debug_log: None,
+        last_live_orphan_reconcile: std::cell::Cell::new(None),
         deferred_prefix: TaskSlot::new(),
         extension_registry: xai_agent_lifecycle::LocalExtensionRegistry::default(),
         last_announced_local_date: std::cell::Cell::new(chrono::Local::now().date_naive()),
@@ -303,6 +312,7 @@ async fn create_test_actor_with_memory(
         session_turn_active: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         streaming_turn_capture: parking_lot::Mutex::new(StreamingTurnCapture::default()),
         turn_stream_drained: parking_lot::Mutex::new(None),
+        pending_image_strip: parking_lot::Mutex::new(None),
         sampler_handle: xai_grok_sampler::SamplerHandle::noop(),
         rebuild_spec: crate::session::agent_rebuild::test_rebuild_spec_default(),
         image_description_model: crate::test_support::TEST_MODEL.to_owned(),
@@ -569,6 +579,44 @@ async fn test_first_turn_reminder_injects_without_persisted_block() {
                     .context_injected
                     .load(std::sync::atomic::Ordering::Relaxed),
                 "latch must be set after the injection decision runs"
+            );
+            assert_eq!(None, actor.first_turn_memory_reminder().await);
+        })
+        .await;
+}
+#[tokio::test(flavor = "current_thread")]
+async fn test_first_turn_reminder_skips_all_displayed_zero_results() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let mut actor = create_injection_ready_actor(vec![
+                xai_grok_sampling_types::ConversationItem::system("You are a helpful assistant."),
+                xai_grok_sampling_types::ConversationItem::user(
+                    "tell me about rust backend services conventions",
+                ),
+            ])
+            .await;
+            actor
+                .memory
+                .backend_params
+                .as_mut()
+                .unwrap()
+                .search_config
+                .source_weights
+                .insert("workspace".to_owned(), 0.0);
+            assert_eq!(None, actor.first_turn_memory_reminder().await);
+            assert_eq!(
+                0,
+                actor
+                    .memory
+                    .injection_count
+                    .load(std::sync::atomic::Ordering::Relaxed)
+            );
+            assert!(
+                actor
+                    .memory
+                    .context_injected
+                    .load(std::sync::atomic::Ordering::Relaxed)
             );
             assert_eq!(None, actor.first_turn_memory_reminder().await);
         })

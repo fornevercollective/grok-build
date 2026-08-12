@@ -71,7 +71,7 @@ use super::session::load::{
     dispatch_show_session_picker, dispatch_trigger_deep_search, session_picker_entry_matches,
     session_picker_external_filter_active,
 };
-use super::session::modal::dispatch_rename_session;
+use super::session::modal::{dispatch_rename_session, dispatch_reset_session_title};
 use super::settings::setters::{
     clear_default_model, clear_fork_secondary_model, preview_auto_dark_theme,
     preview_auto_light_theme, preview_theme, set_ask_user_question_timeout_enabled,
@@ -95,7 +95,7 @@ use super::settings::ui::{
     dispatch_toggle_vim_mode,
 };
 use super::status::{
-    dispatch_copy_session_id, dispatch_manage_billing, dispatch_open_gboom, dispatch_open_gy_tty, dispatch_open_live_watch, dispatch_popout_live_watch, dispatch_open_timesync, dispatch_open_language, dispatch_open_map, dispatch_popout_map, dispatch_open_tutorial,
+    dispatch_copy_session_id, dispatch_manage_billing, dispatch_open_gboom, dispatch_open_tutorial,
     dispatch_privacy_banner_opt_in, dispatch_privacy_banner_opt_out, dispatch_share_session,
     dispatch_show_context_info, dispatch_show_queue, dispatch_show_release_notes,
     dispatch_show_session_info, dispatch_show_tasks, dispatch_show_usage, set_coding_data_sharing,
@@ -1011,6 +1011,7 @@ pub(crate) fn dispatch(action: Action, app: &mut AppView) -> Vec<Effect> {
         }
         Action::OpenTutorial => dispatch_open_tutorial(app),
         Action::RenameSession { title } => dispatch_rename_session(app, title),
+        Action::ResetSessionTitleToAuto => dispatch_reset_session_title(app),
         Action::ShowContextInfo => dispatch_show_context_info(app),
         Action::ShowUsage => dispatch_show_usage(app),
         Action::ManageBilling => dispatch_manage_billing(app),
@@ -1288,13 +1289,6 @@ pub(crate) fn dispatch(action: Action, app: &mut AppView) -> Vec<Effect> {
             vec![]
         }
         Action::OpenGboom => dispatch_open_gboom(app),
-        Action::OpenGyTty { surface } => dispatch_open_gy_tty(app, &surface),
-        Action::OpenLiveWatch { url } => dispatch_open_live_watch(app, &url),
-        Action::PopOutLiveWatch { url } => dispatch_popout_live_watch(app, &url),
-        Action::OpenTimesync => dispatch_open_timesync(app),
-        Action::OpenLanguage => dispatch_open_language(app),
-        Action::OpenMap { target } => dispatch_open_map(app, &target),
-        Action::PopOutMap { target, web } => dispatch_popout_map(app, &target, web),
         Action::SuspendForEditor {
             path,
             refresh_agents_modal,

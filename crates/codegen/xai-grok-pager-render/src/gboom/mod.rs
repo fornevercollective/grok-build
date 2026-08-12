@@ -346,62 +346,6 @@ impl GboomState {
         Some(&self.png)
     }
 
-
-    /// Paint the current frame into `area` as truecolor half-block cells.
-    ///
-    /// **fornevercollective** portable path ([`crate::render::halfblock`]) when
-    /// Kitty/iTerm image protocol is unavailable.
-    pub fn paint_half_blocks(
-        &mut self,
-        buf: &mut ratatui::buffer::Buffer,
-        area: ratatui::layout::Rect,
-    ) -> bool {
-        if area.width < 4 || area.height < 2 {
-            return false;
-        }
-        let (w, h) = crate::render::halfblock::sample_size_for_cells(area.width, area.height);
-        let w = w as usize;
-        let h = h as usize;
-        if w < 8 || h < 8 {
-            return false;
-        }
-        let t_frame = std::time::Instant::now();
-        let t_ray = std::time::Instant::now();
-        self.fb.resize(w, h);
-        match self.phase {
-            Phase::Title => self.render_title_screen(),
-            Phase::Playing => self.renderer.render_game(&mut self.fb, &self.game),
-            Phase::Won => self.render_end_screen("VICTORY!", [255, 214, 80]),
-            Phase::Dead => self.render_end_screen("YOU DIED", assets::GBOOM_RED),
-        }
-        crate::render::halfblock::record_global(
-            crate::render::halfblock::PaintPhase::Raycast,
-            t_ray.elapsed(),
-            area.width,
-            area.height,
-            w as u32,
-            h as u32,
-        );
-        let ok = crate::render::halfblock::paint_rgb24(
-            buf,
-            area,
-            &self.fb.pixels,
-            w as u32,
-            h as u32,
-        );
-        if ok {
-            crate::render::halfblock::record_global(
-                crate::render::halfblock::PaintPhase::FrameTotal,
-                t_frame.elapsed(),
-                area.width,
-                area.height,
-                w as u32,
-                h as u32,
-            );
-        }
-        ok
-    }
-
     fn render_title_screen(&mut self) {
         engine::clear(&mut self.fb, [7, 7, 9]);
         self.fire.draw(&mut self.fb, 0.62);

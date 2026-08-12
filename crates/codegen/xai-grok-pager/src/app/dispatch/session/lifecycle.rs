@@ -439,6 +439,7 @@ pub(in crate::app::dispatch) fn dispatch_new_session_inner_with_id(
     let chat_kind = consume_chat_kind(app);
     if let Some(agent) = app.agents.get_mut(&agent_id) {
         agent.chat_kind = chat_kind;
+        agent.conversation_entry = chat_kind;
         #[cfg(feature = "local-workspace")]
         {
             let local_intent = match &app.welcome_session_local_workspace {
@@ -607,6 +608,7 @@ pub(in crate::app::dispatch) fn dispatch_delete_current_session_answered(
             .map(|task_id| Effect::KillBgTask {
                 session_id: session_id.clone(),
                 task_id,
+                source: xai_grok_shell::extensions::task::TaskKillSource::Teardown,
             }),
     );
     app.show_toast("Deleting session\u{2026}");
@@ -670,9 +672,6 @@ pub(in crate::app::dispatch) fn drain_startup_actions(app: &mut AppView) -> Vec<
         prompt,
         open_dashboard,
         pending_chat,
-        open_live_watch,
-        open_timesync,
-        open_map,
         #[cfg(feature = "local-workspace")]
         history_load_as_build,
     } = app.deferred_startup.take();
@@ -789,16 +788,6 @@ pub(in crate::app::dispatch) fn drain_startup_actions(app: &mut AppView) -> Vec<
     }
     if open_dashboard {
         effects.extend(dispatch(Action::OpenDashboard, app));
-    }
-    // Media modals need an Agent view — open after any deferred NewSession above.
-    if let Some(src) = open_live_watch {
-        effects.extend(super::super::status::dispatch_open_live_watch(app, &src));
-    }
-    if open_timesync {
-        effects.extend(super::super::status::dispatch_open_timesync(app));
-    }
-    if let Some(target) = open_map {
-        effects.extend(super::super::status::dispatch_open_map(app, &target));
     }
     effects
 }
@@ -963,6 +952,7 @@ pub(in crate::app::dispatch) fn dispatch_new_worktree_session(
             &app.tier_restricted_commands,
         );
         agent.chat_kind = chat_kind;
+        agent.conversation_entry = chat_kind;
         #[cfg(feature = "local-workspace")]
         {
             let local_intent = match &app.welcome_session_local_workspace {
@@ -1120,6 +1110,7 @@ pub(in crate::app::dispatch) fn handle_session_created(
         effects.push(Effect::FetchBilling {
             agent_id,
             silent: true,
+            nonce: 0,
         });
         if let Some(switch) = deferred {
             effects.push(Effect::SwitchModel {
@@ -1172,6 +1163,10 @@ pub(in crate::app::dispatch) fn handle_worktree_session_created(
         agent.scheduler_background_loops = scheduler_background_loops;
         agent.session.cwd = session_cwd.clone();
         agent.session.is_worktree = true;
+        agent.current_branch = None;
+        agent.main_repo = None;
+        agent.is_worktree = true;
+        crate::git_info::populate_from_cwd_async(session_cwd.clone());
         if let Some(m) = new_models {
             app.models = Some(m).into();
             agent.session.models = app.models.clone();
@@ -1223,6 +1218,7 @@ pub(in crate::app::dispatch) fn handle_worktree_session_created(
         effects.push(Effect::FetchBilling {
             agent_id,
             silent: true,
+            nonce: 0,
         });
         if let Some(switch) = deferred {
             effects.push(Effect::SwitchModel {

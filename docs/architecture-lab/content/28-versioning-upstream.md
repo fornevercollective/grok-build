@@ -17,11 +17,14 @@ Policy: **path-checkout** · never force-merge · no PRs to `xai-org`.
 
 | Pin | Value |
 |-----|--------|
-| **SOURCE_REV** | `2ec0f0c8488842da03a71eeee3c61154957ca919` |
-| **upstream tip** | `8adf901` — *Synced from monorepo* |
-| **prior sync** | `c68e39f` — *Publish harness and TUI open-source* |
-| **fork main** | see `git log -1 --oneline` (Lab + path-checkout commits) |
-| **Lab semver** | `0.3.10`+ (native / package.json) |
+| **SOURCE_REV** | `ea094a8c369475f97c85540d01730baec0dce5d6` |
+| **upstream tip** | `e5fd4816` — *Synced from monorepo* |
+| **prior fork pin** | `796754a8` (pre-2026-08-12 path-checkout) |
+| **fork branch** | `sync/0.2.121-fc-media` + `main` (Lab + path-checkout) |
+| **Lab semver** | `0.3.11`+ (`version.json` / package.json) |
+
+**Synced:** 2026-08-12 via `./scripts/sync-upstream-path-checkout.sh upstream/main`  
+**Pages:** https://fornevercollective.github.io/grok-build/ · workflow `pages-architecture-lab.yml` on `main`
 
 ```bash
 cat SOURCE_REV

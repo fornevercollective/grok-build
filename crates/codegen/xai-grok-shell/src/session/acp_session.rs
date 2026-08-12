@@ -105,6 +105,8 @@ mod auth_retry;
 pub(crate) use auth_retry::{
     AuthRetryDecision, AuthRetrySchedule, human_duration, pace_uncharged_resubmit,
 };
+#[path = "acp_session_impl/image_strip.rs"]
+mod image_strip;
 #[path = "acp_session_impl/interjection.rs"]
 mod interjection;
 #[path = "acp_session_impl/tool_calls.rs"]
@@ -286,6 +288,26 @@ struct GoalContinuationPlan {
     /// directive is committed for delivery.
     strategy_rec: Option<String>,
 }
+/// Maximum age of a queue-edit hold before the promoter discards it.
+///
+/// Bounds leaked holds after a client crash or dropped `release_edit`. Expiry
+/// runs during the next promote attempt (`maybe_start_running_task`), not on a
+/// timer. A repeat `hold_edit` inserts a fresh stamp so re-entering edit after
+/// a dropped release does not inherit an aged bound.
+pub(crate) const EDIT_HOLD_TTL: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+fn expire_older_than(holds: &mut HashMap<String, std::time::Instant>, ttl: std::time::Duration) {
+    holds.retain(|_, since| since.elapsed() < ttl);
+}
+#[cfg(test)]
+fn backdate_edit_hold(
+    holds: &mut HashMap<String, std::time::Instant>,
+    id: &str,
+    age: std::time::Duration,
+) {
+    if let Some(since) = holds.get_mut(id) {
+        *since = std::time::Instant::now() - age;
+    }
+}
 /// Task scheduling state — the only fields that remain behind `TokioMutex`.
 ///
 /// All chat state (conversation, tokens, timing, prompt_index, prompt_texts,
@@ -297,8 +319,9 @@ pub(crate) struct State {
     pub(crate) running_task: Option<AgentTask>,
     pub(crate) pending_inputs: VecDeque<InputItem>,
     pub(crate) pending_notifications: Vec<PendingNotification>,
-    /// Prompt ids held out of combine-on-promote (composer edit in progress).
-    pub(crate) combine_edit_holds: std::collections::HashSet<String>,
+    /// Prompt ids under composer edit, stamped (and re-stamped) by `hold_edit`.
+    /// Held followers are skipped by combine; a live held front blocks promote.
+    pub(crate) edit_holds: HashMap<String, std::time::Instant>,
     /// When true, notifications are buffered but not drained until genuine
     /// user re-engagement. Set by an interactive stop, cleared by a user
     /// prompt.
@@ -647,8 +670,12 @@ pub(crate) struct SessionActor {
     /// Consolidated MCP state (configs, clients, init status) protected by a single lock.
     /// This ensures atomicity when updating configs or checking initialization status.
     pub(crate) mcp_state: Arc<TokioMutex<McpState>>,
-    /// MCP initialization strategy
-    pub(crate) mcp_strategy: McpInitStrategy,
+    /// MCP initialization strategy. `Cell`: per-attachment policy — a
+    /// resident `session/load` carrying explicit `startupHints` re-applies
+    /// the attaching client's strategy (`UpdateAttachPolicy`), so a headless
+    /// client attaching to an actor spawned by an interactive one still gets
+    /// Blocking MCP init on its turns (and vice versa).
+    pub(crate) mcp_strategy: std::cell::Cell<McpInitStrategy>,
     /// Actor-based chat state handle — manages conversation, tokens, timing, and persistence.
     /// Also stores credentials (api_key, optional extra access key,
     /// client_version) opaquely.
@@ -691,6 +718,20 @@ pub(crate) struct SessionActor {
     pub(crate) rewind_pending_prompt: std::sync::Mutex<Option<String>>,
     /// Startup hints for the session: currently responsible for customizing the user message prefix and the git status mode (fast no untracked for non-interactive mode)
     pub(crate) startup_hints: StartupHints,
+    /// Delivery-tool names for the CURRENT attachment, seeded from the spawn
+    /// `startupHints.deliveryTools` and re-applied when a resident
+    /// `session/load` carries explicit hints (`UpdateAttachPolicy`). Kept
+    /// separate from the frozen `startup_hints`: structural spawn-time hints
+    /// (subagent identity, inherited prefix) never change on re-attach,
+    /// per-attachment policy may.
+    pub(crate) delivery_tools: std::cell::RefCell<Vec<String>>,
+    /// `nonInteractive` for the CURRENT attachment (same lifecycle as
+    /// `delivery_tools`). Drives operational can-a-human-act-now decisions —
+    /// today the MCP OAuth interactivity on (re)init, which pairs with the
+    /// `UpdateMcpServers` sent by the same resident load. The frozen
+    /// `startup_hints.non_interactive` keeps governing spawn-time structure
+    /// (system prompt variant, user-message prefix, git-status mode).
+    pub(crate) attach_non_interactive: std::cell::Cell<bool>,
     /// Verbatim mirror-fork override: when `Some`, every turn sends this exact
     /// parent tool schema instead of the locally-built toolset, keeping the
     /// child's request prefix byte-identical to the parent for radix cache reuse.
@@ -893,10 +934,8 @@ pub(crate) struct SessionActor {
     >,
     /// [`Self::account_not_achieved_without_sampler`].
     pub(crate) goal_classifier_in_flight: std::sync::atomic::AtomicBool,
-    /// Agent-level managed MCP config cache (refreshed in background).
+    /// Agent-level managed MCP gateway catalog cache.
     pub(crate) managed_mcp_handle: crate::session::managed_mcp::ManagedMcpStateHandle,
-    /// Earliest managed MCP token expiry; checked before tool dispatch.
-    pub(crate) managed_mcp_expires_at: std::sync::Mutex<Option<chrono::DateTime<chrono::Utc>>>,
     /// Original client-provided MCP servers from session creation.
     /// Retained for re-merge during plugin reload.
     pub(crate) initial_client_mcp_servers: Vec<acp::McpServer>,
@@ -1042,6 +1081,12 @@ pub(crate) struct SessionActor {
     /// terminal `SamplingEvent::Completed` (every text/thought chunk has been
     /// `send_update`d by then). `None` between turns.
     pub(crate) turn_stream_drained: parking_lot::Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    /// A server-confirmed image strip awaiting proof that the stripped retry
+    /// helped: URLs buffered by request id on `ImagesStripped`, persisted to
+    /// stored history only when that request's `Completed` arrives, dropped
+    /// on `Failed`. See `acp_session_impl/image_strip.rs`.
+    pub(crate) pending_image_strip:
+        parking_lot::Mutex<Option<(xai_grok_sampler::RequestId, Vec<std::sync::Arc<str>>)>>,
     /// Handle to the per-session `xai-grok-sampler` actor.
     ///
     /// Live sessions get a real handle from `spawn_session_actor`;
@@ -1108,6 +1153,9 @@ pub(crate) struct SessionActor {
     /// session spawn; concurrent appends rely on `O_APPEND`'s atomic
     /// guarantee for writes under `PIPE_BUF` (JSONL lines fit).
     pub(crate) laziness_debug_log: Option<std::sync::Arc<std::path::Path>>,
+    /// Last live-orphan disk scan. SessionActor is `!Send`, so a `Cell` is
+    /// enough to throttle mid-turn ticks without a lock.
+    pub(crate) last_live_orphan_reconcile: std::cell::Cell<Option<std::time::Instant>>,
 }
 /// Template for building trace configs on synthetic auto-wake turns.
 ///
@@ -1305,11 +1353,13 @@ const PROMPT_CONTEXT_FILENAME: &str = "prompt_context.json";
 /// The saved JSON enables deterministic re-rendering, `grok prompt --json`
 /// inspection, and post-hoc debugging of what went into a session's system prompt.
 fn save_prompt_context(session_info: &SessionInfo, prompt_context: &xai_grok_agent::PromptContext) {
-    let dir = crate::session::persistence::session_dir(session_info);
-    if let Err(e) = std::fs::create_dir_all(&dir) {
-        tracing::warn!(?e, "failed to create session dir for prompt_context.json");
-        return;
-    }
+    let dir = match crate::session::persistence::ensure_owner_only_session_dir(session_info) {
+        Ok(dir) => dir,
+        Err(e) => {
+            tracing::warn!(?e, "failed to create session dir for prompt_context.json");
+            return;
+        }
+    };
     let path = dir.join(PROMPT_CONTEXT_FILENAME);
     match serde_json::to_string_pretty(prompt_context) {
         Ok(json) => {
@@ -1337,12 +1387,14 @@ const SYSTEM_PROMPT_FILENAME: &str = "system_prompt.txt";
 /// own `chat_history.jsonl.tmp`; whichever atomic `rename` lands last wins and
 /// the content is identical, so the two writers can never produce a torn file.
 fn persist_chat_history_jsonl_sync(session_info: &SessionInfo, conversation: &[ConversationItem]) {
-    let dir = crate::session::persistence::session_dir(session_info);
-    if let Err(e) = std::fs::create_dir_all(&dir) {
-        tracing::warn!(session_id = %session_info.id.0, ?e,
-            "persist_chat_history_jsonl_sync: failed to create session dir");
-        return;
-    }
+    let dir = match crate::session::persistence::ensure_owner_only_session_dir(session_info) {
+        Ok(dir) => dir,
+        Err(e) => {
+            tracing::warn!(session_id = %session_info.id.0, ?e,
+                "persist_chat_history_jsonl_sync: failed to create session dir");
+            return;
+        }
+    };
     let final_path = dir.join("chat_history.jsonl");
     let tmp_path = dir.join("chat_history.jsonl.sync.tmp");
     let result = (|| -> std::io::Result<()> {
@@ -1369,11 +1421,13 @@ fn persist_chat_history_jsonl_sync(session_info: &SessionInfo, conversation: &[C
 /// is benign, and this artifact is a convenience mirror, not the source of truth
 /// (the conversation head is).
 fn save_system_prompt(session_info: &SessionInfo, system_prompt: &str) {
-    let dir = crate::session::persistence::session_dir(session_info);
-    if let Err(e) = std::fs::create_dir_all(&dir) {
-        tracing::warn!(?e, "failed to create session dir for system_prompt.txt");
-        return;
-    }
+    let dir = match crate::session::persistence::ensure_owner_only_session_dir(session_info) {
+        Ok(dir) => dir,
+        Err(e) => {
+            tracing::warn!(?e, "failed to create session dir for system_prompt.txt");
+            return;
+        }
+    };
     let path = dir.join(SYSTEM_PROMPT_FILENAME);
     if let Err(e) = std::fs::write(&path, system_prompt) {
         tracing::warn!(?e, "failed to write system_prompt.txt");
@@ -1621,6 +1675,9 @@ mod observability_bridge_mapping_tests;
 #[cfg(test)]
 #[path = "acp_session_tests/permission_auto_mode_tests.rs"]
 mod permission_auto_mode_tests;
+#[cfg(test)]
+#[path = "acp_session_tests/permission_prompt_notification_tests.rs"]
+mod permission_prompt_notification_tests;
 /// Resume re-park of the parked `exit_plan_mode` approval.
 #[cfg(test)]
 #[path = "acp_session_tests/plan_approval_resume_tests.rs"]
@@ -1771,6 +1828,7 @@ mod tool_meta_stamp_tests {
                     yolo_pin: None,
                     deny_read_globs: Arc::new(vec![]),
                     in_flight: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+                    user_prompt_notify: Arc::new(parking_lot::Mutex::new(None)),
                 };
                 let captured: Arc<tokio::sync::Mutex<Option<acp::ToolCallUpdate>>> =
                     Arc::new(tokio::sync::Mutex::new(None));
@@ -1876,6 +1934,9 @@ mod feedback_turn_lookup_tests;
 #[path = "acp_session_tests/idle_resume_tests.rs"]
 mod idle_resume_tests;
 #[cfg(test)]
+#[path = "acp_session_tests/image_strip_tests.rs"]
+mod image_strip_tests;
+#[cfg(test)]
 #[path = "acp_session_tests/inline_auto_compact_flow_tests.rs"]
 mod inline_auto_compact_flow_tests;
 #[cfg(test)]
@@ -1891,6 +1952,9 @@ mod laziness_integration_tests;
 #[path = "acp_session_tests/load_user_prompts_tests.rs"]
 mod load_user_prompts_tests;
 #[cfg(test)]
+#[path = "acp_session_tests/mcp_connecting_reminder_tests.rs"]
+mod mcp_connecting_reminder_tests;
+#[cfg(test)]
 #[path = "acp_session_tests/media_gen_auth_retry_tests.rs"]
 mod media_gen_auth_retry_tests;
 #[cfg(test)]
@@ -1902,12 +1966,6 @@ mod parallel_dispatch_tests;
 #[cfg(test)]
 #[path = "acp_session_tests/prompt_context_persistence_tests.rs"]
 mod prompt_context_persistence_tests;
-#[cfg(test)]
-#[path = "acp_session_tests/reactive_managed_reauth_e2e_tests.rs"]
-mod reactive_managed_reauth_e2e_tests;
-#[cfg(test)]
-#[path = "acp_session_tests/reactive_managed_reauth_tests.rs"]
-mod reactive_managed_reauth_tests;
 #[cfg(test)]
 #[path = "acp_session_tests/session_thread_tests.rs"]
 mod session_thread_tests;

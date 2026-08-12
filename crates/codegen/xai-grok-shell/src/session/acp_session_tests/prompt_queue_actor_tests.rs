@@ -445,7 +445,9 @@ async fn edit_queued_prompt_clears_combine_hold() {
             {
                 let mut state = actor.state.lock().await;
                 state.pending_inputs.push_back(user_item("p1", "alice"));
-                state.combine_edit_holds.insert("p1".to_string());
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
             }
 
             actor
@@ -454,7 +456,7 @@ async fn edit_queued_prompt_clears_combine_hold() {
 
             let state = actor.state.lock().await;
             assert!(
-                !state.combine_edit_holds.contains("p1"),
+                !state.edit_holds.contains_key("p1"),
                 "applying the edit must clear the combine hold for that row"
             );
             let item = state
@@ -463,6 +465,387 @@ async fn edit_queued_prompt_clears_combine_hold() {
                 .find(|i| i.queue_meta.as_ref().is_some_and(|m| m.id == "p1"))
                 .expect("p1 still in queue");
             assert_eq!(item.queue_meta.as_ref().unwrap().text, "edited");
+        })
+        .await;
+}
+
+/// Empty or stale edit requests also clear their unscoped hold so the
+/// promoter cannot remain parked on an early return.
+#[tokio::test(flavor = "current_thread")]
+async fn edit_early_returns_clear_combine_hold() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+            }
+            actor
+                .handle_edit_queued_prompt("p1", "   ".into(), Some("bob"))
+                .await;
+            assert!(
+                !actor.state.lock().await.edit_holds.contains_key("p1"),
+                "empty edit must clear the row hold"
+            );
+
+            {
+                actor
+                    .state
+                    .lock()
+                    .await
+                    .edit_holds
+                    .insert("missing".to_string(), std::time::Instant::now());
+            }
+            actor
+                .handle_edit_queued_prompt("missing", "text".into(), Some("bob"))
+                .await;
+            assert!(
+                !actor.state.lock().await.edit_holds.contains_key("missing"),
+                "missing-row edit must clear the row hold"
+            );
+        })
+        .await;
+}
+
+/// A front id under edit hold must not promote; clearing the hold then
+/// re-kicking `maybe_start_running_task` starts the turn.
+#[tokio::test(flavor = "current_thread")]
+async fn maybe_start_blocks_when_front_under_edit_hold() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor
+                .clone()
+                .maybe_start_running_task(completion_tx.clone())
+                .await;
+
+            {
+                let state = actor.state.try_lock().expect("uncontended");
+                assert!(state.running_task.is_none(), "held front must not promote");
+                assert_eq!(state.pending_inputs.len(), 1);
+                assert!(state.edit_holds.contains_key("p1"));
+            }
+
+            {
+                let mut state = actor.state.lock().await;
+                state.edit_holds.remove("p1");
+            }
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            {
+                let state = actor.state.try_lock().expect("no await since promote");
+                assert_eq!(state.running_prompt_id(), Some("p1"));
+                if let Some(task) = state.running_task.as_ref() {
+                    task.handle.abort();
+                }
+            }
+        })
+        .await;
+}
+
+/// A second `hold_edit` through the actor inserts a fresh stamp so re-entering
+/// edit after a dropped release does not inherit an aged leak bound.
+#[tokio::test(flavor = "current_thread")]
+async fn repeated_hold_refreshes_leak_bound() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            actor.handle_hold_edit("p1".to_string()).await;
+            {
+                let mut state = actor.state.lock().await;
+                super::backdate_edit_hold(
+                    &mut state.edit_holds,
+                    "p1",
+                    std::time::Duration::from_secs(60),
+                );
+            }
+            let aged = {
+                let state = actor.state.lock().await;
+                *state.edit_holds.get("p1").expect("first hold present")
+            };
+
+            actor.handle_hold_edit("p1".to_string()).await;
+
+            let state = actor.state.lock().await;
+            let refreshed = *state.edit_holds.get("p1").expect("second hold present");
+            assert!(
+                refreshed > aged,
+                "second hold_edit must refresh the stamp (got aged={aged:?} refreshed={refreshed:?})"
+            );
+        })
+        .await;
+}
+
+/// A leaked hold older than `EDIT_HOLD_TTL` is discarded by the promote poll.
+#[tokio::test(flavor = "current_thread")]
+async fn maybe_start_expires_stale_hold_then_promotes() {
+    use crate::session::acp_session::EDIT_HOLD_TTL;
+
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+                super::backdate_edit_hold(
+                    &mut state.edit_holds,
+                    "p1",
+                    EDIT_HOLD_TTL + std::time::Duration::from_secs(1),
+                );
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            let state = actor.state.try_lock().expect("no await since promote");
+            assert_eq!(state.running_prompt_id(), Some("p1"));
+            assert!(
+                !state.edit_holds.contains_key("p1"),
+                "TTL expiry must discard the leaked hold"
+            );
+            if let Some(task) = state.running_task.as_ref() {
+                task.handle.abort();
+            }
+        })
+        .await;
+}
+
+/// Edit clears the hold; re-kick promotes the front with the new text.
+#[tokio::test(flavor = "current_thread")]
+async fn edit_clears_hold_then_promote_runs_edited_front() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor
+                .clone()
+                .maybe_start_running_task(completion_tx.clone())
+                .await;
+            assert!(
+                actor.state.lock().await.running_task.is_none(),
+                "must stay parked under hold"
+            );
+
+            actor
+                .handle_edit_queued_prompt("p1", "edited".into(), Some("bob"))
+                .await;
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            {
+                let state = actor.state.try_lock().expect("no await since promote");
+                assert_eq!(state.running_prompt_id(), Some("p1"));
+                assert!(!state.edit_holds.contains_key("p1"));
+                if let Some(task) = state.running_task.as_ref() {
+                    task.handle.abort();
+                }
+            }
+        })
+        .await;
+}
+
+/// Send-now interject of a held idle front clears the hold and promote
+/// starts the edited text (not the original).
+#[tokio::test(flavor = "current_thread")]
+async fn interject_held_front_then_promote_runs_edited_text() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor
+                .clone()
+                .maybe_start_running_task(completion_tx.clone())
+                .await;
+            assert!(
+                actor.state.lock().await.running_task.is_none(),
+                "held front must not promote"
+            );
+
+            let _ = actor
+                .handle_interject_queued_prompt("p1", 0, Some("alice"), Some("edited"))
+                .await;
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            {
+                let state = actor.state.try_lock().expect("no await since promote");
+                assert_eq!(state.running_prompt_id(), Some("p1"));
+                assert!(
+                    !state.edit_holds.contains_key("p1"),
+                    "interject must clear the edit hold"
+                );
+                assert_eq!(
+                    state
+                        .pending_inputs
+                        .front()
+                        .and_then(|i| i.queue_meta.as_ref().map(|m| m.text.as_str())),
+                    Some("edited"),
+                    "promote must run the edited text",
+                );
+                if let Some(task) = state.running_task.as_ref() {
+                    task.handle.abort();
+                }
+            }
+        })
+        .await;
+}
+
+/// Remove of a held front clears the hold; re-kick promotes the next row
+/// (delete-while-editing must not leave the queue parked).
+#[tokio::test(flavor = "current_thread")]
+async fn remove_held_front_then_promote_starts_next() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state.pending_inputs.push_back(user_item("p2", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor
+                .clone()
+                .maybe_start_running_task(completion_tx.clone())
+                .await;
+            assert!(
+                actor.state.lock().await.running_task.is_none(),
+                "held front parks promote"
+            );
+
+            actor
+                .handle_remove_queued_prompt("p1", 0, Some("alice"))
+                .await;
+            assert!(
+                !actor.state.lock().await.edit_holds.contains_key("p1"),
+                "remove must clear the edit hold"
+            );
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            {
+                let state = actor.state.try_lock().expect("no await since promote");
+                assert_eq!(state.running_prompt_id(), Some("p2"));
+                if let Some(task) = state.running_task.as_ref() {
+                    task.handle.abort();
+                }
+            }
+        })
+        .await;
+}
+
+/// Stale-version remove of a held front is a no-op on the row but must still
+/// drop the hold so re-kick can promote the still-queued front.
+#[tokio::test(flavor = "current_thread")]
+async fn stale_remove_held_front_drops_hold_then_promote() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state
+                    .edit_holds
+                    .insert("p1".to_string(), std::time::Instant::now());
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor
+                .clone()
+                .maybe_start_running_task(completion_tx.clone())
+                .await;
+            assert!(
+                actor.state.lock().await.running_task.is_none(),
+                "held front parks promote"
+            );
+
+            // Stale version: row stays queued; hold must still drop.
+            actor
+                .handle_remove_queued_prompt("p1", 99, Some("alice"))
+                .await;
+            {
+                let state = actor.state.lock().await;
+                assert!(
+                    !state.edit_holds.contains_key("p1"),
+                    "stale remove must still drop the edit hold"
+                );
+                assert_eq!(state.pending_inputs.len(), 1, "row must remain queued");
+            }
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            {
+                let state = actor.state.try_lock().expect("no await since promote");
+                assert_eq!(state.running_prompt_id(), Some("p1"));
+                if let Some(task) = state.running_task.as_ref() {
+                    task.handle.abort();
+                }
+            }
+        })
+        .await;
+}
+
+/// A hold on a follower must not block promote of an unheld front.
+#[tokio::test(flavor = "current_thread")]
+async fn follower_hold_does_not_block_front_promote() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("p1", "alice"));
+                state.pending_inputs.push_back(user_item("p2", "alice"));
+                state
+                    .edit_holds
+                    .insert("p2".to_string(), std::time::Instant::now());
+            }
+            let (completion_tx, _completion_rx) = tokio::sync::mpsc::unbounded_channel();
+            actor.clone().maybe_start_running_task(completion_tx).await;
+
+            {
+                let state = actor.state.try_lock().expect("no await since promote");
+                assert_eq!(state.running_prompt_id(), Some("p1"));
+                assert!(
+                    state.pending_inputs.iter().any(|i| i.prompt_id == "p2"),
+                    "held follower must remain queued",
+                );
+                if let Some(task) = state.running_task.as_ref() {
+                    task.handle.abort();
+                }
+            }
         })
         .await;
 }
@@ -486,7 +869,9 @@ async fn edit_then_combine_uses_edited_text() {
                 state.pending_inputs.push_back(p1);
                 state.pending_inputs.push_back(p2);
                 // Follower under edit: skip_ids only gate followers.
-                state.combine_edit_holds.insert("p2".to_string());
+                state
+                    .edit_holds
+                    .insert("p2".to_string(), std::time::Instant::now());
             }
 
             // While held, combine must not absorb the follower.
@@ -510,7 +895,7 @@ async fn edit_then_combine_uses_edited_text() {
             {
                 let mut state = actor.state.lock().await;
                 assert!(
-                    !state.combine_edit_holds.contains("p2"),
+                    !state.edit_holds.contains_key("p2"),
                     "edit must clear the hold before combine can absorb the row"
                 );
                 // Row still present with edited text before combine runs.
@@ -1172,11 +1557,8 @@ async fn queue_input_send_now_inserts_behind_running_front_and_requests_cancel()
         .await;
 }
 
-/// Stacked send-now prompts insert FIFO (first sent runs first), not LIFO.
-/// Exercised via an active goal turn, which promotes send-now rows but never
-/// cancels — so multiple sends accumulate behind the running front.
 #[tokio::test]
-async fn queue_input_stacked_send_now_prompts_insert_fifo_during_goal_turn() {
+async fn queue_input_send_now_during_goal_turn_merges_as_interjections_fifo() {
     let local = tokio::task::LocalSet::new();
     local
         .run_until(async {
@@ -1191,10 +1573,14 @@ async fn queue_input_stacked_send_now_prompts_insert_fifo_during_goal_turn() {
                 .current_prompt_id
                 .lock()
                 .expect("current_prompt_id mutex poisoned") = Some("running".into());
-            actor
-                .tool_context
-                .goal_loop_active_gate
-                .store(true, std::sync::atomic::Ordering::Relaxed);
+            actor.goal_tracker.lock().create_goal(
+                "goal".into(),
+                "objective".into(),
+                None,
+                0,
+                "2026-01-01T00:00:00Z".into(),
+                None,
+            );
 
             for id in ["sn-1", "sn-2"] {
                 let (respond_to, _prx) = oneshot::channel();
@@ -1208,20 +1594,27 @@ async fn queue_input_stacked_send_now_prompts_insert_fifo_during_goal_turn() {
                         )
                     })
                     .await;
-                assert!(!cancel, "goal turns promote send-now but never cancel");
+                assert!(!cancel, "goal turns never cancel-and-send");
             }
 
-            let state = actor.state.lock().await;
-            let order: Vec<&str> = state
-                .pending_inputs
-                .iter()
-                .map(|i| i.prompt_id.as_str())
-                .collect();
             assert_eq!(
-                order,
-                vec!["running", "sn-1", "sn-2", "held"],
-                "send-now prompts must run in the order they were sent (FIFO)"
+                actor
+                    .state
+                    .lock()
+                    .await
+                    .pending_inputs
+                    .iter()
+                    .map(|item| item.prompt_id.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["running", "held"]
             );
+            let interjections: Vec<String> = actor
+                .pending_interjections
+                .drain_all()
+                .into_iter()
+                .map(|entry| entry.text)
+                .collect();
+            assert_eq!(interjections, vec!["sn-1", "sn-2"]);
         })
         .await;
 }
@@ -1430,9 +1823,8 @@ async fn queue_input_auto_send_now_during_foreground_subagent_await_window() {
         .await;
 }
 
-/// Synthetic inputs and active goal loops never take the send-now path.
 #[tokio::test]
-async fn queue_input_send_now_exempts_synthetic_and_goal_turns() {
+async fn queue_input_send_now_exempts_synthetic_prompts() {
     let local = tokio::task::LocalSet::new();
     local
         .run_until(async {
@@ -1460,28 +1852,69 @@ async fn queue_input_send_now_exempts_synthetic_and_goal_turns() {
                 })
                 .await;
             assert!(!cancel, "synthetic prompts must never cancel the turn");
+        })
+        .await;
+}
 
-            actor
-                .tool_context
-                .goal_loop_active_gate
-                .store(true, std::sync::atomic::Ordering::Relaxed);
-            let (respond_to, _p2) = oneshot::channel();
+#[tokio::test]
+async fn queue_send_now_during_goal_routes_by_kind() {
+    let local = tokio::task::LocalSet::new();
+    local
+        .run_until(async {
+            let (actor, _rx) = build_actor().await;
+            {
+                let mut state = actor.state.lock().await;
+                state.pending_inputs.push_back(user_item("running", "A"));
+                state.running_task = Some(running_task_stub("running"));
+                state.pending_inputs.push_back(user_item("q1", "A"));
+                state.pending_inputs.push_back(bash_item("b1", "A", "ls"));
+            }
+            *actor
+                .current_prompt_id
+                .lock()
+                .expect("current_prompt_id mutex poisoned") = Some("running".into());
+            actor.goal_tracker.lock().create_goal(
+                "goal".into(),
+                "objective".into(),
+                None,
+                0,
+                "2026-01-01T00:00:00Z".into(),
+                None,
+            );
+
             let cancel = actor
-                .queue_input(QueueInputRequest {
-                    send_now: true,
-                    ..queue_input_request(
-                        vec![acp::ContentBlock::Text(acp::TextContent::new("nudge"))],
-                        "d-goal",
-                        respond_to,
-                    )
-                })
+                .handle_interject_queued_prompt("q1", 0, Some("A"), None)
                 .await;
-            assert!(!cancel, "goal turns must not be cancelled by send-now");
+            assert!(!cancel);
             let state = actor.state.lock().await;
             assert_eq!(
-                state.pending_inputs.back().map(|i| i.prompt_id.as_str()),
-                Some("d-goal"),
-                "goal-suppressed send-now falls back to a plain append"
+                state
+                    .pending_inputs
+                    .iter()
+                    .map(|item| item.prompt_id.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["running", "b1"]
+            );
+            drop(state);
+            let interjections: Vec<String> = actor
+                .pending_interjections
+                .drain_all()
+                .into_iter()
+                .map(|entry| entry.text)
+                .collect();
+            assert_eq!(interjections, vec!["text for q1"]);
+
+            let cancel = actor
+                .handle_interject_queued_prompt("b1", 0, Some("A"), None)
+                .await;
+            assert!(!cancel);
+            let state = actor.state.lock().await;
+            assert!(
+                state
+                    .pending_inputs
+                    .iter()
+                    .any(|item| item.prompt_id == "b1"),
+                "bash rows remain queued during goals"
             );
         })
         .await;
@@ -2175,6 +2608,7 @@ async fn promoter_clears_committed_flag_and_handle_prompt_sets_it() {
                         /* client_identifier */ None,
                         /* screen_mode */ None,
                         /* verbatim */ true,
+                        /* send_now */ false,
                         /* json_schema */ None,
                         Some(ack_tx),
                         /* parsed_prompt_tx */ None,

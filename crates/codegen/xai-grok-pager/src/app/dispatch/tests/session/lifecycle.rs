@@ -340,6 +340,47 @@ fn worktree_session_created_sets_session_and_cwd() {
     assert!(app.agents[&id].session.state.is_idle());
 }
 #[test]
+fn worktree_session_created_clears_sticky_branch_from_main_repo() {
+    let mut app = test_app_git();
+    dispatch(
+        Action::NewWorktreeSession {
+            load_session_id: None,
+            label: None,
+            git_ref: None,
+        },
+        &mut app,
+    );
+    let id = AgentId(0);
+    {
+        let agent = app.agents.get_mut(&id).unwrap();
+        agent.current_branch = Some("main-random".into());
+        agent.main_repo = Some("~/old-main".into());
+        agent.is_worktree = false;
+    }
+    let worktree_path = PathBuf::from("/tmp/grok-worktrees/pager-sticky");
+    let session_cwd = worktree_path.clone();
+    dispatch(
+        Action::TaskComplete(TaskResult::WorktreeSessionCreated {
+            agent_id: id,
+            session_id: acp::SessionId::new("wt-sticky-1"),
+            worktree_path,
+            session_cwd: session_cwd.clone(),
+            models: None,
+            scheduler_background_loops: None,
+        }),
+        &mut app,
+    );
+    let agent = &app.agents[&id];
+    assert!(
+        agent.current_branch.is_none(),
+        "sticky main-repo branch must not survive the worktree cwd switch"
+    );
+    assert!(agent.main_repo.is_none());
+    assert!(agent.is_worktree);
+    assert!(agent.session.is_worktree);
+    assert_eq!(agent.session.cwd, session_cwd);
+}
+#[test]
 fn worktree_session_preserves_subdirectory_offset() {
     let mut app = test_app();
     app.cwd = PathBuf::from("/repo/crates/codegen/xai-grok-pager");
@@ -1318,6 +1359,11 @@ fn chat_mode_new_session_creates_with_chat_kind() {
         )),
         "expected chat CreateSession under --chat, got {effects:?}"
     );
+    let agent = app.agents.values().next().expect("agent");
+    assert!(
+        agent.conversation_entry,
+        "sticky --chat NewSession must stamp conversation_entry for rename kind"
+    );
 }
 /// Atomicity: when several startup intents coexist (e.g. CLI
 /// `--resume` + an incidental `Ctrl+N` deferred during the trust question),
@@ -2054,6 +2100,46 @@ fn delete_current_session_confirm_emits_effect() {
             }) if session_id == "sess-current"
         ),
         "got {effects:?}"
+    );
+}
+/// Reverting session-delete kills to the wire default (`ClientUi`) would auto-wake.
+#[test]
+fn delete_current_session_kills_bg_tasks_as_teardown() {
+    use xai_grok_shell::extensions::task::TaskKillSource;
+    let mut app = test_app_with_agent();
+    {
+        let a = app.agents.get_mut(&AgentId(0)).unwrap();
+        a.session.session_id = Some(acp::SessionId::new("sess-del"));
+        a.session.cwd = std::path::PathBuf::from("/repo");
+        a.session
+            .bg_tasks
+            .insert("bg-del".into(), super::super::make_bg_task("bg-del"));
+    }
+    assert!(dispatch(Action::DeleteCurrentSession, &mut app).is_empty());
+    let effects = dispatch(
+        Action::DeleteCurrentSessionAnswered { confirmed: true },
+        &mut app,
+    );
+    assert!(
+        effects.iter().any(|e| matches!(
+            e,
+            Effect::KillBgTask {
+                task_id,
+                source: TaskKillSource::Teardown,
+                ..
+            } if task_id == "bg-del"
+        )),
+        "session delete must emit Teardown, got {effects:?}"
+    );
+    assert!(
+        !effects.iter().any(|e| matches!(
+            e,
+            Effect::KillBgTask {
+                source: TaskKillSource::ClientUi,
+                ..
+            }
+        )),
+        "session delete must not emit ClientUi, got {effects:?}"
     );
 }
 #[test]
@@ -3021,6 +3107,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSession(0), &mut app);
@@ -3066,6 +3153,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSession(0), &mut app);
@@ -3125,6 +3213,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let _ = dispatch(Action::PickSessionInWorktree(0), &mut app);
@@ -3162,6 +3251,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSessionInWorktree(0), &mut app);
@@ -3206,6 +3296,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSessionInWorktree(0), &mut app);
@@ -3249,6 +3340,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSession(0), &mut app);
@@ -3295,6 +3387,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSession(0), &mut app);
@@ -3368,6 +3461,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSession(0), &mut app);
@@ -3441,6 +3535,7 @@ mod welcome_workspace_mode {
             branch: None,
             repo_name: String::new(),
             worktree_label: None,
+            last_turn_summary: None,
             card_detail: None,
         }]);
         let effects = dispatch(Action::PickSession(0), &mut app);

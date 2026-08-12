@@ -10,6 +10,7 @@ use super::agent::AgentId;
 use crate::scrollback::entry::EntryId;
 use agent_client_protocol as acp;
 use xai_grok_shell::sampling::types::ReasoningEffort;
+use xai_grok_shell::session::unified_list::SessionKind;
 /// Typed error for model switch failures. Replaces the raw `String` in
 /// `TaskResult::SwitchModelComplete` so dispatch can match on the variant
 /// instead of parsing strings.
@@ -681,6 +682,8 @@ pub enum Action {
     RenameSession {
         title: String,
     },
+    /// Unpin the current session title (`/rename --auto`).
+    ResetSessionTitleToAuto,
     /// Show detailed context usage (progress bar, token breakdown, stats).
     ShowContextInfo,
     /// `/usage` — session token/cost, plus consumer credits when visible.
@@ -975,36 +978,6 @@ pub enum Action {
     OpenMemoryModal,
     /// Open the hidden `/gboom` easter egg (DOOM-style raycaster modal).
     OpenGboom,
-    /// Open fornevercollective GY TTY placeholder panel (`/gy [surface]`).
-    OpenGyTty {
-        /// Surface id: status|burst|wave|chat|pins|tools|stream|help
-        surface: String,
-    },
-    /// Open fornevercollective live demux player (`/watch [url]`).
-    OpenLiveWatch {
-        /// YouTube watch/playlist URL or other yt-dlp media URL.
-        url: String,
-    },
-    /// Pop `/watch` out to an external `ffplay` OS window (not TTY half-block).
-    PopOutLiveWatch {
-        /// Channel alias, free-text search, or yt-dlp URL (same as OpenLiveWatch).
-        url: String,
-    },
-    /// Open fornevercollective broadcast timesync world clock (`/timesync`).
-    OpenTimesync,
-    /// Simultaneous multi-language keyboard translation streams (`/language`).
-    OpenLanguage,
-    /// Open fornevercollective maptrace modal (`/map [target]`).
-    OpenMap {
-        /// Host or IP to traceroute (empty → default 1.1.1.1).
-        target: String,
-    },
-    /// Pop `/map` out to external maptrace TUI/web (first-class ability).
-    PopOutMap {
-        target: String,
-        /// Prefer web UI + browser over terminal maptrace.
-        web: bool,
-    },
     /// Suspend the TUI and open a configuration file in `$EDITOR`.
     SuspendForEditor {
         path: std::path::PathBuf,
@@ -1475,7 +1448,7 @@ pub enum Effect {
     /// Scan enabled foreign session stores without delaying the native list.
     ScanForeignSessions {
         cwd: std::path::PathBuf,
-        compat: xai_grok_workspace::foreign_sessions::EnabledForeignSessionSources,
+        compat: xai_grok_foreign_sessions::EnabledForeignSessionSources,
         grok_home: std::path::PathBuf,
         coordinator: crate::app::ForeignScanCoordinator,
         seq: u64,
@@ -1488,7 +1461,7 @@ pub enum Effect {
     /// Detect the newest resumable foreign session without delaying first paint.
     DetectForeignResumeHint {
         canonical_cwd: std::path::PathBuf,
-        compat: xai_grok_workspace::foreign_sessions::EnabledForeignSessionSources,
+        compat: xai_grok_foreign_sessions::EnabledForeignSessionSources,
         grok_home: std::path::PathBuf,
         launch_token: u64,
     },
@@ -1585,6 +1558,7 @@ pub enum Effect {
     KillBgTask {
         session_id: acp::SessionId,
         task_id: String,
+        source: xai_grok_shell::extensions::task::TaskKillSource,
     },
     /// Cancel a subagent via `x.ai/subagent/cancel`.
     KillSubagent {
@@ -1927,11 +1901,15 @@ pub enum Effect {
         agent_id: AgentId,
         session_id: acp::SessionId,
         show_resolved_model: bool,
+        /// Usage-modal fetch generation; echoed back on the task result.
+        nonce: u64,
     },
     /// Fetch and display detailed context usage via x.ai/session/info.
     ShowContextInfo {
         agent_id: AgentId,
         session_id: acp::SessionId,
+        /// Usage-modal fetch generation; echoed back on the task result.
+        nonce: u64,
     },
     /// Fetch current bundle cache status via `x.ai/bundle/status`.
     FetchBundleStatus,
@@ -2052,6 +2030,17 @@ pub enum Effect {
         session_id: acp::SessionId,
         title: String,
         cwd: std::path::PathBuf,
+        kind: SessionKind,
+    },
+    /// Unpin the current session title (`/rename --auto`).
+    ResetSessionTitle {
+        agent_id: AgentId,
+        session_id: acp::SessionId,
+        cwd: std::path::PathBuf,
+        kind: SessionKind,
+        /// Pre-clear caches so `ResetSessionTitleFailed` can restore the pin.
+        previous_display_name: Option<String>,
+        previous_generated_title: Option<String>,
     },
     /// Delete a session's stored data (local + remote) via
     /// `x.ai/session/delete`.
@@ -2104,7 +2093,13 @@ pub enum Effect {
     /// When `silent` is true the result updates `credit_balance` without
     /// pushing a system message into scrollback (used for automatic refreshes
     /// on session init and after each turn).
-    FetchBilling { agent_id: AgentId, silent: bool },
+    FetchBilling {
+        agent_id: AgentId,
+        silent: bool,
+        /// Usage-modal fetch generation (`0` = background refresh; those
+        /// never touch the modal's loading/error flags).
+        nonce: u64,
+    },
     /// Fetch billing data at the app level (no agent required).
     /// Used on startup to populate the welcome-screen credit warning.
     FetchAppBilling,
@@ -2112,6 +2107,8 @@ pub enum Effect {
     FetchSessionUsage {
         agent_id: AgentId,
         session_id: acp::SessionId,
+        /// Usage-modal fetch generation; echoed back on the task result.
+        nonce: u64,
     },
     /// Re-fetch remote settings to check subscription gate.
     RefreshGate,
@@ -2175,6 +2172,45 @@ pub enum Effect {
         plan: Box<crate::diagnostics::FixPlan>,
     },
 }
+/// Wire params for `x.ai/session/rename`. Shared with the effect executor
+/// so dispatch tests can pin the exact camelCase payload.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RenameSessionRequest {
+    pub session_id: String,
+    pub title: String,
+    pub cwd: String,
+    pub kind: SessionKind,
+    /// Empty-title + `true` is the unpin convention. Omitted when false so
+    /// ordinary rename payloads stay byte-identical for old shells.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub reset_to_auto: bool,
+}
+impl RenameSessionRequest {
+    pub(crate) fn for_rename(
+        session_id: String,
+        title: String,
+        cwd: String,
+        kind: SessionKind,
+    ) -> Self {
+        Self {
+            session_id,
+            title,
+            cwd,
+            kind,
+            reset_to_auto: false,
+        }
+    }
+    pub(crate) fn for_reset(session_id: String, cwd: String, kind: SessionKind) -> Self {
+        Self {
+            session_id,
+            title: String::new(),
+            cwd,
+            kind,
+            reset_to_auto: true,
+        }
+    }
+}
 /// Outcome of an `x.ai/subagent/cancel` request, telling dispatch whether the
 /// pager must finalize the subagent row itself.
 #[derive(Debug)]
@@ -2204,6 +2240,20 @@ pub enum DoctorPlanningOutcome {
 /// Result from a completed async [`Effect`].
 ///
 /// Wrapped in `Action::TaskComplete` and dispatched synchronously.
+impl TaskResult {
+    /// True for results that deliver the first usable session. A quit
+    /// before dispatch abandons instead of recording; accepted so the
+    /// token stays single-owner.
+    pub fn ends_startup(&self) -> bool {
+        matches!(
+            self,
+            TaskResult::SessionCreated { .. }
+                | TaskResult::SessionLoaded { .. }
+                | TaskResult::WorktreeSessionCreated { .. }
+                | TaskResult::WorktreeForked { .. }
+        )
+    }
+}
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum TaskResult {
@@ -2324,7 +2374,7 @@ pub enum TaskResult {
     ForeignResumeHintDetected {
         canonical_cwd: std::path::PathBuf,
         launch_token: u64,
-        hint: Option<xai_grok_workspace::foreign_sessions::RecentForeignSession>,
+        hint: Option<xai_grok_foreign_sessions::RecentForeignSession>,
     },
     /// Session list fetch failed.
     SessionListFailed {
@@ -2605,13 +2655,20 @@ pub enum TaskResult {
     /// Session info fetched successfully.
     SessionInfoComplete {
         agent_id: AgentId,
+        session_id: acp::SessionId,
         info: Box<xai_grok_shell::session::SessionInfoResponse>,
+        /// Plain-text block for minimal-mode scrollback.
         text: String,
+        /// Structured rows for the modal (built upstream from typed data).
+        fields: Vec<crate::views::usage_modal::SessionInfoField>,
+        nonce: u64,
     },
     /// Session info fetch failed.
     SessionInfoFailed {
         agent_id: AgentId,
+        session_id: acp::SessionId,
         error: String,
+        nonce: u64,
     },
     /// Coding data sharing preference updated.
     CodingDataSharingUpdated {
@@ -2636,6 +2693,17 @@ pub enum TaskResult {
         agent_id: AgentId,
         error: String,
     },
+    /// `/rename --auto` completed successfully.
+    ResetSessionTitleComplete {
+        agent_id: AgentId,
+    },
+    /// `/rename --auto` failed.
+    ResetSessionTitleFailed {
+        agent_id: AgentId,
+        error: String,
+        previous_display_name: Option<String>,
+        previous_generated_title: Option<String>,
+    },
     /// Session delete completed successfully.
     DeleteSessionComplete {
         source: String,
@@ -2648,27 +2716,33 @@ pub enum TaskResult {
         session_id: String,
         error: String,
     },
-    /// Context info fetched successfully.
+    /// Context info fetched successfully. Drop if `session_id` no longer matches.
     ContextInfoComplete {
         agent_id: AgentId,
+        session_id: acp::SessionId,
         info: Box<xai_grok_shell::session::SessionInfoResponse>,
+        nonce: u64,
     },
-    /// Context info fetch failed.
+    /// Context info fetch failed. Drop if `session_id` no longer matches.
     ContextInfoFailed {
         agent_id: AgentId,
+        session_id: acp::SessionId,
         error: String,
+        nonce: u64,
     },
     /// `/usage` session ledger fetched. Drop if `session_id` no longer matches.
     SessionUsageComplete {
         agent_id: AgentId,
         session_id: acp::SessionId,
         usage: Box<xai_grok_shell::extensions::notification::PromptUsage>,
+        nonce: u64,
     },
     /// `/usage` session ledger fetch failed. Drop if `session_id` no longer matches.
     SessionUsageFailed {
         agent_id: AgentId,
         session_id: acp::SessionId,
         error: String,
+        nonce: u64,
     },
     /// Feedback submitted successfully (fire-and-forget).
     FeedbackComplete {
@@ -2830,6 +2904,8 @@ pub enum TaskResult {
         subscription_tier: Option<String>,
         /// Auto top-up rule fetch result; `Unchanged` keeps any cached rule.
         autotopup: crate::views::credit_bar::AutoTopupFetch,
+        /// Usage-modal fetch generation (`0` = background refresh).
+        nonce: u64,
     },
     /// App-level billing data (welcome screen).
     AppBillingFetched {
@@ -2845,6 +2921,8 @@ pub enum TaskResult {
         error: String,
         /// When true, swallow the error silently (background refresh).
         silent: bool,
+        /// Usage-modal fetch generation (`0` = background refresh).
+        nonce: u64,
     },
     /// Debounce timer for shell suggestions expired. Routed by the arming
     /// `agent_id`, like the sibling `PluginCtaDebounceExpired`.

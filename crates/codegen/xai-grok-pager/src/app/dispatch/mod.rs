@@ -46,13 +46,6 @@ pub(crate) use notes::FEEDBACK_QUESTION_LABEL;
 pub(crate) use notes::{recap_unavailable_toast, scrollback_has_user_messages};
 pub(crate) use permissions::resolve_permission_queue_transition;
 pub(crate) use prompt::dispatch_initial_prompt;
-
-/// Start a plain agent session without the welcome menu or worktree Ask modal.
-/// Used by `GROK_NEW_SESSION_AT_STARTUP` / live-watch launch so `/watch`/`/webgrid` are
-/// immediately typeable at the agent prompt.
-pub(crate) fn startup_plain_session(app: &mut crate::app::app_view::AppView) -> Vec<crate::app::actions::Effect> {
-    session::lifecycle::dispatch_new_session_inner(app, None)
-}
 pub(in crate::app) use prompt::{show_small_screen_tip, show_ssh_wrap_tip};
 pub(super) use queue::{
     apply_turn_start_shim, arm_send_now_and_paint, maybe_drain_queue_and_note_peek,

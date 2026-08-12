@@ -28,19 +28,6 @@ pub mod feedback;
 pub mod find;
 pub mod fork;
 pub mod gboom;
-pub mod cam;
-pub mod phone;
-pub mod lens;
-pub mod cast;
-pub mod optical;
-pub mod gy;
-pub mod map;
-pub mod monitor;
-pub mod timesync;
-pub mod watch;
-pub mod webgrid;
-pub mod language;
-pub mod drone;
 pub mod help;
 pub mod history;
 pub mod home;
@@ -161,21 +148,6 @@ pub fn builtin_commands() -> Vec<Arc<dyn SlashCommand>> {
         Arc::new(personas::PersonasCommand),
         // Hidden easter egg: never listed, runs on bare `/gboom`.
         Arc::new(gboom::GboomCommand),
-        // fornevercollective media / map / clock fleet
-        Arc::new(gy::GyCommand),
-        Arc::new(watch::WatchCommand),
-        Arc::new(webgrid::WebgridCommand),
-        // standalone drone HUD (not nested under /webgrid)
-        Arc::new(drone::DroneCommand),
-        Arc::new(language::LanguageCommand),
-        Arc::new(cam::CamCommand),
-        Arc::new(phone::PhoneCommand),
-        Arc::new(lens::LensCommand),
-        Arc::new(cast::CastCommand),
-        Arc::new(optical::OpticalCommand),
-        Arc::new(timesync::TimesyncCommand),
-        Arc::new(map::MapCommand),
-        Arc::new(monitor::MonitorCommand),
         // Hidden diagnostic: never listed, toggles the scroll-debug HUD.
         Arc::new(scroll_debug::ScrollDebugCommand),
         // Debug toggles: always registered, listed only on debug binaries.
@@ -462,6 +434,7 @@ mod tests {
             usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
+            current_title: None,
         };
         let cmd = model::ModelCommand;
         let items = cmd.suggest_args(&ctx, "").expect("should have suggestions");
@@ -488,6 +461,7 @@ mod tests {
             usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
+            current_title: None,
         };
         let cmd = model::ModelCommand;
         assert!(cmd.suggest_args(&ctx, "").is_none());
@@ -576,6 +550,7 @@ mod tests {
             usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
+            current_title: None,
         };
         let cmd = usage::UsageCommand;
         assert!(cmd.takes_args_now(&ctx));
@@ -593,6 +568,7 @@ mod tests {
             usage_command_visible: true,
             workflows_available: false,
             screen_mode: crate::app::ScreenMode::Fullscreen,
+            current_title: None,
         };
         let items = usage::UsageCommand.suggest_args(&ctx, "").unwrap();
         assert_eq!(
@@ -621,6 +597,7 @@ mod tests {
             usage_command_visible: false,
             workflows_available: false,
             screen_mode: crate::app::ScreenMode::Fullscreen,
+            current_title: None,
         };
         assert!(!usage::UsageCommand.visible(&ctx));
         assert!(!usage::UsageCommand.takes_args_now(&ctx));
@@ -680,6 +657,7 @@ mod tests {
             usage_command_visible: true,
             workflows_available: true,
             screen_mode: crate::app::ScreenMode::Fullscreen,
+            current_title: None,
         };
         assert!(
             !gboom::GboomCommand.visible(&ctx),

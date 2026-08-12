@@ -3,6 +3,7 @@
 use agent_client_protocol as acp;
 
 use super::ctx::get_active_agent;
+use super::queue::push_and_page_flip;
 use super::settings::ui::refresh_open_settings_modals;
 use crate::app::actions::Effect;
 use crate::app::agent::AgentId;
@@ -17,11 +18,106 @@ pub(super) fn dispatch_share_session(app: &mut AppView) -> Vec<Effect> {
     vec![]
 }
 
-/// Show session info: fetch via x.ai/session/info and display in scrollback.
-///
-/// Produces Effect::ShowSessionInfo which spawns an async ACP ext request.
-/// On completion, TaskResult::SessionInfoComplete shows the formatted info.
+/// Monotonic generation for usage-modal fetches. Each open stamps the modal
+/// and its effects with a fresh value so a reply from a previous open (same
+/// session, modal closed and reopened) can't overwrite newer results. `0` is
+/// reserved for the minimal-mode paths, which never touch the modal.
+static USAGE_FETCH_NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn next_usage_fetch_nonce() -> u64 {
+    USAGE_FETCH_NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+}
+
+/// The agent's open usage modal state, if any.
+pub(super) fn usage_modal_state_mut(
+    agent: &mut AgentView,
+) -> Option<&mut crate::views::usage_modal::UsageInfoModalState> {
+    match agent.active_modal.as_mut() {
+        Some(crate::views::modal::ActiveModal::UsageInfo { state }) => Some(state),
+        _ => None,
+    }
+}
+
+/// Open (or re-tab) the usage/session-info modal and fire the fetch effects
+/// that populate it. Full-TUI only — minimal mode keeps scrollback blocks.
+pub(super) fn open_usage_info_modal(
+    app: &mut AppView,
+    tab: crate::views::usage_modal::UsageInfoTab,
+) -> Vec<Effect> {
+    use crate::views::modal::ActiveModal;
+    use crate::views::usage_modal::{UsageInfoContext, UsageInfoModalState};
+
+    let ActiveView::Agent(id) = app.active_view else {
+        return vec![];
+    };
+    let usage_visible = app.usage_visible;
+    let redirect_url = app.usage_billing_redirect_url.clone();
+    let tier = app.subscription_tier.clone();
+    let show_resolved_model = app.show_resolved_model;
+    let Some(agent) = app.agents.get_mut(&id) else {
+        return vec![];
+    };
+    let session_id = agent.session.session_id.clone();
+
+    if let Some(state) = usage_modal_state_mut(agent) {
+        state.set_tab(tab);
+        return vec![];
+    }
+
+    let billing_reachable = usage_visible && !agent.chat_kind && redirect_url.is_none();
+    let nonce = next_usage_fetch_nonce();
+    let mut state = UsageInfoModalState::new(
+        tab,
+        UsageInfoContext {
+            session_id: session_id.as_ref().map(|s| s.0.to_string()),
+            usage_visible,
+            chat_kind: agent.chat_kind,
+            billing_redirect_url: redirect_url,
+            subscription_tier: tier,
+        },
+    );
+    state.fetch_nonce = nonce;
+
+    let mut effects = Vec::new();
+    if let Some(session_id) = session_id {
+        effects.push(Effect::ShowContextInfo {
+            agent_id: id,
+            session_id: session_id.clone(),
+            nonce,
+        });
+        effects.push(Effect::ShowSessionInfo {
+            agent_id: id,
+            session_id: session_id.clone(),
+            show_resolved_model,
+            nonce,
+        });
+        effects.push(Effect::FetchSessionUsage {
+            agent_id: id,
+            session_id,
+            nonce,
+        });
+    }
+    // Silent refresh of the cached billing mirrors the modal renders from.
+    if billing_reachable {
+        state.billing_loading = true;
+        effects.push(Effect::FetchBilling {
+            agent_id: id,
+            silent: true,
+            nonce,
+        });
+    }
+    agent.active_modal = Some(ActiveModal::UsageInfo {
+        state: Box::new(state),
+    });
+    effects
+}
+
+/// `/session-info` — open the usage modal on its "Session info" tab, or
+/// fetch-and-show in scrollback in minimal mode.
 pub(super) fn dispatch_show_session_info(app: &mut AppView) -> Vec<Effect> {
+    if !app.screen_mode.is_minimal() {
+        return open_usage_info_modal(app, crate::views::usage_modal::UsageInfoTab::SessionInfo);
+    }
     let ActiveView::Agent(id) = app.active_view else {
         return vec![];
     };
@@ -38,6 +134,7 @@ pub(super) fn dispatch_show_session_info(app: &mut AppView) -> Vec<Effect> {
         agent_id: id,
         session_id,
         show_resolved_model: app.show_resolved_model,
+        nonce: 0,
     }]
 }
 
@@ -124,9 +221,18 @@ pub(super) fn set_coding_data_sharing(
     let prev = !app.coding_data_retention_opt_out;
     log_coding_data_consent_selected(source, opted_in, prev);
 
-    // ── Idempotent path: skip the ACP round-trip. ────────────────────
+    // Opt-out always acks now. Unchanged opt-in acks only when idle:
+    // an inflight write still owns that ack.
+    let mut effects = Vec::new();
+    if !opted_in || (prev == opted_in && !app.privacy_banner_opt_in_inflight) {
+        effects.extend(ack_privacy_banner(app));
+    }
     if prev == opted_in {
-        return vec![];
+        return effects;
+    }
+
+    if opted_in {
+        app.privacy_banner_opt_in_inflight = true;
     }
 
     // Optimistic mutation. Success is silent; only the refusals above and
@@ -141,12 +247,13 @@ pub(super) fn set_coding_data_sharing(
         "setting changed",
     );
 
-    vec![Effect::SetCodingDataSharing {
+    effects.push(Effect::SetCodingDataSharing {
         agent_id,
         opted_in,
         rollback_to_opted_in: prev,
         seq: next_coding_data_write_seq(app),
-    }]
+    });
+    effects
 }
 
 /// Scrub an untrusted error string for toast display. Substitutes a
@@ -166,11 +273,12 @@ pub(super) fn scrub_error_for_toast(error: &str) -> String {
     }
 }
 
-/// Show context info: fetch via x.ai/session/info and display rich breakdown.
-///
-/// Produces Effect::ShowContextInfo which spawns an async ACP ext request.
-/// On completion, TaskResult::ContextInfoComplete shows the formatted info.
+/// `/context` and the context-bar click — open the usage modal on its
+/// "Context usage" tab, or fetch-and-show in scrollback in minimal mode.
 pub(super) fn dispatch_show_context_info(app: &mut AppView) -> Vec<Effect> {
+    if !app.screen_mode.is_minimal() {
+        return open_usage_info_modal(app, crate::views::usage_modal::UsageInfoTab::ContextUsage);
+    }
     let ActiveView::Agent(id) = app.active_view else {
         return vec![];
     };
@@ -184,12 +292,16 @@ pub(super) fn dispatch_show_context_info(app: &mut AppView) -> Vec<Effect> {
     vec![Effect::ShowContextInfo {
         agent_id: id,
         session_id,
+        nonce: 0,
     }]
 }
 
-/// `/usage` — session token/cost, then consumer credits when visible.
-/// Credits are chained after the session block so layout stays ordered.
+/// `/usage` — open the usage modal on its "Usage limit" tab. Minimal mode
+/// keeps the scrollback flow: session token/cost, then consumer credits.
 pub(super) fn dispatch_show_usage(app: &mut AppView) -> Vec<Effect> {
+    if !app.screen_mode.is_minimal() {
+        return open_usage_info_modal(app, crate::views::usage_modal::UsageInfoTab::UsageLimit);
+    }
     let ActiveView::Agent(id) = app.active_view else {
         return vec![];
     };
@@ -203,16 +315,45 @@ pub(super) fn dispatch_show_usage(app: &mut AppView) -> Vec<Effect> {
         Some(session_id) => vec![Effect::FetchSessionUsage {
             agent_id: id,
             session_id,
+            nonce: 0,
         }],
         None => {
             if let Some(agent) = app.agents.get_mut(&id) {
-                agent.scrollback.push_block(RenderBlock::system(
-                    "Session usage is unavailable until the session starts.".to_string(),
-                ));
+                push_and_page_flip(
+                    &mut agent.scrollback,
+                    RenderBlock::system(
+                        "Session usage is unavailable until the session starts.".to_string(),
+                    ),
+                );
             }
             append_consumer_billing_surface(app, id)
         }
     }
+}
+
+/// Route a session-usage result (success or failure text) into the open
+/// usage modal, or into scrollback in minimal mode. Stale results are dropped.
+pub(super) fn handle_session_usage_result(
+    app: &mut AppView,
+    agent_id: AgentId,
+    session_id: &acp::SessionId,
+    text: String,
+    nonce: u64,
+) -> Vec<Effect> {
+    if !app.screen_mode.is_minimal() {
+        if let Some(agent) = app.agents.get_mut(&agent_id) {
+            if agent.session.session_id.as_ref() != Some(session_id) {
+                return vec![];
+            }
+            if let Some(state) = usage_modal_state_mut(agent)
+                && state.fetch_nonce == nonce
+            {
+                state.session_usage_text = Some(text);
+            }
+        }
+        return vec![];
+    }
+    commit_session_usage_block(app, agent_id, session_id, text)
 }
 
 /// Commit a session-usage block if still on `session_id`, then consumer credits.
@@ -228,7 +369,7 @@ pub(super) fn commit_session_usage_block(
     if agent.session.session_id.as_ref() != Some(session_id) {
         return vec![];
     }
-    agent.scrollback.push_block(RenderBlock::system(text));
+    push_and_page_flip(&mut agent.scrollback, RenderBlock::system(text));
     append_consumer_billing_surface(app, agent_id)
 }
 
@@ -257,6 +398,7 @@ pub(super) fn append_consumer_billing_surface(app: &mut AppView, agent_id: Agent
     vec![Effect::FetchBilling {
         agent_id,
         silent: false,
+        nonce: 0,
     }]
 }
 
@@ -351,216 +493,6 @@ pub(super) fn dispatch_open_gboom(app: &mut AppView) -> Vec<Effect> {
 ///
 /// Takes `&NotificationService` separately from `&AgentView` to avoid
 /// borrow-checker conflicts when `agent` is borrowed from `app.agents`.
-pub(super) fn dispatch_open_gy_tty(app: &mut AppView, surface: &str) -> Vec<Effect> {
-    let ActiveView::Agent(id) = app.active_view else {
-        return vec![];
-    };
-    let Some(agent) = app.agents.get_mut(&id) else {
-        return vec![];
-    };
-    let surf = crate::gy_tty::Surface::parse(surface).unwrap_or(crate::gy_tty::Surface::Help);
-    // Exclusive with media / gboom (shared interaction focus).
-    agent.image_viewer = None;
-    agent.image_load_rx = None;
-    agent.video_viewer = None;
-    agent.gboom = None;
-    agent.live_watch = None;
-    agent.timesync = None;
-    agent.maptrace = None;
-    agent.gy_tty = Some(crate::gy_tty::GyTtyState::new(surf));
-    // Tools surface: PATH probe toast (OK path or install hint). Others: catalog toast.
-    if surf == crate::gy_tty::Surface::Tools {
-        agent.show_toast(&crate::gy_tty::probe_gy_cli().toast());
-    } else {
-        agent.show_toast(crate::gy_tty::TOAST_OPEN);
-    }
-    vec![]
-}
-
-/// Open fornevercollective live demux (`/watch [url]`) — yt-dlp + ffmpeg pipe
-/// painted via half-block (or Kitty) inside Grok.
-///
-/// Pop-out (external ffplay) is a separate action — see
-/// [`dispatch_popout_live_watch`] and the **`o`** key inside the modal.
-///
-/// If welcome/dashboard is active (no agent), creates a plain agent first
-/// (skips worktree Ask) so `/watch` never silently no-ops on the menu.
-
-pub(in crate::app::dispatch) fn dispatch_open_live_watch(
-    app: &mut AppView,
-    url: &str,
-) -> Vec<Effect> {
-    let mut effects = Vec::new();
-    if !matches!(app.active_view, ActiveView::Agent(_)) {
-        if !app.session_startup_allowed() {
-            app.deferred_startup.new_session = true;
-            app.deferred_startup.open_live_watch = Some(url.to_string());
-            return vec![];
-        }
-        // Skip worktree Ask modal — media wants the agent prompt immediately.
-        effects.extend(super::session::lifecycle::dispatch_new_session_inner(
-            app, None,
-        ));
-    }
-    let ActiveView::Agent(id) = app.active_view else {
-        return effects;
-    };
-    let Some(agent) = app.agents.get_mut(&id) else {
-        return effects;
-    };
-    // Exclusive with other media modals (shared focus + placement).
-    agent.image_viewer = None;
-    agent.image_load_rx = None;
-    agent.video_viewer = None;
-    agent.gboom = None;
-    agent.gy_tty = None;
-    agent.timesync = None;
-    agent.maptrace = None;
-    agent.live_watch = Some(crate::live_demux::LiveWatchState::open(url));
-    let toast = if crate::live_demux::is_desk_source(url)
-        || url.trim().eq_ignore_ascii_case("desk")
-        || crate::live_demux::dual_cam_desk()
-    {
-        crate::live_demux::TOAST_DESK
-    } else {
-        crate::live_demux::TOAST_OPEN
-    };
-    agent.show_toast(toast);
-    effects
-}
-
-/// Pop `/watch` to an external `ffplay` OS window (first-class ability).
-///
-/// Does **not** open the half-block modal. Resolve + spawn run on a worker
-/// thread so the UI never blocks on yt-dlp. Window outlives the TUI session.
-///
-/// Slash: `/watch popout bloomberg` · `/watch out cnn` · `/watch vevo --popout`
-/// Camera (Zoom tiles): `/watch camout` · `/watch cameras` · `/watch mosaic`
-/// Modal: **`o`** stream · **`Y`** selfie cam · **`O`** all cams.
-
-pub(in crate::app::dispatch) fn dispatch_popout_live_watch(
-    app: &mut AppView,
-    url: &str,
-) -> Vec<Effect> {
-    // Smart route: camera tokens → local AVFoundation/v4l2 windows; else stream.
-    let toast = crate::live_demux::launch_popout_smart_async(url);
-    if let ActiveView::Agent(id) = app.active_view
-        && let Some(agent) = app.agents.get_mut(&id)
-    {
-        agent.show_toast(&toast);
-    } else {
-        // No agent yet — still launched; log for launch scripts / agents.
-        eprintln!("[live-demux] {toast}");
-    }
-    vec![]
-}
-
-/// Open fornevercollective timesync world clock (`/timesync`) — UTC/Zulu,
-/// unix/epoch/drift, USNO-style tiers, markets. Layout reflows every paint
-/// from the live terminal size (no stretch garbage).
-
-pub(super) fn dispatch_open_timesync(app: &mut AppView) -> Vec<Effect> {
-    let ActiveView::Agent(id) = app.active_view else {
-        return vec![];
-    };
-    let Some(agent) = app.agents.get_mut(&id) else {
-        return vec![];
-    };
-    agent.image_viewer = None;
-    agent.image_load_rx = None;
-    agent.video_viewer = None;
-    agent.gboom = None;
-    agent.gy_tty = None;
-    agent.live_watch = None;
-    agent.maptrace = None;
-    agent.language = None;
-    agent.timesync = Some(crate::timesync::TimesyncState::open());
-    agent.show_toast(crate::timesync::TOAST_OPEN);
-    vec![]
-}
-
-/// Open fornevercollective maptrace (`/map [target]`) — ASCII world map +
-/// traceroute hops inside Grok. Pop-out is a separate action.
-
-
-/// Open simultaneous multi-language keyboard streams (`/language`).
-pub(super) fn dispatch_open_language(app: &mut AppView) -> Vec<Effect> {
-    let ActiveView::Agent(id) = app.active_view else {
-        return vec![];
-    };
-    let Some(agent) = app.agents.get_mut(&id) else {
-        return vec![];
-    };
-    agent.image_viewer = None;
-    agent.image_load_rx = None;
-    agent.video_viewer = None;
-    agent.gboom = None;
-    agent.gy_tty = None;
-    agent.live_watch = None;
-    agent.maptrace = None;
-    agent.timesync = None;
-    let mode = std::env::var("FC_LANGUAGE_MODE").unwrap_or_else(|_| "all".into());
-    let mode = match mode.as_str() {
-        "layout" => crate::language::LanguageMode::Layout,
-        "translate" => crate::language::LanguageMode::Translate,
-        "codec" => crate::language::LanguageMode::Codec,
-        _ => crate::language::LanguageMode::All,
-    };
-    agent.language = Some(crate::language::LanguageState::open_with_mode(mode));
-    agent.show_toast(crate::language::TOAST_OPEN);
-    vec![]
-}
-
-
-pub(in crate::app::dispatch) fn dispatch_open_map(
-    app: &mut AppView,
-    target: &str,
-) -> Vec<Effect> {
-    let ActiveView::Agent(id) = app.active_view else {
-        return vec![];
-    };
-    let Some(agent) = app.agents.get_mut(&id) else {
-        return vec![];
-    };
-    agent.image_viewer = None;
-    agent.image_load_rx = None;
-    agent.video_viewer = None;
-    agent.gboom = None;
-    agent.gy_tty = None;
-    agent.live_watch = None;
-    agent.timesync = None;
-    agent.maptrace = Some(crate::maptrace::MapState::open(target));
-    agent.show_toast(crate::maptrace::TOAST_OPEN);
-    vec![]
-}
-
-/// Pop `/map` to external maptrace TUI/web (first-class ability).
-///
-/// Slash: `/map popout 1.1.1.1` · `/map web example.com` · `/map out …`
-/// Modal: **`o`** (TUI) · **`w`** (web).
-
-pub(in crate::app::dispatch) fn dispatch_popout_map(
-    app: &mut AppView,
-    target: &str,
-    web: bool,
-) -> Vec<Effect> {
-    let toast = crate::maptrace::launch_popout_async(target, web);
-    if let ActiveView::Agent(id) = app.active_view
-        && let Some(agent) = app.agents.get_mut(&id)
-    {
-        agent.show_toast(&toast);
-    } else {
-        eprintln!("[maptrace] {toast}");
-    }
-    vec![]
-}
-
-/// Emit a `SessionReady` notification for the given agent.
-///
-/// Takes `&NotificationService` separately from `&AgentView` to avoid
-/// borrow-checker conflicts when `agent` is borrowed from `app.agents`.
-
-
 pub(super) fn notify_session_ready(
     notification_service: &crate::notifications::NotificationService,
     agent: &AgentView,
@@ -597,7 +529,7 @@ pub(super) fn handle_coding_data_sharing_updated(
         "ACP update confirmed; mirror re-anchored",
     );
     let mut effects = vec![];
-    // Ack only after a successful opt-in from the banner's [Opt in].
+    // Defer opt-in ack until this write lands; a failed write must not dismiss.
     if app.privacy_banner_opt_in_inflight {
         app.privacy_banner_opt_in_inflight = false;
         if opted_in {
@@ -644,7 +576,12 @@ pub(super) fn handle_coding_data_sharing_failed(
 }
 
 /// Stamp `[privacy].privacy_banner_acked` (in-memory + disk).
+/// No-op when the notice is not rolled out: a Settings pick must not
+/// hide a notice the user has not been shown.
 pub(in crate::app::dispatch) fn ack_privacy_banner(app: &mut AppView) -> Vec<Effect> {
+    if !app.privacy_notice_rollout {
+        return vec![];
+    }
     let acked_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
     app.privacy_banner_acked = Some(acked_at.clone());
     vec![Effect::PersistPrivacyBannerAcked { acked_at }]
@@ -657,69 +594,59 @@ pub(in crate::app::dispatch) fn dispatch_privacy_banner_opt_in(app: &mut AppView
     if app.privacy_banner_opt_in_inflight || !app.privacy_banner_should_show() {
         return vec![];
     }
-    let effects = set_coding_data_sharing(
+    set_coding_data_sharing(
         app,
         true,
         xai_grok_telemetry::events::CodingDataConsentSource::PrivacyBanner,
-    );
-    // should_show guarantees opted-out + unguarded, so effects is only empty
-    // if a guard regresses; leaving inflight false keeps [Opt in] clickable.
-    app.privacy_banner_opt_in_inflight = !effects.is_empty();
-    effects
+    )
 }
 
-/// `[Opt out]`: ack locally, then record the decline.
-///
-/// The ack does NOT wait on the server, unlike `[Opt in]`'s: the user asked
-/// for no change, so gating dismissal on a round trip would only re-ask a
-/// question they answered.
-///
-/// The write is built here rather than through `set_coding_data_sharing`,
-/// whose idempotent guard would skip it — the user is already opted out,
-/// and recording that is the point. Its response re-anchors the mirror;
-/// concurrent writes to this endpoint are still unordered.
+/// `[Opt out]`: ack now — waiting on ACP would re-ask a decline.
 pub(in crate::app::dispatch) fn dispatch_privacy_banner_opt_out(app: &mut AppView) -> Vec<Effect> {
     if app.privacy_banner_opt_in_inflight || !app.privacy_banner_should_show() {
         return vec![];
     }
-    let previous_opted_in = !app.coding_data_retention_opt_out;
-    log_coding_data_consent_selected(
-        xai_grok_telemetry::events::CodingDataConsentSource::PrivacyBanner,
+    set_coding_data_sharing(
+        app,
         false,
-        previous_opted_in,
-    );
-    let mut effects = ack_privacy_banner(app);
-    effects.push(Effect::SetCodingDataSharing {
-        agent_id: coding_data_sharing_agent_id(app),
-        opted_in: false,
-        // Already opted out, so the revert is a no-op — and the generation
-        // guard drops it entirely if the user has opted in since.
-        rollback_to_opted_in: false,
-        seq: next_coding_data_write_seq(app),
-    });
-    effects
+        xai_grok_telemetry::events::CodingDataConsentSource::PrivacyBanner,
+    )
 }
 
 pub(super) fn handle_context_info_complete(
     app: &mut AppView,
     agent_id: AgentId,
+    session_id: &acp::SessionId,
     info: Box<xai_grok_shell::session::SessionInfoResponse>,
+    nonce: u64,
 ) -> Vec<Effect> {
+    let minimal = app.screen_mode.is_minimal();
     if let Some(agent) = app.agents.get_mut(&agent_id) {
+        if agent.session.session_id.as_ref() != Some(session_id) {
+            return vec![];
+        }
+        // A reply from a previous modal open must not touch anything — not
+        // even the agent's context mirrors, which a fresher reply already set.
+        if let Some(state) = usage_modal_state_mut(agent)
+            && state.fetch_nonce != nonce
+        {
+            return vec![];
+        }
         let model = info.data.model.as_deref().unwrap_or("unknown").to_string();
-        // Take ownership of the snapshot once, hand a clone to the
-        // agent's running counters, then move the original into the
-        // scrollback block (which keeps it for theme-reactive
-        // re-rendering). This still costs one clone but reads as
-        // "the agent needs a copy" rather than "the block needs a
-        // copy", which matches the lifetime story.
         let snapshot = info.data.context;
         agent.apply_full_context_info(snapshot.clone());
-        agent
-            .scrollback
-            .push_block(crate::scrollback::block::RenderBlock::context_info(
+        if let Some(state) = usage_modal_state_mut(agent) {
+            state.context = Some(crate::scrollback::blocks::ContextInfoBlock::new(
                 snapshot, model,
             ));
+            state.context_error = None;
+        } else if minimal {
+            push_and_page_flip(
+                &mut agent.scrollback,
+                crate::scrollback::block::RenderBlock::context_info(snapshot, model),
+            );
+        }
+        // Full mode with the modal closed: result arrived after dismissal — drop.
     }
     vec![]
 }
