@@ -13,15 +13,17 @@ Policy: **path-checkout** · never force-merge · no PRs to `xai-org`.
 | **Upstream git tip** | `upstream/main` | Public open-source sync commits (e.g. `8adf901`) |
 | **Lab product semver** | `docs/architecture-lab/version.json` → `lab_semver` · `package.json` · `native/Cargo.toml` | **Grok Build Lab** shell/docs (not the pager binary) |
 
-### Current pins (re-fetch to refresh)
+### Current pins (re-fetch to refresh) · 2026-08-05
 
 | Pin | Value |
 |-----|--------|
-| **SOURCE_REV** | `2ec0f0c8488842da03a71eeee3c61154957ca919` |
-| **upstream tip** | `8adf901` — *Synced from monorepo* |
-| **prior sync** | `c68e39f` — *Publish harness and TUI open-source* |
-| **fork main** | see `git log -1 --oneline` (Lab + path-checkout commits) |
-| **Lab semver** | `0.3.10`+ (native / package.json) |
+| **This fork SOURCE_REV** | `95d84f443eddcbed6cbfd6eed22e2eafe6b3939d` |
+| **This fork pager** | `0.2.111` (`xai-grok-pager`) — matches xAI public pin at `69f0ba8` |
+| **xai-org tip** | `ed6d543` — *Synced from monorepo* · pager **0.2.120** · SOURCE_REV `d6937fe…` |
+| **Gap** | monorepo syncs after `69f0ba8` → tip (`0.2.112` … `0.2.120` changelogs only on xAI) |
+| **fork main** | see `git log -1 --oneline` (Lab + media + path-checkout commits) |
+| **Lab semver** | `0.3.11`+ (native / package.json) |
+| **Full 20-commit map** | [Fork leverage · xai-org vs us](#/19-fork-leverage) |
 
 ```bash
 cat SOURCE_REV
@@ -60,8 +62,8 @@ cargo build -p xai-grok-pager-bin --release
 ```bash
 # Preferred — path-checkout product tree only
 ./scripts/sync-upstream-path-checkout.sh
-# or pin a SHA:
-./scripts/sync-upstream-path-checkout.sh 8adf901
+# or pin a SHA (current xAI tip):
+./scripts/sync-upstream-path-checkout.sh ed6d543
 
 git status   # docs/architecture-lab and experiments/ stay yours
 git commit -m "chore: path-checkout upstream monorepo tools (SOURCE_REV=…)"
@@ -69,17 +71,19 @@ git commit -m "chore: path-checkout upstream monorepo tools (SOURCE_REV=…)"
 
 Checks out: `crates/` · `Cargo.*` · `SOURCE_REV` · `README.md` · `bin/` · `third_party/` · `prod/` · toolchain files.
 
-**Never:** `git merge -X theirs upstream/main` · force-push rewrite of Lab history · delete/refork.
+**Never:** `git merge -X theirs upstream/main` · force-push rewrite of Lab history · delete/refork.  
+GitHub compare often reports **no common ancestor** (monorepo squash dumps vs our history) — path-checkout is the supported path.
 
-### What landed in `8adf901` (summary)
+### What landed since our pin (`69f0ba8` / 0.2.111 → `ed6d543` / 0.2.120)
 
-- **hooks HTTP** — SSRF redirect fix  
-- **headless** — drain `task_backgrounded` before no-wait exit  
-- **skills** — name collision with client builtins  
-- **shell / workspace / auth / voice** config updates  
-- **settings_modal** split into directory module  
-- **SOURCE_REV** + **DotSlash** docs  
-- Full **xai-grok-tools** packs (see [Upstream tools sync](#/27-upstream-tools-sync))
+Headline only — full tables on [Fork leverage map](#/19-fork-leverage):
+
+- **Security** — more bash/sandbox gates, protected `sandbox.toml`, reclaim/reap on session close  
+- **ACP** — `session/list` · `session/resume` · `session/close` (+ earlier state/import)  
+- **Auth** — refresh hardening · `GROK_EXTRA_CA_BUNDLE` · bearer fragment  
+- **TUI** — doctor · tutorial · usage · plan Mermaid · remove project picker · cheap resize  
+- **Tooling** — rustc **1.93.0** · doom-loop recovery default · workflow subagent cap 16  
+- **Changelogs** — shell `0.2.112` … `0.2.120`
 
 ---
 
