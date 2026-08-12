@@ -32,7 +32,6 @@ supports-color = { workspace = true }
 
 # Data
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 toml = { workspace = true }
 toml_edit = { workspace = true, features = ["serde"] }
 documented = { workspace = true }

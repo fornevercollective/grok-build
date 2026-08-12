@@ -13,17 +13,19 @@ Policy: **path-checkout** · never force-merge · no PRs to `xai-org`.
 | **Upstream git tip** | `upstream/main` | Public open-source sync commits (e.g. `8adf901`) |
 | **Lab product semver** | `docs/architecture-lab/version.json` → `lab_semver` · `package.json` · `native/Cargo.toml` | **Grok Build Lab** shell/docs (not the pager binary) |
 
-### Current pins (re-fetch to refresh) · 2026-08-05
+### Current pins (re-fetch to refresh)
 
 | Pin | Value |
 |-----|--------|
-| **This fork SOURCE_REV** | `95d84f443eddcbed6cbfd6eed22e2eafe6b3939d` |
-| **This fork pager** | `0.2.111` (`xai-grok-pager`) — matches xAI public pin at `69f0ba8` |
-| **xai-org tip** | `ed6d543` — *Synced from monorepo* · pager **0.2.120** · SOURCE_REV `d6937fe…` |
-| **Gap** | monorepo syncs after `69f0ba8` → tip (`0.2.112` … `0.2.120` changelogs only on xAI) |
-| **fork main** | see `git log -1 --oneline` (Lab + media + path-checkout commits) |
-| **Lab semver** | `0.3.11`+ (native / package.json) |
-| **Full 20-commit map** | [Fork leverage · xai-org vs us](#/19-fork-leverage) |
+| **SOURCE_REV** | `ea094a8c369475f97c85540d01730baec0dce5d6` |
+| **upstream tip** | `e5fd4816` — *Synced from monorepo* |
+| **prior fork pin** | `796754a8` (pre-2026-08-12 path-checkout) |
+| **fork branch** | `main` + `sync/0.2.121-fc-media` |
+| **Lab semver** | `0.3.11`+ (`version.json` / package.json) |
+
+**Synced:** 2026-08-12 via `./scripts/sync-upstream-path-checkout.sh upstream/main`  
+**Pages:** https://fornevercollective.github.io/grok-build/ · workflow `pages-architecture-lab.yml` on `main`
+
 
 ```bash
 cat SOURCE_REV

@@ -4,7 +4,6 @@
 pub mod color;
 pub mod draw;
 pub mod gboom_overlay;
-pub mod halfblock;
 pub mod highlight;
 pub mod image_overlay;
 pub mod line_utils;
