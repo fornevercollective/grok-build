@@ -187,6 +187,12 @@ def main(argv: Sequence[str] | None = None, *, stdin=None, stdout=None, stderr=N
             return 0 if gate.get("ready") else 1
 
         if args.command in ("linux", "flash"):
+            from .devices import brick_never_flash
+
+            if brick_never_flash(device):
+                notes = flash_notes(device, stamp_hint or vault, vault, {"ready": False, "flash_allowed": False})
+                stdout.write(notes)
+                return 4
             stamp = stamp_hint
             if stamp is None:
                 stderr.write("error: no stamp — run fcs preserve all first\n")

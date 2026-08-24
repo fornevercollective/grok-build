@@ -391,6 +391,17 @@ class EtcherCliTests(unittest.TestCase):
         self.assertTrue(brick.preserve_only)
         self.assertFalse(is_tty(io.StringIO("")))
 
+    def test_flash_brick_refused_without_stamp(self) -> None:
+        from fc_preserve.cli import main
+
+        out = io.StringIO()
+        err = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp:
+            rc = main(["flash", "Brick", "--vault", tmp], stdin=io.StringIO(""), stdout=out, stderr=err)
+        self.assertEqual(rc, 4)
+        self.assertIn("FLASH REFUSED", out.getvalue())
+        self.assertIn("NEVER flash", out.getvalue())
+
     def test_probe_json_hotspot_exit(self) -> None:
         from fc_preserve.cli import main
 
