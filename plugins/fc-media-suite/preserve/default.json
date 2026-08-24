@@ -1,0 +1,118 @@
+{
+  "schema": "fc-preserve-etcher-v1",
+  "vault_root": "/Volumes/MacBookPro - Data/FC-Preserve",
+  "vault_root_note": "External Data volume. Do not use ~/Documents — Internal is ~33 GiB and too tight.",
+  "forbidden_vault_roots": [
+    "~/Documents",
+    "$HOME/Documents",
+    "/Users/Shared/Documents"
+  ],
+  "stamp_reuse_incomplete": true,
+  "retry": {
+    "max_attempts": 5,
+    "sleep_s": 4,
+    "resume_same_stamp": true,
+    "idevicebackup2_transient_exits": [255, 4],
+    "idevicebackup2_transient_needles": [
+      "mobilebackup2 -4",
+      "ErrorCode 4",
+      "Received 0 bytes",
+      "Connection refused",
+      "Device disconnected"
+    ]
+  },
+  "progress": {
+    "line_based": true,
+    "flush_cr": true,
+    "watchable_tail": true
+  },
+  "ios": {
+    "encrypted_default": false,
+    "password_env": "FC_PRESERVE_BACKUP_PASSWORD",
+    "afc_parallel_dcim": true,
+    "afc_remote": "/DCIM",
+    "icloud_optimize_honest": true
+  },
+  "required_domains": {
+    "ios": [
+      {
+        "id": "manifest",
+        "label": "Manifest.db",
+        "kind": "backup_file",
+        "names": ["Manifest.db"]
+      },
+      {
+        "id": "photos",
+        "label": "photos",
+        "kind": "any",
+        "domains": ["CameraRollDomain", "MediaDomain"],
+        "extract_dirs": ["extract/photos", "dcim"],
+        "path_needles": ["Media/DCIM", "DCIM"]
+      },
+      {
+        "id": "messages",
+        "label": "messages",
+        "kind": "any",
+        "domains": ["HomeDomain"],
+        "extract_dirs": ["extract/messages"],
+        "path_needles": ["Library/SMS/sms.db", "Library/SMS"]
+      },
+      {
+        "id": "contacts",
+        "label": "contacts",
+        "kind": "any",
+        "domains": ["HomeDomain"],
+        "extract_dirs": ["extract/contacts"],
+        "path_needles": [
+          "Library/AddressBook/AddressBook.sqlitedb",
+          "Library/AddressBook"
+        ]
+      }
+    ],
+    "linux": [
+      {
+        "id": "os_release",
+        "label": "os-release",
+        "kind": "any",
+        "extract_dirs": ["extract/system"],
+        "path_needles": ["etc/os-release", "usr/lib/os-release"]
+      },
+      {
+        "id": "photos",
+        "label": "photos",
+        "kind": "any",
+        "extract_dirs": ["extract/photos", "dcim"],
+        "path_needles": ["DCIM", "Pictures", "photos"]
+      }
+    ]
+  },
+  "devices": {
+    "Brick": {
+      "alias": "Brick",
+      "platform": "ios",
+      "role": "daily",
+      "product": "iPhone9,4",
+      "name": "iPhone 7 Plus",
+      "ios": "15.1",
+      "udid": "4ea7e05b3045f0e9036275125a85225dd6dd9bb9",
+      "preserve_only": true,
+      "flash": false,
+      "flash_refused_reason": "Brick is the daily iPhone — preserve only, NEVER flash."
+    },
+    "GrokBotBaby": {
+      "alias": "GrokBotBaby",
+      "platform": "linux",
+      "role": "linux-test",
+      "flavor": "postmarketos",
+      "name": "GrokBotBaby",
+      "preserve_only": false,
+      "flash": "gated",
+      "adb_hints": ["GrokBotBaby", "postmarketos", "pmos"]
+    }
+  },
+  "hotspot_ncm": {
+    "link_local_prefix": "169.254.",
+    "usb_eth_names": "^(en[7-9]|en1[0-9]|usb\\d+|enx|ncm|rndis)",
+    "message": "iPhone is on USB but usbmux sees 0 devices. Personal Hotspot / USB-NCM likely stole the cable (link-local 169.254 on a USB ethernet iface). Turn OFF Personal Hotspot, then unplug and replug the Lightning cable (prefer a direct port, not a USB hub). This is not a missing-tool problem — do not brew install libimobiledevice until idevice_id -l lists the phone."
+  }
+}

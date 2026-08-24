@@ -4,7 +4,7 @@
 |--|--|
 | **Product** | fornevercollective media suite |
 | **Version** | see `VERSION` / `plugin.json` |
-| **Feature ids** | `fc-live-demux-v1` · `fc-timesync-v1` · `fc-maptrace-v1` · `fc-halfblock-tty-video` |
+| **Feature ids** | `fc-live-demux-v1` · `fc-timesync-v1` · `fc-maptrace-v1` · `fc-halfblock-tty-video` · `fc-preserve-etcher-v1` |
 | **Repo** | https://github.com/fornevercollective/grok-build |
 | **Homepage** | https://fornevercollective.github.io/grok-build/ |
 
@@ -38,6 +38,8 @@ Keywords and marketplace domains below are discovery aids, not official endorsem
 | **sntp** (optional) | NTP sample for `/clock` tiers |
 | **maptrace** (optional) | Full external map TUI/web pop-out (`dev/maptrace`) |
 | **traceroute** | Fallback hop discovery for in-Grok `/map` |
+| **libimobiledevice** (`idevice_id` / `idevicebackup2`) | iOS live USB probe + backup2 for `fcs preserve` |
+| **adb** | Android / GrokBotBaby linux-test probe + pull |
 
 ## Honesty
 

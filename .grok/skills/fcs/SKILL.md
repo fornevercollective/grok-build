@@ -2,7 +2,7 @@
 name: fc-media-suite
 description: >
   fornevercollective media wall — /watch live demux, /cam, /clock timesync, /map,
-  /webgrid, /lens, /cast, /tiles. Use the universal `fcs` CLI from any terminal or AI
+  /webgrid, /lens, /cast, /tiles, /preserve. Use the universal `fcs` CLI from any terminal or AI
   agent (not Grok-only). Triggers: /watch, fcs watch, media suite, bloomberg live,
   half-block video, starbase map, timesync, cast TV.
 ---
@@ -26,6 +26,7 @@ Do **not** reimplement players in chat. Run the **`fcs`** CLI (or launch scripts
 | `/phone` | `fcs phone start` |
 | `/cast` | `fcs cast list` · `fcs cast url 'https://…'` |
 | `/tiles` | `fcs tiles list` · `fcs tiles load 12 URL` |
+| `/preserve` | `fcs preserve` · `fcs preserve all GrokBotBaby` · `fcs preserve probe` |
 | doctor | `fcs doctor` |
 
 ## Agent rules
@@ -57,6 +58,7 @@ fcs clock --once
 fcs map popout 8.8.8.8
 fcs lens bug
 fcs cast list
+fcs preserve probe
 fcs doctor
 ```
 

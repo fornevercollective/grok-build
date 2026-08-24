@@ -32,6 +32,9 @@ fcs lens [bug|360|…]
 fcs phone start
 fcs cast list|url|…
 fcs tiles list|load|…
+fcs preserve                 # non-TTY → all GrokBotBaby
+fcs preserve probe
+fcs preserve backup Brick    # never flash
 fcs doctor
 ```
 

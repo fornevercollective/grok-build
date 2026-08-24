@@ -2,12 +2,14 @@
 name: fc-media-suite
 description: >
   fornevercollective media wall — /watch live demux, /cam, /clock timesync, /map,
-  /webgrid, /web, /inspect, /hygiene, /glyph, /language, /lens, /cast, /tiles.
+  /webgrid, /web, /inspect, /hygiene, /glyph, /language, /lens, /cast, /tiles,
+  /preserve.
   Use the universal `fcs` CLI from any terminal or AI agent (not Grok-only).
   Arena-mapped terminal CLIs: Claude Code, Codex, Cursor, Grok, Continue, OpenCode,
   Qwen, Gemini, Aider, Hermes, and more.
   Triggers: /watch, /web, /inspect, /hygiene, /glyph, fcs web, fcs watch, media suite,
-  bloomberg live, half-block video, starbase map, DevTools onramp, job hygiene.
+  bloomberg live, half-block video, starbase map, DevTools onramp, job hygiene,
+  fcs preserve, Brick backup, GrokBotBaby.
 ---
 
 # fc-media-suite · universal (any terminal CLI AI)
@@ -41,6 +43,7 @@ Do **not** reimplement players in chat. Run the **`fcs`** CLI.
 | `/phone` | `fcs phone start` |
 | `/cast` | `fcs cast list` · `fcs cast url 'https://…'` |
 | `/tiles` | `fcs tiles list` · `fcs tiles load 12 URL` |
+| `/preserve` | `fcs preserve` · `fcs preserve all GrokBotBaby` · `fcs preserve probe` |
 | doctor | `fcs doctor` |
 
 ### Glyph engine (`fc-glyph-engine-v1`)

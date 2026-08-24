@@ -1,6 +1,6 @@
 # fc-media-suite · fornevercollective
 
-**Version:** `0.2.0` · **Feature pack:** watch · cam · clock · map · universal `fcs`
+**Version:** `0.2.4` · **Feature pack:** watch · cam · clock · map · preserve · universal `fcs`
 
 Installable Grok plugin + **universal CLI** for the fornevercollective **media wall**.
 Slash surfaces work in the **fork binary**, in **any standard terminal**, and from
@@ -38,6 +38,7 @@ fcs watch popout cnn
 fcs cam
 fcs clock
 fcs map starbase
+fcs preserve probe
 fcs doctor
 
 # after shell hook (source ~/.zshrc): same slash names outside Grok
@@ -81,6 +82,7 @@ grok plugin install fornevercollective/grok-build#plugins/fc-media-suite@v0.1.0 
 | `/lens` | `fcs lens` | `fc-lens-bug-v1` | — | lens-popout |
 | `/cast` | `fcs cast` | `fc-cast-tv-v1` | — | Chromecast / TCL |
 | `/gboom` | `fcs gboom` | `fc-halfblock-tty-video` | half-block game | — |
+| `/preserve` | `fcs preserve` | `fc-preserve-etcher-v1` | Etcher 3-step / CLI backup | vault + linux-gate |
 
 **Multi-CLI AI (Arena-mapped):** `fcs install agents` / `fcs update` installs one skill hub and **symlinks** it into every terminal CLI skill dir (Claude, Codex, Cursor, Grok, Qwen, Gemini, Continue, OpenCode, Aider, Hermes, …).  
 

@@ -226,6 +226,7 @@ Commands (same as Grok slash tools):
   cast | share                  Chromecast / TCL Google TV
   tiles                         independent ffplay tile plane
   gboom                         half-block game surface
+  preserve | etcher             device backup / gated flash (Brick · GrokBotBaby)
   media                         suite status
   web | inspect | hygiene       /web inspect · multi-browser DevTools · job hygiene
   doctor                        binary stamps + tools + multi-CLI skills
@@ -261,6 +262,10 @@ Examples:
   fcs web open safari           # open Safari + print inspect keys
   fcs hygiene                   # arm job hygiene (zombie download patch)
   fcs web onramps               # every shell / AI / code entry
+  fcs preserve                  # TTY: 3-step etcher; non-TTY: all GrokBotBaby
+  fcs preserve probe            # live USB + Personal Hotspot / USB-NCM hint
+  fcs preserve all GrokBotBaby
+  fcs preserve linux GrokBotBaby  # flash notes iff linux-gate ready
 
 Repo:  $ROOT
 Plugin: $PLUGIN
@@ -334,7 +339,12 @@ cmd_doctor() {
   else
     echo "--     launch-glyph.sh missing"
   fi
-  echo "fcs doctor: READY · any terminal · any AI → fcs watch|glyph|cam|clock|map …"
+  if [[ -f "$PLUGIN/preserve/preserve.py" ]]; then
+    echo "OK     preserve (fcs preserve · fc-preserve-etcher-v1)"
+  else
+    echo "--     preserve.py missing"
+  fi
+  echo "fcs doctor: READY · any terminal · any AI → fcs watch|glyph|cam|clock|map|preserve …"
   echo "update skills from grok-build:  fcs update"
   return 0
 }
@@ -696,6 +706,18 @@ cmd_gboom() {
   exec bash "$SCRIPTS/launch-gboom.sh" "$@"
 }
 
+cmd_preserve() {
+  # Etcher-style backup / gated flash. Agent-safe: no curses.
+  # Non-TTY default is handled inside preserve.py (all GrokBotBaby).
+  local py="$PLUGIN/preserve/preserve.py"
+  if [[ ! -f "$py" ]]; then
+    echo "error: missing $py" >&2
+    echo "  expected plugins/fc-media-suite/preserve (fc-preserve-etcher-v1)" >&2
+    exit 1
+  fi
+  exec python3 "$py" "$@"
+}
+
 cmd_media() {
   if [[ -x "$PLUGIN/scripts/doctor.sh" ]] || [[ -f "$PLUGIN/scripts/doctor.sh" ]]; then
     echo "fc-media-suite v$(cat "$PLUGIN/VERSION" 2>/dev/null || echo "$VERSION")"
@@ -717,7 +739,7 @@ cmd_media() {
       *)
         bash "$PLUGIN/scripts/doctor.sh" || true
         echo ""
-        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | glyph | language | drone | lens | cast"
+        echo "launch via fcs:  fcs watch | cam | clock | map | webgrid | glyph | language | drone | lens | cast | preserve"
         ;;
     esac
   else
@@ -745,6 +767,7 @@ normalize_cmd() {
     cast|share|mirror|chromecast|tv-cast) echo cast ;;
     tiles|tile|mosaic-tiles) echo tiles ;;
     gboom|halfblock|hb) echo gboom ;;
+    preserve|etcher|backup-phone|fc-preserve|iphone-backup) echo preserve ;;
     media|suite|fc-media) echo media ;;
     # /web inspect · multi-browser DevTools · job hygiene (not webgrid)
     web|webi|inspect|devtools|hygiene|job-hygiene|jobs-hygiene) echo web ;;
@@ -782,6 +805,7 @@ main() {
     cast) cmd_cast "$@" ;;
     tiles) cmd_tiles "$@" ;;
     gboom) cmd_gboom "$@" ;;
+    preserve) cmd_preserve "$@" ;;
     media) cmd_media "$@" ;;
     web)
       # fcs hygiene → web hygiene; fcs inspect → web inspect

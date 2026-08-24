@@ -75,6 +75,23 @@ else
   echo "WARN  sntp missing (clock falls back to free-run tier)"
 fi
 
+echo "--- preserve ---"
+if [[ -f "$ROOT/preserve/preserve.py" && -f "$ROOT/preserve/default.json" ]]; then
+  echo "OK    fc-preserve-etcher-v1"
+  if command -v idevice_id >/dev/null 2>&1; then
+    echo "OK    idevice_id (iOS usbmux)"
+  else
+    echo "WARN  idevice_id missing (iOS live probe needs libimobiledevice)"
+  fi
+  if command -v adb >/dev/null 2>&1; then
+    echo "OK    adb (Android / GrokBotBaby)"
+  else
+    echo "WARN  adb missing (linux-test / Android probe)"
+  fi
+else
+  echo "WARN  preserve tree missing"
+fi
+
 echo "--- credits ---"
 echo "fornevercollective media suite · see CREDITS.md"
 echo "upstream harness: xAI grok-build"

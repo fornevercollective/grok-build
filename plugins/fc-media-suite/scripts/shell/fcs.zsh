@@ -44,7 +44,7 @@ fi
 
 # Slash names are absolute paths to the shell (/watch → path lookup).
 # Rewrite interactive lines that start with a known slash tool → fcs <cmd> …
-_fcs_slash_cmds='watch|gmux|tv|live|cam|camera|clock|timesync|zulu|map|maptrace|geomap|webgrid|wg|glyph|glyphs|peel|optical|optic|lens|phone|cast|share|tiles|gboom|media|doctor|language|lang|drone|web|webi|inspect|devtools|hygiene'
+_fcs_slash_cmds='watch|gmux|tv|live|cam|camera|clock|timesync|zulu|map|maptrace|geomap|webgrid|wg|glyph|glyphs|peel|optical|optic|lens|phone|cast|share|tiles|gboom|media|doctor|language|lang|drone|web|webi|inspect|devtools|hygiene|preserve|etcher'
 
 _fcs_rewrite_slash_line() {
   # $1 = full buffer; print rewritten command line or empty if no match
@@ -91,7 +91,7 @@ command_not_found_handler() {
   local cmd="$1"
   # bare names only (watch without slash) if someone uses hash miss
   case "$cmd" in
-    watch|gmux|cam|clock|timesync|map|maptrace|webgrid|glyph|peel|optical|lens|phone|cast|tiles|gboom|language|lang|drone)
+    watch|gmux|cam|clock|timesync|map|maptrace|webgrid|glyph|peel|optical|lens|phone|cast|tiles|gboom|language|lang|drone|preserve|etcher)
       # Do not steal system `watch` if present as absolute — only when not found
       shift
       _fcs_bin "$cmd" "$@"

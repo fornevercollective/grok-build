@@ -1,3 +1,25 @@
+# Changelog · fc-media-suite
+
+All notable releases of the **installable plugin pack** + coordinated fork binary stamps.
+
+Format: Keep a Changelog · versioning: SemVer (`MAJOR.MINOR.PATCH`).
+
+## 0.2.4 — 2026-08-24
+
+### Preserve (`fc-preserve-etcher-v1`)
+
+- First-class **`fcs preserve`** / **`/preserve`** — Etcher-shaped device backup / gated flash
+- Inspired by Etcher UX, Phosphor `Manifest.db`, OpenExtract export, IntuneBrew per-app JSON — **not a fork**
+- Default vault: `/Volumes/MacBookPro - Data/FC-Preserve` (never `~/Documents`)
+- Aliases: **GrokBotBaby** (linux-test, postmarketos) · **Brick** (iPhone 7 Plus `iPhone9,4` — preserve only, never flash)
+- Pipeline: backup → extract → catalog → SHA-256 chain of custody → `linux-gate.json`
+- `ready: true` only when `backup_ok`, Manifest.db (or linux os-release), required domains, and hashes are all true
+- Live line-based progress (`percent + MB/s + last file`); `idevicebackup2` `\r` flushed for `tail -F`
+- Mini production: Personal Hotspot / USB-NCM (`en9` 169.254) diagnosis; backup2 `-4` / 255 resume into the same stamp; parallel AFC DCIM; iCloud Optimize Storage honesty
+- Encrypted iOS backup via `FC_PRESERVE_BACKUP_PASSWORD` (unset = unencrypted)
+- TTY: 3-step `fcs preserve` / `etcher` (no curses). Non-TTY: `fcs preserve all GrokBotBaby`
+- Does not start Elffin, embed WebKit, or add a second GPU host
+
 ## 0.2.2 — 2026-08-08
 
 ### Glyph engine (`fc-glyph-engine-v1` · arena v1.7 color update)
@@ -10,12 +32,6 @@
 - Bridges: lang-chat-desk live translation · layered optical broadcast · webgrid chase
 - Shell slash rewrite: `/glyph` in zsh/bash hooks
 - Nested path retained: `/watch glyph` · `glyph-watch-popout.sh`
-
-# Changelog · fc-media-suite
-
-All notable releases of the **installable plugin pack** + coordinated fork binary stamps.
-
-Format: Keep a Changelog · versioning: SemVer (`MAJOR.MINOR.PATCH`).
 
 ## [0.2.1] — 2026-08-08
 

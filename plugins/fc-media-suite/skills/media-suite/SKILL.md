@@ -2,7 +2,7 @@
 name: media-suite
 description: >
   fornevercollective media wall — /watch live demux, /cam, /clock timesync,
-  /map traceroute (Starbase), /webgrid, /glyph, /drone, /language. Universal via `fcs` CLI
+  /map traceroute (Starbase), /webgrid, /glyph, /drone, /language, /preserve. Universal via `fcs` CLI
   for any terminal and any AI (Grok, Claude, Codex, Cursor). Triggers: media suite,
   fcs watch, fcs glyph, install watch clock map, fc-media-suite, half-block video,
   SpaceXAI/x.com/Grok ops surfaces.
@@ -35,6 +35,8 @@ fcs drone popout
 fcs language                # multi-lang simultaneous keyboard streams
 fcs lens bug
 fcs cast list
+fcs preserve probe
+fcs preserve all GrokBotBaby
 fcs doctor
 ```
 
@@ -87,6 +89,7 @@ bash plugins/fc-media-suite/scripts/update.sh
 | `fc-webgrid-drone-hud-v1` | `/drone` multi-unit FPV HUD | `fcs drone` |
 | `fc-language-stream-v1` | `/language` simultaneous keyboard streams | `fcs language` |
 | `fc-optical-transfer-v1` | `/optical` | `fcs optical` |
+| `fc-preserve-etcher-v1` | `/preserve` | `fcs preserve` |
 
 ```bash
 fcs doctor
