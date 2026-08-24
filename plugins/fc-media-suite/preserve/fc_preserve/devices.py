@@ -15,7 +15,7 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from . import BRICK_PRODUCT, BRICK_UDID
+from . import GROKBOTBABY_SERIAL, GROKBOTBABY_UDID
 from .config import device_alias
 
 USB_ETH_RE = re.compile(r"^(en[7-9]|en1[0-9]|usb\d+|enx|ncm|rndis)", re.I)
@@ -69,6 +69,8 @@ class Device:
     name: str = ""
     ios: str | None = None
     flavor: str | None = None
+    serial: str = ""
+    hardware: str = ""
     preserve_only: bool = False
     present: bool = False
     source: str = "alias"
@@ -99,6 +101,8 @@ class ProbeResult:
             if d.udid.lower() == want:
                 return d
             if (d.name or "").lower() == want:
+                return d
+            if (d.serial or "").lower() == want:
                 return d
         return None
 
@@ -204,16 +208,25 @@ def detect_hotspot_ncm(
     return False
 
 
-def _ios_info(udid: str) -> tuple[str, str]:
+def _ios_info(udid: str) -> tuple[str, str, str, str, str]:
     out = _run(["ideviceinfo", "-u", udid])
     product = ""
     version = ""
+    serial = ""
+    hardware = ""
+    name = ""
     for line in out.splitlines():
         if line.startswith("ProductType:"):
             product = line.split(":", 1)[1].strip()
         if line.startswith("ProductVersion:"):
             version = line.split(":", 1)[1].strip()
-    return product, version
+        if line.startswith("SerialNumber:"):
+            serial = line.split(":", 1)[1].strip()
+        if line.startswith("HardwareModel:"):
+            hardware = line.split(":", 1)[1].strip()
+        if line.startswith("DeviceName:"):
+            name = line.split(":", 1)[1].strip()
+    return product, version, serial, hardware, name
 
 
 def _apply_alias(dev: Device, spec: dict[str, Any]) -> Device:
@@ -223,6 +236,8 @@ def _apply_alias(dev: Device, spec: dict[str, Any]) -> Device:
     dev.name = str(spec.get("name") or dev.name)
     dev.ios = spec.get("ios") or dev.ios
     dev.flavor = spec.get("flavor") or dev.flavor
+    dev.serial = str(spec.get("serial") or dev.serial)
+    dev.hardware = str(spec.get("hardware") or dev.hardware)
     dev.preserve_only = bool(spec.get("preserve_only", dev.preserve_only))
     dev.flash = spec.get("flash", dev.flash)
     dev.role = str(spec.get("role") or dev.role)
@@ -243,6 +258,8 @@ def configured_aliases(cfg: dict[str, Any]) -> list[Device]:
                 name=str(spec.get("name") or alias),
                 ios=spec.get("ios"),
                 flavor=spec.get("flavor"),
+                serial=str(spec.get("serial") or ""),
+                hardware=str(spec.get("hardware") or ""),
                 preserve_only=bool(spec.get("preserve_only", False)),
                 present=False,
                 source="alias",
@@ -251,6 +268,24 @@ def configured_aliases(cfg: dict[str, Any]) -> list[Device]:
             )
         )
     return out
+
+
+def _is_grokbotbaby(cfg: dict[str, Any], udid: str, serial: str = "") -> bool:
+    spec = device_alias(cfg, "GrokBotBaby") or {}
+    want_udid = str(spec.get("udid") or GROKBOTBABY_UDID).lower()
+    want_serial = str(spec.get("serial") or GROKBOTBABY_SERIAL).upper()
+    if udid and udid.lower() == want_udid:
+        return True
+    if serial and serial.upper() == want_serial:
+        return True
+    return False
+
+
+def _is_brick_name(cfg: dict[str, Any], device_name: str) -> bool:
+    spec = device_alias(cfg, "Brick") or {}
+    hints = [str(h).lower() for h in (spec.get("name_hints") or ["Brick"])]
+    low = (device_name or "").lower()
+    return any(h and h in low for h in hints)
 
 
 def probe(
@@ -277,20 +312,26 @@ def probe(
     devices: list[Device] = []
 
     for udid in mux_udids:
-        product, version = _ios_info(udid) if tools.get("ideviceinfo") else ("", "")
+        product, version, serial, hardware, dev_name = (
+            _ios_info(udid) if tools.get("ideviceinfo") else ("", "", "", "", "")
+        )
         alias = None
         spec = None
-        brick = device_alias(cfg, "Brick") or {}
-        if udid.lower() == str(brick.get("udid") or BRICK_UDID).lower():
+        if _is_grokbotbaby(cfg, udid, serial):
+            alias = "GrokBotBaby"
+            spec = device_alias(cfg, "GrokBotBaby") or {}
+        elif _is_brick_name(cfg, dev_name):
             alias = "Brick"
-            spec = brick
+            spec = device_alias(cfg, "Brick") or {}
         dev = Device(
             alias=alias,
             platform="ios",
             udid=udid,
             product=product or (spec or {}).get("product") or "",
-            name=(spec or {}).get("name") or product or "iPhone",
+            name=(spec or {}).get("name") or dev_name or product or "iPhone",
             ios=version or (spec or {}).get("ios"),
+            serial=serial or str((spec or {}).get("serial") or ""),
+            hardware=hardware or str((spec or {}).get("hardware") or ""),
             preserve_only=bool((spec or {}).get("preserve_only", False)),
             present=True,
             source="mux",
@@ -309,8 +350,8 @@ def probe(
     claimed_gbb = False
     for serial in adb_serials:
         hint_hit = any(h in serial.lower() for h in baby_hints)
-        # First live adb device is GrokBotBaby unless a later serial matches hints better.
-        take_gbb = baby is not None and not claimed_gbb and (hint_hit or not claimed_gbb)
+        # After a postmarketOS flash GrokBotBaby may appear on adb — only claim on hints.
+        take_gbb = baby is not None and not claimed_gbb and hint_hit
         if take_gbb and baby is not None:
             claimed_gbb = True
             baby.present = True
@@ -381,6 +422,8 @@ def resolve_requested(probe_result: ProbeResult, cfg: dict[str, Any], name: str)
             name=str(spec.get("name") or name),
             ios=spec.get("ios"),
             flavor=spec.get("flavor"),
+            serial=str(spec.get("serial") or ""),
+            hardware=str(spec.get("hardware") or ""),
             preserve_only=bool(spec.get("preserve_only", False)),
             present=False,
             source="alias",
@@ -391,12 +434,11 @@ def resolve_requested(probe_result: ProbeResult, cfg: dict[str, Any], name: str)
 
 
 def brick_never_flash(device: Device) -> bool:
+    """Brick is the daily iPhone 14-class Continuity phone — never the 7 Plus."""
     if (device.alias or "").lower() == "brick":
         return True
-    if device.udid.lower() == BRICK_UDID:
-        return True
-    if device.product == BRICK_PRODUCT and device.preserve_only:
-        return True
+    if _is_grokbotbaby({}, device.udid, device.serial):
+        return False
     return bool(device.preserve_only)
 
 

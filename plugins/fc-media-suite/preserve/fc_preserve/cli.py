@@ -273,5 +273,5 @@ Env:
   FC_PRESERVE_DEVICE             non-TTY default device (GrokBotBaby)
   FCS_AGENT=1                    force non-interactive
 
-Aliases: GrokBotBaby (linux-test, postmarketos) · Brick (iPhone9,4 daily)
+Aliases: GrokBotBaby (iPhone9,4 D111AP linux-test, gated flash) · Brick (daily iPhone 14, never flash)
 """

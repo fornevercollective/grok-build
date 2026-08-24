@@ -1,8 +1,8 @@
 ---
 name: preserve
 description: >
-  Etcher-style device backup / gated flash for Brick (daily iPhone, preserve
-  only) and GrokBotBaby (linux-test, postmarketos). Triggers: /preserve,
+  Etcher-style device backup / gated flash for GrokBotBaby (iPhone 7 Plus
+  linux-test) and Brick (daily iPhone 14 / Continuity, preserve only). Triggers: /preserve,
   fcs preserve, etcher backup, idevicebackup2, Manifest.db, linux-gate,
   FC-Preserve, Brick iPhone, GrokBotBaby, Personal Hotspot USB-NCM.
 ---
@@ -25,9 +25,11 @@ fcs preserve linux GrokBotBaby
 ## Steps (Etcher-shaped, honest)
 
 1. **SELECT DEVICE** — live USB (iOS `idevice_id` / Android `adb`). Aliases:
-   **GrokBotBaby** (linux-test, postmarketos), **Brick** (iPhone 7 Plus
-   `iPhone9,4` iOS 15.1 UDID `4ea7e05b3045f0e9036275125a85225dd6dd9bb9` —
-   preserve only).
+   **GrokBotBaby** (old iPhone 7 Plus `iPhone9,4` D111AP iOS 15.1 UDID
+   `4ea7e05b3045f0e9036275125a85225dd6dd9bb9` serial `FCDTR1N8HFY7` —
+   linux-test, preserve then gated flash). **Brick** (daily iPhone 14 class /
+   Continuity Camera — preserve only, never flash). Do not assign the 7 Plus
+   UDID to Brick.
 2. **SELECT TARGET** — default **`/Volumes/MacBookPro - Data/FC-Preserve`**.
    Never `~/Documents` (Internal ~33 GiB is too tight). `FC_PRESERVE_VAULT` overrides.
 3. **BACKUP** = backup → extract → catalog → SHA-256 chain → `linux-gate.json`.

@@ -17,7 +17,8 @@ def flash_notes(device: Device, stamp: Path, vault: Path, gate: dict[str, Any] |
             "FLASH REFUSED\n"
             f"  device: {device.alias or device.name}\n"
             f"  reason: {reason}\n"
-            "  Brick (iPhone 7 Plus / iPhone9,4) is preserve-only and can never pass this gate.\n"
+            "  Brick (daily iPhone 14 class / Continuity) is preserve-only and can never pass this gate.\n"
+            "  GrokBotBaby is the iPhone 7 Plus linux-test device — preserve, then gated flash.\n"
         )
     flavor = device.flavor or "postmarketos"
     images = vault / "images" / flavor

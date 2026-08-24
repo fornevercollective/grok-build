@@ -27,7 +27,8 @@ Non-TTY / agent shells skip the interactive steps and run `all GrokBotBaby`.
 **Default vault:** `/Volumes/MacBookPro - Data/FC-Preserve`  
 Do not use `~/Documents` (Internal is too tight). Override: `FC_PRESERVE_VAULT`.
 
-**Aliases:** GrokBotBaby (linux-test, postmarketos) · Brick (iPhone 7 Plus
-`iPhone9,4` / iOS 15.1 — preserve only).
+**Aliases:** GrokBotBaby (old iPhone 7 Plus `iPhone9,4` D111AP / iOS 15.1 /
+UDID `4ea7e05b…` / serial `FCDTR1N8HFY7` — linux-test, preserve then gated flash)
+· Brick (daily iPhone 14 class / Continuity — preserve only, never flash).
 
 Encrypted iOS backup: `FC_PRESERVE_BACKUP_PASSWORD` (unset = unencrypted).

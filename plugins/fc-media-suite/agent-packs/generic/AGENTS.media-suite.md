@@ -34,7 +34,7 @@ fcs cast list|url|…
 fcs tiles list|load|…
 fcs preserve                 # non-TTY → all GrokBotBaby
 fcs preserve probe
-fcs preserve backup Brick    # never flash
+fcs preserve backup Brick    # daily iPhone 14 — never flash
 fcs doctor
 ```
 

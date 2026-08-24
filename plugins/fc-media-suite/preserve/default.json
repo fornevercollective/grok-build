@@ -87,27 +87,32 @@
     ]
   },
   "devices": {
+    "GrokBotBaby": {
+      "alias": "GrokBotBaby",
+      "platform": "ios",
+      "role": "linux-test",
+      "flavor": "postmarketos",
+      "product": "iPhone9,4",
+      "hardware": "D111AP",
+      "name": "iPhone 7 Plus",
+      "ios": "15.1",
+      "udid": "4ea7e05b3045f0e9036275125a85225dd6dd9bb9",
+      "serial": "FCDTR1N8HFY7",
+      "preserve_only": false,
+      "flash": "gated",
+      "adb_hints": ["GrokBotBaby", "postmarketos", "pmos"]
+    },
     "Brick": {
       "alias": "Brick",
       "platform": "ios",
       "role": "daily",
-      "product": "iPhone9,4",
-      "name": "iPhone 7 Plus",
-      "ios": "15.1",
-      "udid": "4ea7e05b3045f0e9036275125a85225dd6dd9bb9",
+      "class": "iPhone 14",
+      "name": "Brick",
+      "continuity": true,
       "preserve_only": true,
       "flash": false,
-      "flash_refused_reason": "Brick is the daily iPhone — preserve only, NEVER flash."
-    },
-    "GrokBotBaby": {
-      "alias": "GrokBotBaby",
-      "platform": "linux",
-      "role": "linux-test",
-      "flavor": "postmarketos",
-      "name": "GrokBotBaby",
-      "preserve_only": false,
-      "flash": "gated",
-      "adb_hints": ["GrokBotBaby", "postmarketos", "pmos"]
+      "name_hints": ["Brick"],
+      "flash_refused_reason": "Brick is the daily iPhone (Continuity / iPhone 14 class) — preserve only, NEVER flash."
     }
   },
   "hotspot_ncm": {

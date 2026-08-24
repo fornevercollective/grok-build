@@ -11,7 +11,7 @@ Format: Keep a Changelog · versioning: SemVer (`MAJOR.MINOR.PATCH`).
 - First-class **`fcs preserve`** / **`/preserve`** — Etcher-shaped device backup / gated flash
 - Inspired by Etcher UX, Phosphor `Manifest.db`, OpenExtract export, IntuneBrew per-app JSON — **not a fork**
 - Default vault: `/Volumes/MacBookPro - Data/FC-Preserve` (never `~/Documents`)
-- Aliases: **GrokBotBaby** (linux-test, postmarketos) · **Brick** (iPhone 7 Plus `iPhone9,4` — preserve only, never flash)
+- Aliases: **GrokBotBaby** (iPhone 7 Plus `iPhone9,4` D111AP / UDID `4ea7e05b…` / serial `FCDTR1N8HFY7` — linux-test, preserve then gated flash) · **Brick** (daily iPhone 14 class / Continuity — preserve only, never flash)
 - Pipeline: backup → extract → catalog → SHA-256 chain of custody → `linux-gate.json`
 - `ready: true` only when `backup_ok`, Manifest.db (or linux os-release), required domains, and hashes are all true
 - Live line-based progress (`percent + MB/s + last file`); `idevicebackup2` `\r` flushed for `tail -F`

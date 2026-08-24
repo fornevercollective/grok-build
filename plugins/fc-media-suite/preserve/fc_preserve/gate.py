@@ -33,7 +33,8 @@ def compute_gate(
         manifest = manifest or (stamp / "extract" / "system" / "os-release").is_file()
 
     ready = bool(backup_ok and manifest and domains_extracted and hashes_written)
-    flash_allowed = bool(ready and not brick_never_flash(device) and device.platform == "linux")
+    gated = device.flash == "gated" or device.role == "linux-test"
+    flash_allowed = bool(ready and not brick_never_flash(device) and gated)
     looks_like_success = bool(ready)
     # size is never a success signal
     if bytes_copied and bytes_copied >= STUB_BYTES and not ready:

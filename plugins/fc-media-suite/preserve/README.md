@@ -34,8 +34,8 @@ Non-TTY / `FCS_AGENT=1` never opens a hung TUI. It runs `all GrokBotBaby`.
 
 | Alias | What | Flash |
 |-------|------|-------|
-| **Brick** | daily iPhone 7 Plus (`iPhone9,4`, iOS 15.1, UDID `4ea7e05b3045f0e9036275125a85225dd6dd9bb9`) | **never** — preserve only |
-| **GrokBotBaby** | linux-test, flavor `postmarketos` | only when `linux-gate.json` `ready: true` |
+| **GrokBotBaby** | old iPhone 7 Plus (`iPhone9,4` / D111AP / iOS 15.1 / UDID `4ea7e05b3045f0e9036275125a85225dd6dd9bb9` / serial `FCDTR1N8HFY7`) — linux-test | preserve, then flash only when `linux-gate.json` `ready: true` |
+| **Brick** | daily iPhone (Continuity Camera / iPhone 14 class) | **never** — preserve only |
 
 ## Vault
 

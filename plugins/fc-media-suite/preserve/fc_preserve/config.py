@@ -71,4 +71,6 @@ def device_alias(cfg: dict[str, Any], name: str) -> dict[str, Any] | None:
             return dict(spec)
         if str(spec.get("udid", "")).lower() == lower:
             return dict(spec)
+        if str(spec.get("serial", "")).upper() == key.upper():
+            return dict(spec)
     return None

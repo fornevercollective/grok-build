@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parents[1]
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from fc_preserve import BRICK_UDID, DEFAULT_VAULT
+from fc_preserve import DEFAULT_VAULT, GROKBOTBABY_SERIAL, GROKBOTBABY_UDID
 from fc_preserve.backup import BackupError, detect_icloud_optimize, refuse_if_hotspot, run_idevicebackup2
 from fc_preserve.catalog import write_catalog
 from fc_preserve.config import is_forbidden_vault, load_default, resolve_vault
@@ -70,13 +70,7 @@ def _ios_backup(root: Path) -> Path:
     con.commit()
     con.close()
     _write(root / "Status.plist", "complete")
-    _write(root / "Info.plist", "Brick")
-    return root
-
-
-def _linux_tree(root: Path) -> Path:
-    _write(root / "etc" / "os-release", "ID=postmarketos\n")
-    _write(root / "DCIM" / "Camera" / "IMG_0001.jpg", b"jpeg")
+    _write(root / "Info.plist", "GrokBotBaby")
     return root
 
 
@@ -91,6 +85,23 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(is_forbidden_vault(Path.home() / "Documents" / "FC-Preserve"))
         with self.assertRaises(ValueError):
             resolve_vault(load_default(), str(Path.home() / "Documents" / "FC-Preserve"))
+
+    def test_aliases_are_not_swapped(self) -> None:
+        cfg = load_default()
+        baby = cfg["devices"]["GrokBotBaby"]
+        brick = cfg["devices"]["Brick"]
+        self.assertEqual(baby["udid"], GROKBOTBABY_UDID)
+        self.assertEqual(baby["serial"], GROKBOTBABY_SERIAL)
+        self.assertEqual(baby["product"], "iPhone9,4")
+        self.assertEqual(baby["hardware"], "D111AP")
+        self.assertEqual(baby["role"], "linux-test")
+        self.assertEqual(baby["flash"], "gated")
+        self.assertFalse(baby["preserve_only"])
+        self.assertNotEqual(brick.get("udid"), GROKBOTBABY_UDID)
+        self.assertNotIn("4ea7e05b3045f0e9036275125a85225dd6dd9bb9", json.dumps(brick))
+        self.assertTrue(brick["preserve_only"])
+        self.assertEqual(brick["flash"], False)
+        self.assertEqual(cfg["vault_root"], DEFAULT_VAULT)
 
     def test_password_default_unset(self) -> None:
         from fc_preserve.config import backup_password
@@ -116,7 +127,7 @@ class HotspotTests(unittest.TestCase):
         self.assertFalse(
             detect_hotspot_ncm(
                 [UsbNode(name="iPhone")],
-                [BRICK_UDID],
+                [GROKBOTBABY_UDID],
                 [NetIface(name="en9", up=True, addrs=["169.254.12.34"])],
             )
         )
@@ -145,7 +156,7 @@ class StampResumeTests(unittest.TestCase):
     def test_incomplete_stamp_is_reused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             vault = Path(tmp)
-            device = Device(alias="Brick", platform="ios", udid=BRICK_UDID, preserve_only=True)
+            device = Device(alias="Brick", platform="ios", udid="", preserve_only=True)
             first = resolve_stamp(vault, device)
             _write(first / "preserve.log", "drop 255\n")
             second = resolve_stamp(vault, device)
@@ -155,7 +166,15 @@ class StampResumeTests(unittest.TestCase):
     def test_complete_stamp_opens_new(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             vault = Path(tmp)
-            device = Device(alias="GrokBotBaby", platform="linux", udid="gbb", flavor="postmarketos")
+            device = Device(
+                alias="GrokBotBaby",
+                platform="ios",
+                udid=GROKBOTBABY_UDID,
+                serial=GROKBOTBABY_SERIAL,
+                flavor="postmarketos",
+                role="linux-test",
+                flash="gated",
+            )
             first = resolve_stamp(vault, device)
             write_gate(
                 first,
@@ -164,9 +183,7 @@ class StampResumeTests(unittest.TestCase):
             from fc_preserve.stamp import write_json
 
             write_json(first / "summary.json", {"ok": True, "backup_ok": True})
-            # gate ready + summary ok → new stamp
-            # extract os-release so manifest stand-in can make ready true
-            _write(first / "extract" / "system" / "os-release", "ID=postmarketos\n")
+            _write(first / "extract" / "Manifest.db", b"db")
             write_gate(
                 first,
                 compute_gate(device, first, backup_ok=True, domains_extracted=True, hashes_written=True),
@@ -210,11 +227,15 @@ class PipelineTests(unittest.TestCase):
             vault = Path(tmp)
             src = _ios_backup(Path(tmp) / "src")
             device = Device(
-                alias="Brick",
+                alias="GrokBotBaby",
                 platform="ios",
-                udid=BRICK_UDID,
+                udid=GROKBOTBABY_UDID,
+                serial=GROKBOTBABY_SERIAL,
                 product="iPhone9,4",
-                preserve_only=True,
+                hardware="D111AP",
+                flavor="postmarketos",
+                role="linux-test",
+                flash="gated",
                 present=True,
             )
             buf = io.StringIO()
@@ -223,8 +244,7 @@ class PipelineTests(unittest.TestCase):
             self.assertTrue(summary["backup_ok"])
             self.assertTrue(summary["gate"]["ready"])
             self.assertTrue(summary["ok"])
-            self.assertFalse(summary["gate"]["flash_allowed"])
-            self.assertIn("NEVER flash", summary["gate"]["flash_refused_reason"])
+            self.assertTrue(summary["gate"]["flash_allowed"])
             self.assertTrue((vault / "runs").exists())
             self.assertIn("Manifest.db", (next((vault / "runs").iterdir()) / "extract" / "Manifest.db").name)
 
@@ -232,13 +252,16 @@ class PipelineTests(unittest.TestCase):
         cfg = load_default()
         with tempfile.TemporaryDirectory() as tmp:
             vault = Path(tmp)
-            src = _linux_tree(Path(tmp) / "src")
+            src = _ios_backup(Path(tmp) / "src")
             device = Device(
                 alias="GrokBotBaby",
-                platform="linux",
-                udid="deadbeef",
+                platform="ios",
+                udid=GROKBOTBABY_UDID,
+                serial=GROKBOTBABY_SERIAL,
+                product="iPhone9,4",
                 flavor="postmarketos",
                 role="linux-test",
+                flash="gated",
                 present=True,
             )
             buf = io.StringIO()
@@ -257,7 +280,7 @@ class PipelineTests(unittest.TestCase):
         cfg = load_default()
         with tempfile.TemporaryDirectory() as tmp:
             stamp = Path(tmp)
-            device = Device(alias="Brick", platform="ios", udid=BRICK_UDID, preserve_only=True)
+            device = Device(alias="Brick", platform="ios", udid="", preserve_only=True)
             gate = compute_gate(
                 device,
                 stamp,
@@ -277,7 +300,7 @@ class PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             stamp = Path(tmp)
             _write(stamp / "extract" / "Manifest.db", b"db")
-            device = Device(alias="Brick", platform="ios", udid=BRICK_UDID, product="iPhone9,4", preserve_only=True)
+            device = Device(alias="Brick", platform="ios", udid="", product="iPhone14,7", preserve_only=True)
             gate = compute_gate(device, stamp, backup_ok=True, domains_extracted=True, hashes_written=True)
             ok, reason = flash_gate_ok(gate, device)
             self.assertFalse(ok)
@@ -308,7 +331,7 @@ class PipelineTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp) / "backup"
-            device = Device(alias="Brick", platform="ios", udid=BRICK_UDID)
+            device = Device(alias="GrokBotBaby", platform="ios", udid=GROKBOTBABY_UDID, serial=GROKBOTBABY_SERIAL)
             buf = io.StringIO()
             with RunLog(None, also=buf) as log:
                 result = run_idevicebackup2(cfg, device, dest, log, runner=runner)
@@ -348,7 +371,7 @@ class EtcherCliTests(unittest.TestCase):
         out = io.StringIO()
         err = io.StringIO()
         with tempfile.TemporaryDirectory() as tmp:
-            src = _linux_tree(Path(tmp) / "src")
+            src = _ios_backup(Path(tmp) / "src")
             rc = main(
                 ["--vault", tmp, "--source-dir", str(src), "--json"],
                 stdin=fake_in,
@@ -359,6 +382,7 @@ class EtcherCliTests(unittest.TestCase):
         payload = json.loads(out.getvalue())
         self.assertEqual(payload["device"], "GrokBotBaby")
         self.assertTrue(payload["ok"])
+        self.assertTrue(payload["gate"]["flash_allowed"])
 
     def test_etcher_refuses_without_tty(self) -> None:
         from fc_preserve.cli import main
@@ -368,7 +392,7 @@ class EtcherCliTests(unittest.TestCase):
         out = io.StringIO()
         err = io.StringIO()
         with tempfile.TemporaryDirectory() as tmp:
-            src = _linux_tree(Path(tmp) / "src")
+            src = _ios_backup(Path(tmp) / "src")
             rc = main(
                 ["etcher", "--vault", tmp, "--source-dir", str(src), "--json"],
                 stdin=fake_in,
@@ -389,6 +413,12 @@ class EtcherCliTests(unittest.TestCase):
         brick = pick_device(result, "Brick")
         self.assertEqual(brick.alias, "Brick")
         self.assertTrue(brick.preserve_only)
+        self.assertNotEqual(brick.udid, GROKBOTBABY_UDID)
+        baby = pick_device(result, "GrokBotBaby")
+        self.assertEqual(baby.udid, GROKBOTBABY_UDID)
+        self.assertEqual(baby.serial, GROKBOTBABY_SERIAL)
+        self.assertEqual(baby.role, "linux-test")
+        self.assertFalse(baby.preserve_only)
         self.assertFalse(is_tty(io.StringIO("")))
 
     def test_flash_brick_refused_without_stamp(self) -> None:
@@ -419,6 +449,27 @@ class EtcherCliTests(unittest.TestCase):
             rc = main(["probe", "--json"], stdin=io.StringIO(""), stdout=out, stderr=err)
         self.assertEqual(rc, 3)
         self.assertIn("Personal Hotspot", out.getvalue())
+
+    def test_seven_plus_udid_maps_to_grokbotbaby_not_brick(self) -> None:
+        cfg = load_default()
+        result = probe(
+            cfg,
+            mux=lambda: [GROKBOTBABY_UDID],
+            adb=lambda: [],
+            usb=lambda: [UsbNode(name="iPhone 7 Plus")],
+            ifaces=lambda: [],
+        )
+        baby = result.by_alias("GrokBotBaby")
+        self.assertIsNotNone(baby)
+        assert baby is not None
+        self.assertTrue(baby.present)
+        self.assertEqual(baby.udid, GROKBOTBABY_UDID)
+        self.assertNotEqual((baby.alias or "").lower(), "brick")
+        brick = result.by_alias("Brick")
+        self.assertIsNotNone(brick)
+        assert brick is not None
+        self.assertFalse(brick.present)
+        self.assertNotEqual(brick.udid, GROKBOTBABY_UDID)
 
 
 class FcsWireTests(unittest.TestCase):
